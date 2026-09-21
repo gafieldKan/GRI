@@ -1,0 +1,76 @@
+# Dependencies
+node_modules/
+.pnpm/
+
+# Build output
+dist/
+build/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Package lock files (optional, uncomment if needed)
+# package-lock.json
+# pnpm-lock.yaml
+# yarn.lock
+
+# Private keys
+*.key
+*.pem
+*.crt
+
+# Backend specific
+*.sqlite
+*.db
+data/
+services/backend/data/
+
+# Ops/dump artifacts (DB backups may contain PII)
+ops/
+
+# Mini-program specific
+project.private.config.json
+
+# Documentation markdown files in wrong places (but preserve docs/ and app docs)
+*.md
+!README.md
+!CONTRIBUTING.md
+!CHANGELOG.md
+!docs/**/*.md
+!**/docs/**/*.md
+!**/README.md
+
+# Backup files
+*.backup
+*.bak
+
+# Scratch / generated output
+*.out
+uploads/
+
+# 生产 TLS 证书（自签/LE，运行时生成，勿入库）
+ssl/

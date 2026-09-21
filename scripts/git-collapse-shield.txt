@@ -1,0 +1,92 @@
+# GRI 本地 git 单根压缩溯源(每次压缩追加)
+# 2026-09-20T14:17:00+08:00
+# 压缩前工作分支最新提交: 1e0959294c532fd03c447660ed16b241106b3f67
+# 原 100-commit 历史已压缩为单根基线 2e3a350,旧对象已过期并被 GC 回收
+
+# 2026-09-20T18:55:22+08:00
+#  压缩为: AI 教师能力纵深 7 片连叠: diagnosis.state/plan.generate/plan.complete+计划页UI闭环/作答落库/错题冲刺 wrong.list+resolveOnCorrect/自适应复习 review.sequence —— 每生 AI 教师与 edu.* 真实学情全闭环
+#  压缩前 HEAD: 340de2f1a4fed7093284d4ba5ed904cde1183153
+
+# 2026-09-20T21:09:58+08:00
+#  压缩为: AI 教师能力纵深再叠: 错题冲刺/自适应复习/只读学情面板/面板判题消错/面板学习计划卡 + git-collapse SRC_BRANCH 捕获修复 —— 面板四级站看-复习-做-消一站式闭环
+#  压缩前 HEAD: fad214001495de1e55ea4d37331791d48ffec531
+
+# 2026-09-20T22:32:13+08:00
+#  压缩为: AI 教师 AI教师判读接 SM-2 记忆曲线: answer.grade 写 edu.sr_queue(quality5/1 → EF/间隔/次数指数演进) + review.sequence 改 next_review 到期日驱动(未到期沉底) —— 自适应复习贴合记忆曲线
+#  压缩前 HEAD: 772df843877bd5311f08429a4ef904be9a1eba4a
+
+# 2026-09-20T23:20:16+08:00
+#  压缩为: AI 教师 review.sequence 加短期答错惩罚: 最近一次作答答错且3天内 → wrongBoost=5 浮上来尽早重练(缺口+SM-2到期+短期惩罚三维排序) —— 刚答错的题不被记忆曲线久延
+#  压缩前 HEAD: b5030d1af84819a12502a15714db4bd6701313da
+
+# 2026-09-20T23:37:11+08:00
+#  压缩为: AI 教师面板'今日待复习'卡加原因徽标: SM-2到期(dueDays)+短期答错(recentWrong)+掌握度缺口(masteryPct)折叠成 chip, 让学生看懂为何推荐这道 —— 纯前端 web-ai-tutor(HMR 即载)
+#  压缩前 HEAD: 1c923f153f44ce603bb9d3d99a2209c551b8239e
+
+# 2026-09-21T00:02:16+08:00
+#  压缩为: AI 教师 SM-2 复习反馈闭环: answer.grade 判读结果回带 SM-2 演进摘要(interval/EF/次数/nextReview), /me/grade 透出 + 面板判读后显式告知'N 天后再带你复习这块' —— 记忆曲线时点对学生可见
+#  压缩前 HEAD: c892e709bb17705edd0dda023b858c1e0ff13935
+
+# 2026-09-21T00:41:43+08:00
+#  压缩为: AI 教师错题冲刺对齐诊断证据: wrong.list 按掌握度缺口排序(最弱知识点优先→错次→最近), 题面带 kpMasteryPct 不泄答案 —— 错题/复习序列同源指向最薄弱点
+#  压缩前 HEAD: 4f77a1fd99453713a85b997d1a2ea54d04a7892b
+
+# 2026-09-21T01:14:23+08:00
+#  压缩为: AI 教师教师面板升级为教练: 「复习冲刺」连续会话模式, 纯前端组合 review-sequence 有序题组 + gradeAgentAnswer 逐题判读, 答对自动推进/答错可重试或跳过/收尾回顾正确率 —— 仪表盘变可连续训练的教练工具
+#  压缩前 HEAD: 6a9a81655ad806b81df2a9df675ecbbe05c0fcfd
+
+# 2026-09-21T01:58:17+08:00
+#  压缩为: AI 教师作答耗时上报闭合: answer.grade//me/grade 接受可选 timeSpentMs 落库 time_spent_ms NULL→实际值, 面板 startAnswer 计时并在判读回显'用时Ns', diagnosis per-KP 聚合 AVG(time_spent_ms) 出 avgTimeSec, 学情总览 KP 行附'Ns/题'元认知信号
+#  压缩前 HEAD: bbaa2b9e8e7dffb14980920662456bf0159edbf7
+
+# 2026-09-21T02:30:51+08:00
+#  压缩为: AI 教师长记忆显式管理: 新增 memory.forget 工具 + POST /api/agent/me/memory/forget 薄端点(带 memory 进 ctx, 复用工具 execute+审计), 面板『教师记得你』每条加✕可忘掉, 记错的记忆清得掉 —— 跨会话记忆闭环到可删除
+#  压缩前 HEAD: b92285a05ab950335757d72fccf12d124fbebe29
+
+# 2026-09-21T05:45:59+08:00
+#  压缩为: AI 教师掌握度趋势: 新增 progress.trend 工具(按天累计作答掌握度时间序列+首末差值), GET /api/agent/me/mastery-trend 薄端点, 面板学情总览每KP行附▲进步/▼退步指示 —— 数据驱动补上时间维度, 学生看见自己在进步
+#  压缩前 HEAD: f43d2569ba77870b4562a1ee6fa58503cd3de60a
+
+# 2026-09-21T06:21:52+08:00
+#  压缩为: feat(p3): 运营台总览 admin/overview —— 聚合 AI 教师使用度(在用/有数据/工具调用/无解错题/活动计划 + 工具排行 + 最近动态), operator guard, 196 api 绿
+#  压缩前 HEAD: 7ec5803db07a2be908ce683b3a5c2ab96d83d01c
+
+# 2026-09-21T06:51:18+08:00
+#  压缩为: feat(p3): 全班学情集合 admin/class-diagnosis —— 跨全体学生的知识点掌握度透视(弱→强+最弱前5+学生汇总), operator guard, 199 api 绿, 真栈 E2E 全真聚合
+#  压缩前 HEAD: 0dbfe950b6ee833da1f0eeeea795caa6447f4c28
+
+# 2026-09-21T07:51:34+08:00
+#  压缩为: feat(p3): 弱知识点题目钻取 class-diagnosis/questions —— 该知识点全班卡在哪几题(弱→强+全员未答对标记,不透答案), operator guard, 202 api 绿, 真栈 E2E 全真下钻
+#  压缩前 HEAD: e753170421779682d26098b5e83598b870a3e818
+
+# 2026-09-21T09:03:45+08:00
+#  压缩为: feat(p3): 按知识点专项练习 me/kp-questions —— 学生对该知识点连练(只回题面),判读副作用统一走 answer.grade, 补教链路闭环, 204 api 绿, 真栈 E2E 判对+落库+消错题+SM2
+#  压缩前 HEAD: 762f12bd22446addf72934f2fde74ee60dbc287d
+
+# 2026-09-21T09:40:54+08:00
+#  压缩为: feat(p3): 单题作答归因 class-diagnosis/question —— 该题全班错法分布+谁答错/写了什么, operator guard, 206 api 绿, 真栈 E2E 归因实锤
+#  压缩前 HEAD: e8c062c6299521b80da0187e16df8827488b2211
+
+# 2026-09-21T12:30:42+08:00
+#  压缩为: feat(p3): 授课状态机 lesson.current —— AI 教师升级为设案→讲解→例题→再练一节课, 消费方不动机底座, 状态存该生记忆续课+每步真实数据锚+薄端点, 211 api 绿, 真栈 E2E 全真续接
+#  压缩前 HEAD: 0eb4d900781b0ab7fb24365db25f90a80f22e127
+
+# 2026-09-21T13:35:09+08:00
+#  压缩为: feat(p3): lesson.submit 授课答题闭环 —— 答对推进 complete/答错留 drill + 回授掌握度
+#  压缩前 HEAD: 6453b7770cc4f5894f1f269a9d7899e9e37eb5dc
+
+# 2026-09-21T14:43:31+08:00
+#  压缩为: feat(p3): 引导式授课 UI(前端) —— 最弱KP开课讲→答→自动推进; 修 MemoryStore.get 列名拼写bug
+#  压缩前 HEAD: 2d672ad54e165360bfb770a8cd78c544f913ada8
+
+# 2026-09-21T15:45:24+08:00
+#  压缩为: feat(p3): 答错自动回讲 —— teach 专讲本次错法(lastWrongAnswer 耦合+targeted)
+#  压缩前 HEAD: fe90955568194c09875b8d9bf83491757f960c5f
+
+# 2026-09-21T16:32:28+08:00
+#  压缩为: feat(p3): 答错自动跳转重讲 —— lesson.submit suggestedNext 数据化 + 前端自动 lessonFetch(teach)
+#  压缩前 HEAD: 7c163f2c061c56a959da03fe7c927b14446ca060
+
+# 2026-09-21T17:38:43+08:00
+#  压缩为: feat(p3): 授课落盘 lesson.record —— 一节课收束成 learning_plans 历史记录(答对自动落盘+recordId 回带)
+#  压缩前 HEAD: 2386de22d04939352b7a7723271d6f3855375337

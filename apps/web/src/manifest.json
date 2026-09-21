@@ -1,0 +1,66 @@
+{
+  "name": "GRI 点餐系统",
+  "appid": "__UNI__GRI_RESTAURANT",
+  "description": "GRI 餐厅点餐系统移动端应用",
+  "version": {
+    "name": "1.0.0",
+    "code": "100"
+  },
+  "uni-app": {
+    "scripts": {}
+  },
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "splashscreen": {
+      "alwaysShowBeforeRender": true,
+      "waiting": true,
+      "autoclose": true,
+      "delay": 0
+    },
+    "modules": {},
+    "distribute": {
+      "android": {
+        "permissions": [
+          "<uses-permission android:name=\"android.permission.INTERNET\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_WIFI_STATE\"/>",
+          "<uses-permission android:name=\"android.permission.CAMERA\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>"
+        ]
+      },
+      "ios": {
+        "idatt": true,
+        "capabilities": {
+          "entitlements": {}
+        }
+      }
+    }
+  },
+  "h5": {
+    "publicPath": "/",
+    "router": {
+      "mode": "hash"
+    },
+    "devServer": {
+      "port": 5173,
+      "disableHostCheck": true
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "permission": {
+      "scope.userLocation": {
+        "desc": "你的位置信息将用于定位配送地址"
+      }
+    }
+  }
+}

@@ -1,0 +1,89 @@
+# 生产运行 overlay：前端静态产物 + 真镜像后端 + TLS + 宿主端口收敛 + secrets 注入。
+#
+# 用法：
+#   npm run build:all-h5                                   # 前端产 dist/build/h5
+#   cp .env.example .env.prod && 编辑真实密钥              # 注入 secrets
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#         --env-file .env.prod up -d --build
+#
+# 与 base docker-compose.yml 合并（compose 语义：override 的键「替换」对应服务定义）：
+#   - 4 前端 dev server 被 profiles:["dev"] 关闭 —— prod 不拉起，nginx 直 serve 构建产物；
+#   - 内部后端/存储宿主端口清空 —— 仅 nginx 网关对 80/443 对外；
+#   - nginx 换 prod conf + TLS 证书挂载、不再 depends_on 前端；
+#   - secrets（JWT 私钥/服务令牌/支付验签/LLM）经 --env-file .env.prod 注入，缺失即失败（:?）。
+
+services:
+  # ── 4 前端 dev server：prod 下拉起（继承 base 定义，仅加 profiles 使其默认关闭）──
+  web:
+    profiles: ["dev"]
+  web-ai-tutor:
+    profiles: ["dev"]
+  portal:
+    profiles: ["dev"]
+
+  # ── 存储：宿主端口收敛（!reset 清掉 base 的 ports 暴露）+ DB 密码可注入 ──
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: gri_db
+  postgres-auth:
+    ports: !reset []
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: gri_auth
+
+  redis:
+    ports: !reset []
+
+  # ── 签发中心：宿主端口收敛 + 稳定 JWT 密钥对注入（config.ts 优先 env）+ 共享服务令牌必填 ──
+  auth-center:
+    ports: !reset []
+    environment:
+      DB_HOST: postgres-auth
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      SERVICE_TOKEN: ${AUTH_SERVICE_TOKEN:?AUTH_SERVICE_TOKEN required}
+
+  # ── 业务 API：宿主端口收敛 + 连接 auth-center 需共享令牌 + secrets ──
+  api:
+    ports: !reset []
+    environment:
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      AUTH_JWKS_URL: http://auth-center:3004/auth/jwks
+      AUTH_CENTER_URL: http://auth-center:3004
+      AUTH_SERVICE_TOKEN: ${AUTH_SERVICE_TOKEN:?AUTH_SERVICE_TOKEN required}
+      PAYMENT_NOTIFY_SECRET: ${PAYMENT_NOTIFY_SECRET:?PAYMENT_NOTIFY_SECRET required}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_URL: ${LLM_API_URL:-https://integrate.api.nvidia.com/v1/chat/completions}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}
+      LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+      LLM_MULTIMODAL_MODEL: ${LLM_MULTIMODAL_MODEL:-nvidia/neva-22b}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── nginx：直 serve 前端静态产物 + TLS；仅 80/443 对外；依赖收窄为后端真服务 ──
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d.prod:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      # 统一入口壳（纯静态）
+      - ./apps/portal/index.shell.html:/usr/share/nginx/html/shell/index.shell.html:ro
+      # 前端构建产物（npm run build:all-h5 产出，dist/ 已 gitignore）
+      - ./apps/web/dist/build/h5:/usr/share/nginx/html/food:ro
+      - ./apps/web-ai-tutor/dist/build/h5:/usr/share/nginx/html/tutor:ro
+      - ./apps/portal/dist/build/h5:/usr/share/nginx/html/portal:ro
+    depends_on: !override
+      api:
+        condition: service_started
+      auth-center:
+        condition: service_started

@@ -1,0 +1,168 @@
+/* 性能分析面板样式 */
+.profiler-panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.profiler-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.profiler-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px 8px;
+}
+
+.close-btn:hover {
+  color: #1f2937;
+}
+
+.profiler-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.profiler-section:last-child {
+  border-bottom: none;
+}
+
+.profiler-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* 内存统计 */
+.memory-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.memory-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 性能统计 */
+.perf-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.perf-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+/* 统计表 */
+.stats-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.stats-name {
+  flex: 1;
+  font-family: monospace;
+  color: #374151;
+}
+
+.stats-avg,
+.stats-min,
+.stats-max,
+.stats-count {
+  padding: 4px 8px;
+  background: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.stats-avg {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+/* 指标列表 */
+.metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.metric-name {
+  font-family: monospace;
+  color: #374151;
+}
+
+.metric-value {
+  color: #6b7280;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 16px;
+  color: #9ca3af;
+  font-size: 13px;
+}

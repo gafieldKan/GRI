@@ -1,0 +1,20 @@
+/* ── GRI Aggregated Style Entry ── */
+/* 一次性导入所有基础样式模块（不含主题覆盖） */
+/* 各子模块需要覆盖主题时，在此文件之后单独 import 对应的主题文件 */
+
+/* 基础重置 */
+@import './base/reset.css';
+
+/* 排版 */
+@import './base/typography.css';
+
+/* 基础工具类 */
+@import './base/utilities.css';
+
+/* 设计令牌 */
+@import './tokens/global.css';
+
+/* 组件样式 */
+@import './components/buttons.css';
+@import './components/forms.css';
+@import './components/cards.css';

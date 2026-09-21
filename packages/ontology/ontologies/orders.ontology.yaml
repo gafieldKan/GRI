@@ -1,0 +1,212 @@
+# 订单本体 —— 唯一语义真源（单表继承样板）
+#
+# 这是「订单基类 + 批发/助农/点餐三子类」的权威 DSL 源（§5.1.1 / §6.2 / §6.3）。
+# 由 @gri/codegen 消费，确定性产出：
+#   - 迁移 SQL：一张 orders 表 + order_type 判别列 + extra JSONB
+#   - TS 类型：OrderBase + 判别联合 Order = CateringOrder | FarmOrder | WholesaleOrder
+#
+# 注意：本文件是「文件级」真源。src/samples/order-inheritance.js 是等价的内存测试夹具，
+# 二者须保持同步；未来统一由本 YAML 驱动，消除双源漂移。
+
+schemaVersion: 0.1.0
+name: gri-orders
+description: 订单基类 + 批发/助农/点餐三子类单表继承样板（§5.1.1）
+
+interfaces:
+  - name: Confirmable
+    description: 可确认契约
+    actions:
+      - confirm
+
+objects:
+  # —— 支撑对象：用户（Link 端点） ——
+  - name: User
+    description: 下单用户（Link 端点）
+    fields:
+      - name: id
+        type: uuid
+        required: true
+        unique: true
+      - name: name
+        type: string
+
+  # —— 抽象基类 ——
+  - name: Order
+    description: 订单抽象基类
+    abstract: true
+    fields:
+      - name: id
+        type: uuid
+        required: true
+        unique: true
+      - name: orderNo
+        type: string
+        required: true
+        unique: true
+      - name: status
+        type: string
+        required: true
+      - name: totalAmount
+        type: number
+        required: true
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    actions:
+      - name: confirm
+        abstract: true
+        description: 确认订单（子类各自实现语义）
+      - name: cancel
+        abstract: true
+        description: 取消订单
+
+  # —— 点餐子类 ——
+  - name: CateringOrder
+    extends: Order
+    implements:
+      - Confirmable
+    discriminator:
+      field: order_type
+      value: catering
+    variantFields:
+      - name: restaurantId
+        type: uuid
+        description: 餐厅 ID
+      - name: dishItems
+        type: json
+        description: 菜品明细
+      - name: deliveryAddress
+        type: json
+        description: 配送地址
+    actions:
+      - name: confirm
+        description: 用户确认下单（点餐语义）
+      - name: cancel
+        description: 取消订单
+    stateMachine:
+      field: status
+      initial: pending
+      states:
+        - pending
+        - confirmed
+        - preparing
+        - ready
+        - delivering
+        - completed
+        - cancelled
+      transitions:
+        pending: [confirmed, cancelled]
+        confirmed: [preparing, cancelled]
+        preparing: [ready, cancelled]
+        ready: [delivering, cancelled]
+        delivering: [completed, cancelled]
+        completed: []
+        cancelled: []
+
+  # —— 助农子类 ——
+  - name: FarmOrder
+    extends: Order
+    implements:
+      - Confirmable
+    discriminator:
+      field: order_type
+      value: farm
+    variantFields:
+      - name: farmerId
+        type: uuid
+      - name: cooperativeId
+        type: uuid
+      - name: cropType
+        type: string
+      - name: quantity
+        type: number
+      - name: unit
+        type: string
+      - name: price
+        type: number
+    actions:
+      - name: confirm
+        description: 确认采摘（助农语义）
+      - name: cancel
+        description: 取消订单
+    stateMachine:
+      field: status
+      initial: pending_pick
+      states:
+        - pending_pick
+        - picked
+        - in_transit
+        - delivered
+        - cancelled
+      transitions:
+        pending_pick: [picked, cancelled]
+        picked: [in_transit]
+        in_transit: [delivered]
+        delivered: []
+        cancelled: []
+
+  # —— 批发子类 ——
+  - name: WholesaleOrder
+    extends: Order
+    implements:
+      - Confirmable
+    discriminator:
+      field: order_type
+      value: wholesale
+    variantFields:
+      - name: buyerOrgId
+        type: uuid
+      - name: sellerOrgId
+        type: uuid
+      - name: tradeTerm
+        type: enum
+        values: [EXW, FOB, CIF, CPT, DDP]
+      - name: settlementMethod
+        type: enum
+        values: [t_t, l_c, d_p, o_a, cod]
+      - name: currencyCode
+        type: string
+    actions:
+      - name: confirm
+        description: 双方确认（批发语义）
+      - name: cancel
+        description: 取消订单
+    stateMachine:
+      field: status
+      initial: pending_confirm
+      states:
+        - pending_confirm
+        - confirmed
+        - pending_payment
+        - paid
+        - allocating
+        - ready_to_ship
+        - shipped
+        - delivered
+        - completed
+        - cancelled
+        - refunded
+      transitions:
+        pending_confirm: [confirmed, cancelled]
+        confirmed: [pending_payment, cancelled]
+        pending_payment: [paid, cancelled]
+        paid: [allocating]
+        allocating: [ready_to_ship]
+        ready_to_ship: [shipped]
+        shipped: [delivered]
+        delivered: [completed]
+        completed: []
+        cancelled: []
+        refunded: []
+
+links:
+  - name: orderToUser
+    source: Order
+    target: User
+    cardinality: many
+    foreignKey: userId

@@ -1,0 +1,59 @@
+# GRI Monorepo 规范
+
+## 目录结构
+
+```
+GRI/
+├── apps/                 # 前端应用
+│   ├── web/              # Web 端 (uni-app)
+│   └── mini-program/     # 微信小程序
+├── services/             # 后端服务
+│   └── backend/          # Node.js 后端
+├── packages/             # 共享包
+│   └── lowcode/          # 低代码平台
+├── tools/                # 工具集
+│   └── nat-proxy/        # NAT 穿透代理
+├── scripts/              # 构建脚本
+├── docs/                 # 项目文档
+├── .gitignore            # Git 忽略规则
+├── package.json          # Monorepo 配置
+└── CLAUDE.md             # 本文件
+```
+
+## 目录规范
+
+| 目录 | 用途 | 命名规则 |
+|------|------|----------|
+| `apps/*` | 端侧应用 | 小写，短横线分隔 |
+| `services/*` | 后端服务 | 小写，短横线分隔 |
+| `packages/*` | 共享包 | 小写，短横线分隔 |
+| `tools/*` | 工具 | 小写，短横线分隔 |
+
+## 代码规范
+
+- 源码统一放在 `src/` 目录
+- 测试文件放在 `tests/` 目录
+- 文档统一放在 `docs/` 目录
+- 配置文件放在根目录或对应服务目录
+- 环境变量文件统一使用 `.env` 系列
+
+## 构建规范
+
+- 构建产物统一输出到 `dist/`
+- `dist/` 不提交到 git
+- 生产环境构建使用 `npm run build`
+
+## 开发规范
+
+- 开发前执行 `npm install` 安装依赖
+- 使用 `npm run dev` 启动开发服务
+- 提交前确保测试通过
+
+## 环境配置
+
+| 服务 | 默认端口 | 说明 |
+|------|---------|------|
+| Backend | 3002 | Express 服务 |
+| Web Dev | 5173 | Vite 开发服务器 |
+| PostgreSQL | 5432 | 数据库 |
+| Redis | 6379 | 缓存 |

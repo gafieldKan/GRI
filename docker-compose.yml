@@ -1,0 +1,229 @@
+services:
+  # ==========================================
+  # PostgreSQL 14 — 订餐后端 (gri_db)
+  # ==========================================
+  postgres:
+    image: postgres:14-alpine
+    container_name: gri-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gri_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 注：单库 gri 的 schema 由 services/api 容器启动时先跑 `run-migrations.js` 自动应用
+      #     （迁移文件在 src/migrate/*.sql，通过 _migrations 表跟踪），
+      #     故此处无需 initdb 挂载（原空目录挂载已移除）。旧 services/backend 已退役。
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gri_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ==========================================
+  # PostgreSQL 16 + pgvector — AI 辅导后端 (smartlens)
+  # ==========================================
+  # ==========================================
+  # PostgreSQL 14 — 身份域签发中心 (gri_auth, 端口 5434)
+  # ==========================================
+  postgres-auth:
+    image: postgres:14-alpine
+    container_name: gri-postgres-auth
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gri_auth
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_auth:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gri_auth"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Redis 7 — 共享缓存
+  redis:
+    image: redis:7-alpine
+    container_name: gri-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Auth Center — 身份域签发中心 (NestJS, 端口 3004)
+  auth-center:
+    build:
+      context: ./services/auth-center
+      dockerfile: Dockerfile
+    container_name: gri-auth-center
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: "3004"
+      NODE_ENV: production
+      DB_HOST: postgres-auth
+      DB_PORT: "5432"
+      DB_NAME: gri_auth
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      JWT_ALGORITHM: RS256
+      ACCESS_TOKEN_TTL: 900
+      REFRESH_TOKEN_TTL: 2592000
+      # 服务间共享令牌：业务端 api 在 assertSiteOperator 后携带，直连身份目录（PII）
+      SERVICE_TOKEN: ${AUTH_SERVICE_TOKEN:-gri-service-token}
+    # 持久 JWT 密钥卷：entrypoint/ensure-keys 首次生成并复用，容器重启后签名密钥不变、
+    # 已签发 token 持续有效（不做 down -v，否则卷清空重新生成）。
+    volumes:
+      - jwtkeys:/run/keys
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+
+  # GRI API — 唯一业务后端 (NestJS, 统一 /api, 端口 3008→容器 3002)
+  # 重写主轨：M0–M4 垂直切片 + M5 垂直一（订单全生命周期 + 支付）。nginx /api/ 转发到此。
+  # 生产须注入 PAYMENT_NOTIFY_SECRET（支付回执验签，不入库）；缺失用 dev mock 默认值。
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: gri-api
+    restart: unless-stopped
+    ports:
+      - "3008:3002"   # 容器内 3002；宿主映射 3008（旧 backend:3002 已退役，保留宿主端口契约）
+    environment:
+      PORT: "3002"
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: gri
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      # JWT 公钥来源：容器内以 docker 服务名 auth-center 解析（不可用 localhost）
+      AUTH_JWKS_URL: http://auth-center:3004/auth/jwks
+      # 身份目录桥（服务间）：api 在 assertSiteOperator 后携带共享令牌代查身份（PII）
+      AUTH_CENTER_URL: http://auth-center:3004
+      AUTH_SERVICE_TOKEN: ${AUTH_SERVICE_TOKEN:-gri-service-token}
+      PAYMENT_NOTIFY_SECRET: ${PAYMENT_NOTIFY_SECRET:-gri-dev-notify-secret}
+      # LLM（M5 AI 垂直）：operator secret 不入库，compose 占位缺省空 → nvapi- gate 走 mock/dev。
+      # 生产/联调用 `--env-file` 注入真实 nvapi- key。
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_URL: ${LLM_API_URL:-https://integrate.api.nvidia.com/v1/chat/completions}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}
+      LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+      LLM_MULTIMODAL_MODEL: ${LLM_MULTIMODAL_MODEL:-nvidia/neva-22b}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Web — 前端 (Vite Dev Server, 端口 5174)
+  web:
+    image: node:20-alpine
+    container_name: gri-web
+    restart: unless-stopped
+    command: sh -c "cd /app && npm install && npx uni --host 0.0.0.0 --port 5173"
+    working_dir: /app
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./apps/web:/app
+      - ./styles:/styles
+      - /app/node_modules
+    environment:
+      # 浏览器侧（宿主机/localhost）访问 nginx 统一网关（80）：业务走 `/api/*`，鉴权走 `/auth/*`。
+      # 域名路径由 API 层前缀化（/api/food/orders 等），VITE base 只提供网关 origin。
+      VITE_API_BASE_URL: http://localhost
+      VITE_AUTH_BASE_URL: http://localhost/auth
+    depends_on:
+      - api
+
+  # Web AI Tutor — AI 辅导前端 (Vite, 端口 5175)
+  web-ai-tutor:
+    image: node:20-alpine
+    container_name: gri-web-ai-tutor
+    restart: unless-stopped
+    command: sh -c "cd /app && npm install && npx uni --host 0.0.0.0 --port 5175"
+    working_dir: /app
+    ports:
+      - "5175:5175"
+    volumes:
+      - ./apps/web-ai-tutor:/app
+      # 共享加工面：@gri/auth-client(file:../../packages/auth-client→/packages) 与
+      # @styles 别名(../../styles→/styles) 在容器内解析所必需 —— 否则 vite import 解析失败、SPA 白页。
+      - ./packages:/packages:ro
+      - ./styles:/styles:ro
+    environment:
+      # 浏览器侧经 nginx 统一网关（80）：业务走 `/api/*`（→ services/api），鉴权走 `/auth/*`（→ auth-center）。
+      VITE_API_BASE_URL: http://localhost
+    depends_on:
+      - api
+
+  # Portal 组织/运营管理台（Vite, 端口 5176）——uni-app，挂 nginx /portal/
+  portal:
+    image: node:20-alpine
+    container_name: gri-portal
+    restart: unless-stopped
+    command: sh -c "cd /app && npm install && npx uni --host 0.0.0.0 --port 5176"
+    working_dir: /app
+    ports:
+      - "5176:5176"
+    volumes:
+      - ./apps/portal:/app
+      - ./packages:/packages:ro
+      - ./styles:/styles:ro
+    environment:
+      VITE_API_BASE_URL: http://localhost
+    depends_on:
+      - api
+
+  # Nginx 反向代理（P2 阶段 A 启用）
+  # 路径约定见 nginx/conf.d/default.conf：/ （portal）· /food/ · /tutor/ · /api/ · /tutor-api/ · /ws
+  nginx:
+    image: nginx:alpine
+    container_name: gri-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"   # HTTPS 留待阶段 A 后补自签/正式证书
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./apps/portal:/usr/share/nginx/html/portal:ro
+      # - ./ssl:/etc/nginx/ssl:ro   # 阶段 A 暂不启用 ssl
+    depends_on:
+      - web
+      - web-ai-tutor
+      - portal
+      - api
+      - auth-center
+
+volumes:
+  pgdata:
+    name: gri_pgdata
+  pgdata_auth:
+    name: gri_pgdata_auth
+  redisdata:
+    name: gri_redisdata
+  jwtkeys:
+    name: gri_jwtkeys
+
+# 显式网络：确保各服务按服务名（postgres/postgres-ai/redis/ai-tutor-backend/auth-center/api）
+# 作为 DNS 别名可被同网络内其它服务解析。旧版 docker-compose 1.29.2 在无显式网络时
+# 不会为容器自动注册服务名别名，导致服务无法按服务名连接数据库。
+networks:
+  default:
+    name: gri_default

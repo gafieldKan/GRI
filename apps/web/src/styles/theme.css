@@ -1,0 +1,17 @@
+/* ── Theme CSS (apps/web specific) ── */
+/* 从 styles/tokens/ 共享模块继承变量后，定义本 app 特有的补充变量 */
+/* 注意: 主要的 CSS 变量定义在 styles/tokens/global.css 和 styles/tokens/themes/food.css */
+
+/* App‑specific hero gradient fallback */
+:root {
+  --hero-gradient: linear-gradient(135deg, #1A5C3A 0%, #00BFA5 40%, #3DD6C8 75%, #36CFC9 100%);
+}
+
+:root.dark {
+  --hero-gradient: linear-gradient(135deg, #0D2818 0%, #00695C 40%, #00897B 75%, #003D33 100%);
+}
+
+/* Additional shadow variants specific to this app */
+:root {
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.12);
+}

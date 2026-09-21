@@ -1,0 +1,80 @@
+/* ── GRI Tailwind + Shared Styles Entry Point ── */
+
+/* ═══════════════════════════════════════════
+   Phase 1: 共享样式基础设施（从 styles/ 导入）
+   ═══════════════════════════════════════════ */
+@import '@styles/base/reset.css';
+@import '@styles/base/typography.css';
+@import '@styles/base/utilities.css';
+@import '@styles/tokens/global.css';
+@import '@styles/tokens/themes/food.css';
+@import '@styles/components/buttons.css';
+@import '@styles/components/forms.css';
+@import '@styles/components/cards.css';
+
+/* ═══════════════════════════════════════════
+   Phase 2: Tailwind CSS
+   ═══════════════════════════════════════════ */
+@import './theme.css';   /* 保留兼容 — 与 global.css 重复的变量 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════
+   Phase 3: Tailwind @layer components（保留现有工具类）
+   ═══════════════════════════════════════════ */
+@layer components {
+  /* 毛玻璃卡片 */
+  .card-glass {
+    @apply bg-white/90 backdrop-blur-md shadow-glass rounded-card border border-white/20;
+  }
+
+  .dark .card-glass {
+    @apply bg-gray-900/80 border-gray-700/20;
+  }
+
+  /* 主要操作按钮 — Tailwind 增强版 */
+  .btn-primary {
+    @apply w-full py-3 px-6 text-white font-semibold rounded-xl
+           bg-sustainable-600 hover:bg-sustainable-700
+           active:scale-[0.98] transform transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-sustainable-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           min-h-[44px];
+  }
+
+  /* 线框按钮 — Tailwind 增强版 */
+  .btn-outline {
+    @apply w-full py-3 px-6 font-semibold rounded-xl
+           border-2 border-sustainable-600 text-sustainable-600
+           hover:bg-sustainable-50
+           active:scale-[0.98] transform transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-sustainable-500 focus:ring-offset-2
+           min-h-[44px];
+  }
+
+  .dark .btn-outline {
+    @apply border-sustainable-500 text-sustainable-500 hover:bg-sustainable-800/20;
+  }
+
+  /* 表单输入字段 — Tailwind 增强版 */
+  .input-field {
+    @apply w-full px-4 py-3 text-text-emphasis bg-[var(--color-bg-input)]
+           border border-[var(--color-border)] rounded-xl
+           text-sm leading-normal
+           placeholder:text-text-tertiary
+           focus:outline-none focus:ring-2 focus:ring-sustainable-500 focus:border-transparent
+           transition-all duration-200;
+  }
+
+  /* 信任徽章 */
+  .trust-pill {
+    @apply inline-flex items-center gap-2 px-3 py-1
+           bg-sustainable-50 text-sustainable-700 text-xs font-medium
+           rounded-full;
+  }
+
+  .dark .trust-pill {
+    @apply bg-sustainable-800/30 text-sustainable-400;
+  }
+}

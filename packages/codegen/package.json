@@ -1,0 +1,26 @@
+{
+  "name": "@gri/codegen",
+  "version": "0.1.0",
+  "description": "GRI 代码生成器 —— DSL → SQL/TS/Vue（确定性、可审阅、可回滚）",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\" \"tests/**/*.test.ts\""
+  },
+  "keywords": [
+    "gri",
+    "codegen",
+    "generator",
+    "dsl",
+    "single-table-inheritance"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@gri/ontology": "file:../ontology",
+    "@gri/ontology-engine": "file:../ontology-engine",
+    "js-yaml": "^5.4.1"
+  }
+}

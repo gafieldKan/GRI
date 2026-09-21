@@ -1,0 +1,143 @@
+version: '3.8'
+
+# 低代码平台全链路测试环境
+# 使用方式：docker-compose -f docker-compose.test.yml up -d
+
+services:
+  # PostgreSQL 测试数据库
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: lowcode-postgres-test
+    environment:
+      POSTGRES_USER: ${TEST_DB_USER:-test}
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:-test123}
+      POSTGRES_DB: ${TEST_DB_NAME:-lowcode_test}
+    ports:
+      - "${TEST_DB_PORT:-5433}:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./init-test-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - lowcode-test-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis 测试缓存/队列
+  redis-test:
+    image: redis:7-alpine
+    container_name: lowcode-redis-test
+    command: redis-server --requirepass ${TEST_REDIS_PASSWORD:-test123}
+    ports:
+      - "${TEST_REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_test_data:/data
+    networks:
+      - lowcode-test-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MinIO 测试对象存储
+  minio-test:
+    image: minio/minio:latest
+    container_name: lowcode-minio-test
+    environment:
+      MINIO_ROOT_USER: ${TEST_MINIO_USER:-test}
+      MINIO_ROOT_PASSWORD: ${TEST_MINIO_PASSWORD:-test123}
+    command: server /data --console-address ":9001"
+    ports:
+      - "${TEST_MINIO_PORT:-9000}:9000"
+      - "${TEST_MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_test_data:/data
+    networks:
+      - lowcode-test-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mock AI Server - 模拟 Claude Code CLI 行为
+  mock-ai-server:
+    build:
+      context: ../automation/mock_ai
+      dockerfile: Dockerfile
+    container_name: lowcode-mock-ai
+    ports:
+      - "${TEST_MOCK_AI_PORT:-8888}:8000"
+    volumes:
+      - ../automation/mock_ai:/app
+      - mock_ai_responses:/app/responses
+    networks:
+      - lowcode-test-net
+    environment:
+      - MOCK_AI_MODE=${TEST_MOCK_AI_MODE:-normal}
+      - MOCK_AI_DELAY=${TEST_MOCK_AI_DELAY:-1000}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 低代码平台测试服务
+  lowcode-test:
+    image: lowcode-platform:test
+    container_name: lowcode-platform-test
+    build:
+      context: ../../
+      dockerfile: ../../Dockerfile.test
+    ports:
+      - "${TEST_APP_PORT:-8081}:80"
+    environment:
+      - NODE_ENV=test
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_USER=test
+      - DB_PASSWORD=test123
+      - DB_NAME=lowcode_test
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=test123
+      - MINIO_ENDPOINT=minio-test:9000
+      - MINIO_ACCESS_KEY=test
+      - MINIO_SECRET_KEY=test123
+      - MINIO_BUCKET=test-bucket
+      - AI_ENDPOINT=http://mock-ai-server:8000
+      - AI_API_KEY=test-key
+      - TEST_MODE=true
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      minio-test:
+        condition: service_healthy
+      mock-ai-server:
+        condition: service_healthy
+    volumes:
+      - ../../lowcode:/app/lowcode
+      - ../../src:/app/src
+      - test_logs:/app/logs
+    networks:
+      - lowcode-test-net
+    restart: "no"
+
+networks:
+  lowcode-test-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+  minio_test_data:
+  mock_ai_responses:
+  test_logs:

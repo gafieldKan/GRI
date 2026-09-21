@@ -1,0 +1,134 @@
+/* 图表通用样式 */
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #999;
+  font-size: 14px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.chart-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+}
+
+.chart-label {
+  fill: #6b7280;
+  font-size: 12px;
+}
+
+.chart-value {
+  fill: #374151;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chart-axis-label {
+  fill: #6b7280;
+  font-size: 11px;
+}
+
+.chart-axis-title {
+  fill: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.chart-bar {
+  transition: opacity 0.2s;
+}
+
+.chart-bar:hover {
+  opacity: 0.8;
+}
+
+.chart-point {
+  transition: r 0.2s;
+}
+
+.chart-point:hover {
+  r: 6;
+}
+
+/* 图例 */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  color: #666;
+}
+
+.legend-value {
+  color: #999;
+  font-size: 12px;
+}
+
+/* 柱状图 */
+.bar-chart {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 折线图 */
+.line-chart {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 饼图 */
+.pie-chart {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.pie-slice {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .chart-title {
+    font-size: 14px;
+  }
+
+  .chart-label,
+  .chart-axis-label {
+    font-size: 10px;
+  }
+
+  .chart-value {
+    font-size: 11px;
+  }
+}

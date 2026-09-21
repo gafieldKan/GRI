@@ -1,0 +1,204 @@
+/* 代码编辑器样式 */
+.code-editor {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.editor-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.header-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.btn-save:hover {
+  background: #2563eb;
+}
+
+.btn-run {
+  background: #10b981;
+  color: #fff;
+}
+
+.btn-run:hover {
+  background: #059669;
+}
+
+.btn-run:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-clear {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-clear:hover {
+  background: #e5e7eb;
+}
+
+/* 配置区域 */
+.editor-config {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  flex: 1;
+  min-width: 120px;
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.form-group input[type='text'],
+.form-group input[type='number'],
+.form-group select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #3b82f6;
+}
+
+.form-group.checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.form-group.checkbox input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 编辑器主体 */
+.editor-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: #e5e7eb;
+}
+
+.editor-main,
+.editor-output {
+  background: #fff;
+  padding: 16px;
+}
+
+.editor-main label,
+.editor-output label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.code-input {
+  width: 100%;
+  height: 300px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.code-input:focus {
+  border-color: #3b82f6;
+}
+
+/* 输出区域 */
+.output-content {
+  height: 300px;
+  overflow-y: auto;
+  background: #1f2937;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.output-errors {
+  margin-bottom: 12px;
+}
+
+.error-line {
+  color: #ef4444;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.output-code {
+  margin: 0;
+  color: #e5e7eb;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 响应式 */
+@media (max-width: 1024px) {
+  .editor-body {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,85 @@
+/* ── GRI Reset CSS ──
+ * 统一的浏览器默认样式重置
+ * 考虑 uni-app 原生组件兼容性（不覆盖 uni-app 内部样式）
+ */
+
+/* 1. Box-sizing 全局统一 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 2. 移除基础元素的默认间距 */
+body,
+h1, h2, h3, h4, h5, h6,
+p,
+blockquote,
+figure,
+dl, dd {
+  margin: 0;
+  padding: 0;
+}
+
+/* 3. 统一链接样式 */
+a {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 4. 移除图片默认间距 */
+image,
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* 5. 统一表单元素 */
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input {
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+button {
+  border: none;
+  outline: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* 6. 移除列表样式 */
+ul, ol {
+  list-style: none;
+}
+
+/* 7. 表格统一 */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* 8. 移除文本标签默认加粗 */
+strong, b {
+  font-weight: 600;
+}
+em, i {
+  font-style: normal;
+}
+
+/* 9. uni-app 移动端优化 */
+view, text, scroll-view, swiper, swiper-item {
+  -webkit-tap-highlight-color: transparent;
+}

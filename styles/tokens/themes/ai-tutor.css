@@ -1,0 +1,20 @@
+/* ── GRI Theme: AI Tutor (智学慧眼) ── */
+/* 蓝色品牌主题，专用于 AI 辅导产品线 */
+
+:root {
+  /* 品牌色 — 教育蓝 */
+  --color-primary:         #1890ff;
+  --color-primary-hover:   #1476d9;
+  --color-primary-light:   #e6f2ff;
+  --color-primary-active:  #0a3060;
+  --color-primary-gradient: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%);
+
+  /* 次要品牌色 — 紫色辅助 */
+  --color-accent:          #4A90D9;
+  --color-accent-light:    #f0f4ff;
+
+  /* 背景色 — 冷灰白 */
+  --color-bg-primary:      #f5f7fa;
+  --color-bg-secondary:    #fafafa;
+  --color-bg-card:         #FFFFFF;
+}

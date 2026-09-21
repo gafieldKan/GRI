@@ -1,0 +1,46 @@
+/* ── GRI Theme: Food (点餐) ── */
+/* 绿色品牌主题，覆盖 global.css 中的默认变量 */
+/* 与 apps/web/tailwind.config.js 的 sustainable 色阶一致 */
+
+:root {
+  /* 品牌色 — 可持续绿 */
+  --color-primary:         #1B7A3D;
+  --color-primary-hover:   #11562c;
+  --color-primary-light:   #e6f4ec;
+  --color-primary-active:  #0b4323;
+  --color-primary-gradient: linear-gradient(135deg, #1A5C3A 0%, #00BFA5 40%, #3DD6C8 75%, #36CFC9 100%);
+
+  /* 次要品牌色 — 青色渐变 */
+  --color-accent:          #3DD6C8;
+  --color-accent-light:    #e0f7fa;
+
+  /* 辅助品牌色 — 蓝色（保留兼容现有 UI） */
+  --color-secondary:        #1890ff;
+  --color-secondary-light:  #e6f2ff;
+
+  /* 背景色 — 绿色调 */
+  --color-bg-primary:       #F4FCF5;
+  --color-bg-secondary:     #f8f8f8;
+
+  /* 渐变 — 英雄区 */
+  --hero-gradient: linear-gradient(135deg, #1A5C3A 0%, #00BFA5 40%, #3DD6C8 75%, #36CFC9 100%);
+}
+
+/* 点餐暗色主题 */
+:root.dark .food-theme,
+.dark .food-theme,
+.dark {
+  --color-primary:         #2ecc71;
+  --color-primary-hover:   #52b974;
+  --color-primary-light:   rgba(46, 204, 113, 0.15);
+  --color-primary-active:  #74c48f;
+
+  --color-accent:          #4dd0e1;
+  --color-accent-light:    rgba(77, 208, 225, 0.1);
+
+  --color-secondary:       #4dabf7;
+  --color-secondary-light: rgba(77, 171, 247, 0.1);
+
+  --color-bg-primary:      #0E1B16;
+  --hero-gradient: linear-gradient(135deg, #0D2818 0%, #00695C 40%, #00897B 75%, #003D33 100%);
+}

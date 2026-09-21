@@ -1,0 +1,106 @@
+/**
+ * 调试工具面板样式
+ */
+
+/* 状态面板 */
+.debug-status {
+  padding: 12px;
+}
+
+.status-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 120px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.status-icon {
+  font-size: 28px;
+  color: #1890ff;
+}
+
+.status-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.status-label {
+  font-size: 12px;
+  color: #666;
+}
+
+/* 调试面板通用样式 */
+.debug-panel {
+  padding: 12px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 0 8px;
+}
+
+.model-card {
+  margin-bottom: 12px;
+}
+
+.model-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.model-desc {
+  margin-bottom: 0 !important;
+  color: #666;
+  font-size: 13px;
+}
+
+/* 调试抽屉 */
+.debug-drawer .ant-drawer-body {
+  padding: 0;
+}
+
+.debug-drawer .ant-tabs-content {
+  height: calc(100vh - 100px);
+  overflow: auto;
+}
+
+/* 表格样式优化 */
+.debug-panel .ant-table {
+  font-size: 13px;
+}
+
+.debug-panel .ant-table-thead > tr > th {
+  font-weight: 600;
+  background: #fafafa;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .debug-drawer {
+    width: 100% !important;
+  }
+
+  .status-card {
+    flex-direction: column;
+  }
+
+  .status-item {
+    width: 100%;
+  }
+}

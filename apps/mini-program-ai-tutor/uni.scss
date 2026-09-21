@@ -1,0 +1,47 @@
+// ── GRI uni-ui 令牌投影（B6「后 A」试点）─
+// 语义真源：styles/tokens/（global.css + themes/ai-tutor.css）
+// 本文件把 GRI 设计令牌映射为 uni-ui 的 SCSS 变量（$uni-*），
+// uni-app 会在每个组件的 <style lang="scss"> 前自动注入本文件。
+//
+// 约束（见 styles/README.md §3）：
+//  - 只「投影」，不新增令牌；所有值必须引自 styles/tokens 对应语义名。
+//  - 主题为 AI Tutor 蓝（#1890ff），与 web-ai-tutor 同源。
+
+// ── 品牌色（映射 --color-primary / --color-secondary）──
+$uni-primary: #1890ff;            // --color-primary (AI Tutor 蓝)
+$uni-primary-light: #e6f2ff;      // --color-primary-light
+$uni-primary-disable: #7fbfff;    // --color-primary-hover 的 disabled 态
+
+$uni-success: #52c41a;            // --color-success
+$uni-success-light: #e6ffe6;      // --color-success-light
+$uni-warning: #f5a623;            // --color-warning
+$uni-warning-light: #fff4e6;      // --color-warning-light
+$uni-error: #ff4d4f;              // --color-danger
+$uni-error-light: #ffeaea;        // --color-danger-light
+$uni-info: #909399;               // 中性信息色（uni-ui 默认）
+
+// ── 文本色（映射 --color-text-*）──
+$uni-text-color: #1A1A2E;         // --color-text-primary
+$uni-text-color-grey: #5F6B65;    // --color-text-secondary
+$uni-text-color-placeholder: #C0C4CC; // --color-text-placeholder
+$uni-text-color-disable: #999999; // --color-text-tertiary
+
+// ── 背景 / 边框（映射 --color-bg / --color-border）──
+$uni-bg-color: #f5f7fa;           // --color-bg-primary (AI Tutor 冷灰白)
+$uni-bg-color-grey: #fafafa;      // --color-bg-secondary
+$uni-border-color: #E8E8E8;       // --color-border
+
+// ── 圆角（映射 --radius-*）──
+$uni-border-radius-sm: 8rpx;      // --radius-sm
+$uni-border-radius-base: 12rpx;   // --radius-md
+$uni-border-radius-lg: 16rpx;     // --radius-lg
+$uni-border-radius-circle: 9999rpx; // --radius-round
+
+// ── 间距（映射 --spacing-*）× uni-ui $uni-space-root 约定 ──
+// uni-ui 的间距以 $uni-spacing-* 呈现，此处直接对齐 token 值。
+$uni-spacing-sm: 16rpx;           // --spacing-sm
+$uni-spacing-base: 24rpx;         // --spacing-md
+$uni-spacing-lg: 32rpx;           // --spacing-lg
+
+// ── 阴影（映射 --shadow-*）──
+$uni-shadow-base: 0 4rpx 16rpx rgba(0, 0, 0, 0.08); // --shadow-md

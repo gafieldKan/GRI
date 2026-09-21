@@ -1,0 +1,58 @@
+{
+  "name": "lowcode",
+  "version": "1.0.0",
+  "description": "Awesome Lowcode Core Engine",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./index.cjs"
+    },
+    "./engine": {
+      "import": "./engine/index.js"
+    },
+    "./core": {
+      "import": "./core/index.js"
+    },
+    "./domain": {
+      "import": "./domain/index.js"
+    },
+    "./backend.js": {
+      "import": "./backend.js"
+    },
+    "./components": {
+      "import": "./components/index.js"
+    },
+    "./plugins": {
+      "import": "./plugins/index.js"
+    },
+    "./engine/RenderEngine": {
+      "import": "./engine/RenderEngine.js"
+    },
+    "./engine/AppEngine": {
+      "import": "./engine/AppEngine.js"
+    },
+    "./engine/EventEngine": {
+      "import": "./engine/EventEngine.js"
+    },
+    "./engine/StateManager": {
+      "import": "./engine/StateManager.js"
+    },
+    "./engine/ComponentEngine": {
+      "import": "./engine/ComponentEngine.js"
+    },
+    "./engine/ExpressionEngine": {
+      "import": "./engine/ExpressionEngine.js"
+    }
+  },
+  "scripts": {
+    "test": "echo 'Error: no test specified' && exit 1"
+  },
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "keywords": ["lowcode", "engine", "render", "form"],
+  "author": "GRI Team",
+  "license": "MIT"
+}

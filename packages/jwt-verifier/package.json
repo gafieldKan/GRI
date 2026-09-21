@@ -1,0 +1,29 @@
+{
+  "name": "@gri/jwt-verifier",
+  "version": "0.1.0",
+  "description": "GRI JWT 公钥校验中间件 —— RS256 无状态校验，业务后端据 external_id 定位实体",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./src/index.js",
+      "require": "./src/index.js",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "keywords": [
+    "gri",
+    "jwt",
+    "rs256",
+    "auth"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3"
+  }
+}

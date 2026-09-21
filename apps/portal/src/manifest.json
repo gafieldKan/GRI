@@ -1,0 +1,29 @@
+{
+  "name": "GRI 组织管理台",
+  "appid": "",
+  "description": "GRI 组织/运营管理台 - 组织树 / 成员 / 角色 / 邀请 / 审计",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "splashscreen": {
+      "alwaysShowWhenRender": true,
+      "waiting": true
+    },
+    "modules": {},
+    "distribute": {
+      "android": { "permissions": [] },
+      "ios": {}
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": { "urlCheck": false, "es6": true, "postcss": true, "minified": true },
+    "usingComponents": true
+  },
+  "uniStatistics": { "enable": false },
+  "vueVersion": "3"
+}

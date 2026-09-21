@@ -1,0 +1,113 @@
+import { Injectable } from '@nestjs/common';
+import { DatabaseService } from '../../../database/database.service';
+import { LlmService } from './llm.service';
+import { ExamScannerAgent } from './exam-scanner';
+import { TutorAgent } from './tutor-agent';
+import { QuestionGeneratorAgent } from './question-generator';
+import { PlanAgent } from './plan-agent';
+
+/**
+ * AI 智能体编排门面（替换 M3 占位）—— 真实流水线：
+ *   ExamScanner(OCR) → TutorAgent.analyzeExam(结构化报告) → QuestionGenerator.generatePracticeSet(薄弱点)
+ *   → PlanAgent.generatePlan(学习计划)，结果全部落库，exam.status='analyzed'。
+ *
+ * 无 LLM key → 各 agent 走本地 mock gate（同形结构化输出），status='mock'；
+ * **绝不返回旧的 pending_ai_integration 占位**。
+ */
+@Injectable()
+export class AiAgentService {
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly llm: LlmService,
+    private readonly scanner: ExamScannerAgent,
+    private readonly tutor: TutorAgent,
+    private readonly generator: QuestionGeneratorAgent,
+    private readonly plan: PlanAgent,
+  ) {}
+
+  /**
+   * 试卷 → 学情流水线。
+   * @param input.text 试卷文本（exam/analyze 文本链路）
+   * @param input.imageDataUrl base64 图片（exam/upload 拍照链路）
+   */
+  async pipeline(
+    userId: string,
+    input: { text?: string; imageDataUrl?: string; subject?: string; gradeLevel?: string; answers?: string[]; meta?: any } = {},
+  ): Promise<any> {
+    const subject = input.subject || 'math';
+    const gradeLevel = input.gradeLevel || '8';
+    const useReal = this.llm.isRealKey();
+
+    // Step 1: 识别 —— 建 exam 行（pending），存 OCR/图像
+    const examInsert = await this.db.query(
+      `INSERT INTO edu.exams (user_id, subject, grade_level, raw_images, status)
+       VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
+      [userId, subject, gradeLevel, input.imageDataUrl ? JSON.stringify([input.imageDataUrl]) : null],
+    );
+    const examId = examInsert.rows[0].id as string;
+
+    let rawText = input.text || '';
+    let parsedQuestions: any[] = [];
+
+    if (input.imageDataUrl) {
+      // 拍照链路：多模态 OCR → 结构化题目
+      const scan = await this.scanner.scanExam({ imageDataUrl: input.imageDataUrl, subject, gradeLevel });
+      if (scan.success) {
+        rawText = scan.ocr?.rawText || rawText;
+        parsedQuestions = scan.parsedQuestions || [];
+      }
+      await this.db.query(
+        `UPDATE edu.exams SET ocr_result = $2, parsed_questions = $3 WHERE id = $1`,
+        [examId, rawText ? JSON.stringify({ raw_text: rawText }) : null, parsedQuestions.length ? JSON.stringify(parsedQuestions) : null],
+      );
+    } else if (rawText) {
+      // 文本链路：直接结构化
+      const scan = await this.scanner.scanExam({ imageDataUrl: '', subject, gradeLevel }).catch(() => null);
+      if (scan?.success) parsedQuestions = scan.parsedQuestions || [];
+      if (!parsedQuestions.length) {
+        parsedQuestions = [{ id: 'q1', type: 'solution', content: rawText, options: [], answer: '', knowledgePoint: '综合' }];
+      }
+      await this.db.query(
+        `UPDATE edu.exams SET parsed_questions = $2 WHERE id = $1`,
+        [examId, JSON.stringify(parsedQuestions)],
+      );
+    }
+
+    // Step 2: 学情分析 → 结构化报告（TutorAgent 内部落库 analysis_reports）
+    const questions = parsedQuestions.map((q: any, i: number) => ({
+      id: q.id || `q${i + 1}`,
+      content: q.content || rawText,
+      answer: q.answer || '',
+      type: q.type || 'fill',
+      options: q.options || [],
+      knowledgePoint: q.knowledgePoint || '综合',
+    }));
+    const studentAnswers = input.answers && input.answers.length ? input.answers : questions.map(() => '');
+
+    const analysis = await this.tutor.analyzeExam({ userId, examId, questions, studentAnswers, subject, gradeLevel });
+    if (!analysis.success) {
+      return { status: 'failed', message: analysis.error || '学情分析失败' };
+    }
+    const reportId = analysis.reportId;
+
+    // Step 3: exam 标记 analyzed
+    await this.db.query(`UPDATE edu.exams SET status = 'analyzed' WHERE id = $1`, [examId]);
+
+    // Step 4: 薄弱点 → 专项练习 + 学习计划
+    const report = analysis.report ?? { weakPoints: [], answerAnalysis: [] };
+    const weakPoints = (report.weakPoints || []) as string[];
+    const practiceSet = await this.generator.generatePracticeSet({ knowledgePoint: weakPoints[0] ?? null, subject, gradeLevel, targetCount: 5 });
+
+    const plan = await this.plan.generatePlan({ userId, planType: 'daily', analysisReport: report });
+
+    return {
+      status: useReal ? 'analyzed' : 'mock',
+      result: 'analyzed',
+      examId,
+      reportId,
+      report,
+      practiceSet: practiceSet.questions ?? [],
+      plan: plan.plan ?? null,
+    };
+  }
+}

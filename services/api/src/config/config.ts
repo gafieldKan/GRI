@@ -1,0 +1,69 @@
+/**
+ * GRI API 配置装配（单库 gri 多 schema）。
+ * 业务后端只连一个库：gri。身份域（auth schema）由 auth-center 独占读写，
+ * 业务端仅读 identities（通过 @gri/jwt-verifier 的 external_id 定位 public.users.id）。
+ */
+export interface DbConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}
+
+export interface JwtVerifierConfig {
+  issuer: string;
+  publicKey: string;
+  jwksUrl: string;
+}
+
+export interface LlmConfig {
+  apiKey: string;
+  apiUrl: string;
+  model: string;
+  provider: string;
+  multimodalModel: string;
+}
+
+export interface IdentityBrokerConfig {
+  /** auth-center 基址（容器内以服务名解析） */
+  authCenterUrl: string;
+  /** 服务间共享令牌：api 在 assertSiteOperator 后携带，直连 auth-center 身份目录 */
+  serviceToken: string;
+}
+
+export interface AppConfig {
+  db: DbConfig;
+  jwt: JwtVerifierConfig;
+  llm: LlmConfig;
+  identity: IdentityBrokerConfig;
+}
+
+export function loadConfig(): AppConfig {
+  return {
+    db: {
+      host: process.env.DB_HOST ?? 'localhost',
+      port: parseInt(process.env.DB_PORT ?? '5432', 10),
+      database: process.env.DB_NAME ?? 'gri',
+      user: process.env.DB_USER ?? 'postgres',
+      password: process.env.DB_PASSWORD ?? 'postgres',
+    },
+    jwt: {
+      issuer: process.env.JWT_ISSUER ?? 'gri-auth-center',
+      // 生产注入 PEM（k8s secret）最健壮；否则走 JWKS 端点拉取
+      publicKey: process.env.AUTH_PUBLIC_KEY ?? '',
+      jwksUrl: process.env.AUTH_JWKS_URL ?? 'http://localhost:3004/auth/jwks',
+    },
+    llm: {
+      apiKey: process.env.LLM_API_KEY ?? '',
+      apiUrl: process.env.LLM_API_URL ?? 'https://integrate.api.nvidia.com/v1/chat/completions',
+      model: process.env.LLM_MODEL ?? 'deepseek-ai/deepseek-v4-flash-0731',
+      provider: process.env.LLM_PROVIDER ?? 'nvidia',
+      multimodalModel: process.env.LLM_MULTIMODAL_MODEL ?? 'nvidia/neva-22b',
+    },
+    identity: {
+      authCenterUrl: process.env.AUTH_CENTER_URL ?? 'http://auth-center:3004',
+      serviceToken: process.env.AUTH_SERVICE_TOKEN ?? 'gri-service-token',
+    },
+  };
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@gri/auth-client",
+  "version": "0.1.0",
+  "description": "GRI 统一登录态共享包 —— 三前端（uni-app + vue3 + pinia）复用的 JWT 登录/刷新/登出 + 路由守卫 + 授权头注入",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "keywords": [
+    "gri",
+    "auth",
+    "jwt",
+    "pinia",
+    "uniapp"
+  ],
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "pinia": "^2.1.0"
+  },
+  "peerDependencies": {
+    "pinia": "^2.1.0"
+  }
+}

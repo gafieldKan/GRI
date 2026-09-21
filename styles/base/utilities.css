@@ -1,0 +1,143 @@
+/* ── GRI Base Utilities ── */
+/* 布局工具类 — 与主题无关的纯结构与排版辅助 */
+
+/* ── 弹性布局 ── */
+.flex {
+  display: flex;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-around {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.flex-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+.flex-grow-1 {
+  flex-grow: 1;
+}
+
+.items-start { align-items: flex-start; }
+.items-end   { align-items: flex-end; }
+.items-center { align-items: center; }
+
+.justify-start  { justify-content: flex-start; }
+.justify-end    { justify-content: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+
+/* ── 溢出与滚动 ── */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-ellipsis-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-ellipsis-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 文本对齐 ── */
+.text-left    { text-align: left; }
+.text-center  { text-align: center; }
+.text-right   { text-align: right; }
+
+/* ── 垂直对齐 ── */
+.align-middle { vertical-align: middle; }
+.align-top    { vertical-align: top; }
+.align-bottom { vertical-align: bottom; }
+
+/* ── 间距辅助 ── */
+.gap-xs  { gap: 8rpx; }
+.gap-sm  { gap: 12rpx; }
+.gap-md  { gap: 16rpx; }
+.gap-lg  { gap: 24rpx; }
+
+.mt-1 { margin-top: 8rpx; }
+.mt-2 { margin-top: 16rpx; }
+.mt-3 { margin-top: 24rpx; }
+.mt-4 { margin-top: 32rpx; }
+
+.mb-1 { margin-bottom: 8rpx; }
+.mb-2 { margin-bottom: 16rpx; }
+.mb-3 { margin-bottom: 24rpx; }
+.mb-4 { margin-bottom: 32rpx; }
+
+.p-1 { padding: 8rpx; }
+.p-2 { padding: 16rpx; }
+.p-3 { padding: 24rpx; }
+.p-4 { padding: 32rpx; }
+
+.px-2 { padding-left: 16rpx; padding-right: 16rpx; }
+.py-2 { padding-top: 16rpx; padding-bottom: 16rpx; }
+.px-3 { padding-left: 24rpx; padding-right: 24rpx; }
+.py-3 { padding-top: 24rpx; padding-bottom: 24rpx; }
+
+/* ── 常见宽度辅助 ── */
+.w-full { width: 100%; }
+.w-auto { width: auto; }
+
+.h-full { height: 100%; }
+
+/* ── 链接/点击区域 ── */
+.touchable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

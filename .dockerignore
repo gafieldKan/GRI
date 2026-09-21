@@ -1,0 +1,43 @@
+# 根 Docker 构建上下文排除 —— 保护构建上下文体积与隐私。
+# 各服务 Dockerfile 只 COPY 显式路径，此处主要阻止：把宿主 node_modules / 打包产物 / 密钥文件
+# 推送到 Docker daemon（含 .env 密钥泄露风险）。新增顶层说明：勿把 .env 提交（见 .gitignore）。
+
+# 依赖：宿主已装好的 node_modules 不进镜像（镜像在构建期用根 lockfile 重新解析工作区依赖）
+**/node_modules
+node_modules
+
+# git 与编辑器
+.git
+.gitignore
+.vscode
+.gitlab-ci.yml
+
+# 密钥 —— 绝不进构建上下文
+**/.env
+.env
+.env.*
+!.env.example
+
+# 打包产物 / 缓存 / 日志
+**/dist
+dist
+**/coverage
+coverage
+*.tsbuildinfo
+*.log
+
+# 运行时数据（上传文件、数据库导出一类）
+**/uploads
+**/data
+pgdata
+
+# 其余无需进镜像的工作区源码（各服务 Dockerfile 按需显式 COPY；apps/packages 其它目录同理）
+apps
+styles
+
+# 文档与 CI
+README.md
+node.md
+Dockerfile
+*.md
+.scripts

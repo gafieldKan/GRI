@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GRI 统一入口</title>
+  <style>
+    /* GRI portal 壳 —— 色值严格对标 styles/tokens/global.css 令牌，禁止裸色（见 styles/README.md） */
+    :root {
+      --color-primary-food: #1B7A3D;   /* --color-primary（订餐 food 主题） */
+      --color-primary-tutor: #1890ff;  /* --color-primary（AI Tutor 主题覆盖） */
+      --color-text-primary: #1A1A2E;
+      --color-text-secondary: #5F6B65;
+      --color-bg-primary: #F4FCF5;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E8E8E8;
+      --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
+      --shadow-hover: 0 8px 32px rgba(26, 90, 58, 0.12);
+      --radius-card: 24px;
+      --transition-base: 0.3s ease;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                   "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(27,122,61,0.08), transparent 60%),
+        radial-gradient(1000px 500px at 100% 0%, rgba(24,144,255,0.08), transparent 55%),
+        var(--color-bg-primary);
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .hero h1 {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .hero p {
+      margin-top: 12px;
+      color: var(--color-text-secondary);
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-card);
+      padding: 28px 24px;
+      box-shadow: var(--shadow-card);
+      text-decoration: none;
+      color: inherit;
+      transition: transform var(--transition-base), box-shadow var(--transition-base);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .card .badge {
+      align-self: flex-start;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 9999px;
+    }
+
+    .card.food .badge {
+      color: var(--color-primary-food);
+      background: rgba(27,122,61,0.1);
+    }
+    .card.tutor .badge {
+      color: var(--color-primary-tutor);
+      background: rgba(24,144,255,0.1);
+    }
+
+    .card h2 { font-size: 20px; font-weight: 600; }
+    .card p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+
+    .card .meta {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <h1>GRI 统一入口</h1>
+      <p>订餐 · 农业 · 批发 · AI 智能学情辅导 —— 一个入口，多端服务</p>
+    </header>
+
+    <div class="grid">
+      <a class="card food" href="/food/">
+        <span class="badge">订餐 · 多行业</span>
+        <h2>订餐平台</h2>
+        <p>餐饮 / 农业 / 批发业点餐与订单管理，支持微信支付、支付宝。</p>
+        <span class="meta">/food/ → apps/web</span>
+      </a>
+
+      <a class="card tutor" href="/tutor/">
+        <span class="badge">AI 辅导</span>
+        <h2>智学慧眼</h2>
+        <p>苏格拉底式启发教学，拍照搜题、学情报告、知识图谱。</p>
+        <span class="meta">/tutor/ → apps/web-ai-tutor</span>
+      </a>
+
+      <a class="card tutor" href="/portal/" style="--badge-color:#722ed1">
+        <span class="badge" style="color:#722ed1;background:rgba(114,46,209,.1)">组织运营</span>
+        <h2>组织管理台</h2>
+        <p>组织树 / 成员 / 角色 / 邀请 / 审计 —— 站点运营专用（根组织 owner|admin）。</p>
+        <span class="meta">/portal/ → apps/portal</span>
+      </a>
+    </div>
+  </main>
+</body>
+</html>

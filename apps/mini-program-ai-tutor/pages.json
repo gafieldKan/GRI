@@ -1,0 +1,72 @@
+{
+  "easycom": {
+    "autoscan": true
+  },
+  "pages": [
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "智学慧眼",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/chat/chat",
+      "style": {
+        "navigationBarTitleText": "AI 互动辅导",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/report/report",
+      "style": {
+        "navigationBarTitleText": "学情报告",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/camera/camera",
+      "style": {
+        "navigationBarTitleText": "拍照解题",
+        "enablePullDownRefresh": false
+      }
+    }
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#4A90D9",
+    "navigationBarTitleText": "智学慧眼",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#4A90D9",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/chat/chat",
+        "text": "AI 辅导"
+      },
+      {
+        "pagePath": "pages/report/report",
+        "text": "学情"
+      },
+      {
+        "pagePath": "pages/camera/camera",
+        "text": "拍照"
+      }
+    ]
+  }
+}

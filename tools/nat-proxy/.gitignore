@@ -1,0 +1,42 @@
+# 密钥和敏感配置
+*.pem
+*.key
+*.secret
+.env
+.env.local
+secrets/
+
+# 编译产物
+*.o
+*.so
+*.exe
+dist/
+build/
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+*~
+
+# IDE 配置
+.vscode/
+.idea/
+*.iml
+
+# Node.js
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 系统文件
+.DS_Store
+Thumbs.db

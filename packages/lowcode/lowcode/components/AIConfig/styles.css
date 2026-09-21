@@ -1,0 +1,134 @@
+/* AI 配置面板样式 */
+.ai-config-panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.config-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.config-header .close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.config-header .close-btn:hover {
+  color: #1a1a1a;
+}
+
+.config-content {
+  padding: 24px;
+}
+
+.config-section {
+  margin-bottom: 24px;
+}
+
+.config-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.config-item {
+  margin-bottom: 16px;
+}
+
+.config-item label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.config-item input,
+.config-item select,
+.config-item textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.config-item input:focus,
+.config-item select:focus,
+.config-item textarea:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.config-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.config-actions button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.config-actions .btn-save {
+  background: #1890ff;
+  color: #fff;
+  border: none;
+}
+
+.config-actions .btn-save:hover {
+  background: #096dd9;
+}
+
+.config-actions .btn-cancel {
+  background: #fff;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.config-actions .btn-cancel:hover {
+  color: #1a1a1a;
+  border-color: #999;
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-indicator.active {
+  background: #52c41a;
+}
+
+.status-indicator.inactive {
+  background: #d9d9d9;
+}

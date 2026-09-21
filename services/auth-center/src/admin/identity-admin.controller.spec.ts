@@ -1,0 +1,50 @@
+import { Request } from 'express';
+import { UnauthorizedException } from '@nestjs/common';
+import { IdentityAdminController } from './identity-admin.controller';
+import { IdentityAdminService } from './identity-admin.service';
+
+/**
+ * 控制器回归：**必须 await 服务调用** —— 若返回对象内嵌 Promise，
+ * Nest 序列化时会把 Promise 变成 {}，线上表现为查找恒空（曾踩坑）。
+ */
+describe('IdentityAdminController', () => {
+  const authorize = jest.fn();
+  const lookup = jest.fn();
+  const byBusinessId = jest.fn();
+  const svc: unknown = { authorize, lookup, byBusinessId };
+  const ctrl = new IdentityAdminController(svc as IdentityAdminService);
+  const withToken = { headers: { 'x-service-token': 'secret' } } as unknown as Request;
+
+  // 每条用例独立清 mock 调用史，否则「不发查询」断言读到上位用例残留。
+  beforeEach(() => {
+    authorize.mockReset();
+    lookup.mockReset();
+    byBusinessId.mockReset();
+  });
+
+  it('lookup → 返回已 await 的 identities 数组（而非 Promise→{}）', async () => {
+    lookup.mockResolvedValueOnce([{ id: 'x', username: 'alice', external_id: 'x' }]);
+    const res = await ctrl.lookup(withToken, 'alice', '10');
+    expect(authorize).toHaveBeenCalledWith('secret');
+    expect(res.success).toBe(true);
+    expect(Array.isArray(res.identities)).toBe(true);
+    expect(res.identities).toEqual([{ id: 'x', username: 'alice', external_id: 'x' }]);
+  });
+
+  it('缺 service token → 授权抛 401（不发查询）', async () => {
+    authorize.mockImplementationOnce(() => {
+      throw new UnauthorizedException();
+    });
+    await expect(ctrl.lookup({ headers: {} } as unknown as Request, 'q')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it('byId → 返回已 await 的 identity（而非 Promise→{}）', async () => {
+    byBusinessId.mockResolvedValueOnce({ id: 'b', username: 'bob' });
+    const res = await ctrl.byId(withToken, 'b');
+    expect(typeof res.identity).toBe('object');
+    expect(res.identity).toEqual({ id: 'b', username: 'bob' });
+  });
+});

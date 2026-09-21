@@ -1,0 +1,128 @@
+/* ── GRI Global Design Tokens ── */
+/* 全局 CSS 变量，基于现有 apps/web/src/styles/theme.css 扩展 */
+/* 采用语义命名，各子模块主题可覆盖这些变量值 */
+
+:root {
+  /* ═══════════════════════════════════════════
+     🎨 品牌色（由子模块主题文件覆盖）
+     ═══════════════════════════════════════════ */
+  --color-primary:         #1B7A3D;
+  --color-primary-hover:   #11562c;
+  --color-primary-light:   #e6f4ec;
+  --color-primary-active: #0b4323;
+  --color-secondary:      #1890ff;
+  --color-secondary-hover: #1476d9;
+  --color-secondary-light: #e6f2ff;
+
+  /* ═══════════════════════════════════════════
+     📋 语义色
+     ═══════════════════════════════════════════ */
+  --color-danger:         #ff4d4f;
+  --color-danger-light:   #ffeaea;
+  --color-success:        #52c41a;
+  --color-success-light:  #e6ffe6;
+  --color-warning:        #f5a623;
+  --color-warning-light:  #fff4e6;
+  --color-info:           #1890ff;
+  --color-info-light:     #e6f2ff;
+
+  /* ═══════════════════════════════════════════
+     🌗 背景色
+     ═══════════════════════════════════════════ */
+  --color-bg-primary:    #F4FCF5;
+  --color-bg-secondary:  #f8f8f8;
+  --color-bg-card:       #FFFFFF;
+  --color-bg-overlay:    rgba(0, 0, 0, 0.5);
+  --color-bg-input:      #F8F8F8;
+
+  /* ═══════════════════════════════════════════
+     📝 文本色
+     ═══════════════════════════════════════════ */
+  --color-text-primary:   #1A1A2E;
+  --color-text-secondary: #5F6B65;
+  --color-text-tertiary:  #999999;
+  --color-text-placeholder: #C0C4CC;
+  --color-text-inverse:   #FFFFFF;
+
+  /* ═══════════════════════════════════════════
+     🔲 边框色
+     ═══════════════════════════════════════════ */
+  --color-border:         #E8E8E8;
+  --color-border-light:   #F0F0F0;
+  --color-border-input:   #D0D5D0;
+
+  /* ═══════════════════════════════════════════
+     📏 间距系统（基于 8rpx 单位）
+     ═══════════════════════════════════════════ */
+  --spacing-unit:  8rpx;
+  --spacing-xs:    var(--spacing-unit);
+  --spacing-sm:    calc(var(--spacing-unit) * 2);   /* 16rpx */
+  --spacing-md:    calc(var(--spacing-unit) * 3);   /* 24rpx */
+  --spacing-lg:    calc(var(--spacing-unit) * 4);   /* 32rpx */
+  --spacing-xl:    calc(var(--spacing-unit) * 6);   /* 48rpx */
+  --spacing-2xl:   calc(var(--spacing-unit) * 8);   /* 64rpx */
+
+  /* ═══════════════════════════════════════════
+     🔲 圆角
+     ═══════════════════════════════════════════ */
+  --radius-sm:      8rpx;
+  --radius-md:      12rpx;
+  --radius-lg:      16rpx;
+  --radius-xl:      24rpx;
+  --radius-2xl:     32rpx;
+  --radius-round:   9999rpx;
+  --radius-card:    24rpx;
+
+  /* ═══════════════════════════════════════════
+     🌓 阴影
+     ═══════════════════════════════════════════ */
+  --shadow-sm:    0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+  --shadow-md:    0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+  --shadow-lg:    0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+  --shadow-card:  0 4rpx 24rpx rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 8rpx 32rpx rgba(26, 90, 58, 0.12);
+
+  /* ═══════════════════════════════════════════
+     ⏱ 过渡动画
+     ═══════════════════════════════════════════ */
+  --transition-fast:    0.15s ease;
+  --transition-base:    0.3s ease;
+  --transition-slow:    0.5s ease;
+
+  /* ═══════════════════════════════════════════
+     📐 Z-Index 层级
+     ═══════════════════════════════════════════ */
+  --z-base:        1;
+  --z-dropdown:    100;
+  --z-sticky:      200;
+  --z-modal:       300;
+  --z-toast:       400;
+  --z-tooltip:     500;
+}
+
+/* ── 暗色主题 ── */
+:root.dark,
+[data-theme='dark'] {
+  --color-bg-primary:       #0E1B16;
+  --color-bg-secondary:     #16241E;
+  --color-bg-card:          #16241E;
+  --color-bg-input:         #1E2E24;
+  --color-bg-overlay:       rgba(0, 0, 0, 0.7);
+
+  --color-text-primary:     #E4E4E4;
+  --color-text-secondary:   #AAAAAA;
+  --color-text-tertiary:    #888888;
+  --color-text-placeholder: #666666;
+
+  --color-border:           #2A3A2E;
+  --color-border-light:     #1E2E24;
+  --color-border-divider:   #2A3A2E;
+
+  --color-primary-light:    rgba(27, 122, 61, 0.2);
+
+  --shadow-sm:    0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+  --shadow-md:    0 4rpx 16rpx rgba(0, 0, 0, 0.25);
+  --shadow-lg:    0 8rpx 32rpx rgba(0, 0, 0, 0.3);
+  --shadow-card:  0 4rpx 24rpx rgba(0, 0, 0, 0.25);
+  --shadow-hover: 0 8rpx 32rpx rgba(27, 122, 61, 0.25);
+}

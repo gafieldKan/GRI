@@ -1,0 +1,23 @@
+{
+  "name": "@gri/agent-core",
+  "version": "0.1.0",
+  "description": "GRI 浓缩 AI Agent 底座 —— 泛化推理/工具循环、skill 注册、大模型路由、跨会话记忆（仿 OpenClaw 架构意图）",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./src/index.js",
+      "require": "./src/index.js",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test --test-force-exit \"tests/**/*.test.js\" \"tests/**/*.test.ts\""
+  },
+  "keywords": ["gri", "agent", "llm", "skill", "mcp", "tool"],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,368 @@
+/* API 调试工具样式 */
+.api-debug-tool {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.api-debug-header {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 8px 8px 0 0;
+}
+
+.api-debug-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 请求配置区 */
+.api-request-section {
+  padding: 16px;
+}
+
+.api-request-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.api-method-select {
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #fff;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.api-url-input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.api-url-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.api-send-btn {
+  padding: 10px 24px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.api-send-btn:hover {
+  background: #2563eb;
+}
+
+.api-send-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* 认证设置 */
+.api-auth-section {
+  margin-bottom: 12px;
+}
+
+.api-auth-section summary {
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+.api-auth-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.api-auth-content select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  width: fit-content;
+}
+
+.api-auth-inputs {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.api-auth-inputs input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* 标签页 */
+.api-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+.api-tabs button {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.api-tabs button.active {
+  background: #eff6ff;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.api-tabs button:hover {
+  background: #f3f4f6;
+}
+
+/* 编辑器 */
+.api-editor {
+  margin-bottom: 12px;
+}
+
+.api-editor label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.api-editor textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.api-editor textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 响应区 */
+.api-response-section {
+  border-top: 1px solid #e5e7eb;
+  padding: 16px;
+  background: #f9fafb;
+}
+
+.api-response-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.api-response-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+}
+
+.error-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: #dc2626;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.api-response-content {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.api-response-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.status-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.status-error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.time-badge {
+  padding: 4px 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.size-badge {
+  padding: 4px 8px;
+  background: #f3f4f6;
+  color: #4b5563;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.api-response-body,
+.api-response-headers {
+  margin: 0;
+  padding: 12px;
+  background: #1f2937;
+  color: #e5e7eb;
+  border-radius: 6px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.header-name {
+  color: #93c5fd;
+}
+
+/* 历史区 */
+.api-history-section {
+  border-top: 1px solid #e5e7eb;
+  padding: 16px;
+}
+
+.api-history-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.api-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.api-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.api-history-item:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.method-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.method-get {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.method-post {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.method-put {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.method-patch {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.method-delete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.url-text {
+  flex: 1;
+  font-size: 13px;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time-text {
+  font-size: 12px;
+  color: #6b7280;
+}

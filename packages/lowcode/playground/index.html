@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Awesome Lowcode 在线体验 - 无需安装即可体验低代码开发平台" />
+    <title>Awesome Lowcode Playground - 在线体验</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+
+      .playground-header {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+      }
+
+      .playground-logo {
+        font-size: 20px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .playground-actions {
+        display: flex;
+        gap: 12px;
+      }
+
+      .btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: #1890ff;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #096dd9;
+      }
+
+      .btn-outline {
+        background: transparent;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .btn-outline:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .playground-main {
+        display: grid;
+        grid-template-columns: 280px 1fr 320px;
+        height: calc(100vh - 64px);
+        gap: 1px;
+        background: #e8e8e8;
+      }
+
+      .playground-panel {
+        background: white;
+        overflow: hidden;
+      }
+
+      .playground-canvas {
+        background: #f5f7fa;
+      }
+
+      .welcome-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #666;
+      }
+
+      .welcome-screen h2 {
+        font-size: 24px;
+        margin-bottom: 16px;
+        color: #333;
+      }
+
+      .welcome-screen p {
+        margin-bottom: 24px;
+        color: #999;
+      }
+
+      .template-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        max-width: 600px;
+      }
+
+      .template-card {
+        padding: 24px;
+        background: white;
+        border-radius: 8px;
+        border: 2px solid #e8e8e8;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .template-card:hover {
+        border-color: #1890ff;
+        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+      }
+
+      .template-card h3 {
+        font-size: 16px;
+        margin-bottom: 8px;
+        color: #333;
+      }
+
+      .template-card p {
+        font-size: 13px;
+        color: #666;
+      }
+
+      .feature-list {
+        margin-top: 48px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+      }
+
+      .feature-item {
+        text-align: center;
+      }
+
+      .feature-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+      }
+
+      .feature-title {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .feature-desc {
+        font-size: 13px;
+        color: #999;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="playground-header">
+      <div class="playground-logo">
+        <span>🚀</span>
+        Awesome Lowcode Playground
+      </div>
+      <div class="playground-actions">
+        <button class="btn btn-outline" onclick="resetPlayground()">重置</button>
+        <button class="btn btn-outline" onclick="exportProject()">导出</button>
+        <button class="btn btn-primary" onclick="runApp()">运行</button>
+      </div>
+    </div>
+
+    <div id="root"></div>
+
+    <script>
+      // Playground 全局函数
+      function resetPlayground() {
+        console.log('重置 Playground')
+        localStorage.clear()
+        location.reload()
+      }
+
+      function exportProject() {
+        const data = localStorage.getItem('awesome-lowcode-data')
+        const blob = new Blob([data || '{}'], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'project.json'
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+
+      function runApp() {
+        console.log('运行应用')
+        // 触发应用运行事件
+        window.dispatchEvent(new CustomEvent('run-app'))
+      }
+
+      // 示例模板
+      const templates = [
+        {
+          id: 'form',
+          name: '表单设计',
+          desc: '创建一个数据收集表单',
+        },
+        {
+          id: 'crm',
+          name: 'CRM 系统',
+          desc: '客户关系管理示例',
+        },
+        {
+          id: 'workflow',
+          name: '工作流',
+          desc: '审批流程示例',
+        },
+        {
+          id: 'dashboard',
+          name: '数据看板',
+          desc: '数据可视化展示',
+        },
+      ]
+    </script>
+  </body>
+</html>

@@ -1,0 +1,135 @@
+# 数据库端到端验证本体 —— 单表继承独立表（不碰线上 orders 表）
+#
+# 与 orders.ontology.yaml 同构，但基类显式声明物理表名 `ontology_orders`，
+# 以避免与点餐既有 `orders` 表（及其中含义不同的 order_type 列）冲突。
+#
+# 用途：P1 第五步「本体样板端到端打通」的落库样例，由 @gri/codegen 生成迁移 SQL。
+
+schemaVersion: 0.1.0
+name: gri-ontology-orders
+description: 单表继承落库验证（独立表 ontology_orders，避开线上 orders 冲突）
+
+interfaces:
+  - name: Confirmable
+    description: 可确认契约
+    actions:
+      - confirm
+
+objects:
+  # —— 支撑对象：用户（Link 端点） ——
+  - name: User
+    description: 下单用户
+    fields:
+      - name: id
+        type: uuid
+        required: true
+        unique: true
+      - name: name
+        type: string
+
+  # —— 抽象基类（显式物理表名） ——
+  - name: Order
+    description: 订单抽象基类
+    table: ontology_orders
+    abstract: true
+    fields:
+      - name: id
+        type: uuid
+        required: true
+        unique: true
+      - name: orderNo
+        type: string
+        required: true
+        unique: true
+      - name: status
+        type: string
+        required: true
+      - name: totalAmount
+        type: number
+        required: true
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    actions:
+      - name: confirm
+        abstract: true
+        description: 确认订单（子类各自实现语义）
+      - name: cancel
+        abstract: true
+        description: 取消订单
+
+  # —— 点餐子类 ——
+  - name: CateringOrder
+    extends: Order
+    implements:
+      - Confirmable
+    discriminator:
+      field: order_type
+      value: catering
+    variantFields:
+      - name: restaurantId
+        type: uuid
+      - name: dishItems
+        type: json
+    actions:
+      - name: confirm
+        description: 用户确认下单（点餐语义）
+      - name: cancel
+        description: 取消订单
+
+  # —— 助农子类 ——
+  - name: FarmOrder
+    extends: Order
+    implements:
+      - Confirmable
+    discriminator:
+      field: order_type
+      value: farm
+    variantFields:
+      - name: farmerId
+        type: uuid
+      - name: cropType
+        type: string
+      - name: quantity
+        type: number
+      - name: unit
+        type: string
+    actions:
+      - name: confirm
+        description: 确认采摘（助农语义）
+      - name: cancel
+        description: 取消订单
+
+  # —— 批发子类 ——
+  - name: WholesaleOrder
+    extends: Order
+    implements:
+      - Confirmable
+    discriminator:
+      field: order_type
+      value: wholesale
+    variantFields:
+      - name: buyerOrgId
+        type: uuid
+      - name: sellerOrgId
+        type: uuid
+      - name: tradeTerm
+        type: enum
+        values: [EXW, FOB, CIF, CPT, DDP]
+    actions:
+      - name: confirm
+        description: 双方确认（批发语义）
+      - name: cancel
+        description: 取消订单
+
+links:
+  - name: orderToUser
+    source: Order
+    target: User
+    cardinality: many
+    foreignKey: userId
