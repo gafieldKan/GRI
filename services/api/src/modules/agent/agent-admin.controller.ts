@@ -108,7 +108,7 @@ export class AgentAdminToolRunsController {
 }
 
 /** 运营总览（只读聚合）—— GET /api/agent/admin/overview。仅运营。
- *  一调带回：在用学生数/有学习数据的学生数/累计工具调用/未解决错题/活动计划 + 各工具调用排行 + 最近工具动态。
+ *  一调带回：在用学生数/有学习数据的学生数/累计工具调用/未解决错题/活动计划 + 授课落盘(上了多少节课/平均掌握度提升) + 各工具调用排行 + 最近工具动态。
  *  纯观测、无写操作，帮助运营判断"AI 教师在多大程度被使用、健康与否"。 */
 @Controller('agent/admin/overview')
 export class AgentAdminOverviewController {
@@ -120,12 +120,20 @@ export class AgentAdminOverviewController {
   @Get()
   async overview(@Req() req: Request): Promise<any> {
     await this.org.assertSiteOperator((req as any).auth?.externalId as string);
-    const [ents, data, runs, wrong, plans, usage, recent] = await Promise.all([
+    const [ents, data, runs, wrong, plans, lessons, usage, recent] = await Promise.all([
       this.db.query(`SELECT count(*)::int AS n FROM agent.entities WHERE kind = 'student' AND status = 'active'`),
       this.db.query(`SELECT count(DISTINCT user_id)::int AS n FROM edu.answer_records`),
       this.db.query(`SELECT count(*)::int AS n FROM agent.tool_runs`),
       this.db.query(`SELECT count(*)::int AS n FROM edu.wrong_questions WHERE is_resolved = false`),
       this.db.query(`SELECT count(*)::int AS n FROM edu.learning_plans WHERE status = 'active'`),
+      // 授课落盘聚合：上了多少节课(plan_type='lesson') + 平均掌握度提升(plan_data->>'delta' 数值均值)
+      this.db.query(
+        `SELECT count(*)::int AS n,
+                count(DISTINCT (plan_data->>'kpId'))::int AS kps,
+                ROUND(AVG(NULLIF(plan_data->>'delta','')::numeric))::int AS "avgDelta"
+           FROM edu.learning_plans
+          WHERE plan_type = 'lesson'`,
+      ),
       this.db.query(`SELECT tool_name, count(*)::int AS n FROM agent.tool_runs GROUP BY tool_name ORDER BY n DESC`),
       this.db.query(`SELECT entity_id, tool_name, created_at FROM agent.tool_runs ORDER BY id DESC LIMIT 8`),
     ]);
@@ -137,6 +145,12 @@ export class AgentAdminOverviewController {
         totalToolRuns: runs.rows[0]?.n ?? 0,
         unresolvedWrong: wrong.rows[0]?.n ?? 0,
         activePlans: plans.rows[0]?.n ?? 0,
+        lessonsRecorded: lessons.rows[0]?.n ?? 0,
+      },
+      lessons: {
+        count: lessons.rows[0]?.n ?? 0,
+        knowledgePoints: lessons.rows[0]?.kps ?? 0,
+        avgDelta: lessons.rows[0]?.avgDelta ?? null,
       },
       toolUsage: (usage.rows || []).map((r: any) => ({ toolName: r.tool_name, n: r.n })),
       recent: (recent.rows || []).map((r: any) => ({ entityId: r.entity_id, toolName: r.tool_name, createdAt: r.created_at })),

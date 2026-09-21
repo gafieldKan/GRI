@@ -37,6 +37,7 @@
             <view class="stat"><text class="stat-n">{{ overview?.counts?.totalToolRuns ?? 0 }}</text><text class="stat-l">累计工具调用</text></view>
             <view class="stat"><text class="stat-n">{{ overview?.counts?.unresolvedWrong ?? 0 }}</text><text class="stat-l">未解决错题</text></view>
             <view class="stat"><text class="stat-n">{{ overview?.counts?.activePlans ?? 0 }}</text><text class="stat-l">活动计划</text></view>
+            <view class="stat"><text class="stat-n">{{ overview?.lessons?.count ?? 0 }}</text><text class="stat-l">上课落盘<text v-if="overview?.lessons?.avgDelta != null" class="stat-sub">· 平均提升{{ overview.lessons.avgDelta }}%</text></text></view>
           </view>
           <view v-if="(overview?.toolUsage || []).length" class="ov-block">
             <text class="ov-label">各工具调用次数</text>
@@ -654,6 +655,10 @@ export default {
   font-size: 11px;
   color: #888;
   margin-top: 2px;
+}
+.stat-sub {
+  color: #52c41a;
+  font-weight: 700;
 }
 .ov-block {
   margin-top: 12px;

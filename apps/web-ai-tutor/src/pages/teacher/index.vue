@@ -199,6 +199,20 @@
         <text class="lesson-intro" v-if="reviewSession">正在复习冲刺中——先完成或退出冲刺，再来上课。</text>
       </view>
 
+      <!-- 上课历史：lesson.record 落盘的一节课记录（每课含摸底→提升真实结果） -->
+      <view class="insights-card" v-if="lessonHistory.length">
+        <view class="section-head">
+          <text class="section-label">📚 上课记录</text>
+          <text class="stat-chip">共 <b>{{ lessonHistory.length }}</b> 节</text>
+        </view>
+        <view class="lh-item" v-for="l in lessonHistory.slice(0, 5)" :key="l.id">
+          <text class="lh-title">{{ l.kpName || l.title }}</text>
+          <text class="lh-outcome" :class="l.outcome === 'abandoned' ? 'down' : 'up'">{{ lessonOutcomeText(l) }}</text>
+          <text class="lh-delta" v-if="l.outcome === 'completed' && l.delta != null">{{ l.baseline != null ? l.baseline + '%' : '' }}→{{ l.practiceMastery != null ? l.practiceMastery + '%' : '' }}（{{ l.delta >= 0 ? '+' : '' }}{{ l.delta }}）</text>
+          <text class="lh-meta" v-if="l.missedCount">{{ l.missedCount }} 次答错后弄懂</text>
+        </view>
+      </view>
+
       <!-- 长期记忆条：教师记住了什么（跨会话） -->
       <view class="memory-section" v-if="facts.length">
         <text class="section-label">教师记得你 🧠 <text class="mem-hint">（过时的点 ✕ 让教师忘掉）</text></text>
@@ -341,6 +355,16 @@ export default {
       const ps = (plans.value || []).filter((p) => p.plan_type === 'personalized' && p.status === 'active')
       return ps.length ? ps[0] : null
     })
+    // 上课历史：lesson.record 落盘的一节课记录（最新在前,每课含摸底→提升真实结果）
+    const lessonHistory = computed(() =>
+      (plans.value || [])
+        .filter((p) => p.plan_type === 'lesson')
+        .map((p) => {
+          const pd = typeof p.plan_data === 'string' ? (p.plan_data ? JSON.parse(p.plan_data) : {}) : p.plan_data || {}
+          return { id: p.id, title: p.title, status: p.status, recordedAt: p.created_at, ...pd }
+        })
+    )
+    const lessonOutcomeText = (l) => (l.outcome === 'abandoned' ? '未完成' : l.outcome === 'completed' ? '已完成' : (l.status === 'completed' ? '已完成' : '未完成'))
     const planTasks = (plan) => {
       const pd = plan && plan.plan_data
       const tasks = (typeof pd === 'string' ? JSON.parse(pd) : pd)?.tasks || []
@@ -707,6 +731,7 @@ export default {
           activeQ.value = null
           answerDraft.value = ''
           loadInsights()
+          loadPlans() // 答对落盘后,上课记录卡实时出现新的一节
         } else if (res && res.success) {
           // 答错 → 留在再练并提示本次错法；后端建议回讲(suggestedNext:'teach') → 自动跳 teach 专讲这次的错。
           // 只 lessonFetch 渲染（不动 lessonGo：保留 lessonMode/作答条/错法提示，学生读完直接在下方再答，仍走 lesson.submit）。
@@ -794,6 +819,8 @@ export default {
       planLoading,
       completingIdx,
       activePlan,
+      lessonHistory,
+      lessonOutcomeText,
       planTasks,
       loadPlans,
       completeTask,
@@ -1442,6 +1469,42 @@ export default {
   color: #4a6cf7;
 }
 .lesson-tip {
+  font-size: 11px;
+  color: #999;
+}
+/* 上课历史 */
+.lh-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  flex-wrap: wrap;
+}
+.lh-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+.lh-outcome {
+  font-size: 11px;
+  border-radius: 8px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+.lh-outcome.up {
+  color: #52c41a;
+  background: #f0fbe6;
+}
+.lh-outcome.down {
+  color: #999;
+  background: #f5f5f5;
+}
+.lh-delta {
+  font-size: 11px;
+  font-weight: 700;
+  color: #52c41a;
+}
+.lh-meta {
   font-size: 11px;
   color: #999;
 }

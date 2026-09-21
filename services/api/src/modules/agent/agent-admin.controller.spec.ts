@@ -43,6 +43,8 @@ describe('AgentAdminOverviewController（运营总览，只读聚合）', () => 
       query: jest.fn(async (sql: string) => {
         if (/LIMIT 8/.test(sql)) return { rows: [{ entity_id: 'e1', tool_name: 'answer.grade', created_at: '2026-09-20T10:00:00Z' }] };
         if (/GROUP BY tool_name/.test(sql)) return { rows: [{ tool_name: 'answer.grade', n: 80 }, { tool_name: 'diagnosis.state', n: 40 }] };
+        // 授课落盘聚合（lesson 型 count + DISTINCT kpId + AVG delta）—— SQL 别名带引号 "avgDelta"（pg 才保大小写），fake 忠实模拟该响应键
+        if (/plan_type = 'lesson'/.test(sql)) return { rows: [{ n: 1, kps: 1, avgDelta: 12 }] };
         if (/wrong_questions/.test(sql)) return { rows: [{ n: 7 }] };
         if (/learning_plans/.test(sql)) return { rows: [{ n: 1 }] };
         if (/DISTINCT user_id/.test(sql)) return { rows: [{ n: 2 }] };
@@ -53,12 +55,13 @@ describe('AgentAdminOverviewController（运营总览，只读聚合）', () => 
     } as any;
   }
 
-  it('运营 → 一调带回计数/工具排行/最近动态; guard 用 externalId', async () => {
+  it('运营 → 一调带回计数/授课落盘聚合/工具排行/最近动态; guard 用 externalId', async () => {
     const org = makeOrg(true);
     const ctrl = new AgentAdminOverviewController(fakeDb(), org);
     const out = await ctrl.overview(req('owner'));
     expect(org.assertSiteOperator).toHaveBeenCalledWith('owner');
-    expect(out.counts).toEqual({ activeStudents: 3, studentsWithData: 2, totalToolRuns: 120, unresolvedWrong: 7, activePlans: 1 });
+    expect(out.counts).toEqual({ activeStudents: 3, studentsWithData: 2, totalToolRuns: 120, unresolvedWrong: 7, activePlans: 1, lessonsRecorded: 1 });
+    expect(out.lessons).toEqual({ count: 1, knowledgePoints: 1, avgDelta: 12 }); // 控制器从别名引号列 "avgDelta" 读,不随 pg 小写折叠
     expect(out.toolUsage[0]).toMatchObject({ toolName: 'answer.grade', n: 80 });
     expect(out.recent[0]).toMatchObject({ entityId: 'e1', toolName: 'answer.grade' });
     expect(out.success).toBe(true);
