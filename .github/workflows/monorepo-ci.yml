@@ -48,35 +48,6 @@ jobs:
       - run: npm ci
       - run: npm run test --workspace=gri-auth-center
 
-  ai-tutor-test:
-    name: AI Tutor Backend Tests
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_DB: smartlens
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: admin123
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://admin:admin123@localhost:5432/smartlens
-      NODE_ENV: test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run test --workspace=services/ai-tutor-backend
-
   lowcode-test:
     name: Lowcode Tests
     runs-on: ubuntu-latest

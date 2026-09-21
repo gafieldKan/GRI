@@ -221,7 +221,7 @@ volumes:
   jwtkeys:
     name: gri_jwtkeys
 
-# 显式网络：确保各服务按服务名（postgres/postgres-ai/redis/ai-tutor-backend/auth-center/api）
+# 显式网络：确保各服务按服务名（postgres/redis/auth-center/api）
 # 作为 DNS 别名可被同网络内其它服务解析。旧版 docker-compose 1.29.2 在无显式网络时
 # 不会为容器自动注册服务名别名，导致服务无法按服务名连接数据库。
 networks:

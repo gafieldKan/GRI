@@ -97,8 +97,9 @@ describe('物理表名覆盖（table 字段）', () => {
   it('生成器输出与已提交迁移文件完全一致（防生成器漂移）', async () => {
     const r = await loadOntologyFile(DB_DSL)
     const generated = generateSQL(r.ontology)
+    // 旧 services/backend 已退役（M5 收尾）；本体样板迁移收编入 services/api/src/migrate/
     const committed = await fs.readFile(
-      path.resolve(__dirname, '../../../services/backend/src/infra/db/migrate/018_create_ontology_orders.sql'),
+      path.resolve(__dirname, '../../../services/api/src/migrate/011_ontology_orders.sql'),
       'utf-8',
     )
     // 两侧各剥离注释头注，比较纯 SQL 主体（生成器自带头注与迁移文件的文档头注定位不同，属预期差异）

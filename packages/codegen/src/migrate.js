@@ -2,7 +2,7 @@
  * @gri/codegen —— 统一迁移器
  *
  * 把「单一 DSL 源」(*.ontology.yaml|json) 确定性地产出带编号的迁移 SQL 文件，
- * 接到服务端既有迁移机制（services/backend/src/infra/db/migrate.js，§2.3）。
+ * 接到服务端既有迁移机制（services/api/src/migrate/run-migrations.js，单库 gri 多 schema）。
  *
  * 职责：
  *  - loadOntologyFile  —— 读磁盘 DSL 文件 → 解析 → schema + 语义双重校验（硬门禁）
@@ -56,7 +56,7 @@ export function generateMigrationBody(ontology, meta = {}) {
   const header = [
     `-- ${meta.source ?? 'ontology'} → 迁移文件（由 @gri/codegen 生成）`,
     `-- DSL schemaVersion: ${ontology.schemaVersion ?? '?'}`,
-    `-- 审阅后合并入 services/backend/src/infra/db/migrate/ 即由 migrate.js 执行`,
+    `-- 审阅后合并入 services/api/src/migrate/ 即由 run-migrations 执行`,
   ].join('\n')
   return `${header}\n\n${generateSQL(ontology)}\n`
 }
