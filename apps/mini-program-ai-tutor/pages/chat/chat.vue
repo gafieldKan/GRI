@@ -90,7 +90,7 @@
 
 <script setup>
 import { ref, reactive, computed, nextTick, onMounted } from 'vue'
-import { onLoad, onUnloaded } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { createSession, sendSessionMessage } from '../../api/index.js'
 import { toRichTextNodes } from '../../utils/katex-helper.js'
 import { useSessionStore } from '../../store/session.js'
@@ -127,6 +127,28 @@ onMounted(async () => {
   await initSession()
 })
 
+// camera 等跨页带参：解析 ocrResult（识别结果 JSON）/ text（题目文本）
+// → 会话建好后作为首条用户消息自动送出（onLoad 拿参数，只送一次）。
+let initialMessage = ''
+let initialMessageSent = false
+onLoad((query) => {
+  if (!query) return
+  if (query.ocrResult) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(query.ocrResult))
+      const qs = (parsed.parsedQuestions || parsed.ocr?.questions || [])
+        .map((q) => q.content)
+        .filter(Boolean)
+      const raw = qs.length ? qs.join('\n') : (parsed.ocr?.rawText || parsed.rawText)
+      if (raw) initialMessage = '请帮我解答这道题：' + raw
+    } catch (e) {
+      console.error('解析 OCR 参数失败:', e)
+    }
+  } else if (query.text) {
+    initialMessage = '请帮我解答这道题：' + decodeURIComponent(query.text)
+  }
+})
+
 // 初始化会话
 const initSession = async () => {
   try {
@@ -138,6 +160,14 @@ const initSession = async () => {
     // 发送初始问候（REST 唯一聊天传输）
     const greeting = await sendSessionMessage(sessionId.value, '我想学习')
     handleServerMessage(greeting)
+
+    // camera 跨页带参：OCR/题目文本作为首条消息自动送出（只送一次，重复进入不重放）
+    if (initialMessage && !initialMessageSent) {
+      initialMessageSent = true
+      messages.push({ role: 'user', type: 'text', content: initialMessage })
+      const reply = await sendSessionMessage(sessionId.value, initialMessage)
+      handleServerMessage(reply)
+    }
   } catch (error) {
     console.error('Session init failed:', error)
     messages.push({
@@ -333,7 +363,7 @@ const showPlan = () => {
 }
 
 // 清理
-onUnloaded(() => {
+onUnload(() => {
   // REST 会话无长连接需显式关闭；状态由服务端持久化，重进页面按需重建
 })
 </script>

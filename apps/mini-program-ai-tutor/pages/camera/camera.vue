@@ -64,8 +64,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { uploadExamImage, saveExam } from '../../api/index.js'
-import { useUserStore } from '../../store/user.js'
+import { uploadExamImage } from '../../api/index.js'
 
 const hasPhoto = ref(false)
 const photoPath = ref('')
@@ -131,19 +130,11 @@ const analyzePhoto = async () => {
 
   try {
     // 小程序上传图片（后端需要支持接收文件或 base64）
+    // exam/upload 内部（ai-agent pipeline）已权威落库 edu.exams + analysis_reports
+    // （exam 行 status='analyzed'），此处不再调 saveExam 二次写 pending 行（无消费方的死数据）。
     const result = await uploadExamImage(photoPath.value, 'math', '8')
 
     if (result.success && result.parsedQuestions) {
-      await saveExam({
-        studentId: useUserStore().studentId,
-        subject: 'math',
-        gradeLevel: '8',
-        examType: 'photo',
-        parsedQuestions: result.parsedQuestions,
-        rawImages: [photoPath.value],
-        ocrResult: result
-      })
-
       uni.navigateTo({
         url: '/pages/chat/chat?from=camera&ocrResult=' + encodeURIComponent(JSON.stringify(result))
       })

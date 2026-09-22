@@ -84,8 +84,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { uploadExamImage, saveExam, analyzeExam } from '../../api/index.js'
-import { useUserStore } from '@/store/user'
+import { uploadExamImage } from '../../api/index.js'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
@@ -155,20 +154,12 @@ const analyzePhoto = async () => {
 
   try {
     // 将本地路径转为 Blob，通过 FormData 上传
+    // exam/upload 内部（ai-agent pipeline）已权威落库 edu.exams + analysis_reports
+    // （exam 行 status='analyzed'），此处不再调 saveExam 二次写 pending 行（无消费方的死数据）。
     const blob = await pathToBlob(photoPath.value)
     const result = await uploadExamImage(blob, 'math', '8')
 
     if (result.success && result.parsedQuestions) {
-      await saveExam({
-        studentId: useUserStore().studentId,
-        subject: 'math',
-        gradeLevel: '8',
-        examType: 'photo',
-        parsedQuestions: result.parsedQuestions,
-        rawImages: [photoPath.value],
-        ocrResult: result
-      })
-
       uni.navigateTo({
         url: '/pages/chat/chat?from=camera&ocrResult=' + encodeURIComponent(JSON.stringify(result))
       })
