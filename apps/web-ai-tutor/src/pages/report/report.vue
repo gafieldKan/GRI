@@ -7,9 +7,12 @@
         <t-button size="small" variant="outline" @click="refresh">
           刷新
         </t-button>
+        <!-- 导出 PDF 仅 H5（后端无 PDF 端点，小程序无 fetch 无端点必失败） -->
+        <!-- #ifdef H5 -->
         <t-button size="small" variant="primary" @click="exportPDF">
           导出 PDF
         </t-button>
+        <!-- #endif -->
       </view>
 
       <!-- 加载骨架屏 -->
@@ -438,32 +441,11 @@ const goToPractice = () => {
   uni.navigateTo({ url: '/pages/practice/index' })
 }
 
+// 导出 PDF —— 后端无 /report/pdf 端点、无 PDF 库，走浏览器打印（打印对话框自带另存为 PDF）
 const exportPDF = async () => {
-  uni.showLoading({ title: '生成 PDF 中...' })
-  try {
-    const response = await fetch(`/api/report/${useUserStore().studentId}/pdf`)
-    if (!response.ok) throw new Error('导出失败')
-    const blob = await response.blob()
-    // #ifdef H5
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `学情报告_${new Date().toISOString().split('T')[0]}.pdf`
-    a.click()
-    URL.revokeObjectURL(url)
-    // #endif
-    // #ifdef MP-WEIXIN
-    // 微信小程序需要使用 uni.saveFile 或 wx.openDocument
-    // const filePath = await uni.saveFile({ tempFilePath: blob })
-    // uni.openDocument({ filePath: filePath.filePath })
-    // #endif
-    uni.showToast({ title: 'PDF 生成成功', icon: 'success' })
-  } catch (e) {
-    console.error('导出 PDF 失败:', e)
-    uni.showToast({ title: '导出失败', icon: 'none' })
-  } finally {
-    uni.hideLoading()
-  }
+  // #ifdef H5
+  window.print()
+  // #endif
 }
 
 onMounted(() => {
