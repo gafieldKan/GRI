@@ -164,6 +164,11 @@ export default {
     agentId: {
       type: String,
       default: 'default'
+    },
+    // 跨页带参入口：camera 拍照识别结果作为首条用户消息自动送出（onMounted 一次）。
+    initialMessage: {
+      type: String,
+      default: ''
     }
   },
   setup(props) {
@@ -199,6 +204,9 @@ export default {
 
     // Storage key for chat history
     const storageKey = `chat_history_${props.agentId}`
+
+    // initialMessage 只送一次的守卫（HMR/重复挂载不重放）
+    let initialMessageSent = false
 
     // 消息分组计算属性（按日期分组）
     const messageGroups = computed(() => {
@@ -393,6 +401,13 @@ export default {
           timestamp: Date.now()
         })
         saveHistory()
+      }
+      // camera 等跨页带参：OCR/题目文本作为首条消息自动送出（只送一次，重复进入不重放）
+      if (props.initialMessage && !initialMessageSent) {
+        initialMessageSent = true
+        chatList.value.push({ role: 'user', content: props.initialMessage, timestamp: Date.now() })
+        nextTick(() => scrollToBottom())
+        sendMessage(props.initialMessage).catch(() => {})
       }
       // 初始滚动到底部
       nextTick(() => {
