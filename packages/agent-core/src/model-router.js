@@ -21,7 +21,8 @@ export class ModelRouter {
   _envDefaults() {
     return {
       provider: this.env.LLM_PROVIDER || 'nvidia',
-      model: this.env.LLM_MODEL || 'deepseek-ai/deepseek-v4-flash-0731',
+      // v4-flash-0731 于 2026-09-21 EOL，默认改后继 v4.1-flash
+      model: this.env.LLM_MODEL || 'deepseek-ai/deepseek-v4.1-flash',
       multimodalModel: this.env.LLM_MULTIMODAL_MODEL || 'nvidia/neva-22b',
       baseUrl: this.env.LLM_API_URL || 'https://integrate.api.nvidia.com/v1/chat/completions',
       apiKey: this.env.LLM_API_KEY || '',

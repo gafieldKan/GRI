@@ -57,7 +57,8 @@ export function loadConfig(): AppConfig {
     llm: {
       apiKey: process.env.LLM_API_KEY ?? '',
       apiUrl: process.env.LLM_API_URL ?? 'https://integrate.api.nvidia.com/v1/chat/completions',
-      model: process.env.LLM_MODEL ?? 'deepseek-ai/deepseek-v4-flash-0731',
+      // v4-flash-0731 于 2026-09-21 EOL，默认改后继 v4.1-flash（reasoning 模型，content 需 max_tokens 足量）
+      model: process.env.LLM_MODEL ?? 'deepseek-ai/deepseek-v4.1-flash',
       provider: process.env.LLM_PROVIDER ?? 'nvidia',
       multimodalModel: process.env.LLM_MULTIMODAL_MODEL ?? 'nvidia/neva-22b',
     },

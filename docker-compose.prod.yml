@@ -59,7 +59,7 @@ services:
       PAYMENT_NOTIFY_SECRET: ${PAYMENT_NOTIFY_SECRET:?PAYMENT_NOTIFY_SECRET required}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_API_URL: ${LLM_API_URL:-https://integrate.api.nvidia.com/v1/chat/completions}
-      LLM_MODEL: ${LLM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-ai/deepseek-v4.1-flash}
       LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
       LLM_MULTIMODAL_MODEL: ${LLM_MULTIMODAL_MODEL:-nvidia/neva-22b}
     depends_on:

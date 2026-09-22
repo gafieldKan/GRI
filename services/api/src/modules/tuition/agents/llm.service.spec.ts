@@ -15,7 +15,7 @@ function mockCfg(over: { apiKey?: string; apiUrl?: string; multimodalModel?: str
     llm: {
       apiKey: over.apiKey ?? '',
       apiUrl: over.apiUrl ?? 'https://integrate.api.nvidia.com/v1/chat/completions',
-      model: 'deepseek-ai/deepseek-v4-flash-0731',
+      model: 'deepseek-ai/deepseek-v4.1-flash',
       provider: 'nvidia',
       multimodalModel: over.multimodalModel ?? 'nvidia/neva-22b',
     },
