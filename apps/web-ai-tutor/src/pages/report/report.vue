@@ -130,7 +130,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getReport, getWrongQuestionList } from '../../api/index.js'
+import { getReport, getWrongQuestionList, getAgentDiagnosis } from '../../api/index.js'
 import { useUserStore } from '@/store/user'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
@@ -284,12 +284,15 @@ const refresh = async () => {
 
   try {
     // Load report from backend
-    const reports = await getReport(useUserStore().studentId)
+    // ⚠️ getReport 返回单对象（analysis/report/latest 端点回 res.rows[0]，无报告抛 404 → []），
+    // 不是数组 —— 旧代码判断 reports.length > 0 恒 undefined → reportData 恒 null → 整页全 0
+    //（有 exam 报告也不显示，报告页"全空"的真正根因）。
+    const report = await getReport(useUserStore().studentId)
     let reportData = null
 
-    if (reports && reports.length > 0) {
+    if (report && report.id) {
       // Use the most recent report and map backend JSONB format
-      const latestReport = reports[0]
+      const latestReport = report
       const kp = latestReport.knowledge_points || []
       const suggestions = latestReport.ai_suggestions || []
       const abilityDims = latestReport.ability_dims || null
@@ -320,6 +323,54 @@ const refresh = async () => {
       wrongQuestions = wrongData.wrongQuestions || []
     } catch (e) {
       console.log('[Report] Wrong question data not available')
+    }
+
+    // 报告线接真数：analysis_reports 只有 exam 流水线才写（exam/upload→TutorAgent），
+    // 只在聊天/面板做题的学生其报告要么空要么陈旧。真掌握度在 /api/agent/me/diagnosis
+    // （diagnosis.state 每次 UPSERT mastery_snapshots，0-100 按 kpName）。此处融合：
+    // 按名称覆盖/合并进 masteryByKnowledge，无 exam 报告时直接用真数生成一份。
+    try {
+      const d = await getAgentDiagnosis()
+      const realKps = Array.isArray(d?.knowledgePoints) ? d.knowledgePoints : []
+      if (realKps.length > 0) {
+        const realList = realKps.map(kp => ({
+          name: kp.kpName,
+          mastery: kp.mastery || 0,
+          totalQuestions: kp.attempts || 0,
+          correctAnswers: kp.correct || 0
+        }))
+        if (reportData && Array.isArray(reportData.masteryByKnowledge)) {
+          // 有 exam 报告：按名称合并（同名以真数覆盖，真数独有的追加）
+          const byName = new Map(reportData.masteryByKnowledge.map(k => [k.name, { ...k }]))
+          realList.forEach(rk => byName.set(rk.name, rk))
+          reportData.masteryByKnowledge = [...byName.values()]
+          // 总题数/正确率同步真数（student_score 是 exam 口径 0-1，作答口径更实时）
+          if (reportData.stats) {
+            const total = reportData.masteryByKnowledge.reduce((s, k) => s + (k.totalQuestions || 0), 0)
+            const correct = reportData.masteryByKnowledge.reduce((s, k) => s + (k.correctAnswers || 0), 0)
+            reportData.stats.totalQuestions = total
+            reportData.stats.correctRate = total > 0 ? Math.round((correct / total) * 100) : reportData.stats.correctRate
+          }
+        } else {
+          // 无 exam 报告：真数直接生成一份（报告页不再空）
+          reportData = {
+            stats: {
+              studyDays: 0,
+              totalQuestions: realList.reduce((s, k) => s + (k.totalQuestions || 0), 0),
+              correctRate: realList.length > 0
+                ? Math.round(realList.reduce((s, k) => s + k.mastery, 0) / realList.length)
+                : 0,
+              improvement: 0
+            },
+            masteryByKnowledge: realList,
+            suggestions: [],
+            abilityDims: null,
+            generatedAt: new Date().toISOString()
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Report] Load real diagnosis failed:', e)
     }
 
     if (reportData && reportData.stats) {
