@@ -234,6 +234,7 @@ import { useUserStore } from '@/store/user'
 import { useKnowledgeStore } from '@/store/knowledge'
 import { usePracticeStore } from '@/store/practice'
 import { useReportStore } from '@/store/report'
+import { getAgentDiagnosis } from '@/api'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import Chip from '@/components/ui/Chip.vue'
@@ -431,7 +432,8 @@ export default {
       await Promise.all([
         knowledgeStore.loadKnowledgePoints(),
         knowledgeStore.loadKnowledgeGraph(),
-        reportStore.fetchReports()
+        reportStore.fetchReports(),
+        loadRealMastery()
       ])
 
       // 计算继续学习
@@ -440,6 +442,23 @@ export default {
           topic: knowledgeStore.nextRecommended.name || '推荐知识点',
           progress: Math.round((1 - (knowledgeStore.getMastery(knowledgeStore.nextRecommended.id) || 0)) * 100)
         }
+      }
+    }
+
+    // 首页掌握度接真数：knowledge-points 端点是公开读（不回每用户 mastery），
+    // 真掌握度在 /api/agent/me/diagnosis（从作答记录实算，0-100 刻度、按 kpId 键）。
+    // 此处并行拉取后按 kpId 折算 0-1 写进 masteryMap —— 未登录/无作答时优雅兜底（接口自带）。
+    const loadRealMastery = async () => {
+      try {
+        const d = await getAgentDiagnosis()
+        if (!d?.success || !Array.isArray(d.knowledgePoints)) return
+        d.knowledgePoints.forEach((kp) => {
+          if (kp.kpId && typeof kp.mastery === 'number') {
+            knowledgeStore.updateMastery(kp.kpId, kp.mastery / 100)
+          }
+        })
+      } catch (e) {
+        console.error('[Home] Load real mastery failed:', e)
       }
     }
 

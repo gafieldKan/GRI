@@ -136,14 +136,17 @@ export class PlanAgent {
   /** 更新计划进度（owner 必须匹配用户，杜绝改他人计划）。 */
   async updateProgress(userId: string, planId: string, completedTaskIds: string[]) {
     const completedCount = Array.isArray(completedTaskIds) ? completedTaskIds.length : 0;
+    // 同参数双处引用必须各显式同型 cast（pg variable_coerce_param_hook 会因推断冲突拒绝，
+    // 先例见 session-fsm.ts flush 的 $3::varchar）。此处拆 $3::int（写列）与 $4::float（算比例，
+    // 避免 int/int 整除归零）双参数，各单一类型零歧义。
     const result = await this.db.query(
       `UPDATE edu.learning_plans
-       SET completed_tasks = $3,
-           progress = CASE WHEN total_tasks > 0 THEN ($3::float / total_tasks) * 100 ELSE 0 END,
+       SET completed_tasks = $3::int,
+           progress = CASE WHEN total_tasks > 0 THEN ($4::float / total_tasks) * 100 ELSE 0 END,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND user_id = $2
        RETURNING *`,
-      [planId, userId, completedCount],
+      [planId, userId, completedCount, completedCount],
     );
     if (result.rows.length === 0) return { success: false, error: '计划不存在或无权访问' };
     return { success: true, plan: result.rows[0] };
