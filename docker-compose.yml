@@ -1,6 +1,6 @@
 services:
   # ==========================================
-  # PostgreSQL 14 — 订餐后端 (gri_db)
+  # PostgreSQL 14 — 单库 gri（多 schema：auth/edu/tenant/ontology/public/agent）
   # ==========================================
   postgres:
     image: postgres:14-alpine
@@ -9,16 +9,17 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: gri_db
+      POSTGRES_DB: gri   # 必须是 gri（非旧 gri_db）：冷启动 initdb 建的库名要 = api 连的库名
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       # 注：单库 gri 的 schema 由 services/api 容器启动时先跑 `run-migrations.js` 自动应用
-      #     （迁移文件在 src/migrate/*.sql，通过 _migrations 表跟踪），
-      #     故此处无需 initdb 挂载（原空目录挂载已移除）。旧 services/backend 已退役。
+      #     （迁移文件在 src/migrate/*.sql，通过 _api_migrations 表跟踪），
+      #     故此处无需 initdb 挂载（原空目录挂载已移除）。旧 services/backend 已退役，
+      #     旧 gri_db 库已删除（2026-09-23 彻底清理，含明文密码残留）。
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gri_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gri"]
       interval: 5s
       timeout: 3s
       retries: 10

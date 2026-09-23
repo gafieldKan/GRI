@@ -52,7 +52,7 @@ class GrandTourReport {
     this.environment = {
       nodeVersion: process.version,
       platform: process.platform,
-      database: process.env.DB_NAME || 'gri_db',
+      database: process.env.DB_NAME || 'gri',
       timestamp: this.startTime.toISOString()
     }
   }

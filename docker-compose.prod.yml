@@ -27,7 +27,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
-      POSTGRES_DB: gri_db
+      POSTGRES_DB: gri
   postgres-auth:
     ports: !reset []
     environment:
