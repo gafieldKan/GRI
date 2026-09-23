@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>GRI 组织管理台</title>
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    /* overflow-x only：竖向必须可滚（uni-page height:100% + 内容超高，overflow:hidden 会硬裁无滚动条） */
+    html, body { margin: 0; padding: 0; height: 100%; overflow-x: hidden; }
     #app { width: 100%; height: 100%; }
   </style>
 </head>
