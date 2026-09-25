@@ -502,6 +502,16 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 选科持久化（我的页 subject chip → PUT profile；K12 全学科，code 与后端对齐）
+  async function setSubject(subj) {
+    subject.value = subj
+    try {
+      await updateProfile({ studentId: studentId.value, subject: subj })
+    } catch (e) {
+      console.error('[UserStore] Failed to set subject:', e)
+    }
+  }
+
   return {
     // State
     studentId,
@@ -542,6 +552,7 @@ export const useUserStore = defineStore('user', () => {
 
     // Actions
     setStudent,
+    setSubject,
     addXP,
     recordStudySession,
     updatePreferences,

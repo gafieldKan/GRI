@@ -87,8 +87,9 @@ jest.mock('@gri/agent-core', () => {
   return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, storeFrom, McpPool };
 });
 
-/** 内存假 DB：认有限几种 SQL，模拟 agent.entities / agent.memory / agent.llm_routes / agent.mcp_servers。 */
-function fakeDb(mcpServers: any[] = []) {
+/** 内存假 DB：认有限几种 SQL，模拟 agent.entities / agent.memory / agent.llm_routes / agent.mcp_servers。
+ *  K12 全学科：profile（edu.students 行）与 subjectNames（ontology.subject 展示名）可注入。 */
+function fakeDb(mcpServers: any[] = [], profile: { current_subject: string; grade: number } | null = null, subjectNames: Record<string, string> = {}) {
   const memory: any[] = [];
   return {
     lastEntityInsert: null as any,
@@ -114,6 +115,13 @@ function fakeDb(mcpServers: any[] = []) {
       if (/INSERT INTO agent\.tool_runs/.test(text)) return { rows: [], rowCount: 1 };
       if (/FROM agent\.mcp_servers/.test(text)) return { rows: mcpServers, rowCount: mcpServers.length }; // 桥接用
       if (/SELECT \* FROM agent\.llm_routes/.test(text)) return { rows: [], rowCount: 0 }; // 无路由 → 无 key → mock 路径
+      if (/SELECT current_subject, grade FROM edu\.students/.test(text)) {
+        return { rows: profile ? [profile] : [] };
+      }
+      if (/SELECT name FROM ontology\.subject WHERE code/.test(text)) {
+        const row = subjectNames[params[0]];
+        return { rows: row ? [{ name: row }] : [] };
+      }
       return { rows: [], rowCount: 0 };
     },
   };
@@ -204,5 +212,81 @@ describe('AgentService', () => {
     const out = await (svc as any)._mockTeach({}, { entityId: 'a', userMessage: '调用 nope.missing' }, registry);
     expect(out.message).toContain('当前没有可用的工具「nope.missing」');
     expect(out.message).toContain('question.lookup');
+  });
+
+  it('K12 persona：_agent 链式取学科（edu.students.current_subject → persona 注入展示名）', async () => {
+    const db = fakeDb([], { current_subject: 'phys', grade: 8 }, { phys: '物理' });
+    const svc = makeService(db);
+    const { core, subject } = await (svc as any)._agent('student-a');
+    expect(subject).toBe('phys');
+    // persona 注入学科展示名与年级
+    const persona = (core as any).deps.persona as string;
+    expect(persona).toContain('物理');
+    expect(persona).toContain('8 年级');
+    expect(persona).toContain('以对话上下文为准');
+  });
+
+  it('K12 persona：opts.subject 显式指定覆盖档案（subject 优先链）', async () => {
+    const db = fakeDb([], { current_subject: 'phys', grade: 8 }, { chem: '化学' });
+    const svc = makeService(db);
+    const { subject } = await (svc as any)._agent('student-a', { subject: 'chem' });
+    expect(subject).toBe('chem');
+  });
+
+  it('K12 persona：无档案无 opts → 默认 math（兜底链末端）', async () => {
+    const db = fakeDb([], null, {});
+    const svc = makeService(db);
+    const { subject } = await (svc as any)._agent('student-a');
+    expect(subject).toBe('math');
+  });
+
+  it('K12 工具：curriculum.lookup 注册进每生工具表', async () => {
+    const svc = makeService(fakeDb());
+    const opened = await svc.openSession('student-a');
+    expect(opened.tools).toContain('curriculum.lookup');
+    expect(opened.tools).toContain('question.lookup'); // 既有工具不回归
+  });
+
+  it('K12 工具：curriculum.lookup 按学科+年级查教材章节与知识点', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    const tool = (svc as any)._teachingToolDefs().find((t: any) => t.name === 'curriculum.lookup');
+    // 按调用序喂教材/章节/KP 三段查询
+    const spy = jest.spyOn(db, 'query');
+    spy.mockImplementation((text: string, params: any[] = []) => {
+      if (/FROM ontology\.textbook t\s*LEFT JOIN/.test(text)) {
+        return Promise.resolve({ rows: [{ id: 'tb-1', code: 'math.g7.pep', name: '人教版数学七年级上册', publisher: '人民教育出版社' }] });
+      }
+      if (/SELECT id, code, name, parent_id FROM ontology\.textbook_chapter WHERE id/.test(text)) {
+        return Promise.resolve({ rows: [{ id: 'ch-1', code: 'math.g7.pep.ch01.s01', name: '1.1 正数和负数', parent_id: null }] });
+      }
+      if (/SELECT c\.id, c\.code, c\.name, c\.parent_id/.test(text)) {
+        return Promise.resolve({ rows: [{ id: 'ch-1', code: 'math.g7.pep.ch01.s01', name: '1.1 正数和负数', parent_id: null }] });
+      }
+      if (/chapter_id = ANY/.test(text)) {
+        return Promise.resolve({ rows: [{ id: 'kp-1', code: 'math.g7.pep.ch01.s01.kp01', name: '正数和负数', description: null, subject: 'MATH', grade_level: 7, chapter_id: 'ch-1', status: 'published' }] });
+      }
+      return Promise.resolve({ rows: [] });
+    });
+
+    const out = await tool.execute({ store: { query: db.query.bind(db) }, memory: {}, entityId: 'student-a' }, { subject: 'math', gradeLevel: 7 });
+
+    expect(out.textbooks).toHaveLength(1);
+    expect(out.textbooks[0].code).toBe('math.g7.pep');
+    expect(out.chapters).toHaveLength(1);
+    expect(out.chapters[0].name).toBe('1.1 正数和负数');
+    expect(out.knowledgePoints).toHaveLength(1);
+    expect(out.knowledgePoints[0].code).toBe('math.g7.pep.ch01.s01.kp01');
+  });
+
+  it('K12 mockTeach：出题通用学科匹配（物理/化学不再硬编码数学）', async () => {
+    const svc = makeService(fakeDb());
+    const o = { entityId: 'a', userMessage: '', memory: { get: async () => null } };
+    const outPhys = await (svc as any)._mockTeach({}, { ...o, userMessage: '物理题目来一套' }, undefined);
+    expect(outPhys.subject).toBe('phys');
+    const outChem = await (svc as any)._mockTeach({}, { ...o, userMessage: '化学练一练' }, undefined);
+    expect(outChem.subject).toBe('chem');
+    const outHist = await (svc as any)._mockTeach({}, { ...o, userMessage: '历史题目来一套' }, undefined);
+    expect(outHist.subject).toBe('hist');
   });
 });

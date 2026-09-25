@@ -430,6 +430,7 @@ export default {
     // 加载数据
     const loadData = async () => {
       await Promise.all([
+        knowledgeStore.loadCatalog(), // 学段/年级/学科清单（三级联动数据源，幂等）
         knowledgeStore.loadKnowledgePoints(),
         knowledgeStore.loadKnowledgeGraph(),
         reportStore.fetchReports(),
@@ -476,7 +477,11 @@ export default {
       if (item.topicId) {
         practiceStore.setTopic(item.topicId)
       }
-      practiceStore.startSession('topic', { subject: item.subject.toLowerCase() })
+      // 推荐卡 subject 是中文展示名 → code（K12 全学科；knowledgeStore.subjectList 为真源）
+      const codeMap = { 数学: 'math', 语文: 'chn', 英语: 'eng', 物理: 'phys', 化学: 'chem', 生物: 'bio' }
+      const real = knowledgeStore.subjectList.find(s => s.name === item.subject)
+      const code = real?.id || codeMap[item.subject] || knowledgeStore.currentSubject
+      practiceStore.startSession('topic', { subject: code })
       uni.navigateTo({ url: '/pages/practice/index' })
     }
 

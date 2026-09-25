@@ -162,12 +162,15 @@ export const InterfaceSchema = z.object({
  * - implements：实现的接口（引擎校验 action 完整性）
  * - fields：字段声明（继承父类字段，子类补差异化字段）
  * - variantFields：子类差异化字段 → 单表继承的 JSONB extra（§5.1.1）
+ * - uniqueConstraints：复合唯一约束（关联类/桥表场景，如前置依赖的
+ *   UNIQUE(from_kp, to_kp)）；列名须在本 Object fields ∪ Link foreignKey 内
  */
 const ObjectSchemaBase = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  // 物理表名（可选）。缺省由生成器按 name → snake_case 推导；
-  // 当逻辑名与既有表名冲突（如 Order→order 已被点餐表占用）时显式覆盖。
+  // 物理表名（可选，支持 schema 限定名如 "edu.knowledge_points"）。缺省由生成器按
+  // name → snake_case 推导；当逻辑名与既有表名冲突（如 Order→order 已被点餐表占用）
+  // 时显式覆盖。
   table: z.string().optional(),
   abstract: z.boolean().optional().default(false),
   extends: z.string().optional(),
@@ -178,6 +181,7 @@ const ObjectSchemaBase = z.object({
   }).optional(),
   fields: z.array(FieldSchema).default([]),
   variantFields: z.array(FieldSchema).optional(),
+  uniqueConstraints: z.array(z.array(z.string()).min(1)).optional(),
   links: z.array(LinkSchema).default([]),
   actions: z.array(ActionSchema).default([]),
   stateMachine: StateMachineSchema.optional(),

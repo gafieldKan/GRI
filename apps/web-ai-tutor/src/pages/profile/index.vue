@@ -267,7 +267,8 @@ export default {
     })
 
     const getSubjectName = (subject) => {
-      const names = { math: '数学', physics: '物理', chemistry: '化学', biology: '生物', english: '英语', chinese: '语文' }
+      // K12 全学科 code 与后端对齐（math/phys/chem/bio/eng/chn…）
+      const names = { math: '数学', chn: '语文', eng: '英语', phys: '物理', chem: '化学', bio: '生物', hist: '历史', geo: '地理', pol: '政治' }
       return names[subject] || subject
     }
 

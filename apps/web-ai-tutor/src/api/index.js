@@ -1,4 +1,5 @@
-// API request module — 统一收敛到网关 /api/tuition/*（services/api，Nest）。
+// API request module — 统一收敛到网关 /api（services/api，Nest）。
+// 课程体系走 /api/curriculum/*（K12 全学科，本体驱动）；个人学情走 /api/tuition/*、/api/agent/*。
 import axios from 'axios'
 import { handleApiError, normalizeError, AppError } from '@/utils/errorHandler.js'
 import { useAuthStore } from '@gri/auth-client'
@@ -47,13 +48,30 @@ export async function getReport(studentId) {
   try { return await api.get(`/api/tuition/analysis/report/latest/${studentId}`) } catch (e) { return [] }
 }
 
+// K12 课程体系（/api/curriculum/*，本体驱动）：目录公开读，knowledge-graph 带个人掌握度。
+export async function listSubjects() {
+  try { return await api.get('/api/curriculum/subjects') } catch (e) { return [] }
+}
+
+export async function listGrades(stage) {
+  try { return await api.get('/api/curriculum/grades', { params: stage ? { stage } : {} }) } catch (e) { return [] }
+}
+
+export async function listTextbooks(subject, grade) {
+  try { return await api.get('/api/curriculum/textbooks', { params: { subject, grade } }) } catch (e) { return [] }
+}
+
+export async function listChapters(textbookId, textbook) {
+  try { return await api.get('/api/curriculum/chapters', { params: { textbookId, textbook } }) } catch (e) { return [] }
+}
+
 export async function getKnowledgePoints(params = {}) {
-  try { return await api.get('/api/tuition/knowledge-points', { params }) } catch (e) { return [] }
+  try { return await api.get('/api/curriculum/knowledge-points', { params }) } catch (e) { return [] }
 }
 
 export async function getKnowledgeGraph(params = {}) {
   try {
-    return await api.get('/api/tuition/knowledge-graph', { params })
+    return await api.get('/api/curriculum/knowledge-graph', { params })
   } catch (e) {
     return { nodes: [], edges: [] }
   }
@@ -231,9 +249,9 @@ export async function openAgent() {
   try { return await api.get('/api/agent/me') } catch (e) { return { success: false } }
 }
 
-// 给我的 AI 教师发消息（保持会话状态、可触发工具/记忆）。
-export async function sendAgentMessage(content) {
-  try { return await api.post('/api/agent/me/message', { content }) } catch (e) { return { success: false, message: content } }
+// 给我的 AI 教师发消息（保持会话状态、可触发工具/记忆；subject 兜底让教师感知所选学科）。
+export async function sendAgentMessage(content, subject) {
+  try { return await api.post('/api/agent/me/message', subject ? { content, subject } : { content }) } catch (e) { return { success: false, message: content } }
 }
 
 // 读我的长期记忆（个人私有，跨会话）。

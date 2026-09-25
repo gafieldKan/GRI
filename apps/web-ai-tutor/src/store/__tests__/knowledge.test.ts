@@ -10,7 +10,7 @@ describe('Knowledge Store', () => {
   it('should initialize with default values', () => {
     const store = useKnowledgeStore()
     expect(store.currentSubject).toBe('math')
-    expect(store.currentGrade).toBe('八年级')
+    expect(store.currentGrade).toBe(7) // 数字年级（≡ ontology.grade code G7 后缀）
     expect(store.knowledgePoints).toEqual([])
     expect(store.masteryMap).toEqual({})
   })

@@ -189,8 +189,13 @@ export class AgentService implements OnModuleDestroy {
     return storeFrom((text: string, params?: unknown[]) => this.db.query(text, params));
   }
 
-  /** 装配某学生的独立 agent（每调实时读库 → 大模型切换立即生效）。 */
-  private async _agent(entityId: string): Promise<{ core: AgentCore; memory: MemoryStore; entity: AgentEntity }> {
+  /** 装配某学生的独立 agent（每调实时读库 → 大模型切换立即生效）。
+   * 学科动态化（K12 全学科）：opts.subject → edu.students.current_subject → 默认 'math'，
+   * 注入「当前学科」进 persona，让 AI 教师感知学生所选学科（年级同理，edu.students.grade）。 */
+  private async _agent(
+    entityId: string,
+    opts: { subject?: string } = {},
+  ): Promise<{ core: AgentCore; memory: MemoryStore; entity: AgentEntity; subject: string; gradeLevel: number | null }> {
     const entity = await this._ensureEntity(entityId);
     const store = this._store();
     const router = new ModelRouter(store);
@@ -204,6 +209,15 @@ export class AgentService implements OnModuleDestroy {
     if (mcpTools.length) tools.registerAll(mcpTools);
     const skills = this._teachingSkills(toolDefs);
 
+    // 学科/年级链式取真源：显式 opts → 学生档案 → 默认 math
+    const profile = await store.query(
+      `SELECT current_subject, grade FROM edu.students WHERE user_id = $1`,
+      [entityId],
+    );
+    const subject = String(opts.subject || profile.rows[0]?.current_subject || 'math');
+    const gradeLevel = profile.rows[0]?.grade ?? null;
+    const subjectName = await this._subjectDisplayName(subject);
+
     const core = new AgentCore({
       router,
       store,
@@ -212,12 +226,23 @@ export class AgentService implements OnModuleDestroy {
       memory,
       persona:
         `你是智学慧眼为「学生 ${entityId}」配备的专属 AI 教师（独立记忆、独立进度）。` +
+        `学生当前所学学科是「${subjectName}」${gradeLevel ? `（${gradeLevel} 年级）` : ''}，出题/讲解默认围绕该学科展开；` +
+        `学生明确提到别的学科时以对话上下文为准，随时切换。` +
         `始终用中文，语气鼓励、追问引导，紧扣学生掌握度给予个性化讲解。`,
       defaultResponder: async (ctx, o) => this._mockTeach(ctx, o, tools),
       onRun: (a) => void this._audit(entityId, a),
     });
 
-    return { core, memory, entity };
+    return { core, memory, entity, subject, gradeLevel };
+  }
+
+  /** 学科展示名：ontology.subject 行（MATH → 数学）；查不到原样回 code。 */
+  private async _subjectDisplayName(subject: string): Promise<string> {
+    const res = await this._store().query(
+      `SELECT name FROM ontology.subject WHERE code = $1`,
+      [subject],
+    );
+    return res.rows[0]?.name ?? subject;
   }
 
   /** 确保每个学生一行独立 agent 实体（幂等）。 */
@@ -237,7 +262,7 @@ export class AgentService implements OnModuleDestroy {
     return [
       makeTool({
         name: 'question.lookup',
-        description: '按学科/知识点查题库，返回题目数组（用于出题/诊断）。',
+        description: '按学科/知识点查题库，返回题目数组（用于出题/诊断）。subject 必填（学生提到具体学科时用该学科，否则用 persona 里的当前学科，code 形如 math/phys/chem）。',
         inputSchema: { type: 'object', properties: { subject: { type: 'string' }, limit: { type: 'number' } }, required: ['subject'] },
         async execute(ctx, args) {
           const limit = Math.min(Number(args.limit) || 5, 20);
@@ -245,12 +270,73 @@ export class AgentService implements OnModuleDestroy {
             `SELECT q.id, q.content, q.type, q.options, q.answer, q.difficulty, kp.name AS knowledge_point
                FROM edu.questions q
                LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-              WHERE kp.subject = $1
+              WHERE LOWER(kp.subject) = LOWER($1)
               ORDER BY random()
               LIMIT $2`,
             [args.subject, limit],
           );
           return rows.map((r: any) => ({ id: r.id, content: r.content, type: r.type, options: r.options, difficulty: r.difficulty }));
+        },
+      }),
+      makeTool({
+        name: 'curriculum.lookup',
+        description: '导航 K12 教学体系：按学段/年级/学科查教材与章节树，再按章节查知识点（学生要「学什么/先学哪章/有哪些知识点/教学体系」时先调它，再针对具体知识点出题或讲解）。',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            subject: { type: 'string', description: '学科 code（math/phys/chem 等，缺省用当前学科）' },
+            gradeLevel: { type: 'number', description: '年级数字 1-12（缺省用学生档案年级）' },
+            chapterId: { type: 'string', description: '章节 UUID（给定时只返回该章知识点）' },
+          },
+        },
+        async execute(ctx, args) {
+          // 教材（学科+年级定位）
+          const tb = await ctx.store.query(
+            `SELECT t.id, t.code, t.name, t.publisher
+               FROM ontology.textbook t
+               LEFT JOIN ontology.subject s ON s.id = t.subject_id
+               LEFT JOIN ontology.grade g ON g.id = t.grade_id
+              WHERE (t.status = 'published' OR t.status = 'active')
+                AND ($1::varchar IS NULL OR LOWER(s.code) = LOWER($1::varchar))
+                AND ($2::int IS NULL OR g.code = $2::varchar OR g.sort_order = $2::int)
+              ORDER BY t.code LIMIT 5`,
+            [args.subject ?? null, args.gradeLevel ?? null],
+          );
+          // 章节（教材范围；未选教材时取全部匹配教材的章节）
+          const chapters = args.chapterId
+            ? (await ctx.store.query(
+                `SELECT id, code, name, parent_id FROM ontology.textbook_chapter WHERE id = $1::uuid`,
+                [args.chapterId],
+              )).rows
+            : (await ctx.store.query(
+                `SELECT c.id, c.code, c.name, c.parent_id
+                   FROM ontology.textbook_chapter c
+                   JOIN ontology.textbook t ON t.id = c.textbook_id
+                   LEFT JOIN ontology.subject s ON s.id = t.subject_id
+                   LEFT JOIN ontology.grade g ON g.id = t.grade_id
+                  WHERE (t.status = 'published' OR t.status = 'active')
+                    AND ($1::varchar IS NULL OR LOWER(s.code) = LOWER($1::varchar))
+                    AND ($2::int IS NULL OR g.code = $2::varchar OR g.sort_order = $2::int)
+                  ORDER BY c.sort_order NULLS LAST, c.code LIMIT 30`,
+                [args.subject ?? null, args.gradeLevel ?? null],
+              )).rows;
+          // 知识点（章节范围内 published）
+          const chapterIds = chapters.map((c: any) => c.id);
+          const kps = chapterIds.length
+            ? (await ctx.store.query(
+                `SELECT kp.id, kp.code, kp.name, kp.description, kp.subject, kp.grade_level, kp.chapter_id, kp.status
+                   FROM edu.knowledge_points kp
+                  WHERE kp.chapter_id = ANY($1::uuid[])
+                    AND (kp.status = 'published' OR kp.status IS NULL)
+                  ORDER BY kp.code NULLS LAST LIMIT 50`,
+                [chapterIds],
+              )).rows
+            : [];
+          return {
+            textbooks: tb.rows,
+            chapters: chapters.map((c: any) => ({ id: c.id, code: c.code, name: c.name, parentId: c.parent_id })),
+            knowledgePoints: kps.map((k: any) => ({ id: k.id, code: k.code, name: k.name, description: k.description, chapterId: k.chapter_id })),
+          };
         },
       }),
       makeTool({
@@ -977,7 +1063,8 @@ export class AgentService implements OnModuleDestroy {
       name: 'tutor',
       description: '学情诊断→讲解→测验的完整教师流程',
       instructions:
-        '当学生发起学习请求时：(1) 需要摸底就用 question.lookup 抽几题诊断，或先调 diagnosis.state 取该学生的真实作答掌握度与未解决错题，紧扣真实数据给出个性化讲解；' +
+        '当学生发起学习请求时：(0) 学生问「该学什么/有哪些章节/教学体系/先学哪部分」时，先用 curriculum.lookup 导航教学体系（按学科/年级查教材章节与知识点），再针对具体知识点讲解或出题；' +
+        '(1) 需要摸底就用 question.lookup 抽几题诊断，或先调 diagnosis.state 取该学生的真实作答掌握度与未解决错题，紧扣真实数据给出个性化讲解；' +
         '(2) 依据对错用 answer.grade 讲解知识点；(3) 学生要「诊断/进度/错题」时先调 diagnosis.state；要「计划/学习安排」时先 diagnosis.state 再用 plan.generate 把弱项落成计划，并告知计划已在学习计划页生成；' +
         '(4) 学生报告「做完/完成」某条任务时，用 plan.complete 标记完成并回灌掌握度，答对会消除对应错题，全部完成会把计划置为已完成；' +
         '(5) 记下学生偏好/掌握度用 memory.remember，之后答案要贴合记忆；记忆过时或学生明确说「忘掉/删掉」时用 memory.forget；' +
@@ -1020,7 +1107,15 @@ export class AgentService implements OnModuleDestroy {
     }
     if (/题目|出题|练一练|测验/.test(lower)) {
       const q = await o.memory.get(o.entityId, 'pref.subject');
-      const subject = q || (msg.match(/数学|语文|英语|物理|化学/) || [null])[0] || 'math';
+      // 通用学科匹配：中文学科名 → code（K12 全学科；不硬编码数学优先）
+      const CN_SUBJECTS: Record<string, string> = { 数学: 'math', 语文: 'chn', 英语: 'eng', 物理: 'phys', 化学: 'chem', 生物: 'bio', 历史: 'hist', 地理: 'geo', 政治: 'pol' };
+      let subject = q || null;
+      if (!subject) {
+        for (const [cn, code] of Object.entries(CN_SUBJECTS)) {
+          if (msg.includes(cn)) { subject = code; break; }
+        }
+      }
+      subject = subject || 'math';
       return { success: true, phase: 'quizzing', message: `来，做几道 ${subject} 题检验一下掌握度吧。`, subject };
     }
     if (/复习错题|错题冲刺|重做错题|冲刺/.test(lower)) {
@@ -1146,7 +1241,8 @@ export class AgentService implements OnModuleDestroy {
     if (!message || !String(message).trim()) {
       return { success: false, message: '消息不能为空' };
     }
-    const { core, entity } = await this._agent(entityId);
+    // 学科兜底：前端显式带 subject（如聊天页选科后）→ persona 注入该学科
+    const { core, subject } = await this._agent(entityId, { subject: opts.subject });
     const routeKey = opts.routeKey || 'default';
     const out = await core.run({
       entityId,
@@ -1159,6 +1255,7 @@ export class AgentService implements OnModuleDestroy {
       phase: out.phase || 'teaching',
       entityId,
       routeKey,
+      subject,
     };
   }
 

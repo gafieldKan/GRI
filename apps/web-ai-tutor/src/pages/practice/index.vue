@@ -405,13 +405,14 @@ export default {
       weakness: { name: '薄弱攻克', desc: '针对错题薄弱点专项训练', icon: '💪', questions: 15 }
     }
 
+    // 学科清单（K12 全学科 code 与后端对齐：math/phys/chem/bio/eng/chn；真源 /api/curriculum/subjects）
     const subjects = [
       { id: 'math', name: '数学', icon: '📐' },
-      { id: 'physics', name: '物理', icon: '⚡' },
-      { id: 'chemistry', name: '化学', icon: '🧪' },
-      { id: 'biology', name: '生物', icon: '🧬' },
-      { id: 'english', name: '英语', icon: '📖' },
-      { id: 'chinese', name: '语文', icon: '📝' }
+      { id: 'phys', name: '物理', icon: '⚡' },
+      { id: 'chem', name: '化学', icon: '🧪' },
+      { id: 'bio', name: '生物', icon: '🧬' },
+      { id: 'eng', name: '英语', icon: '📖' },
+      { id: 'chn', name: '语文', icon: '📝' }
     ]
 
     const topics = [
@@ -419,11 +420,11 @@ export default {
       { id: 'quadratic', name: '二次函数', subject: 'math' },
       { id: 'trigonometry', name: '三角函数', subject: 'math' },
       { id: 'linear_equation', name: '一元一次方程', subject: 'math' },
-      { id: 'newton', name: '牛顿定律', subject: 'physics' },
-      { id: 'periodic', name: '元素周期表', subject: 'chemistry' },
-      { id: 'cell_biology', name: '细胞结构', subject: 'biology' },
-      { id: 'grammar_basic', name: '基础语法', subject: 'english' },
-      { id: 'composition', name: '作文写作', subject: 'chinese' }
+      { id: 'newton', name: '牛顿定律', subject: 'phys' },
+      { id: 'periodic', name: '元素周期表', subject: 'chem' },
+      { id: 'cell_biology', name: '细胞结构', subject: 'bio' },
+      { id: 'grammar_basic', name: '基础语法', subject: 'eng' },
+      { id: 'composition', name: '作文写作', subject: 'chn' }
     ]
 
     const modeColors = {

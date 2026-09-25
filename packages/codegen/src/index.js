@@ -3,7 +3,15 @@
  */
 
 export { generate, generators } from './generate.js'
-export { generateSQL, generateCreateTableSQL, fieldToColumn, sqlLiteral, PG_TYPE_MAP } from './sql.js'
+export {
+  generateSQL,
+  generateCreateTableSQL,
+  fieldToColumn,
+  sqlLiteral,
+  PG_TYPE_MAP,
+  resolveObjectLinks,
+  uniqueConstraintSQL,
+} from './sql.js'
 export { generateTypeScript, fieldToTS, TS_TYPE_MAP } from './typescript.js'
 export {
   loadOntologyFile,

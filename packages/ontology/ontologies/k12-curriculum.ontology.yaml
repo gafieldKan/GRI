@@ -1,0 +1,278 @@
+# K12 课程本体 —— 全学科教学体系唯一结构真源
+#
+# 施工方案：AI 辅导全学科改造（本体驱动 · K1–K12 知识图谱 · 因材施教）→ 旧资产改造（2026-09-25）
+# 承接核心思想：单一语义真源 / fail-fast 契约门禁 / 模块对齐领域 / 旧资产按底线修正。
+#
+# 本体四特性贯彻（基本底线：多态 · 可变 · 内外部关系复杂 · 有生命周期）：
+#   - 多态/继承：Textbook 抽象基类 + 六学科子类（单表继承：textbook_type 判别列 + extra JSONB）
+#   - 生命周期：Textbook/TextbookChapter/KnowledgePoint 三态机（draft→published→archived 审核与版本迭代）
+#   - 内外部关系：Grade↔SchoolStage、Textbook↔Subject/Grade、Chapter 自引用树、
+#     KP↔Chapter、KP↔KP 前置依赖（关联类）——全走 Link/关联类表达
+#   - 可变：结构变更一律先改本 YAML → codegen 产出迁移（本体可变、变更受控）
+#
+# 由 @gri/codegen 消费，确定性产出迁移 SQL（012_k12_curriculum.sql + 013 结构先行增量）：
+#   - ontology schema 六表：subject / school_stage / grade / textbook / textbook_chapter / kp_prerequisite
+#   - edu.knowledge_points 声明子集（CREATE TABLE IF NOT EXISTS，对已存在表为 no-op，作模型文档）
+#
+# 物理落位决策（一次定案）：
+#   1. YAML = 唯一结构真源：结构变更先改这里 → codegen 产出迁移；禁止绕过 YAML 手写结构 DDL
+#   2. 新表落 ontology schema（施工图 §3.1「本体引擎管」）；跨 schema FK 单库内 PG 原生支持
+#   3. edu.knowledge_points 不动只加列（chapter_id/code/status 人工审阅 ALTER）——工具链零破坏
+#   4. Grade.code 数值后缀 ≡ edu.knowledge_points.grade_level（约定：G1↔1 … G12↔12）
+#   5. 前置依赖 = 关联类（kp_prerequisite 桥表，canonical）；edu.knowledge_points.prerequisites
+#      JSONB 保留、转作 staging/LLM 建议缓冲
+#
+# 红线：本体驱动、面向对象实现、设计模式应用（GoF 23 种；状态机/工厂/外观/适配器）。
+
+schemaVersion: 0.3.0
+name: k12-curriculum
+description: K1–K12 全学科教学体系本体（学科/学段/年级/教材继承体系/章节/知识点 + 前置依赖 + 生命周期状态机）
+
+objects:
+  # —— 学科（升一等对象：master_data kind=Subject 的 typed 真源） ——
+  - name: Subject
+    table: ontology.subject
+    description: 学科（语文/数学/英语/物理/化学/…，K12 全学科）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 稳定编码（CN/MATH/EN/…，≡ master_data code）
+      - name: name
+        type: string
+        required: true
+        description: 展示名
+      - name: domain
+        type: string
+        description: 学科域（lang/science/social/arts/…）
+      - name: sortOrder
+        type: integer
+      - name: status
+        type: string
+        dbDefault: "'active'"
+
+  # —— 学段 ——
+  - name: SchoolStage
+    table: ontology.school_stage
+    description: 学段（小学/初中/高中）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: PRIMARY/JUNIOR/SENIOR
+      - name: name
+        type: string
+        required: true
+      - name: sortOrder
+        type: integer
+    links:
+      - name: gradeBelongsToStage   # 反向声明便于读语义；落列在 Grade 侧
+        source: SchoolStage
+        target: Grade
+        cardinality: many
+        description: 纯语义关系：Grade 侧 stagedToStage 落 stage_id，本侧不落列
+
+  # —— 年级 ——
+  - name: Grade
+    table: ontology.grade
+    description: 年级（G1–G12；code 数值后缀 ≡ edu.knowledge_points.grade_level）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: G1–G12
+      - name: name
+        type: string
+        required: true
+        description: 一年级…高三
+      - name: sortOrder
+        type: integer
+    links:
+      - name: stagedToStage
+        source: Grade
+        target: SchoolStage
+        cardinality: many
+        foreignKey: stageId        # many:1（多年级同属一个学段）；cardinality: one 会生成 UNIQUE(stage_id) 的 1:1 语义，错误
+
+  # —— 教材（抽象基类；六学科子类单表继承——结构先行，variantFields 待真需求填充） ——
+  # 多态语义：同学科教材（math.g7.pep/math.g8.pep…）判别值同为 math；判别列 ≠ subject
+  # 外键（subject_id 仍是规范关联），判别列承载「这是哪个学科子类的实例」这一多态事实。
+  - name: Textbook
+    table: ontology.textbook
+    abstract: true
+    description: 教材抽象基类（版本 + 出版方；目录结构是公开信息）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 稳定编码（如 math.g7.pep）
+      - name: name
+        type: string
+        required: true
+        description: 展示名（人教版数学七年级上册）
+      - name: version
+        type: string
+        description: 版本（人教版/北师大版/…）
+      - name: publisher
+        type: string
+        description: 出版方（人民教育出版社）
+      - name: status
+        type: string
+        dbDefault: "'draft'"
+    links:
+      - name: textbookOfSubject
+        source: Textbook
+        target: Subject
+        cardinality: many
+        foreignKey: subjectId      # many:1（同学科多本教材）
+      - name: textbookOfGrade
+        source: Textbook
+        target: Grade
+        cardinality: many
+        foreignKey: gradeId        # many:1（同年级可有多版本教材）
+    stateMachine:
+      # 教材生命周期：整理中（draft）→ 上架（published）→ 换版退役（archived）
+      field: status
+      initial: draft
+      states: [draft, published, archived]
+      transitions:
+        draft: [published]
+        published: [archived, draft]
+        archived: []               # 终态（历史教材只读保留）
+
+  # —— 六学科教材子类（单表继承；discriminator=subject code，extra 承载学科差异字段） ——
+  - name: MathTextbook
+    extends: Textbook
+    discriminator: { field: textbook_type, value: math }
+    description: 数学教材（符号推理与运算体系）
+  - name: ChineseTextbook
+    extends: Textbook
+    discriminator: { field: textbook_type, value: chn }
+    description: 语文教材（语言与文学）
+  - name: EnglishTextbook
+    extends: Textbook
+    discriminator: { field: textbook_type, value: eng }
+    description: 英语教材（外语语言）
+  - name: PhysicsTextbook
+    extends: Textbook
+    discriminator: { field: textbook_type, value: phys }
+    variantFields:
+      - name: labList
+        type: json
+        description: 实验清单（物理学科特有：实验名称/器材/安全要点）
+    description: 物理教材（实验与定量建模并重）
+  - name: ChemistryTextbook
+    extends: Textbook
+    discriminator: { field: textbook_type, value: chem }
+    variantFields:
+      - name: experimentList
+        type: json
+        description: 化学实验清单（含安全等级）
+    description: 化学教材（微观结构与反应）
+  - name: BiologyTextbook
+    extends: Textbook
+    discriminator: { field: textbook_type, value: bio }
+    variantFields:
+      - name: specimenList
+        type: json
+        description: 观察标本清单（生物学特有）
+    description: 生物教材（生命系统观察）
+
+  # —— 章节（树：自引用；有生命周期） ——
+  - name: TextbookChapter
+    table: ontology.textbook_chapter
+    description: 教材章节（树形；目录标题公开信息，手工+LLM 整理）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 稳定编码（math.g7.pep.ch01 / …ch01.s01）
+      - name: name
+        type: string
+        required: true
+        description: 章节标题（第一章 有理数 / 1.1 正数和负数）
+      - name: sortOrder
+        type: integer
+      - name: status
+        type: string
+        dbDefault: "'published'"
+    links:
+      - name: chapterOfTextbook
+        source: TextbookChapter
+        target: Textbook
+        cardinality: many
+        foreignKey: textbookId     # many:1（一本教材多章）；cardinality: one 会生成 UNIQUE(textbook_id) 的 1:1 语义，错误
+      - name: parentChapter
+        source: TextbookChapter
+        target: TextbookChapter
+        cardinality: many
+        foreignKey: parentId      # 自引用树（父章节有多个子节）
+    stateMachine:
+      # 章节生命周期：随教材版本整理/上架/退役（archived 章节只读保留）
+      field: status
+      initial: draft
+      states: [draft, published, archived]
+      transitions:
+        draft: [published]
+        published: [archived, draft]
+        archived: []
+
+  # —— 知识点（物理表已存在：edu.knowledge_points；YAML 声明 canonical 子集，只加列） ——
+  - name: KnowledgePoint
+    table: edu.knowledge_points
+    description: 知识点（细化到具体内容；37 片工具链 SQL 直读该表）
+    fields:
+      - name: name
+        type: string
+        required: true
+      - name: description
+        type: text
+      - name: subject
+        type: string
+        description: 学科 code（≡ Subject.code）
+      - name: gradeLevel
+        type: integer
+        description: 应掌握年级（1–12；≡ Grade.code 数值后缀）
+    # 注：chapter_id / code / status 为人工审阅 ALTER 新列（见 012 迁移），
+    # 不重复在此声明——已存在表走 CREATE TABLE IF NOT EXISTS 为 no-op。
+    links:
+      - name: kpOfChapter
+        source: KnowledgePoint
+        target: TextbookChapter
+        cardinality: many
+        foreignKey: chapterId     # 新列（ALTER 补）；一章多个知识点（1:N）
+    stateMachine:
+      # DSL 状态模式 → LLM 生成内容审核生命周期（治理生成质量这一最大风险）。
+      # archived = 教材换版时知识点随章节退役（只读保留，历史答题记录仍可关联）
+      field: status
+      initial: draft
+      states: [draft, reviewed, published, archived]
+      transitions:
+        draft: [reviewed]
+        reviewed: [published, draft]
+        published: [archived]
+        archived: []
+
+  # —— 前置依赖（关联类，多对多；canonical 桥表） ——
+  - name: KnowledgePointPrerequisite
+    table: ontology.kp_prerequisite
+    description: 知识点前置依赖（学习路径的 DAG 边；import 按 code 解析）
+    fields: []
+    links:
+      - name: prerequisiteFrom
+        source: KnowledgePointPrerequisite
+        target: KnowledgePoint
+        cardinality: many
+        foreignKey: fromKp         # many:1（一个知识点可被多条依赖边引用）
+      - name: prerequisiteTo
+        source: KnowledgePointPrerequisite
+        target: KnowledgePoint
+        cardinality: many
+        foreignKey: toKp           # many:1（一个知识点可有多条前置）
+    uniqueConstraints:
+      - [fromKp, toKp]             # 关联类幂等锚点

@@ -148,10 +148,14 @@ export async function getWrongQuestionList(reviewed) {
 }
 
 /**
- * 获取知识点列表
+ * 获取知识点列表（K12 全学科：/api/curriculum/*，本体驱动；可选 subject/gradeLevel 过滤）
  */
-export async function getKnowledgePoints() {
-  return request('/api/tuition/knowledge-points')
+export async function getKnowledgePoints(subject, gradeLevel) {
+  const params = []
+  if (subject) params.push(`subject=${subject}`)
+  if (gradeLevel) params.push(`gradeLevel=${gradeLevel}`)
+  const qs = params.length ? `?${params.join('&')}` : ''
+  return request(`/api/curriculum/knowledge-points${qs}`)
 }
 
 /**

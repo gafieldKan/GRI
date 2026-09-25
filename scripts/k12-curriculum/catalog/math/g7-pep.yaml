@@ -1,0 +1,84 @@
+# 人教版数学七年级上册教材目录种子
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学 七年级上册。
+# 编码约定：math.g7.pep.chNN（章）/ math.g7.pep.chNN.sNN（节）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+
+textbook:
+  code: math.g7.pep
+  name: 人教版数学七年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学       # 学科展示名（灌 ontology.subject.name / master_data Subject.label）
+  grade: G7
+
+chapters:
+  - code: math.g7.pep.ch01
+    name: 第一章 有理数
+    order: 1
+    children:
+      - code: math.g7.pep.ch01.s01
+        name: 1.1 正数和负数
+        order: 1
+      - code: math.g7.pep.ch01.s02
+        name: 1.2 有理数
+        order: 2
+      - code: math.g7.pep.ch01.s03
+        name: 1.3 有理数的加减法
+        order: 3
+      - code: math.g7.pep.ch01.s04
+        name: 1.4 有理数的乘除法
+        order: 4
+      - code: math.g7.pep.ch01.s05
+        name: 1.5 有理数的乘方
+        order: 5
+
+  - code: math.g7.pep.ch02
+    name: 第二章 整式的加减
+    order: 2
+    children:
+      - code: math.g7.pep.ch02.s01
+        name: 2.1 整式
+        order: 1
+      - code: math.g7.pep.ch02.s02
+        name: 2.2 整式的加减
+        order: 2
+
+  - code: math.g7.pep.ch03
+    name: 第三章 一元一次方程
+    order: 3
+    children:
+      - code: math.g7.pep.ch03.s01
+        name: 3.1 从算式到方程
+        order: 1
+      - code: math.g7.pep.ch03.s02
+        name: 3.2 解一元一次方程（一）——合并同类项与移项
+        order: 2
+      - code: math.g7.pep.ch03.s03
+        name: 3.3 解一元一次方程（二）——去括号与去分母
+        order: 3
+      - code: math.g7.pep.ch03.s04
+        name: 3.4 实际问题与一元一次方程
+        order: 4
+
+  - code: math.g7.pep.ch04
+    name: 第四章 几何图形初步
+    order: 4
+    children:
+      - code: math.g7.pep.ch04.s01
+        name: 4.1 几何图形
+        order: 1
+      - code: math.g7.pep.ch04.s02
+        name: 4.2 直线、射线、线段
+        order: 2
+      - code: math.g7.pep.ch04.s03
+        name: 4.3 角
+        order: 3
+      - code: math.g7.pep.ch04.s04
+        name: 4.4 课题学习 设计制作长方体形状的包装纸盒
+        order: 4

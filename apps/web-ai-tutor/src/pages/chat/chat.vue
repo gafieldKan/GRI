@@ -1,7 +1,7 @@
 <template>
   <ErrorBoundary :showDetails="true" :logError="true">
     <web-chat
-      title="AI 智学数学老师"
+      :title="chatTitle"
       placeholder="请输入你的问题或答案..."
       :enableMemory="true"
       :initialMessage="initialMessage"
@@ -21,6 +21,10 @@
 import WebChat from './components/WebChat.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import { useUserStore } from '@/store/user'
+
+// K12 全学科展示名（subject chip 与后端 code 对齐）
+const SUBJECT_NAMES = { math: '数学', chn: '语文', eng: '英语', phys: '物理', chem: '化学', bio: '生物', hist: '历史', geo: '地理', pol: '政治' }
 
 export default {
   components: {
@@ -30,6 +34,13 @@ export default {
   },
   data() {
     return { initialMessage: '' }
+  },
+  computed: {
+    // 标题随学生所选学科（K12 全学科，去数学硬编码）
+    chatTitle() {
+      const sub = useUserStore().subject
+      return `AI 智学${SUBJECT_NAMES[sub] || ''}老师`
+    }
   },
   // camera 等跨页带参：解析 ocrResult（识别结果 JSON）/ image（图片路径）/ text（题目文本）
   // → 拼成首条消息交给 WebChat 自动送出。uni-app H5 用 onLoad 拿页面参数。

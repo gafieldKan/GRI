@@ -331,13 +331,17 @@ export default {
     }))
 
     const formatSubjects = computed(() => {
+      // K12 全学科 code 与后端对齐（math/phys/chem/bio/eng/chn…）
       const subjectNames = {
         math: '数学',
-        physics: '物理',
-        chemistry: '化学',
-        biology: '生物',
-        english: '英语',
-        chinese: '语文'
+        chn: '语文',
+        eng: '英语',
+        phys: '物理',
+        chem: '化学',
+        bio: '生物',
+        hist: '历史',
+        geo: '地理',
+        pol: '政治'
       }
       return settingsStore.preferredSubjects
         .map(id => subjectNames[id] || id)
@@ -395,13 +399,14 @@ export default {
     }
 
     const manageSubjects = () => {
+      // K12 全学科 code 与后端对齐
       const allSubjects = [
         { id: 'math', name: '数学', icon: '📐' },
-        { id: 'physics', name: '物理', icon: '⚡' },
-        { id: 'chemistry', name: '化学', icon: '🧪' },
-        { id: 'biology', name: '生物', icon: '🧬' },
-        { id: 'english', name: '英语', icon: '📖' },
-        { id: 'chinese', name: '语文', icon: '📝' }
+        { id: 'chn', name: '语文', icon: '📝' },
+        { id: 'eng', name: '英语', icon: '📖' },
+        { id: 'phys', name: '物理', icon: '⚡' },
+        { id: 'chem', name: '化学', icon: '🧪' },
+        { id: 'bio', name: '生物', icon: '🧬' }
       ]
 
       uni.showActionSheet({

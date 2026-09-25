@@ -285,6 +285,7 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import Chip from '@/components/ui/Chip.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { openAgent, sendAgentMessage, getAgentMemory, forgetAgentMemory, adminCapability, getAgentDiagnosis, getAgentWrongQuestions, getAgentReviewSequence, getAgentMasteryTrend, gradeAgentAnswer, getAgentKpQuestions, getAgentLesson, getAgentLessonSubmit, getPlans, completePlanTask } from '@/api'
+import { useUserStore } from '@/store/user'
 
 export default {
   name: 'TeacherAgent',
@@ -559,7 +560,7 @@ export default {
       loading.value = true
       await scrollToBottom()
 
-      const res = await sendAgentMessage(content)
+      const res = await sendAgentMessage(content, useUserStore().subject) // subject 兜底：AI 教师感知所选学科
       loading.value = false
 
       const reply = String(res?.message || content).trim()

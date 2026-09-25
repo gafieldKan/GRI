@@ -6,16 +6,41 @@
       :actions="[{ label: '切换学科', handler: showSubjectPicker }]"
     />
 
-    <!-- 学科选择器 -->
+    <!-- 学科选择器（三级联动：学段 → 年级 → 学科） -->
     <view class="subject-tabs" v-if="showSubjectSelector">
-      <Chip
-        v-for="subject in knowledgeStore.subjectList"
-        :key="subject.id"
-        :label="`${subject.icon} ${subject.name}`"
-        :color="subject.id"
-        :variant="knowledgeStore.currentSubject === subject.id ? 'filled' : 'outlined'"
-        @click="() => selectSubject(subject.id)"
-      />
+      <!-- 顶层：学段 -->
+      <view class="cascade-row" v-if="knowledgeStore.stageList.length">
+        <Chip
+          v-for="stage in knowledgeStore.stageList"
+          :key="stage.id"
+          :label="stage.name"
+          color="gray"
+          :variant="knowledgeStore.currentStage === stage.id ? 'filled' : 'outlined'"
+          @click="() => knowledgeStore.setStage(stage.id)"
+        />
+      </view>
+      <!-- 中层：年级（当前学段内，数字年级） -->
+      <view class="cascade-row" v-if="knowledgeStore.gradesOfStage.length">
+        <Chip
+          v-for="g in knowledgeStore.gradesOfStage"
+          :key="g.id"
+          :label="g.name"
+          color="gray"
+          :variant="knowledgeStore.currentGrade === Number(g.code.replace('G', '')) ? 'filled' : 'outlined'"
+          @click="() => knowledgeStore.setGrade(Number(g.code.replace('G', '')))"
+        />
+      </view>
+      <!-- 底层：学科 -->
+      <view class="cascade-row">
+        <Chip
+          v-for="subject in knowledgeStore.subjectList"
+          :key="subject.id"
+          :label="`${subject.icon} ${subject.name}`"
+          :color="subject.id"
+          :variant="knowledgeStore.currentSubject === subject.id ? 'filled' : 'outlined'"
+          @click="() => selectSubject(subject.id)"
+        />
+      </view>
     </view>
 
     <!-- 图谱容器 -->
@@ -78,7 +103,7 @@
         </view>
         <view class="detail-section">
           <text class="section-label">所属章节</text>
-          <text class="section-value">{{ selectedNode.chapter || '未分类' }}</text>
+          <text class="section-value">{{ getNodeChapterName(selectedNode) }}</text>
         </view>
         <view class="detail-section">
           <text class="section-label">难度等级</text>
@@ -213,6 +238,7 @@ export default {
     }
 
     const loadGraph = async () => {
+      await knowledgeStore.loadCatalog() // 三级联动数据源（学段/年级/学科，幂等）
       await knowledgeStore.loadKnowledgeGraph()
       await knowledgeStore.calculateLearningPath()
       hasGraphData.value = knowledgeStore.graphData.nodes.length > 0
@@ -508,8 +534,22 @@ export default {
     }
 
     const getSubjectName = (subjectId) => {
-      const subject = knowledgeStore.subjectList.find(s => s.id === subjectId)
-      return subject ? subject.name : subjectId
+      // K12 全学科 code 兜底表；真源清单优先（subjectList 接 /api/curriculum/subjects）
+      const names = { math: '数学', chn: '语文', eng: '英语', phys: '物理', chem: '化学', bio: '生物', hist: '历史', geo: '地理', pol: '政治' }
+      const real = knowledgeStore.subjectList.find(s => s.id === subjectId)
+      if (real) return real.name
+      return names[subjectId] || subjectId
+    }
+
+    // 知识点所属章节名：图谱节点只有 chapterId，从章节节点（type=chapter）反查
+    const getNodeChapterName = (node) => {
+      if (!node) return '未分类'
+      if (node.chapterName || node.chapter) return node.chapterName || node.chapter
+      if (node.chapterId) {
+        const ch = knowledgeStore.graphData.nodes.find(n => n.type === 'chapter' && n.id === node.chapterId)
+        if (ch) return ch.name
+      }
+      return '未分类'
     }
 
     const getMasteryColor = (mastery) => {
@@ -551,6 +591,7 @@ export default {
       showRelated,
       showSubjectPicker,
       getSubjectName,
+      getNodeChapterName,
       getMasteryColor,
       selectAndPractice,
       onTouchStart,
@@ -572,8 +613,15 @@ export default {
 /* 学科标签 */
 .subject-tabs {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 0 16px 12px;
+}
+
+/* 三级联动每行（学段/年级/学科 chips 横排滚动） */
+.cascade-row {
+  display: flex;
+  gap: 8px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }

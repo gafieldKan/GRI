@@ -5,22 +5,25 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getKnowledgePoints, getKnowledgeGraph } from '@/api/index.js'
+import { getKnowledgePoints, getKnowledgeGraph, listSubjects, listGrades } from '@/api/index.js'
 
-// 学科配置
+// 前端图标/配色兜底（展示维度；学科清单真源是 /api/curriculum/subjects → ontology.subject）
 const SUBJECTS = {
   math: { name: '数学', icon: '📐', color: '#4a6cf7' },
-  physics: { name: '物理', icon: '⚡', color: '#faad14' },
-  chemistry: { name: '化学', icon: '🧪', color: '#ff4d4f' },
-  biology: { name: '生物', icon: '🧬', color: '#52c41a' },
-  english: { name: '英语', icon: '📖', color: '#722ed1' },
-  chinese: { name: '语文', icon: '📝', color: '#eb2f96' }
+  phys: { name: '物理', icon: '⚡', color: '#faad14' },
+  chem: { name: '化学', icon: '🧪', color: '#ff4d4f' },
+  bio: { name: '生物', icon: '🧬', color: '#52c41a' },
+  eng: { name: '英语', icon: '📖', color: '#722ed1' },
+  chn: { name: '语文', icon: '📝', color: '#eb2f96' }
 }
 
 export const useKnowledgeStore = defineStore('knowledge', () => {
   // ─── State ───
   const currentSubject = ref('math')
-  const currentGrade = ref('八年级')
+  const currentGrade = ref(7)        // 数字年级（≡ ontology.grade code G7 后缀 / edu.knowledge_points.grade_level）
+  const currentStage = ref('JUNIOR') // 学段（三级联动顶层）
+  const subjects = ref([])           // /api/curriculum/subjects 真数
+  const grades = ref([])             // /api/curriculum/grades 眤数（按学段分组）
   const knowledgeTree = ref([])
   const knowledgePoints = ref([])
   const masteryMap = ref({}) // { pointId: masteryValue 0-1 }
@@ -34,12 +37,41 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   const nextRecommended = ref(null)
 
   // ─── Getters ───
-  const subjectInfo = computed(() => SUBJECTS[currentSubject.value] || SUBJECTS.math)
+  // 学科展示信息：真源清单优先，图标/配色前端兜底（新学科不丢展示）
+  const subjectInfo = computed(() => {
+    const real = subjects.value.find(s => s.code === currentSubject.value)
+    const fallback = SUBJECTS[currentSubject.value] || SUBJECTS.math
+    return { ...fallback, ...real, name: real?.name || fallback.name }
+  })
 
-  const subjectList = computed(() => Object.entries(SUBJECTS).map(([key, val]) => ({
-    id: key,
-    ...val
-  })))
+  // 学科清单：真数优先（code 为 id，联动 subject= 参数），无真数时前端兜底
+  const subjectList = computed(() => {
+    if (subjects.value.length) {
+      return subjects.value.map(s => ({
+        id: s.code,
+        ...(SUBJECTS[s.code] || { name: s.code, icon: '📚', color: '#4a6cf7' }),
+        name: s.name || s.code
+      }))
+    }
+    return Object.entries(SUBJECTS).map(([key, val]) => ({
+      id: key,
+      ...val
+    }))
+  })
+
+  // 学段列表（真数；JUNIOR/SENIOR/PRIMARY）
+  const stageList = computed(() => {
+    const seen = new Map()
+    for (const g of grades.value) {
+      if (g.stage_code && !seen.has(g.stage_code)) seen.set(g.stage_code, { id: g.stage_code, name: g.stage_name })
+    }
+    return [...seen.values()]
+  })
+
+  // 当前学段的年级（三级联动中层）
+  const gradesOfStage = computed(() =>
+    grades.value.filter(g => !currentStage.value || g.stage_code === currentStage.value)
+  )
 
   const pointsByTopic = computed(() => {
     const grouped = {}
@@ -78,11 +110,24 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   )
 
   // ─── Actions ───
-  async function loadKnowledgePoints(subject = currentSubject.value, grade = currentGrade.value) {
+
+  // 学段/年级/学科清单（三级联动数据源；游客可见目录端点）
+  async function loadCatalog() {
+    if (grades.value.length) return // 幂等
+    try {
+      const [subs, grs] = await Promise.all([listSubjects(), listGrades()])
+      subjects.value = subs || []
+      grades.value = grs || []
+    } catch (e) {
+      console.error('[Knowledge] Load catalog failed:', e)
+    }
+  }
+
+  async function loadKnowledgePoints(subject = currentSubject.value, gradeLevel = currentGrade.value) {
     loading.value = true
     error.value = null
     try {
-      const data = await getKnowledgePoints({ subject, grade })
+      const data = await getKnowledgePoints({ subject, gradeLevel })
       knowledgePoints.value = data || []
       // 初始化 masteryMap
       data?.forEach(p => {
@@ -98,11 +143,11 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     }
   }
 
-  async function loadKnowledgeGraph(subject = currentSubject.value, grade = currentGrade.value) {
+  async function loadKnowledgeGraph(subject = currentSubject.value, gradeLevel = currentGrade.value) {
     loading.value = true
     error.value = null
     try {
-      const data = await getKnowledgeGraph(subject, grade)
+      const data = await getKnowledgeGraph({ subject, gradeLevel })
       if (data) {
         graphData.value = {
           nodes: data.nodes || [],
@@ -134,11 +179,22 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     return nodes.filter(n => !hasParent.has(n.id)).map(n => nodeMap[n.id])
   }
 
-  function setSubject(subject, grade) {
+  // 选科（三级联动动作）：学段→年级→学科，联动刷新知识点+图谱
+  function setSubject(subject, gradeLevel = currentGrade.value) {
     currentSubject.value = subject
-    currentGrade.value = grade
-    loadKnowledgePoints(subject, grade)
-    loadKnowledgeGraph(subject, grade)
+    currentGrade.value = gradeLevel
+    loadKnowledgePoints(subject, gradeLevel)
+    loadKnowledgeGraph(subject, gradeLevel)
+  }
+
+  function setStage(stage) {
+    currentStage.value = stage
+  }
+
+  function setGrade(gradeLevel) {
+    currentGrade.value = gradeLevel
+    loadKnowledgePoints(currentSubject.value, gradeLevel)
+    loadKnowledgeGraph(currentSubject.value, gradeLevel)
   }
 
   function selectPoint(pointId) {
@@ -210,7 +266,8 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
 
   function reset() {
     currentSubject.value = 'math'
-    currentGrade.value = '八年级'
+    currentGrade.value = 7
+    currentStage.value = 'JUNIOR'
     knowledgeTree.value = []
     knowledgePoints.value = []
     masteryMap.value = {}
@@ -226,6 +283,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     // State
     currentSubject,
     currentGrade,
+    currentStage,
+    subjects,
+    grades,
     knowledgeTree,
     knowledgePoints,
     masteryMap,
@@ -239,6 +299,8 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     // Getters
     subjectInfo,
     subjectList,
+    stageList,
+    gradesOfStage,
     pointsByTopic,
     masteryStats,
     weakPoints,
@@ -246,9 +308,12 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     selectedPoint,
 
     // Actions
+    loadCatalog,
     loadKnowledgePoints,
     loadKnowledgeGraph,
     setSubject,
+    setStage,
+    setGrade,
     selectPoint,
     updateMastery,
     batchUpdateMastery,
