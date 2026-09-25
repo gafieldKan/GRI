@@ -18,16 +18,10 @@ describe('public-routes 公开读白名单', () => {
     });
   });
 
-  describe('学情公开知识图谱', () => {
-    it('放行 GET 知识点列表与某点下的题', () => {
-      expect(isPublicRoute('GET', '/tuition/knowledge-points')).toBe(true);
-      expect(isPublicRoute('GET', '/tuition/knowledge-points/kp1/questions')).toBe(true);
-    });
-
-    it('M5 题目库/知识图谱公开读；个人数据与写操作不放行', () => {
+  describe('学情公开题目库', () => {
+    it('M5 题目库公开读；个人数据与写操作不放行', () => {
       expect(isPublicRoute('GET', '/tuition/questions')).toBe(true);
       expect(isPublicRoute('GET', '/tuition/questions/q1')).toBe(true);
-      expect(isPublicRoute('GET', '/tuition/knowledge-graph')).toBe(true);
       // 题目的生成/REST 写不放行
       expect(isPublicRoute('POST', '/tuition/questions')).toBe(false);
       expect(isPublicRoute('POST', '/tuition/questions/generate')).toBe(false);
@@ -37,6 +31,12 @@ describe('public-routes 公开读白名单', () => {
       expect(isPublicRoute('GET', '/tuition/wrong-questions')).toBe(false);
       expect(isPublicRoute('POST', '/tuition/exam/analyze')).toBe(false);
       expect(isPublicRoute('GET', '/tuition/analysis/report/latest/student')).toBe(false);
+    });
+
+    it('已退役的旧知识点/图谱端点不再放行（K12 由 /api/curriculum/* 承接）', () => {
+      expect(isPublicRoute('GET', '/tuition/knowledge-points')).toBe(false);
+      expect(isPublicRoute('GET', '/tuition/knowledge-points/kp1/questions')).toBe(false);
+      expect(isPublicRoute('GET', '/tuition/knowledge-graph')).toBe(false);
     });
   });
 
@@ -79,22 +79,6 @@ describe('public-routes 公开读白名单', () => {
       expect(isPublicRoute('POST', '/ontology/objects')).toBe(false);
       expect(isPublicRoute('PUT', '/ontology/objects/CateringOrder')).toBe(false);
       expect(isPublicRoute('DELETE', '/ontology/objects/CateringOrder')).toBe(false);
-    });
-  });
-
-  describe('引用主数据字典（M4 master-data）', () => {
-    const EID = '90000000-0000-0000-0000-000000000001';
-
-    it('放行 GET 分类概览 / 某字典条目 / 单条目(显式 UUID)', () => {
-      expect(isPublicRoute('GET', '/master-data/kinds')).toBe(true);
-      expect(isPublicRoute('GET', '/master-data/kinds/Subject')).toBe(true);
-      expect(isPublicRoute('GET', `/master-data/${EID}`)).toBe(true);
-    });
-
-    it('写方法 / 非 UUID 单条目路径不放行', () => {
-      expect(isPublicRoute('POST', '/master-data/kinds')).toBe(false);
-      expect(isPublicRoute('PUT', '/master-data/kinds/Subject')).toBe(false);
-      expect(isPublicRoute('GET', '/master-data/not-a-uuid')).toBe(false);
     });
   });
 

@@ -1,11 +1,3 @@
-export interface KnowledgePoint {
-  id: string;
-  name: string;
-  description?: string;
-  level?: string;
-  parent_id?: string;
-}
-
 export interface Question {
   id: string;
   content: string;

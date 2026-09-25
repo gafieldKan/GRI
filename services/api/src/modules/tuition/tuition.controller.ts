@@ -19,7 +19,8 @@ import { Request } from 'express';
  * 学情统一门面（M5 AI 垂直：web-ai-tutor + mini-program-ai-tutor 收敛到 /api）。
  *
  * 鉴权：全局 AuthRouterMiddleware 白名单见 src/auth/public-routes.ts ——
- *   仅知识图谱/知识点/题目公开读；其余一律强制鉴权，身份=req.auth.externalId。
+ *   仅题目库公开读；其余一律强制鉴权，身份=req.auth.externalId。
+ * 知识点/图谱端点已退役：K12 全学科由 /api/curriculum/*（本体驱动门面）承接。
  * 所有权：个人 handler 以 externalId 为真源；:studentId/:examId/:sessionId/:planId
  *   参数仅作越权校验（不一致 → 403），彻底消除遗留「鉴权只看 gate 不看归属」的 IDOR。
  *
@@ -38,23 +39,6 @@ export class TuitionController {
     const uid = this.userId(req);
     if (studentId && studentId !== uid) throw new ForbiddenException('无权访问他人数据');
     return uid;
-  }
-
-  // ===================== 知识图谱（公开读） =====================
-
-  @Get('knowledge-points')
-  getKnowledgePoints() {
-    return this.tuitionService.getKnowledgePoints();
-  }
-
-  @Get('knowledge-points/:id/questions')
-  getQuestions(@Param('id') id: string) {
-    return this.tuitionService.getQuestionsByKnowledgePoint(id);
-  }
-
-  @Get('knowledge-graph')
-  getKnowledgeGraph() {
-    return this.tuitionService.getKnowledgeGraph();
   }
 
   // ===================== 题目 =====================

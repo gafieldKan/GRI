@@ -26,13 +26,10 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   // 支付网关通知回调（M5 垂直一）：网关 POST 进来推收单结果。
   // 公开放行 BUT 强签名校验 + 幂等 + 金额锁库 —— 伪造/重放无效（public-routes 只决定鉴权，不抵消服务内验签）。
   get('POST', /^\/food\/payments\/notify\/?$/),
-  // 学情公开知识图谱（M3 tuition 门面）：知识点目录游客可看
-  get('GET', /^\/tuition\/knowledge-points\/?$/),
-  get('GET', /^\/tuition\/knowledge-points\/[^/]+\/questions\/?$/),
-  // M5 AI 垂直：题目库 + 知识图谱公开读（题目无个人隐私，用于冷启动浏览/首页示例）
+  // 学情公开题目库（M5 AI 垂直）：题目无个人隐私，用于冷启动浏览/首页示例。
+  // 知识点/图谱已退役——K12 全学科由 /api/curriculum/* 承接（本体驱动）。
   get('GET', /^\/tuition\/questions\/?$/),
   get('GET', /^\/tuition\/questions\/[^/]+\/?$/),
-  get('GET', /^\/tuition\/knowledge-graph\/?$/),
   // 组织公开目录（M4 organization 门面）：组织清单/树/搜索/详情/子组织游客可看。
   // id 用显式 UUID 形态匹配，避免吞掉 /my、/tree、/search、members、roles、invitations 等受保护字面路径。
   get('GET', /^\/organizations\/?$/),
@@ -43,10 +40,16 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   // 本体语义真源目录（M4 ontology 门面）：只读知识端点，游客可内省（不承载写）
   get('GET', /^\/ontology\/objects\/?$/),
   get('GET', /^\/ontology\/objects\/[^/]+(?:\/(?:chain|dispatch\/[^/]+))?\/?$/),
-  // 引用主数据字典（M4 master-data 门面）：只读参考数据，游客可读（分类/条目）
-  get('GET', /^\/master-data\/kinds\/?$/),
-  get('GET', /^\/master-data\/kinds\/[^/]+\/?$/),
-  get('GET', /^\/master-data\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/),
+  // K12 课程体系目录（curriculum 门面，本体驱动）：目录公开读（学科/学段/年级/教材/章节/知识点）。
+  // knowledge-graph 游客可看结构、登录后叠加个人掌握度（OptionalAuth 语义）。
+  // review 审核动作（POST）不入白名单 → 强制鉴权。
+  get('GET', /^\/curriculum\/subjects\/?$/),
+  get('GET', /^\/curriculum\/grades\/?$/),
+  get('GET', /^\/curriculum\/textbooks\/?$/),
+  get('GET', /^\/curriculum\/chapters\/?$/),
+  get('GET', /^\/curriculum\/knowledge-points\/?$/),
+  get('GET', /^\/curriculum\/knowledge-points\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/),
+  get('GET', /^\/curriculum\/knowledge-graph\/?$/),
   // 数据大屏统计（M5 dashboard 子切片）：只读聚合分析端点 —— 已从游客白名单移除，改强制鉴权，
   // 防游客看聚合运营数据（portal 组织/运营台加固）。登录用户经 /api/identity 鉴权后仍可访问。
 ];

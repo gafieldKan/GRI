@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import {
-  KnowledgePoint,
   Question,
   PracticeSession,
   WrongQuestion,
@@ -62,36 +61,7 @@ export class TuitionService {
     private readonly tutorSessionAgent: TutorSessionAgent,
   ) {}
 
-  // ===================== 知识图谱 =====================
-
-  async getKnowledgePoints(): Promise<KnowledgePoint[]> {
-    const res = await this.db.query(
-      'SELECT id, name, description, level, parent_id FROM edu.knowledge_points ORDER BY name',
-    );
-    return res.rows as KnowledgePoint[];
-  }
-
-  /** 图谱：节点 = 知识点，边 = parent→child 层级。 */
-  async getKnowledgeGraph(): Promise<{ nodes: any[]; edges: any[] }> {
-    const res = await this.db.query(
-      'SELECT id, name, description, level, parent_id, subject FROM edu.knowledge_points',
-    );
-    const nodes = res.rows.map((r: any) => ({ id: r.id, label: r.name, description: r.description, level: r.level, subject: r.subject }));
-    const edges = res.rows
-      .filter((r: any) => r.parent_id)
-      .map((r: any) => ({ source: r.parent_id, target: r.id }));
-    return { nodes, edges };
-  }
-
   // ===================== 题目 =====================
-
-  async getQuestionsByKnowledgePoint(kpId: string): Promise<Question[]> {
-    const res = await this.db.query(
-      'SELECT * FROM edu.questions WHERE knowledge_point_id = $1',
-      [kpId],
-    );
-    return res.rows as Question[];
-  }
 
   async getQuestionBank(query: { subject?: string; knowledgePoint?: string; limit?: number }): Promise<Question[]> {
     // subject 在 edu.knowledge_points 而非 edu.questions → JOIN 后在 kp.subject 上过滤。
