@@ -48,31 +48,6 @@ jobs:
       - run: npm ci
       - run: npm run test --workspace=gri-auth-center
 
-  lowcode-test:
-    name: Lowcode Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run test --workspace=packages/lowcode
-
-  lowcode-lint:
-    name: Lowcode Lint & Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run lint --workspace=packages/lowcode
-      - run: npm run format:check --workspace=packages/lowcode
-
   web-ai-tutor-test:
     name: Web AI Tutor Frontend Tests
     runs-on: ubuntu-latest

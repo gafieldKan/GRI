@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', {
     // user shape: { id, username, email, phone, avatarUrl, memberLevel, status }
     isLoggedIn: false,
     loginMethod: null,   // 'email' | 'sms' | 'wechat' | 'alipay' | 'apple'
-    activeProduct: 'restaurant', // 'restaurant' | 'ai-tutor' | 'lowcode'
+    activeProduct: 'restaurant', // 'restaurant' | 'ai-tutor'
     darkMode: false,
     // Track whether we've attempted initial auth restore
     _hydrated: false

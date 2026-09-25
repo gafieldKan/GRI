@@ -21,9 +21,9 @@
 /**
  * 电子签名板组件（uni-app 跨端版）
  *
- * 移植自 packages/lowcode/lowcode/components/signature/SignaturePad.jsx 的
- * 纯 Canvas 手写签名逻辑（二次贝塞尔曲线 + 速度自适应笔宽），核心算法保持一致，
- * 但改为 uni-app 的 <canvas> + uni.createCanvasContext，同时支持 H5 与微信小程序。
+ * 纯 Canvas 手写签名逻辑（二次贝塞尔曲线 + 速度自适应笔宽）——原 React 版组件
+ * 已随低代码平台退役，本组件为该算法的 uni-app 独立实现并持续演进，
+ * 改用 uni-app 的 <canvas> + uni.createCanvasContext，同时支持 H5 与微信小程序。
  *
  * 与 React 版差异：
  *  - 不依赖 window/PointerEvent（小程序无），使用 uni-app 触摸/鼠标事件

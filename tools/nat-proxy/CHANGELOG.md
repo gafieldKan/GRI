@@ -29,7 +29,6 @@
 - 所有命令参数分离传递，确保安全性
 
 #### 代码改进
-- FRPManagerPanel 组件添加完整的 API 调用逻辑
 - 添加错误处理和降级处理
 - 优化用户体验，添加 loading 和提示信息
 
@@ -37,12 +36,6 @@
 
 ```
 nat-proxy/
-├── lowcode-plugin/frp-manager/
-│   ├── index.js                  # 插件入口（已更新）
-│   ├── FRPManagerPanel.jsx       # React 组件（已完成）
-│   ├── ngrok-controller.js       # ngrok 控制器（已修复）
-│   └── api/
-│       └── frp-api.js            # 后端 API 路由（新增）
 ├── scripts/
 │   ├── deploy-frps.sh            # frps 部署脚本
 │   ├── configure-frpc.sh         # frpc 配置脚本

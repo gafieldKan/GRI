@@ -31,12 +31,6 @@
 - ✅ 可搭建多个隧道
 - ⚠️ 需要申请云服务器
 
-## 低代码平台集成
-
-- **FRP Manager 插件**: `lowcode-plugin/frp-manager/`
-- **ngrok 控制器**: `lowcode-plugin/frp-manager/ngrok-controller.js`
-- **可视化面板**: 在低代码平台中管理隧道
-
 ## 脚本工具
 
 | 脚本 | 说明 |

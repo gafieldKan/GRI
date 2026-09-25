@@ -136,7 +136,7 @@ services:
     image: node:20-alpine
     container_name: gri-web
     restart: unless-stopped
-    command: sh -c "cd /app && npm install && npx uni --host 0.0.0.0 --port 5173"
+    command: sh -c "cd /app && npm install --no-audit --no-fund && npx uni --host 0.0.0.0 --port 5173"
     working_dir: /app
     ports:
       - "5174:5173"
@@ -157,12 +157,14 @@ services:
     image: node:20-alpine
     container_name: gri-web-ai-tutor
     restart: unless-stopped
-    command: sh -c "cd /app && npm install && npx uni --host 0.0.0.0 --port 5175"
+    command: sh -c "cd /app && npm install --no-audit --no-fund && npx uni --host 0.0.0.0 --port 5175"
     working_dir: /app
     ports:
       - "5175:5175"
     volumes:
       - ./apps/web-ai-tutor:/app
+      # 容器内 node_modules 用匿名卷隔离（勿以 root 污染宿主挂载目录）
+      - /app/node_modules
       # 共享加工面：@gri/auth-client(file:../../packages/auth-client→/packages) 与
       # @styles 别名(../../styles→/styles) 在容器内解析所必需 —— 否则 vite import 解析失败、SPA 白页。
       - ./packages:/packages:ro
@@ -178,12 +180,14 @@ services:
     image: node:20-alpine
     container_name: gri-portal
     restart: unless-stopped
-    command: sh -c "cd /app && npm install && npx uni --host 0.0.0.0 --port 5176"
+    command: sh -c "cd /app && npm install --no-audit --no-fund && npx uni --host 0.0.0.0 --port 5176"
     working_dir: /app
     ports:
       - "5176:5176"
     volumes:
       - ./apps/portal:/app
+      # 容器内 node_modules 用匿名卷隔离（勿以 root 污染宿主挂载目录）
+      - /app/node_modules
       - ./packages:/packages:ro
       - ./styles:/styles:ro
     environment:

@@ -48,11 +48,6 @@ if [ -d "services/backend" ]; then
     echo "  - services/backend: 待安装"
 fi
 
-# 低代码包
-if [ -d "packages/lowcode" ]; then
-    echo "  - packages/lowcode: 待安装"
-fi
-
 echo ""
 echo "✅ Bootstrap 完成!"
 echo ""

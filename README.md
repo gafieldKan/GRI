@@ -17,23 +17,25 @@ GRI 是一个多行业平台 Monorepo，包含三大核心系统：
 
 ```
 GRI/
-├── apps/                          # 前端应用
-│   ├── web/                       # 订餐 Web 端 (uni-app)
-│   ├── web-ai-tutor/              # AI 辅导 H5 (uni-app)
-│   ├── mini-program/              # 订餐微信小程序
-│   └── mini-program-ai-tutor/     # AI 辅导微信小程序
+├── apps/                          # 前端应用 (uni-app)
+│   ├── web/                       # 订餐 H5 (端口 5174)
+│   ├── web-ai-tutor/              # AI 辅导 H5
+│   ├── mini-program-ai-tutor/     # AI 辅导微信小程序
+│   └── portal/                    # 组织管理台 H5
 ├── services/                      # 后端服务
-│   ├── backend/                   # 订餐后端 (Express, 端口 3002)
-│   └── ai-tutor-backend/          # AI 辅导后端 (Express, 端口 3003)
+│   ├── api/                       # 单后端 (Nest 风格, 端口 3002) —— 全域 API
+│   └── auth-center/               # 认证中心 (端口 3004)
 ├── packages/                      # 共享包
-│   └── lowcode/                   # 低代码平台 (React + Ant Design)
+│   ├── ontology/                  # 本体 DSL (zod 契约 + ontologies/*.yaml 真源)
+│   ├── ontology-engine/           # 本体 OO 引擎 (继承/多态/接口/状态机)
+│   ├── codegen/                   # YAML → SQL/TS 确定性生成器 (防漂移)
+│   ├── agent-core/                # 浓缩 AI Agent 底座 (工具/记忆/模型路由)
+│   ├── jwt-verifier/              # RS256 JWT 校验 (Express/Nest 中间件)
+│   └── auth-client/               # 前端鉴权客户端
 ├── tools/                         # 工具集
 │   └── nat-proxy/                 # NAT 穿透代理 (frp + ngrok)
 ├── docs/                          # 项目文档
-│   ├── ARCHITECTURE.md            # 架构概览
-│   ├── TESTING.md                 # 测试指南
-│   └── CICD.md                    # CI/CD 流水线
-├── scripts/                       # 构建 & E2E 脚本
+├── scripts/                       # 构建脚本 + k12-curriculum 数据管线
 ├── docker-compose.yml             # 全栈 Docker 编排
 └── .github/workflows/             # CI 配置
 ```

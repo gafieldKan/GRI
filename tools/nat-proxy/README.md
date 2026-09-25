@@ -126,11 +126,8 @@ FRP Manager 插件已集成到低代码平台，提供：
 ### 使用方式
 
 ```javascript
-// 在低代码平台中导入插件
-import frpManager from './nat-proxy/lowcode-plugin/frp-manager/index.js'
-
-// 初始化插件
-frpManager.init(appContext)
+// FRP Manager 已随低代码平台一并退役（本体驱动改造，2026-09）
+// nat-proxy 本体（frps/frpc/ngrok 脚本 + 测试）不受影响
 ```
 
 ### API 接口
@@ -161,12 +158,6 @@ nat-proxy/
 ├── config/                   # 配置文件目录
 │   ├── frps.ini.tpl         # frps 配置模板
 │   └── frpc.ini.tpl         # frpc 配置模板
-├── lowcode-plugin/           # 低代码平台插件
-│   └── frp-manager/         # FRP 管理插件
-│       ├── index.js         # 插件入口
-│       ├── FRPManagerPanel.jsx  # React 组件
-│       └── api/
-│           └── frp-api.js   # 后端 API 路由
 ├── docs/                     # 文档目录
 │   ├── deployment.md        # FRP 部署指南
 │   ├── ngrok-solution.md    # ngrok 方案
