@@ -12,7 +12,6 @@
 | services/ai-tutor-backend | `node:test` + `node:assert` | `npm run test --workspace=services/ai-tutor-backend` | 真实 Node.js, mock LLM API |
 | apps/web-ai-tutor | Vitest + jsdom + @vue/test-utils | `npm run test:run --workspace=apps/web-ai-tutor` | jsdom 浏览器模拟 |
 | apps/mini-program-ai-tutor | Vitest + jsdom + @vue/test-utils | `npm run test:run --workspace=apps/mini-program-ai-tutor` | jsdom + uni API mock |
-| packages/lowcode | Vitest + jsdom + React Testing Library | `npm run test --workspace=packages/lowcode` | jsdom |
 | tools/nat-proxy | `node:test` + `node:assert` | `cd tools/nat-proxy && node --test tests/*.test.js` | 真实 Node.js, mock 子进程 |
 | E2E | Manual + CI smoke | `node scripts/full-test.js` | Docker Compose 全栈 |
 
@@ -30,7 +29,6 @@ npm run test:ai-tutor
 # 前端测试
 npm run test:web-ai      # AI 辅导 H5
 npm run test:mini-ai     # AI 辅导小程序
-npm run test:lowcode     # 低代码平台
 
 # 全量测试 (顺序执行)
 npm run test:all
@@ -110,6 +108,6 @@ docker compose down
 
 GitHub Actions workflow: `.github/workflows/monorepo-ci.yml`
 
-- 5 个并行 job: backend-test, ai-tutor-test, lowcode-test, web-test, e2e-test
+- 并行 job: backend-test, auth-center-test, web-ai-tutor-test, mini-ai-tutor-test, nat-proxy-test, frontend-build, e2e-smoke（lowcode 已退役）
 - PostgreSQL service containers 用于数据库依赖的测试
 - Matrix strategy 覆盖不同 Node.js 版本

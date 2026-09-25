@@ -24,8 +24,6 @@
 | `backend-test` | `npm run test --workspace=gri-api` | services/api jest 套件 |
 | `auth-center-test` | `npm run test --workspace=gri-auth-center` | 签发中心 jest（含身份目录 PII 面） |
 | `ai-tutor-test` | `npm run test --workspace=services/ai-tutor-backend` | 遗留/兄弟 AI 后端 |
-| `lowcode-test` | `npm run test --workspace=packages/lowcode` | 低代码包 |
-| `lowcode-lint` | `lint` + `format:check` | 低代码包 |
 | `web-ai-tutor-test` | `npm run test:web-ai` | AI 辅导前端单测 |
 | `mini-ai-tutor-test` | `npm run test:mini-ai` | 小程序前端单测 |
 | `nat-proxy-test` | `node --test tools/nat-proxy/tests/*.test.js` | NAT 工具 |

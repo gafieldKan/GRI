@@ -164,5 +164,4 @@ WAIT_START → DIAGNOSING → ANALYZING → TEACHING
 | apps/web | services/backend (3002) |
 | apps/web-ai-tutor | services/ai-tutor-backend (3003) |
 | apps/mini-program-ai-tutor | services/ai-tutor-backend (3003) |
-| packages/lowcode | 独立部署，内嵌 FRP/ngrok 管理插件 |
 | tools/nat-proxy | 独立工具，用于内网穿透 |
