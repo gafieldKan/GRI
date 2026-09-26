@@ -13,6 +13,13 @@
         "navigationBarTitleText": "组织管理台",
         "enablePullDownRefresh": true
       }
+    },
+    {
+      "path": "pages/ontology-stats/index",
+      "style": {
+        "navigationBarTitleText": "开发全流程统计",
+        "enablePullDownRefresh": true
+      }
     }
   ],
   "window": {

@@ -138,3 +138,10 @@ export async function audit(id) {
 export async function lookupUsers(q) {
   try { return await api.get('/api/organizations/users/lookup', { params: { q } }) } catch (e) { return toError(e) }
 }
+
+// ===== 开发全流程统计（展示页面，登录即可看——不入白名单） =====
+
+// 本体/DB/迁移/设计模式/开发过程四段统计（后端 ontology.stats 门面聚合）。
+export async function ontologyStats() {
+  try { return await api.get('/api/ontology/stats') } catch (e) { return toError(e) }
+}

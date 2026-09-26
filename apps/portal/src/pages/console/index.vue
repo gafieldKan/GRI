@@ -271,6 +271,7 @@ export default {
       return ''
     })
     const headerActions = computed(() => [
+      { label: '本体统计', handler: () => uni.navigateTo({ url: '/pages/ontology-stats/index' }) },
       { label: '刷新', handler: refresh }
     ])
 
