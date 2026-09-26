@@ -1,0 +1,95 @@
+# 人教版数学八年级上册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学 八年级上册。
+# 编码约定：math.g8.pep.chNN（章号沿用印刷章号 11–15）/ math.g8.pep.chNN.sNN（节）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2013 课标版结构整理（与已入库 math/g7-pep.yaml 同口径）；
+#   2024 新版教材（2025 秋起八年级在用）章节划分可能不同——以你手头教材实书目录为准校对。
+
+textbook:
+  code: math.g8.pep
+  name: 人教版数学八年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学       # 学科展示名（灌 ontology.subject.name / master_data Subject.label）
+  grade: G8
+
+chapters:
+  - code: math.g8.pep.ch11
+    name: 第十一章 三角形
+    order: 1
+    children:
+      - code: math.g8.pep.ch11.s01
+        name: 11.1 与三角形有关的线段
+        order: 1
+      - code: math.g8.pep.ch11.s02
+        name: 11.2 与三角形有关的角
+        order: 2
+      - code: math.g8.pep.ch11.s03
+        name: 11.3 多边形及其内角和
+        order: 3
+
+  - code: math.g8.pep.ch12
+    name: 第十二章 全等三角形
+    order: 2
+    children:
+      - code: math.g8.pep.ch12.s01
+        name: 12.1 全等三角形
+        order: 1
+      - code: math.g8.pep.ch12.s02
+        name: 12.2 三角形全等的判定
+        order: 2
+      - code: math.g8.pep.ch12.s03
+        name: 12.3 角的平分线的性质
+        order: 3
+
+  - code: math.g8.pep.ch13
+    name: 第十三章 轴对称
+    order: 3
+    children:
+      - code: math.g8.pep.ch13.s01
+        name: 13.1 轴对称
+        order: 1
+      - code: math.g8.pep.ch13.s02
+        name: 13.2 画轴对称图形
+        order: 2
+      - code: math.g8.pep.ch13.s03
+        name: 13.3 等腰三角形
+        order: 3
+      - code: math.g8.pep.ch13.s04
+        name: 13.4 课题学习 最短路径问题
+        order: 4
+
+  - code: math.g8.pep.ch14
+    name: 第十四章 整式的乘法与因式分解
+    order: 4
+    children:
+      - code: math.g8.pep.ch14.s01
+        name: 14.1 整式的乘法
+        order: 1
+      - code: math.g8.pep.ch14.s02
+        name: 14.2 乘法公式
+        order: 2
+      - code: math.g8.pep.ch14.s03
+        name: 14.3 因式分解
+        order: 3
+
+  - code: math.g8.pep.ch15
+    name: 第十五章 分式
+    order: 5
+    children:
+      - code: math.g8.pep.ch15.s01
+        name: 15.1 分式
+        order: 1
+      - code: math.g8.pep.ch15.s02
+        name: 15.2 分式的运算
+        order: 2
+      - code: math.g8.pep.ch15.s03
+        name: 15.3 分式方程
+        order: 3
