@@ -1,6 +1,6 @@
 # GRI Monorepo — 测试指南
 
-**日期:** 2026-07-16
+**日期:** 2026-09-26（重写后单后端拓扑对齐）
 
 ---
 
@@ -8,43 +8,48 @@
 
 | 模块 | 框架 | 运行命令 | 环境 |
 |------|------|---------|------|
-| services/backend | `node:test` + `node:assert` | `npm run test --workspace=services/backend` | 真实 Node.js, mock 外部依赖 |
-| services/ai-tutor-backend | `node:test` + `node:assert` | `npm run test --workspace=services/ai-tutor-backend` | 真实 Node.js, mock LLM API |
-| apps/web-ai-tutor | Vitest + jsdom + @vue/test-utils | `npm run test:run --workspace=apps/web-ai-tutor` | jsdom 浏览器模拟 |
-| apps/mini-program-ai-tutor | Vitest + jsdom + @vue/test-utils | `npm run test:run --workspace=apps/mini-program-ai-tutor` | jsdom + uni API mock |
-| tools/nat-proxy | `node:test` + `node:assert` | `cd tools/nat-proxy && node --test tests/*.test.js` | 真实 Node.js, mock 子进程 |
-| E2E | Manual + CI smoke | `node scripts/full-test.js` | Docker Compose 全栈 |
+| services/api | Jest（ts-jest） | `npm run test`（根级 = `npm run test --workspace=services/api`） | 真实 Node.js，mock 数据库/LLM |
+| services/auth-center | Jest | `npm run test --workspace=gri-auth-center` | 签发中心（含身份目录 PII 面） |
+| packages/ontology | `node:test` + `node:assert` | `npm run test:ontology` | 本体 DSL 门禁（schema + 语义） |
+| packages/ontology-engine | `node:test` + `node:assert` | `npm run test:ontology-engine` | OO 引擎（继承/多态/状态机内省） |
+| packages/codegen | `node:test` + `node:assert` | `npm run test:codegen` | 生成器防漂移（双锚点 orders + k12） |
+| apps/web-ai-tutor | Vitest + jsdom + @vue/test-utils | `npm run test:web-ai` | jsdom 浏览器模拟 |
+| apps/mini-program-ai-tutor | Vitest + jsdom + @vue/test-utils | `npm run test:mini-ai` | jsdom + uni API mock |
+| tools/nat-proxy | `node:test` + `node:assert` | `cd tools/nat-proxy && node --test tests/*.test.js` | 真实 Node.js，mock 子进程 |
+| E2E | CI smoke | `npm run test:e2e`（= `node scripts/full-test.js`） | Docker Compose 全栈（DB `gri`） |
 
 ## 运行测试
 
 ### 根级快捷命令
 
 ```bash
-# 后端测试
-npm run test:backend
-
-# AI 辅导后端测试
-npm run test:ai-tutor
+# 单后端全域 API（jest）
+npm run test
 
 # 前端测试
 npm run test:web-ai      # AI 辅导 H5
-npm run test:mini-ai     # AI 辅导小程序
+npm run test:mini-ai      # AI 辅导小程序
 
-# 全量测试 (顺序执行)
+# packages 测试（本体驱动链）
+npm run test:ontology         # DSL 门禁
+npm run test:ontology-engine  # OO 引擎
+npm run test:codegen          # 生成器防漂移
+
+# 全量前端 + packages（顺序执行）
 npm run test:all
 
-# E2E 测试 (需 Docker)
+# E2E 冒烟 (需 Docker)
 npm run test:e2e
 ```
 
 ### 单独运行
 
 ```bash
-# 后端
-cd services/backend && npm test
+# 单后端
+cd services/api && npx jest
 
-# AI 辅导
-cd services/ai-tutor-backend && npm test
+# 认证中心
+cd services/auth-center && npm test
 
 # 前端 (需先 npm install)
 cd apps/web-ai-tutor && npm run test:run
@@ -52,23 +57,19 @@ cd apps/web-ai-tutor && npm run test:run
 
 ## 测试约定
 
-### node:test (后端)
+### Jest（后端）
+
+- 测试文件与源码同目录，命名 `*.spec.ts`
+- ESM 包（`@gri/ontology-engine` 等）在 jest 模块注册表不可解析 → `jest.mock` 重定向到本地 fake（见 `ontology.service.spec.ts` / `ontology-stats.service.spec.ts` 模式）
+- 不要 mock 数据库 — mock Repository / 注入 fake service 代替
+- spec 锁「输出形态映射」；真实引擎/DSL 正确性由 packages 的 node --test 套件覆盖
+
+### node:test (packages)
 
 - 使用 `node:test` 的 `describe/it` + `node:assert/strict`
-- 测试文件放在 `tests/` 目录，命名 `<module>.test.js`
-- Mock 模式: 使用闭包变量 + async 函数作为 mock
-
-```javascript
-// 正确: 闭包变量模式
-let findByIdReturn = null
-mockRepo = {
-  findById: async () => findByIdReturn,
-}
-// 在测试中: findByIdReturn = { id: 'x', status: 'pending' }
-```
-
+- 测试文件放在 `tests/` 目录，命名 `<module>.test.(js|ts)`
 - **注意**: `node:test` 的 `mock.fn()` **没有** `.resolves()` 方法，不要使用
-- 不要 mock 数据库 — 使用 mock Repository 代替
+- codegen 防漂移：生成 SQL 与已审阅迁移文件**字节匹配**（锚点 011/012）
 
 ### Vitest (前端)
 
@@ -87,27 +88,29 @@ docker compose up -d
 # 2. 等待服务就绪
 docker compose ps  # 所有服务 status = healthy
 
-# 3. 运行 E2E 测试
+# 3. 运行 E2E 冒烟
 node scripts/full-test.js
 
 # 4. 停止服务
 docker compose down
 ```
 
-## 当前测试覆盖 (2026-07-16)
+## 当前测试覆盖 (2026-09-26)
 
-| 模块 | 测试文件 | 测试数 | 状态 |
-|------|---------|--------|------|
-| services/backend | OrderService, NotificationService, E2E | 36+ | ✅ 通过 |
-| services/ai-tutor-backend | SessionFSM, AIService, QuestionService, ReportService, TutorAgent | 81 | ✅ 通过 |
-| apps/web-ai-tutor | api-client, session-store, report-store, ws-client, katex-helper | 34 | 📝 待 npm install 后运行 |
-| apps/mini-program-ai-tutor | api-client, session-store, report-store, ws-client, katex-helper | 29+ | 📝 待 npm install 后运行 |
-| tools/nat-proxy | frp-api, ngrok-controller | 34 | ⚠️ 需 node --test 手动运行 |
+| 模块 | 测试数 | 状态 |
+|------|--------|------|
+| services/api | jest 235 | ✅ 通过（10 模块含 stats/curriculum/agent 套件） |
+| packages/ontology | node --test 12 | ✅ 通过 |
+| packages/ontology-engine | node --test 13 | ✅ 通过 |
+| packages/codegen | node --test 35 | ✅ 通过（mixed-mode 六用例 + 双锚点防漂移） |
+| apps/web-ai-tutor | vitest 20 | ✅ 通过 |
+| apps/mini-program-ai-tutor | vitest 37 | ✅ 通过 |
+| tools/nat-proxy | node --test | ⚠️ 需手动运行（`node --test tests/*.test.js`） |
 
 ## CI/CD 集成
 
 GitHub Actions workflow: `.github/workflows/monorepo-ci.yml`
 
-- 并行 job: backend-test, auth-center-test, web-ai-tutor-test, mini-ai-tutor-test, nat-proxy-test, frontend-build, e2e-smoke（lowcode 已退役）
+- 并行 job: backend-test, auth-center-test, web-ai-tutor-test, mini-ai-tutor-test, nat-proxy-test, frontend-build, e2e-smoke（lowcode 两 job 已随平台退役删除）
 - PostgreSQL service containers 用于数据库依赖的测试
-- Matrix strategy 覆盖不同 Node.js 版本
+- 详见 [CICD.md](./CICD.md)
