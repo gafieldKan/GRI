@@ -7,6 +7,7 @@
  * 输出 staging/*.json（status: draft——人工审核门禁，审核通过才可 import 灌库）。
  *
  * 用法：node scripts/k12-curriculum/generate.mjs [--catalog math/g7-pep.yaml] [--limit N]
+ *       [--only ch12.s01,ch13.s02]（增量补生成：只重生命中章节，其余保留既有 staging）
  * 环境：LLM_API_KEY（nvapi- 前缀，NVIDIA 网关）/ LLM_API_URL / LLM_MODEL。
  * 红线：staging 产物是「人工审核」的输入，不直接落库（状态机 draft→reviewed→published）。
  */
@@ -25,6 +26,7 @@ const args = process.argv.slice(2)
 const argOf = (name, dflt) => (args.includes(name) ? args[args.indexOf(name) + 1] : dflt)
 const CATALOG = argOf('--catalog', 'math/g7-pep.yaml')
 const LIMIT = parseInt(argOf('--limit', '0'), 10) || Infinity // 每知识点例题数上限调试用
+const ONLY = (argOf('--only', '') || '').split(',').map((s) => s.trim()).filter(Boolean) // 增量补生成白名单（空=全量）
 
 const LLM = {
   apiKey: process.env.LLM_API_KEY ?? '',
@@ -148,7 +150,7 @@ async function main() {
   for (const ch of catalog.chapters ?? []) {
     sections.push({ code: ch.code, name: ch.name, isSection: false })
     for (const s of ch.children ?? []) {
-      sections.push({ code: s.code, name: s.name, isSection: true })
+      sections.push({ code: s.code, name: s.name, isSection: true, hint: s.hint })
     }
   }
   console.log(`章节展开：${sections.length} 个（含节）`)
@@ -159,16 +161,28 @@ async function main() {
   for (const sec of sections) {
     // 章级生成 KP（挂在节上更细；章级只汇总）——只对「节」生成
     if (!sec.isSection) continue
+    if (ONLY.length && !ONLY.includes(sec.code.replace(`${catalog.textbook.code}.`, ''))) continue
+    const hint = sec.hint ? `\n课题语境提示（务必遵守）：${sec.hint}` : ''
     const kpReply = await chat([
       { role: 'system', content: KP_SYSTEM },
-      { role: 'user', content: `章节：${sec.name}\n教材：${catalog.textbook.name}（${gradeName}）\n本章上级章节：${sec.code}` },
+      { role: 'user', content: `章节：${sec.name}\n教材：${catalog.textbook.name}（${gradeName}）\n本章上级章节：${sec.code}${hint}` },
     ])
     let kps
     try {
       kps = extractJson(kpReply)
-    } catch (e) {
-      console.warn(`  ⚠ KP 解析失败（${sec.code}）：${e.message}——跳过本章`)
-      continue
+    } catch {
+      // 解析失败重问一次（LLM 偶发围栏/截断，一次重试能救回大部分；再失败才跳过）
+      console.warn(`  ⚠ KP 首次解析失败（${sec.code}）——重问一次`)
+      const retryReply = await chat([
+        { role: 'system', content: KP_SYSTEM },
+        { role: 'user', content: `章节：${sec.name}\n教材：${catalog.textbook.name}（${gradeName}）\n本章上级章节：${sec.code}${hint}\n\n（上次输出不是合法 JSON，请严格只输出 JSON 数组本身）` },
+      ])
+      try {
+        kps = extractJson(retryReply)
+      } catch (e) {
+        console.warn(`  ⚠ KP 重问仍解析失败（${sec.code}）：${e.message}——跳过本节`)
+        continue
+      }
     }
     if (!Array.isArray(kps) || kps.length === 0) {
       console.warn(`  ⚠ KP 为空（${sec.code}）——跳过本章`)
@@ -246,16 +260,30 @@ async function main() {
   }
   if (preFixed || preDropped) console.log(`✓ 前置引用规范化：补零对齐 ${preFixed} 处、丢弃幻觉 ${preDropped} 处`)
 
+  // staging 输出（draft——人工审核门禁）
+  // 增量补生成（--only）：保留既有 staging 中未被重命的节，重命节以新生成覆盖；
+  // 其余情况为全量生成，直接整册覆盖。
   const outName = CATALOG.replace(/[/.]/g, '-').replace(/-yaml$/, '') + '.staging.json'
   const outPath = path.join(__dirname, 'staging', outName)
-  await fs.mkdir(path.dirname(outPath), { recursive: true })
-  await fs.writeFile(outPath, JSON.stringify({
+  let knowledgePointsFinal = knowledgePoints
+  if (ONLY.length) {
+    try {
+      const prev = JSON.parse(await fs.readFile(outPath, 'utf8'))
+      const onlyCodes = new Set(ONLY.map((o) => `${catalog.textbook.code}.${o}`))
+      const kept = (prev.knowledgePoints ?? []).filter((k) => !onlyCodes.has(k.chapter))
+      knowledgePointsFinal = [...kept, ...knowledgePoints]
+      console.log(`✓ 增量合并：保留既有 ${kept.length} 条 + 新生成 ${knowledgePoints.length} 条`)
+    } catch { /* 无既有 staging → 全量 */ }
+  }
+  const data = {
     catalog: catalog.textbook.code,
     generatedAt: new Date().toISOString(),
     model: LLM.model,
-    knowledgePoints,
-  }, null, 2), 'utf8')
-  console.log(`\n✓ staging 输出：${outPath}（${knowledgePoints.length} 知识点，status=draft 待人工审核）`)
+    knowledgePoints: knowledgePointsFinal,
+  }
+  await fs.mkdir(path.dirname(outPath), { recursive: true })
+  await fs.writeFile(outPath, JSON.stringify(data, null, 2), 'utf8')
+  console.log(`\n✓ staging 输出：${outPath}（${knowledgePointsFinal.length} 知识点，status=draft 待人工审核）`)
 }
 
 main().catch((e) => {

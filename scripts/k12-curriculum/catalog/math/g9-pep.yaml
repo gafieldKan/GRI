@@ -62,6 +62,7 @@ chapters:
       - code: math.g9.pep.ch23.s03
         name: 23.3 课题学习 图案设计
         order: 3
+        hint: 初中几何课题——用平移、轴对称、旋转及其组合分析并设计图案；不涉及矩阵、坐标变换公式或线性代数
 
   - code: math.g9.pep.ch24
     name: 第二十四章 圆
