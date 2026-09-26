@@ -94,6 +94,7 @@ function extractJson(text) {
 
 // ---------------------------------------------------------------------------
 // 提示词（因材施教视角：知识点为「教什么」的骨架，例题为「学得会」的抓手）
+// 学科/年级按 catalog 参数化（EX 模板占位 {SUBJECT}/{GRADE}）——二期多学科多年级不再硬编码。
 // ---------------------------------------------------------------------------
 
 const KP_SYSTEM = `你是资深 K12 课程设计专家，精通人民教育出版社教材体系。
@@ -110,10 +111,10 @@ const KP_SYSTEM = `你是资深 K12 课程设计专家，精通人民教育出�
   "commonMistakes": ["易错点1", "易错点2"]
 }]`
 
-const EX_SYSTEM = `你是资深 K12 数学命题专家，精通人民教育出版社教材。
+const EX_SYSTEM_TEMPLATE = `你是资深 K12 {SUBJECT}命题专家，精通人民教育出版社教材。
 任务：为给定知识点出 3 道例题（选择题），覆盖基础/进阶/应用三个难度。
 要求：
-1. 题目表述清晰，符合七年级学生认知水平
+1. 题目表述清晰，符合{GRADE}学生认知水平
 2. 选择题 4 个选项（A/B/C/D），答案唯一
 3. 解析要讲清思路（为什么对、其他选项为什么错）
 4. 严格输出 JSON 数组，不要多余文字：
@@ -136,7 +137,11 @@ async function main() {
 
   const gradeLevel = gradeLevelOf(catalog.textbook.grade)
   const gradeName = GRADE_NAMES[catalog.textbook.grade] ?? catalog.textbook.grade
-  console.log(`生成目标：${catalog.textbook.name}（${gradeName}，gradeLevel=${gradeLevel}）`)
+  const subjectName = catalog.textbook.subjectName ?? '综合'
+  const EX_SYSTEM = EX_SYSTEM_TEMPLATE
+    .replaceAll('{SUBJECT}', subjectName)
+    .replaceAll('{GRADE}', gradeName)
+  console.log(`生成目标：${catalog.textbook.name}（${subjectName}，${gradeName}，gradeLevel=${gradeLevel}）`)
 
   // 展平章节（章 → 节）
   const sections = []
@@ -216,16 +221,20 @@ async function main() {
   // 前置引用规范化（LLM 产出的前置引用常有两类坏值，这里统一清洗成可入库形态）：
   //   1. 短引用 kp1 → 补零对齐本节实际 code（kp1 → math.g7.pep.ch01.s01.kp01；同节内锚点）
   //   2. 幻觉值（ch外部 等，既非 kpNN 也非完整 code）→ 丢弃（导入时前置缺失会跳过，不报错）
+  // 锚点正则按 catalog textbook code 派生（二期多教材不再硬编码前缀）：
+  const escCode = catalog.textbook.code.replace(/[.+?*^${}()|[\]\\]/g, '\\$&')
+  const secPat = new RegExp(`^(${escCode}\\.ch\\d+\\.s\\d+)\\.kp(\\d+)$`)
+  const fullPat = new RegExp(`^${escCode}\\.ch\\d+`)
   const bySection = {}
   for (const k of knowledgePoints) {
-    const m = k.code.match(/^(math\.g7\.pep\.ch\d+\.s\d+)\.kp(\d+)$/)
+    const m = k.code.match(secPat)
     if (m) (bySection[m[1]] = bySection[m[1]] || new Set()).add(String(Number(m[2])))
   }
   let preFixed = 0, preDropped = 0
   for (const k of knowledgePoints) {
-    const m = k.code.match(/^(math\.g7\.pep\.ch\d+\.s\d+)\.kp(\d+)$/)
+    const m = k.code.match(secPat)
     k.prerequisites = (k.prerequisites ?? []).filter((p) => {
-      if (/^math\.g7\.pep\.ch\d+/.test(p)) return true // 完整 code 原样保留
+      if (fullPat.test(p)) return true // 完整 code 原样保留
       const pm = p.match(/^kp(\d+)$/i)
       if (pm && m && bySection[m[1]]?.has(String(Number(pm[1])))) {
         preFixed++
