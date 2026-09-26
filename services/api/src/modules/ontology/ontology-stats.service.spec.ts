@@ -156,10 +156,14 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
     expect(stats.migrations.appliedCount).toBe(0);
   });
 
-  it('curated 常量齐备：设计模式/OO 四特性/现实映射/开发过程快照', async () => {
+  it('curated 常量齐备：以人为本/设计模式/OO 四特性/现实映射/开发过程快照', async () => {
     const svc = makeService(fakeEnginePlain(), {});
     const stats = await svc.stats();
 
+    expect(stats.humanCentricPrinciple.title).toBe('以人为本');
+    expect(stats.humanCentricPrinciple.chain.map((c) => c.step)).toEqual([
+      '人', '以人引出万物', '由万物引出本体', '本体 → 对象', '对象 → 模式',
+    ]);
     expect(stats.designPatterns.creational).toHaveLength(2);
     expect(stats.designPatterns.structural).toHaveLength(3);
     expect(stats.designPatterns.behavioral).toHaveLength(5);
@@ -168,5 +172,8 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
     expect(stats.devProcess.snapshotDate).toBe('2026-09-25');
     expect(stats.devProcess.commits.total).toBe(15);
     expect(stats.devProcess.plans.active).toHaveLength(4);
+    expect(stats.devProcess.milestones[0]).toEqual({
+      stage: '人本', name: expect.stringContaining('以人为本'), status: '起点',
+    });
   });
 });

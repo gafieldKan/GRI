@@ -42,8 +42,9 @@ const DEV_PROCESS_SNAPSHOT = {
     archivedCount: 21,
     aiTutorDocsCount: 15,
   },
-  /** 计划切片：P1 四件套 → P2 三阶段 → P3 agent-core + 37 片连叠 → 旧资产改造六片。 */
+  /** 计划切片：以人为本 → P1 四件套 → P2 三阶段 → P3 agent-core + 37 片连叠 → 旧资产改造六片。 */
   milestones: [
+    { stage: '人本', name: '以人为本的中心思想确立（人的第一视角，以人引出万物，由万物引出本体）', status: '起点' },
     { stage: 'P1', name: '本体底座四件套 + 本体样板端到端打通', status: '已完成' },
     { stage: 'P2', name: '统一鉴权三阶段（A 拓扑 / B 签发中心 / C 统一鉴权壳）', status: '已完成' },
     { stage: 'P3', name: 'agent-core 浓缩底座 + 每生 AI 教师 37 片连叠', status: '已完成' },
@@ -89,6 +90,19 @@ const REAL_WORLD_MAPPINGS = [
   { domain: 'K12 教育', things: '学科/学段/年级/教材/章节/知识点/前置依赖', ontology: 'k12-curriculum（k12-curriculum.ontology.yaml）', note: 'Textbook 抽象基类 + 六学科子类，前置依赖桥表' },
   { domain: '落库验证', things: 'orders 表 + 判别列 + extra JSONB', ontology: 'gri-ontology-orders（database-orders.ontology.yaml）', note: 'codegen 防漂移锚点（契约测试以此为准）' },
 ];
+
+/** 建设原则（中心思想，以人为本——人的第一视角，先于一切裁决标准）。 */
+const HUMAN_CENTRIC_PRINCIPLE = {
+  title: '以人为本',
+  statement: '人的第一视角。有人的意识才有万物，以人引出万物，由万物引出本体，才使用本体论，以及后面的对象、模式等。',
+  chain: [
+    { step: '人', detail: '第一视角——领域模型收敛的根：auth.identities 唯一身份真源 + users「人」的业务写真；每生独立 AI 教师（一人一 Agent）' },
+    { step: '以人引出万物', detail: '人所接触的现实世界事物：订餐（消费者）、K12 学习（学生/教材）、组织协作（成员/角色）' },
+    { step: '由万物引出本体', detail: '现实事物抽象为本体真源（orders / k12-curriculum YAML）——人的活动的稳定概念结构' },
+    { step: '本体 → 对象', detail: '本体 DSL → OntologyEngine（OO 引擎）→ codegen 生成迁移 SQL/TS 类型' },
+    { step: '对象 → 模式', detail: 'GoF 23 设计模式有意识应用，让本体应对现实世界内外部关系变化' },
+  ],
+};
 
 /** 单份本体的统计形态（引擎内省 → 展示结构）。 */
 function introspectOntology(engine: OntologyEngine, sourceFile: string) {
@@ -211,6 +225,7 @@ export class OntologyStatsService {
     );
 
     return {
+      humanCentricPrinciple: HUMAN_CENTRIC_PRINCIPLE,
       ontologies,
       ontologyTotals: {
         ontologyCount: ontologies.length,

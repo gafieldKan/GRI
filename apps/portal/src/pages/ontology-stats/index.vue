@@ -10,6 +10,21 @@
       </view>
 
       <template v-if="stats">
+        <!-- ── §0 建设原则（中心思想） ── -->
+        <view class="section-title">建设原则 —— 以人为本</view>
+        <view class="card principle-card">
+          <view class="principle-statement">{{ stats.humanCentricPrinciple.statement }}</view>
+          <view class="chain">
+            <view class="chain-item" v-for="(c, i) in stats.humanCentricPrinciple.chain" :key="c.step">
+              <view class="chain-step">
+                <text class="chain-num">{{ i + 1 }}</text>
+                <text class="chain-name">{{ c.step }}</text>
+              </view>
+              <text class="chain-detail">{{ c.detail }}</text>
+            </view>
+          </view>
+        </view>
+
         <!-- ── §1 方案 ── -->
         <view class="section-title">方案</view>
         <view class="card">
@@ -236,6 +251,15 @@ export default {
 .small { font-size: var(--font-size-sm); }
 
 .section-title { font-weight: var(--font-weight-medium); font-size: var(--font-size-base); color: var(--color-text-primary); padding: 24rpx 24rpx 8rpx; }
+
+.principle-card { border-left: 6rpx solid var(--color-primary); }
+.principle-statement { font-size: var(--font-size-base); color: var(--color-text-primary); line-height: 1.7; font-weight: var(--font-weight-medium); margin-bottom: 16rpx; }
+.chain { display: flex; flex-direction: column; gap: 12rpx; }
+.chain-item { background: var(--color-bg-secondary, #f0f0f5); border-radius: var(--radius-sm); padding: 12rpx 16rpx; }
+.chain-step { display: flex; align-items: center; gap: 10rpx; margin-bottom: 4rpx; }
+.chain-num { display: flex; align-items: center; justify-content: center; min-width: 32rpx; height: 32rpx; border-radius: 50%; background: var(--color-primary); color: #fff; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); }
+.chain-name { font-size: var(--font-size-base); font-weight: var(--font-weight-medium); color: var(--color-primary); }
+.chain-detail { font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.6; }
 
 .card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 20rpx; margin: 0 24rpx 16rpx; }
 .card-title { font-weight: var(--font-weight-medium); color: var(--color-primary); }
