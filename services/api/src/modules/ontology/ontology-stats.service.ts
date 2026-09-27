@@ -28,9 +28,9 @@ const ONTOLOGY_DIR = path.dirname(
   require.resolve('@gri/ontology/ontologies/orders.ontology.yaml'),
 );
 
-/** 开发全流程内置清单（curated，快照 2026-09-25，来源 git log + docs/ 清单）。 */
+/** 开发全流程内置清单（curated，快照 2026-09-27，来源 git log + docs/ 清单）。 */
 const DEV_PROCESS_SNAPSHOT = {
-  snapshotDate: '2026-09-25',
+  snapshotDate: '2026-09-27',
   /** 方案文档：4 篇现役 + 21 篇归档（docs/archive/）+ ai-tutor 15 篇。 */
   plans: {
     active: [
@@ -42,18 +42,19 @@ const DEV_PROCESS_SNAPSHOT = {
     archivedCount: 21,
     aiTutorDocsCount: 15,
   },
-  /** 计划切片：以人为本 → P1 四件套 → P2 三阶段 → P3 agent-core + 37 片连叠 → 旧资产改造六片。 */
+  /** 计划切片：以人为本 → P1 四件套 → P2 三阶段 → P3 agent-core + 37 片连叠 → 旧资产改造六片 → K12 版图层。 */
   milestones: [
     { stage: '人本', name: '以人为本的中心思想确立（人的第一视角，以人引出万物，由万物引出本体）', status: '起点' },
     { stage: 'P1', name: '本体底座四件套 + 本体样板端到端打通', status: '已完成' },
     { stage: 'P2', name: '统一鉴权三阶段（A 拓扑 / B 签发中心 / C 统一鉴权壳）', status: '已完成' },
     { stage: 'P3', name: 'agent-core 浓缩底座 + 每生 AI 教师 37 片连叠', status: '已完成' },
     { stage: '改造', name: '旧资产改造六片（lowcode 删 / tuition·master-data 退役 / k12 四特性 / docs 归档）', status: '已完成' },
+    { stage: '版图', name: 'K1–K12 全学段知识版图层（0.4.0：KnowledgeArea 版图 + 覆盖比重 + 登峰打卡 + map.explorer）', status: '已完成' },
   ],
-  /** commits：15（全部 2026-09，按 conventional type）。 */
-  commits: { total: 15, fix: 7, feat: 4, chore: 3, refactor: 1 },
+  /** commits：21（全部 2026-09，按 conventional type）。 */
+  commits: { total: 21, fix: 7, feat: 9, chore: 3, refactor: 2 },
   /** 测试：api jest + packages node --test。 */
-  tests: { jestApi: 230, nodeTest: 82 },
+  tests: { jestApi: 242, nodeTest: 82 },
 };
 
 /** 设计模式清单（GoF 三大类，项目实际落点——非为模式而模式）。 */

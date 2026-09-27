@@ -20,10 +20,10 @@ const K12_DSL = path.resolve(__dirname, '../../ontology/ontologies/k12-curriculu
 const ORDERS_DSL = path.resolve(__dirname, '../../ontology/ontologies/orders.ontology.yaml')
 
 describe('混合模式：k12 教材单表继承 + 普通对象并存', () => {
-  it('k12 YAML 过 schema 门禁且继承体系完整（13 objects）', async () => {
+  it('k12 YAML 过 schema 门禁且继承体系完整（15 objects，0.4.0 版图层 +2）', async () => {
     const r = await loadOntologyFile(K12_DSL)
     assert.equal(r.ok, true, JSON.stringify(r.errors))
-    assert.equal(r.ontology.objects.length, 13)
+    assert.equal(r.ontology.objects.length, 15)
     const tb = r.ontology.objects.find((o) => o.name === 'Textbook')
     assert.equal(tb.abstract, true)
     const subs = r.ontology.objects.filter((o) => o.extends === 'Textbook')
@@ -45,7 +45,7 @@ describe('混合模式：k12 教材单表继承 + 普通对象并存', () => {
     assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS ontology\.physics_textbook/)
   })
 
-  it('其余六普通对象照常生表（不被单表路径砍掉）', async () => {
+  it('其余八普通对象照常生表（不被单表路径砍掉；含 0.4.0 版图两表）', async () => {
     const r = await loadOntologyFile(K12_DSL)
     const sql = generateSQL(r.ontology)
     for (const t of [
@@ -55,9 +55,21 @@ describe('混合模式：k12 教材单表继承 + 普通对象并存', () => {
       'ontology.textbook_chapter',
       'edu.knowledge_points',
       'ontology.kp_prerequisite',
+      'ontology.knowledge_area',
+      'ontology.area_prerequisite',
     ]) {
       assert.match(sql, new RegExp(`CREATE TABLE IF NOT EXISTS ${t.replace('.', '\\.')} \\(`), `缺表：${t}`)
     }
+  })
+
+  it('版图层（0.4.0）：knowledge_area 自引用树 + area_prerequisite 复合唯一', async () => {
+    const r = await loadOntologyFile(K12_DSL)
+    const sql = generateSQL(r.ontology)
+    assert.match(sql, /FOREIGN KEY \(parent_id\) REFERENCES ontology\.knowledge_area\(id\)/)
+    assert.match(sql, /UNIQUE \(from_area, to_area\)/)
+    // scope 语义列与 grade_level 落位列在
+    assert.match(sql, /scope VARCHAR\(\d+\) NOT NULL/)
+    assert.match(sql, /grade_level INTEGER/)
   })
 
   it('关联类复合唯一与自引用树 FK 在混合模式下保留', async () => {

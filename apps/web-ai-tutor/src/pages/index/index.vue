@@ -343,6 +343,14 @@ export default {
         handler: () => uni.switchTab({ url: '/pages/knowledge-graph/index' })
       },
       {
+        icon: '🏔',
+        label: '学科登峰',
+        desc: '全学段知识山',
+        color: '#1B7A3D',
+        badge: '新',
+        handler: () => uni.navigateTo({ url: '/pages/knowledge-map/index' })
+      },
+      {
         icon: '✏️',
         label: '练习中心',
         desc: '自适应刷题',

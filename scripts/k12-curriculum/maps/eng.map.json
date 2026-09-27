@@ -1,0 +1,708 @@
+{
+  "subject": "eng",
+  "subjectName": "英语",
+  "generatedAt": "2026-09-27T05:42:01.069Z",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "status": "published",
+  "fields": [
+    {
+      "code": "eng.map.f.01",
+      "name": "语言基础",
+      "description": "覆盖英语音标、拼读、基础词汇与语法规则。"
+    },
+    {
+      "code": "eng.map.f.02",
+      "name": "理解技能（听说读）",
+      "description": "培养听力与阅读理解能力，从简单指令到学术文本。"
+    },
+    {
+      "code": "eng.map.f.03",
+      "name": "产出技能（说写）",
+      "description": "发展口语表达与写作技巧，从基本交流到学术创作。"
+    },
+    {
+      "code": "eng.map.f.04",
+      "name": "文学与文化",
+      "description": "通过文学作品与文化知识提升跨文化交际与审美能力。"
+    },
+    {
+      "code": "eng.map.f.05",
+      "name": "综合运用与语用",
+      "description": "综合运用语言技能完成项目任务，并掌握语用与交际策略。"
+    }
+  ],
+  "areas": [
+    {
+      "code": "eng.map.a.01.01",
+      "name": "字母表与音标（English Alphabet & Phonics）",
+      "description": "学习字母名称、发音及基本拼读规则。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "eng.map.a.01.02",
+      "name": "基础词汇与日常表达（Basic Vocabulary & Everyday Expressions）",
+      "description": "掌握日常生活常用词汇与简单表达。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.03",
+      "name": "词性概述（Introduction to Parts of Speech）",
+      "description": "初步认识名词、动词、形容词等词类及其基本功能。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.02"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.04",
+      "name": "简单句结构（Simple Sentence Structure）",
+      "description": "学会构建主谓宾结构的简单陈述句。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.03"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.05",
+      "name": "时态总览（Tenses Overview）",
+      "description": "掌握一般现在时与一般过去时的形式与用法。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.04"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.06",
+      "name": "词汇扩展与构词法（Expanded Vocabulary & Word Formation）",
+      "description": "学习常见前缀、后缀及词根，扩展词汇量。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.02",
+        "eng.map.a.01.04"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.07",
+      "name": "中级语法（Intermediate Grammar）",
+      "description": "掌握情态动词、比较级、疑问句等中级语法点。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.05",
+        "eng.map.a.01.06"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.08",
+      "name": "高级语法（Advanced Grammar）",
+      "description": "学习条件句、被动语态及间接引语等高级语法结构。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.07"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.09",
+      "name": "学术词汇与搭配（Academic Vocabulary & Collocations）",
+      "description": "积累学术场景常用词汇及固定搭配。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.06",
+        "eng.map.a.01.08"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.10",
+      "name": "连接词与衔接手段（Discourse Markers & Cohesive Devices）",
+      "description": "掌握连接词与衔接手段，提升语篇连贯性。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.08",
+        "eng.map.a.01.09"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.01",
+      "name": "获取要点与简单指令听力（Listening for Gist & Simple Instructions）",
+      "description": "能够捕捉口语信息的大意并执行简单指令。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.01.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.02",
+      "name": "细节听力与短篇故事（Listening for Details & Short Stories）",
+      "description": "能够听懂短篇故事中的关键细节。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.03",
+      "name": "对话与媒体听力（Listening to Conversations & Media）",
+      "description": "能够理解日常对话及简单媒体材料。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.02"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.04",
+      "name": "讲座与真实材料听力（Listening to Lectures & Authentic Materials）",
+      "description": "能够跟随学术讲座及真实语境中的语篇。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.03"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.05",
+      "name": "高级听力（Advanced Listening）",
+      "description": "能够辨识不同口音并进行有效笔记。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.04"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.06",
+      "name": "阅读基础（Reading Foundations）",
+      "description": "掌握字母发音与常见视觉词，实现独立阅读入门。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.01.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.07",
+      "name": "短篇叙事阅读与理解（Reading Short Narratives & Comprehension）",
+      "description": "能够阅读短篇故事并回答基本理解问题。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.06"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.08",
+      "name": "信息性文本阅读（Reading Informational Texts）",
+      "description": "能够阅读科普类文本并提取关键信息。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.07"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.09",
+      "name": "文学文本阅读（Reading Literary Texts）",
+      "description": "能够欣赏并理解简单诗歌与短篇小说。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.08"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.10",
+      "name": "批判性阅读与分析（Critical Reading & Analysis）",
+      "description": "能够对文本进行结构分析与观点评价。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.09"
+      ]
+    },
+    {
+      "code": "eng.map.a.02.11",
+      "name": "学术阅读与研究技能（Academic Reading & Research Skills）",
+      "description": "掌握学术文献的快速阅读与信息检索方法。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "eng.map.a.02.10"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.01",
+      "name": "口语基础（Speaking Basics）",
+      "description": "能够用简单句子进行问候、自我介绍及基本交流。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.01.01",
+        "eng.map.a.02.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.02",
+      "name": "双人对话与角色扮演（Speaking in Pairs & Role-plays）",
+      "description": "能够在情境中进行基本对话与角色扮演。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.03",
+      "name": "演讲技巧（Presentation Skills）",
+      "description": "能够准备并进行短时主题演讲。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.02"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.04",
+      "name": "辩论与讨论（Debate & Discussion）",
+      "description": "能够就熟悉话题发表观点并进行简单辩论。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.03"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.05",
+      "name": "公众演说与论证（Public Speaking & Argumentation）",
+      "description": "能够进行结构化公开演讲并提出论证。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.04"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.06",
+      "name": "写作基础（Writing Basics）",
+      "description": "能够正确书写字母并写出简单句子。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.01.01",
+        "eng.map.a.02.06"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.07",
+      "name": "段落写作（Paragraph Writing）",
+      "description": "能够写出具主题句和支持细节的段落。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.06"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.08",
+      "name": "作文写作（Essay Writing）",
+      "description": "能够写出叙述或描述类短文。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.07"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.09",
+      "name": "说明文与议论文写作（Expository & Argumentative Essays）",
+      "description": "能够写出说明文或议论文，表达明确观点。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.08"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.10",
+      "name": "学术写作（Academic Writing）",
+      "description": "能够撰写带引用的研究报告或学术短文。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.09"
+      ]
+    },
+    {
+      "code": "eng.map.a.03.11",
+      "name": "高级写作风格（Advanced Writing Styles）",
+      "description": "能够进行创作性写作与反思性日记等多种体裁写作。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "eng.map.a.03.10"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.01",
+      "name": "儿童文学导论（Introduction to Children's Literature）",
+      "description": "阅读并欣赏适合低年级的英语童话与绘本。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.02.06"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.02",
+      "name": "英语国家民间故事与寓言（Folktales & Fables from English-speaking cultures）",
+      "description": "了解并复述英美地区的经典民间故事与寓言。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.03",
+      "name": "英美文学概览（Survey of British & American Literature）",
+      "description": "初步了解英国与美国文学的主要作家与作品。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.02"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.04",
+      "name": "莎士比亚与经典戏剧（Shakespeare & Classic Drama）",
+      "description": "认识莎士比亚及其代表作，体验戏剧语言魅力。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.03"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.05",
+      "name": "现代诗歌与散文（Modern Poetry & Prose）",
+      "description": "阅读并分析20世纪以来的英语诗歌与散文。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.04"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.06",
+      "name": "文学分析与理论基础（Literary Analysis & Theory basics）",
+      "description": "掌握基本文学流派与分析方法，进行初步文本解读。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.05"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.07",
+      "name": "文化意识（Cultural Awareness）",
+      "description": "了解英语国家的主要节日、礼仪与日常习俗。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.01.01"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.08",
+      "name": "媒体与流行文化（Media & Popular Culture）",
+      "description": "通过电影、音乐与网络内容了解当代英语流行文化。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.07"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.09",
+      "name": "全球英语变体（Global English Varieties）",
+      "description": "认识英语在世界各地的地区变体与口音差异。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.08"
+      ]
+    },
+    {
+      "code": "eng.map.a.04.10",
+      "name": "跨文化交际（Intercultural Communication）",
+      "description": "学习跨文化交际中的误解点与有效沟通策略。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "eng.map.a.04.09"
+      ]
+    },
+    {
+      "code": "eng.map.a.05.01",
+      "name": "项目式学习（Project-based Learning (simple topics)）",
+      "description": "以小组项目形式完成简单主题的信息收集与展示。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "eng.map.a.03.01",
+        "eng.map.a.03.06"
+      ]
+    },
+    {
+      "code": "eng.map.a.05.02",
+      "name": "综合技能任务（Integrated Skills Tasks）",
+      "description": "在听说综合任务中完成信息转换与口头表达。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "eng.map.a.02.03",
+        "eng.map.a.03.02"
+      ]
+    },
+    {
+      "code": "eng.map.a.05.03",
+      "name": "实际目的写作（Writing for Real-life Purposes）",
+      "description": "能够撰写电子邮件、邀请函等实际生活中的应用文体。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "eng.map.a.03.07",
+        "eng.map.a.04.07"
+      ]
+    },
+    {
+      "code": "eng.map.a.05.04",
+      "name": "多媒体演示（Multimedia Presentation）",
+      "description": "利用图像、音频与视频制作并进行多媒体展示。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "eng.map.a.03.03",
+        "eng.map.a.05.03"
+      ]
+    },
+    {
+      "code": "eng.map.a.05.05",
+      "name": "社会语境中的语言使用（Language Use in Social Contexts (pragmatics)）",
+      "description": "了解语境中的礼貌策略、言语行为及隐含意义。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "eng.map.a.01.10",
+        "eng.map.a.05.04"
+      ]
+    },
+    {
+      "code": "eng.map.a.05.06",
+      "name": "翻译与口译基础（Translation & Interpretation Basics）",
+      "description": "掌握基本的句子翻译与口译技巧，体验语言转换过程。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "eng.map.a.01.09",
+        "eng.map.a.05.05"
+      ]
+    },
+    {
+      "code": "eng.map.a.05.07",
+      "name": "语言学习策略与自主性（Language Learning Strategies & Autonomy）",
+      "description": "学习并运用元认知策略，培养自主英语学习能力。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "eng.map.a.03.11",
+        "eng.map.a.05.06"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.11",
+      "name": "第二语言习得理论（Second Language Acquisition Theories）",
+      "description": "介绍第二语言习得的主要理论模型及其教学启示。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.07",
+        "eng.map.a.05.07"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.12",
+      "name": "语料库语言学与数据驱动学习（Corpus Linguistics & Data-driven Learning）",
+      "description": "利用语料库进行词频、搭配及用法分析，驱动数据支持的教学。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.02.11",
+        "eng.map.a.05.07"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.13",
+      "name": "语用学与话语分析（Pragmatics & Discourse Analysis）",
+      "description": "研究语境中的意义建构与话语结构，深化语用能力。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.01.10",
+        "eng.map.a.05.05"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.14",
+      "name": "语言技术与AI辅助学习（Language Technology & AI-assisted Learning）",
+      "description": "探索人工智能、自适应学习系统及语言技术在教学中的应用。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.02.11",
+        "eng.map.a.03.11"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.15",
+      "name": "翻译研究（Translation Studies）",
+      "description": "系统学习翻译理论、技巧及跨语言交际中的文化转换。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "eng.map.a.05.06",
+        "eng.map.a.01.13"
+      ]
+    },
+    {
+      "code": "eng.map.a.01.16",
+      "name": "情境功能语法（Functional Grammar in Context）",
+      "description": "Students learn to apply grammatical structures accurately in authentic spoken and written contexts.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "eng.map.a.02.12",
+      "name": "批判性听力与笔记（Critical Listening & Note-taking）",
+      "description": "Students develop skills to listen critically, identify main ideas and details, and organize information through effective note-taking.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "eng.map.a.03.12",
+      "name": "研究性写作与引用（Research Writing & Citation）",
+      "description": "Students learn to conduct simple research, synthesize information, and produce properly cited academic texts.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "eng.map.a.01.17",
+      "name": "条件句与间接引语（Conditional Sentences & Reported Speech）",
+      "description": "Students learn to form and use zero, first, second, third conditionals and reported speech accurately in context.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "eng.map.a.01.18",
+      "name": "习语、动词短语及搭配模式（Idioms, Phrasal Verbs & Collocational Patterns）",
+      "description": "Students expand expressive language by mastering common idioms, phrasal verbs and typical collocations.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "eng.map.a.04.11",
+      "name": "文学体裁研究：诗歌、戏剧与小说分析（Literary Genre Study: Poetry, Drama & Novel Analysis）",
+      "description": "Students analyze poetic devices, dramatic elements and narrative techniques across genres, developing critical interpretation.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 4,
+      "prerequisites": []
+    }
+  ],
+  "frontierHints": [
+    "大学语言学或应用语言学中的第二语言习得理论课程。",
+    "大学语言学或信息学中的语料库语言学与数据驱动教学研究。",
+    "大学语用学或话语分析课程，研究语境中的意义与互动。",
+    "大学教育技术或人工智能与语言学习的交叉课程，探索智能辅助工具。",
+    "大学翻译研究或跨语言交际中的翻译理论与实践课程。"
+  ],
+  "reviewedAt": "2026-09-27"
+}

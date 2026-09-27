@@ -125,7 +125,7 @@ npm run build              # 全 workspaces
 **后端**
 - Node.js 20 + Nest 风格单后端（`services/api`，10 模块）
 - NestJS 认证中心（`services/auth-center`，RS256 JWT 签发）
-- PostgreSQL 14 单库多 schema（迁移 001–013，`_api_migrations` 跟踪）
+- PostgreSQL 14 单库多 schema（迁移 001–014，`_api_migrations` 跟踪）
 - nginx 统一网关（TLS + 路由 + 静态产物）
 
 **AI/Agent**

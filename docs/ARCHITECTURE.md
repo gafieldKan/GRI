@@ -58,7 +58,7 @@
 | PostgreSQL (gri_auth) | 5434 | TCP |
 | Redis | 6379 | TCP |
 
-## 单库 gri 的 schema 划分（迁移 001–013）
+## 单库 gri 的 schema 划分（迁移 001–014）
 
 | schema | 表数 | 职责 |
 |---|---|---|
@@ -66,10 +66,10 @@
 | auth | 3 | 身份桥（服务间查询面） |
 | edu | 15 | K12 学情（students 档案/questions/wrong/练习/计划/授课） |
 | tenant | 6 | 组织域（organizations/members/roles/邀请/审计） |
-| ontology | 7 | k12 课业真源（subject/school_stage/grade/textbook/chapter/kp/前置桥） |
+| ontology | 9 | k12 课业真源（subject/school_stage/grade/textbook/chapter/kp/前置桥 + 版图 knowledge_area/area_prerequisite） |
 | agent | 6 | 每生 AI 教师（llm_routes/sessions/messages/tool_runs/mcp） |
 
-迁移管线：`src/migrate/*.sql`（001–013）由容器启动时 `run-migrations.js` 幂等应用（`_api_migrations` 跟踪）；其中 011/012/013 = 本体 DSL → codegen 生成 + 人工审阅。
+迁移管线：`src/migrate/*.sql`（001–014）由容器启动时 `run-migrations.js` 幂等应用（`_api_migrations` 跟踪）；其中 011/012/013/014 = 本体 DSL → codegen 生成 + 人工审阅。
 
 ## 单后端模块划分（`services/api/src/modules/`）
 
@@ -82,7 +82,7 @@ modules/
 ├── ontology/       # 本体语义真源只读内省（+ /api/ontology/stats 开发全流程统计）
 ├── organization/   # 组织域（树/成员/角色/邀请/审计 + capability 运营探询）
 ├── dashboard/      # 数据大屏聚合（登录可见）
-├── agent/          # 每生 AI 教师（15 工具 + 授课状态机 + 运营台）
+├── agent/          # 每生 AI 教师（16 工具 + 授课状态机 + 运营台）
 database/           # pg Pool 单例（@Global）
 auth/               # JWT 中间件（AuthRouter 策略分派 + 公开读白名单一处定义）
 config/ migrate/ health/
@@ -100,13 +100,24 @@ config/ migrate/ health/
         → @gri/agent-core（AI 教师底座消费课业真源：curriculum.lookup 等六工具）
 ```
 
-三份本体真源：`orders.ontology.yaml`（订餐单表继承样板）、`database-orders.ontology.yaml`（落库防漂移锚点）、`k12-curriculum.ontology.yaml`（13 objects，Textbook 抽象基类 + 六学科子类）。
+三份本体真源：`orders.ontology.yaml`（订餐单表继承样板）、`database-orders.ontology.yaml`（落库防漂移锚点）、`k12-curriculum.ontology.yaml`（15 objects，Textbook 抽象基类 + 六学科子类 + 0.4.0 版图两对象）。
+
+## 学科知识版图（0.4.0 版图层，K1–K12 全学段）
+
+- **本体**：KnowledgeArea（领域→知识域两级树；scope k12|frontier，frontier=峰外未学地带）+ KnowledgeAreaPrerequisite（版图 DAG 边）——k12 本体 0.4.0 新增，迁移 014
+- **数据真源**：`scripts/k12-curriculum/maps/<subject>.map.json`（六学科，人工审核后入 git）→ `import.mjs` 幂等灌库（code 锚点 + status 门禁 + 真源对齐：消失节点转 archived）
+- **更新机制**：改 map json → 重跑 import → API/前端/AI 工具全直读 DB 自动跟随（运行时无缓存无硬编码）
+- **研发侧 AI**：map-generate（LLM 整图草案）+ map-patch（缺口年级补口）+ map-translate（术语中文化）→ 人工审核门禁 → 入 git
+- **API**：`GET /api/curriculum/knowledge-map?subject=`（领域树 + 前置 DAG + 覆盖比重；匿名出结构、登录叠加掌握度）
+- **AI 工具**：map.explorer（第 16 个）——给学生讲「你在山的哪里/前方是什么/顶峰之外还有什么」
+- **前端**：web-ai-tutor `pages/knowledge-map`（登峰视图：金字塔分层山体 + 打卡三态 + 云上远峰 + 营地详情）
+- **比重口径（诚实方法论）**：覆盖比 = k12 节点 ÷ (k12 + frontier)，按版图节点粒度估算的近似值，页面明示
 
 ## 每生 AI 教师（agent-core + /api/agent）
 
 - **一人一 Agent**：跨会话记忆（agent schema 六表），模型前台可切（llm_routes 表即改即生效，apiKey 恒 env 不入库）
 - **授课状态机**：设案 → 讲解 → 例题 → 再练（状态存该生记忆，续课不绕 LLM）
-- **15 数据工具**：question.lookup / curriculum.lookup / answer.grade / wrong.list / review.sequence / memory.recall-remember-forget / lesson.current-submit / progress.trend / diagnosis.state / plan.generate / lesson.record / plan.complete
+- **16 数据工具**：question.lookup / curriculum.lookup / map.explorer / answer.grade / wrong.list / review.sequence / memory.recall-remember-forget / lesson.current-submit / progress.trend / diagnosis.state / plan.generate / lesson.record / plan.complete
 - **LLM**：NVIDIA API（OpenAI 兼容，`nvapi-` 前缀门；非真 key 走本地降级）
 
 ## 跨模块依赖

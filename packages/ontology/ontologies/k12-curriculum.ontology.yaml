@@ -1,17 +1,21 @@
 # K12 课程本体 —— 全学科教学体系唯一结构真源
 #
 # 施工方案：AI 辅导全学科改造（本体驱动 · K1–K12 知识图谱 · 因材施教）→ 旧资产改造（2026-09-25）
+# → 全学段知识图谱（0.4.0：KnowledgeArea 版图层 + 前置关联类，2026-09-26）
 # 承接核心思想：单一语义真源 / fail-fast 契约门禁 / 模块对齐领域 / 旧资产按底线修正。
 #
 # 本体四特性贯彻（基本底线：多态 · 可变 · 内外部关系复杂 · 有生命周期）：
 #   - 多态/继承：Textbook 抽象基类 + 六学科子类（单表继承：textbook_type 判别列 + extra JSONB）
-#   - 生命周期：Textbook/TextbookChapter/KnowledgePoint 三态机（draft→published→archived 审核与版本迭代）
+#   - 生命周期：Textbook/TextbookChapter/KnowledgePoint/KnowledgeArea 四态机（draft→…→archived 审核与版本迭代）
 #   - 内外部关系：Grade↔SchoolStage、Textbook↔Subject/Grade、Chapter 自引用树、
-#     KP↔Chapter、KP↔KP 前置依赖（关联类）——全走 Link/关联类表达
-#   - 可变：结构变更一律先改本 YAML → codegen 产出迁移（本体可变、变更受控）
+#     KP↔Chapter、KP↔KP 前置依赖（关联类）——全走 Link/关联类表达；
+#     0.4.0 补 KnowledgeArea↔Subject/自引用两级树 + Area↔Area 前置（版图 DAG）
+#   - 可变：结构变更一律先改本 YAML → codegen 产出迁移（本体可变、变更受控）；
+#     版图数据变更走 maps/*.map.json → import 幂等灌库（数据轨，不动结构）
 #
-# 由 @gri/codegen 消费，确定性产出迁移 SQL（012_k12_curriculum.sql + 013 结构先行增量）：
-#   - ontology schema 六表：subject / school_stage / grade / textbook / textbook_chapter / kp_prerequisite
+# 由 @gri/codegen 消费，确定性产出迁移 SQL（012_k12_curriculum.sql + 013/014 结构先行增量）：
+#   - ontology schema 八表：subject / school_stage / grade / textbook / textbook_chapter /
+#     kp_prerequisite / knowledge_area / area_prerequisite
 #   - edu.knowledge_points 声明子集（CREATE TABLE IF NOT EXISTS，对已存在表为 no-op，作模型文档）
 #
 # 物理落位决策（一次定案）：
@@ -21,10 +25,12 @@
 #   4. Grade.code 数值后缀 ≡ edu.knowledge_points.grade_level（约定：G1↔1 … G12↔12）
 #   5. 前置依赖 = 关联类（kp_prerequisite 桥表，canonical）；edu.knowledge_points.prerequisites
 #      JSONB 保留、转作 staging/LLM 建议缓冲
+#   6. 版图层（0.4.0）：KnowledgeArea 是「学科整体知识」的版图节点（k12 落位 + frontier 峰外
+#      未学地带），scope 区分；覆盖比重 = k12 节点 / 版图总数（粒度近似值，页面明示）
 #
 # 红线：本体驱动、面向对象实现、设计模式应用（GoF 23 种；状态机/工厂/外观/适配器）。
 
-schemaVersion: 0.3.0
+schemaVersion: 0.4.0
 name: k12-curriculum
 description: K1–K12 全学科教学体系本体（学科/学段/年级/教材继承体系/章节/知识点 + 前置依赖 + 生命周期状态机）
 
@@ -276,3 +282,80 @@ objects:
         foreignKey: toKp           # many:1（一个知识点可有多条前置）
     uniqueConstraints:
       - [fromKp, toKp]             # 关联类幂等锚点
+
+  # —— 学科知识版图（0.4.0 全学段知识图谱层）——
+  # 「学科整体知识」的版图节点：k12 落位节点（gradeLevel 1–12）+ frontier 峰外未学地带
+  # （大学/学科前沿）。领域 → 知识域两级树（自引用，镜像 TextbookChapter）；
+  # 覆盖比重 = k12 节点数 / 版图总数（节点粒度近似值）。
+  # 更新机制：数据变更走 scripts/k12-curriculum/maps/<subject>.map.json（人工审核后）
+  # → import.mjs 幂等灌库（code 锚点 + status 门禁）——本体可变、变更受控。
+  - name: KnowledgeArea
+    table: ontology.knowledge_area
+    description: 学科知识版图节点（领域/知识域两级树；k12 落位 + frontier 峰外地带）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 稳定编码（如 math.map.f.01 = 数学版图领域 01 / math.map.a.07.03 = 数学版图知识域 07 组 03）
+      - name: name
+        type: string
+        required: true
+        description: 展示名（数与代数 / 二次函数 / 数学分析）
+      - name: description
+        type: text
+        description: 一句话说明该知识域覆盖什么
+      - name: scope
+        type: string
+        required: true
+        description: 版图范围（k12 = K1–G12 内落位；frontier = 峰外未学地带：大学/学科前沿）
+      - name: gradeLevel
+        type: integer
+        description: 应掌握年级（1–12；frontier 节点为 null——峰外不落年级）
+      - name: sortOrder
+        type: integer
+        description: 同层排序
+      - name: status
+        type: string
+        dbDefault: "'draft'"
+    links:
+      - name: areaOfSubject
+        source: KnowledgeArea
+        target: Subject
+        cardinality: many
+        foreignKey: subjectId      # many:1（同学科版图多节点）
+      - name: parentArea
+        source: KnowledgeArea
+        target: KnowledgeArea
+        cardinality: many
+        foreignKey: parentId      # 自引用两级树（领域 → 知识域；领域是知识域的父）
+    stateMachine:
+      # 版图生命周期：与 KnowledgePoint 同语义（LLM 生成 map 草案的审核状态机）
+      field: status
+      initial: draft
+      states: [draft, reviewed, published, archived]
+      transitions:
+        draft: [reviewed]
+        reviewed: [published, draft]
+        published: [archived]
+        archived: []
+
+  # —— 版图前置依赖（关联类，多对多；0.4.0）——
+  # 学科版图的 DAG 边（哪片知识域先于哪片）；与 kp_prerequisite 同构（关联类幂等锚点）
+  - name: KnowledgeAreaPrerequisite
+    table: ontology.area_prerequisite
+    description: 知识域版图前置依赖（登峰路径的 DAG 边；import 按 code 解析）
+    fields: []
+    links:
+      - name: areaPrerequisiteFrom
+        source: KnowledgeAreaPrerequisite
+        target: KnowledgeArea
+        cardinality: many
+        foreignKey: fromArea      # many:1（一个知识域可被多条边引用）
+      - name: areaPrerequisiteTo
+        source: KnowledgeAreaPrerequisite
+        target: KnowledgeArea
+        cardinality: many
+        foreignKey: toArea        # many:1（一个知识域可有多条前置）
+    uniqueConstraints:
+      - [fromArea, toArea]        # 关联类幂等锚点

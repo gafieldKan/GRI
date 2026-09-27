@@ -43,6 +43,13 @@
       }
     },
     {
+      "path": "pages/knowledge-map/index",
+      "style": {
+        "navigationBarTitleText": "学科登峰",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
       "path": "pages/wrong-questions/index",
       "style": {
         "navigationBarTitleText": "错题本",

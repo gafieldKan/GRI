@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getKnowledgePoints, getKnowledgeGraph, listSubjects, listGrades } from '@/api/index.js'
+import { getKnowledgePoints, getKnowledgeGraph, getKnowledgeMap, listSubjects, listGrades } from '@/api/index.js'
 
 // 前端图标/配色兜底（展示维度；学科清单真源是 /api/curriculum/subjects → ontology.subject）
 const SUBJECTS = {
@@ -28,6 +28,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   const knowledgePoints = ref([])
   const masteryMap = ref({}) // { pointId: masteryValue 0-1 }
   const graphData = ref({ nodes: [], edges: [] })
+  const mapData = ref({ subject: null, fields: [], areas: [], stats: { total: 0, k12: 0, frontier: 0, coverageRatio: 0, byGrade: {} } }) // 0.4.0 学科知识版图（登峰视图）
   const selectedPointId = ref(null)
   const loading = ref(false)
   const error = ref(null)
@@ -164,6 +165,23 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     }
   }
 
+  // 0.4.0 学科知识版图：登峰视图数据（领域→知识域两级树 + 前置 DAG + 覆盖比重 + 登录掌握度叠加）
+  async function loadKnowledgeMap(subject = currentSubject.value) {
+    loading.value = true
+    error.value = null
+    try {
+      const data = await getKnowledgeMap(subject)
+      if (data) {
+        mapData.value = data
+      }
+    } catch (e) {
+      error.value = e.message
+      console.error('[Knowledge] Load map failed:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+
   function buildTree(nodes, edges) {
     const nodeMap = {}
     nodes.forEach(n => {
@@ -272,6 +290,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     knowledgePoints.value = []
     masteryMap.value = {}
     graphData.value = { nodes: [], edges: [] }
+    mapData.value = { subject: null, fields: [], areas: [], stats: { total: 0, k12: 0, frontier: 0, coverageRatio: 0, byGrade: {} } }
     selectedPointId.value = null
     learningPath.value = []
     nextRecommended.value = null
@@ -290,6 +309,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     knowledgePoints,
     masteryMap,
     graphData,
+    mapData,
     selectedPointId,
     loading,
     error,
@@ -311,6 +331,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     loadCatalog,
     loadKnowledgePoints,
     loadKnowledgeGraph,
+    loadKnowledgeMap,
     setSubject,
     setStage,
     setGrade,

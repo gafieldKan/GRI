@@ -50,6 +50,9 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   get('GET', /^\/curriculum\/knowledge-points\/?$/),
   get('GET', /^\/curriculum\/knowledge-points\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/),
   get('GET', /^\/curriculum\/knowledge-graph\/?$/),
+  // 学科知识版图（0.4.0 版图层）：登峰视图数据——游客可看山体结构，
+  // 登录后叠加个人掌握度（OptionalAuth 语义，同 knowledge-graph）。
+  get('GET', /^\/curriculum\/knowledge-map\/?$/),
   // 数据大屏统计（M5 dashboard 子切片）：只读聚合分析端点 —— 已从游客白名单移除，改强制鉴权，
   // 防游客看聚合运营数据（portal 组织/运营台加固）。登录用户经 /api/identity 鉴权后仍可访问。
 ];

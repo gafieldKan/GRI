@@ -95,14 +95,14 @@ node scripts/full-test.js
 docker compose down
 ```
 
-## 当前测试覆盖 (2026-09-26)
+## 当前测试覆盖 (2026-09-27)
 
 | 模块 | 测试数 | 状态 |
 |------|--------|------|
-| services/api | jest 235 | ✅ 通过（10 模块含 stats/curriculum/agent 套件） |
+| services/api | jest 242 | ✅ 通过（curriculum 含 knowledgeMap 比重锁形 + agent 含 map.explorer 套件） |
 | packages/ontology | node --test 12 | ✅ 通过 |
 | packages/ontology-engine | node --test 13 | ✅ 通过 |
-| packages/codegen | node --test 35 | ✅ 通过（mixed-mode 六用例 + 双锚点防漂移） |
+| packages/codegen | node --test 36 | ✅ 通过（mixed-mode 15 objects/版图两表断言 + 双锚点防漂移） |
 | apps/web-ai-tutor | vitest 20 | ✅ 通过 |
 | apps/mini-program-ai-tutor | vitest 37 | ✅ 通过 |
 | tools/nat-proxy | node --test | ⚠️ 需手动运行（`node --test tests/*.test.js`） |

@@ -77,6 +77,16 @@ export async function getKnowledgeGraph(params = {}) {
   }
 }
 
+// 学科知识版图（0.4.0 登峰视图数据源）：领域→知识域两级树 + 前置 DAG + 覆盖比重；
+// 登录后叠加各知识域掌握度均值（匿名仅出结构）。
+export async function getKnowledgeMap(subject) {
+  try {
+    return await api.get('/api/curriculum/knowledge-map', { params: { subject } })
+  } catch (e) {
+    return { subject: null, fields: [], areas: [], stats: { total: 0, k12: 0, frontier: 0, coverageRatio: 0, byGrade: {} } }
+  }
+}
+
 const TOPIC_KNOWLEDGE_MAP = {
   'math_pythagorean': 'math_pythagorean',
   'math_quadratic': 'math_quadratic',

@@ -1,0 +1,507 @@
+{
+  "subject": "chem",
+  "subjectName": "化学",
+  "generatedAt": "2026-09-27T05:51:38.107Z",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "status": "published",
+  "fields": [
+    {
+      "code": "chem.map.f.01",
+      "name": "物质的性质与变化",
+      "description": "研究物质的组成、结构、性质及其变化规律。"
+    },
+    {
+      "code": "chem.map.f.02",
+      "name": "化学反应与能量",
+      "description": "探讨化学反应的类型、速率、平衡及能量变化。"
+    },
+    {
+      "code": "chem.map.f.03",
+      "name": "有机化学基础",
+      "description": "学习碳氢化合物及其官能团的结构、性质和反应。"
+    },
+    {
+      "code": "chem.map.f.04",
+      "name": "化学实验与探究",
+      "description": "培养实验操作、数据分析和科学探究能力。"
+    },
+    {
+      "code": "chem.map.f.05",
+      "name": "化学与生活/环境",
+      "description": "将化学知识应用于日常生活、材料、能源和环境问题。"
+    }
+  ],
+  "areas": [
+    {
+      "code": "chem.map.a.01.01",
+      "name": "物质的分类",
+      "description": "区分纯净物和混合物，了解元素、化合物的基本概念。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "chem.map.a.01.02",
+      "name": "物质的三态及状态变化",
+      "description": "理解固、液、气三态及熔化、蒸发等状态变化的微观解释。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.01"
+      ]
+    },
+    {
+      "code": "chem.map.a.01.03",
+      "name": "元素周期表的结构与周期律",
+      "description": "熟悉周期表的排列规律及元素性质的周期性变化。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.02"
+      ]
+    },
+    {
+      "code": "chem.map.a.01.04",
+      "name": "化学键的基本概念（离子键、共价键）",
+      "description": "掌握离子键和共价键的形成方式及典型代表。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.03"
+      ]
+    },
+    {
+      "code": "chem.map.a.01.05",
+      "name": "分子的极性与分子间作用力",
+      "description": "认识极性分子及氢键、范德华力等分子间作用力。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.04"
+      ]
+    },
+    {
+      "code": "chem.map.a.01.06",
+      "name": "物质的量及摩尔概念",
+      "description": "掌握摩尔的概念及其在化学计量中的应用。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.05"
+      ]
+    },
+    {
+      "code": "chem.map.a.01.07",
+      "name": "化学式与价格计算",
+      "description": "学会根据化合价写化学式并进行简单的质量比计算。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.06"
+      ]
+    },
+    {
+      "code": "chem.map.a.01.08",
+      "name": "溶液的浓度概念（质量百分比、摩尔浓度）",
+      "description": "掌握溶液浓度的表示方法及简单的稀释计算。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.07"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.01",
+      "name": "化学方程式的写法与配平",
+      "description": "能够正确书写化学方程式并遵守质量守恒律进行配平。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.01.08"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.02",
+      "name": "常见化学反应类型（合成、分解、置换、双置换）",
+      "description": "识别并描述四大基本反应类型的特点与典型例子。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.01"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.03",
+      "name": "化学反应速率及影响因素",
+      "description": "理解反应速率的概念及浓度、温度、催化剂等因素的影响。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.02"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.04",
+      "name": "化学平衡概念及勒沙特列原理",
+      "description": "掌握可逆反应达到平衡的条件及外界变化对平衡的影响。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.03"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.05",
+      "name": "热化学基础：反应热、燃烧热、中和热",
+      "description": "学会计算反应焓变及理解放热与吸热反应。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.04"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.06",
+      "name": "吉布斯自由能与反应自发性",
+      "description": "理解ΔG的意义及其在判断反应自发性中的作用。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.05"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.07",
+      "name": "电化学基础：氧化还原反应及电池",
+      "description": "掌握氧化还原概念及原电池、电解池的基本工作原理。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.06"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.08",
+      "name": "电解原理及应用",
+      "description": "了解电解过程及其在金属提取、电镀中的应用。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.07"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.01",
+      "name": "烃类：烷烃、烯烃、炔烃的结构与命名",
+      "description": "掌握饱和和不饱和烃的结构特点及系统命名法。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.02.08"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.02",
+      "name": "芳香烃及苯的性质",
+      "description": "认识苯环的结构及芳香性，了解典型芳香烃的反应。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.03.01"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.03",
+      "name": "官能团：卤代烃、醇、醚、醛、酮、羧酸、酯",
+      "description": "熟悉常见官能团的结构及其特征反应。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.03.02"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.04",
+      "name": "有机反应类型：加成、消除、取代、氧化还原",
+      "description": "区分四大有机反应类型及其典型反应条件。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.03.03"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.05",
+      "name": "立体异构：构型与构象",
+      "description": "理解手性、对映异构及新曼投影的基本概念。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.03.04"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.06",
+      "name": "有机合成基本思路：官能团互变",
+      "description": "学会设计简单的有机合成路线及官能团转换策略。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.03.05"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.07",
+      "name": "天然产物简介：糖、氨基酸、脂肪酸",
+      "description": "认识生物大分子的基本结构及其在生命中的作用。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.03.06"
+      ]
+    },
+    {
+      "code": "chem.map.a.04.01",
+      "name": "实验室安全与常用仪器识别",
+      "description": "掌握实验室安全规范及常见仪器的名称和用途。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chem.map.a.04.02",
+      "name": "基本定量实验技术：滴定、称量、移液",
+      "description": "熟练使用滴定管、天平、移液管进行定量测定。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "chem.map.a.04.01"
+      ]
+    },
+    {
+      "code": "chem.map.a.04.03",
+      "name": "质谱、色谱基本原理（概念）",
+      "description": "了解质谱和色谱的分离原理及其在分析中的作用。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "chem.map.a.04.02"
+      ]
+    },
+    {
+      "code": "chem.map.a.04.04",
+      "name": "红外光谱与紫外可见光谱入门",
+      "description": "掌握IR和UV-Vis光谱的基本解读方法。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "chem.map.a.04.03"
+      ]
+    },
+    {
+      "code": "chem.map.a.04.05",
+      "name": "实验数据处理与误差分析",
+      "description": "学会计算平均值、标准偏差及进行误差传播。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "chem.map.a.04.04"
+      ]
+    },
+    {
+      "code": "chem.map.a.04.06",
+      "name": "探究式学习：设计变量与对照",
+      "description": "掌握科学探究的基本步骤，能够设定自变量、因变量和对照。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "chem.map.a.04.05"
+      ]
+    },
+    {
+      "code": "chem.map.a.04.07",
+      "name": "科学论文写作与报告",
+      "description": "能够撰写规范的实验报告及科学短文。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "chem.map.a.04.06"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.01",
+      "name": "日常生活中的化学：清洁剂、食品添加剂、药物",
+      "description": "了解常见生活化学品的成分及其作用机制。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chem.map.a.05.02",
+      "name": "材料科学入门：塑料、陶瓷、合金",
+      "description": "认识主要无机和有机材料的结构与性能。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.01"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.03",
+      "name": "环境化学基础：大气污染、水体富营养化",
+      "description": "理解大气酸雨、雾霾及水体富营养化的化学过程。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.02"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.04",
+      "name": "绿色化学原则与废物减量",
+      "description": "掌握12条绿色化学原则及其在工艺中的应用。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.03"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.05",
+      "name": "能源与燃料：化石燃料、可再生能源、氢能",
+      "description": "比较各种能源的化学特性及利用途径。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.04"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.06",
+      "name": "核化学简介：放射性、核能与核废料",
+      "description": "认识放射性衰变、核裂变及核废料处理的基本知识。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.05"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.07",
+      "name": "化学在农业中的应用：肥料、农药",
+      "description": "了解常用化肥和农药的成分及其对环境的影响。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.06"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.08",
+      "name": "可持续发展与化学创新",
+      "description": "探讨化学在实现可持续发展目标中的角色与前景。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.07"
+      ]
+    },
+    {
+      "code": "chem.map.a.01.09",
+      "name": "量子化学与计算化学基础",
+      "description": "介绍薛定谔方程、分子轨道理论及简单的计算化学方法。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chem.map.a.01.03",
+        "chem.map.a.01.06",
+        "chem.map.a.02.05"
+      ]
+    },
+    {
+      "code": "chem.map.a.02.09",
+      "name": "催化科学与表面化学",
+      "description": "研究催化剂的作用机制、表面吸附及催化循环。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chem.map.a.02.03",
+        "chem.map.a.02.04",
+        "chem.map.a.02.07"
+      ]
+    },
+    {
+      "code": "chem.map.a.03.08",
+      "name": "生物有机化学与药物设计",
+      "description": "将有机化学原理应用于药物分子的设计与合成。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "chem.map.a.03.03",
+        "chem.map.a.03.04",
+        "chem.map.a.03.06"
+      ]
+    },
+    {
+      "code": "chem.map.a.05.09",
+      "name": "纳米材料与能量存储",
+      "description": "探讨纳米尺度材料的合成、性质及在电池和超级电容中的应用。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "chem.map.a.05.02",
+        "chem.map.a.05.05",
+        "chem.map.a.05.06"
+      ]
+    }
+  ],
+  "frontierHints": [
+    "对应大学课程：量子化学、计算化学与分子模拟。",
+    "对应大学课程：催化化学、表面科学与过程工程。",
+    "对应大学课程：药物化学、生物有机化学与 medicinal chemistry。",
+    "对应大学课程：纳米科学与技术、能源材料与储能。"
+  ],
+  "reviewedAt": "2026-09-27"
+}

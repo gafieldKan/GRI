@@ -1,0 +1,563 @@
+{
+  "subject": "math",
+  "subjectName": "数学",
+  "generatedAt": "2026-09-27T05:37:31.514Z",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "status": "published",
+  "fields": [
+    {
+      "code": "math.map.f.01",
+      "name": "数与代数",
+      "description": "Covers quantities, operations, expressions, equations, and functions."
+    },
+    {
+      "code": "math.map.f.02",
+      "name": "图形与几何",
+      "description": "Focuses on shapes, spatial reasoning, measurement, and geometric transformations."
+    },
+    {
+      "code": "math.map.f.03",
+      "name": "统计与概率",
+      "description": "Deals with data collection, analysis, chance, and inferential reasoning."
+    },
+    {
+      "code": "math.map.f.04",
+      "name": "综合与实践",
+      "description": "Emphasizes logic, proof, problem solving, modeling, and discrete structures."
+    }
+  ],
+  "areas": [
+    {
+      "code": "math.map.a.01.01",
+      "name": "整数与运算",
+      "description": "Students learn place value, addition and subtraction within 100.",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.01.02",
+      "name": "乘除法基础",
+      "description": "Students master multiplication tables and division with remainder.",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.01"
+      ]
+    },
+    {
+      "code": "math.map.a.01.03",
+      "name": "分数与小数",
+      "description": "Students understand fraction equivalence, operations, and decimal notation.",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.02"
+      ]
+    },
+    {
+      "code": "math.map.a.01.04",
+      "name": "比例与比例推理",
+      "description": "Students work with ratios, proportions, and percent problems.",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.03"
+      ]
+    },
+    {
+      "code": "math.map.a.01.05",
+      "name": "一次式与一次方程",
+      "description": "Students simplify algebraic expressions and solve linear equations.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.04"
+      ]
+    },
+    {
+      "code": "math.map.a.01.06",
+      "name": "二次式与二次方程",
+      "description": "Students factor quadratics, solve by completing square and formula, and graph parabolas.",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.05"
+      ]
+    },
+    {
+      "code": "math.map.a.01.07",
+      "name": "函数与图像",
+      "description": "Students interpret functions, domain/range, and graph linear, quadratic, and exponential functions.",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.06"
+      ]
+    },
+    {
+      "code": "math.map.a.01.08",
+      "name": "数列与级数",
+      "description": "Students study arithmetic and geometric sequences, sums, and sigma notation.",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.07"
+      ]
+    },
+    {
+      "code": "math.map.a.01.09",
+      "name": "多项式与高等代数",
+      "description": "Students perform polynomial operations, factor theorem, and are introduced to complex numbers.",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.08"
+      ]
+    },
+    {
+      "code": "math.map.a.02.01",
+      "name": "图形与空间想象",
+      "description": "Students identify and describe 2D and 3D shapes and their properties.",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.02.02",
+      "name": "长度、面积、体积测量",
+      "description": "Students measure perimeter, area of rectangles, and volume of prisms using standard units.",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.01"
+      ]
+    },
+    {
+      "code": "math.map.a.02.03",
+      "name": "角与初等几何",
+      "description": "Students classify angles, explore triangle properties, and are introduced to the Pythagorean theorem.",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.02"
+      ]
+    },
+    {
+      "code": "math.map.a.02.04",
+      "name": "解析几何基础",
+      "description": "Students plot points in the Cartesian plane, compute distance and midpoint.",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.03"
+      ]
+    },
+    {
+      "code": "math.map.a.02.05",
+      "name": "变换与对称",
+      "description": "Students investigate translations, rotations, reflections, and similarity transformations.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.04"
+      ]
+    },
+    {
+      "code": "math.map.a.02.06",
+      "name": "圆与三角函数基础",
+      "description": "Students explore circle theorems, trigonometric ratios, and solve right‑triangle problems.",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.05"
+      ]
+    },
+    {
+      "code": "math.map.a.02.07",
+      "name": "立体几何与体积表面积",
+      "description": "Students compute surface area and volume of prisms, cylinders, pyramids, and spheres.",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.06"
+      ]
+    },
+    {
+      "code": "math.map.a.02.08",
+      "name": "向量与解析几何",
+      "description": "Students perform vector operations, dot product, and study lines and planes in space.",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.07"
+      ]
+    },
+    {
+      "code": "math.map.a.02.09",
+      "name": "微分几何导论",
+      "description": "Students encounter basic concepts of curvature and curves in preparation for advanced geometry.",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.08"
+      ]
+    },
+    {
+      "code": "math.map.a.03.01",
+      "name": "数据收集与表示",
+      "description": "Students gather data and display it using tally marks, pictographs, and bar graphs.",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.03.02",
+      "name": "集中趋势度量",
+      "description": "Students calculate mean, median, and mode and interpret their meaning.",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.01"
+      ]
+    },
+    {
+      "code": "math.map.a.03.03",
+      "name": "概率基础",
+      "description": "Students conduct simple experiments and compute probabilities of equally likely outcomes.",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.02"
+      ]
+    },
+    {
+      "code": "math.map.a.03.04",
+      "name": "数据分布与变异",
+      "description": "Students explore range, quartiles, box plots, and an introduction to standard deviation.",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.03"
+      ]
+    },
+    {
+      "code": "math.map.a.03.05",
+      "name": "概率分布",
+      "description": "Students study binomial and normal distributions and use them to model random phenomena.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.04"
+      ]
+    },
+    {
+      "code": "math.map.a.03.06",
+      "name": "统计推断",
+      "description": "Students learn sampling methods, confidence intervals, and introductory hypothesis testing.",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.05"
+      ]
+    },
+    {
+      "code": "math.map.a.03.07",
+      "name": "回归与相关",
+      "description": "Students fit linear models, compute correlation coefficients, and assess goodness‑of‑fit.",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.06"
+      ]
+    },
+    {
+      "code": "math.map.a.03.08",
+      "name": "多元统计",
+      "description": "Students extend to multiple regression and are introduced to principal component analysis.",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.07"
+      ]
+    },
+    {
+      "code": "math.map.a.03.09",
+      "name": "概率论基础",
+      "description": "Students study axiomatic probability, expectation, variance, and law of large numbers.",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.03.08"
+      ]
+    },
+    {
+      "code": "math.map.a.04.01",
+      "name": "逻辑推理与证明",
+      "description": "Students learn basic logic, set notation, and proof techniques such as direct and contradiction.",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.04.02",
+      "name": "解题策略",
+      "description": "Students apply Polya’s heuristics and various strategies to non‑routine problems.",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "math.map.a.04.01"
+      ]
+    },
+    {
+      "code": "math.map.a.04.03",
+      "name": "数学建模",
+      "description": "Students translate real‑world situations into mathematical models and interpret results.",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "math.map.a.04.02"
+      ]
+    },
+    {
+      "code": "math.map.a.04.04",
+      "name": "离散数学基础",
+      "description": "Students study sets, relations, functions, and introductory graph theory.",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "math.map.a.04.03"
+      ]
+    },
+    {
+      "code": "math.map.a.04.05",
+      "name": "数论导论",
+      "description": "Students explore divisibility, prime numbers, modular arithmetic, and Diophantine equations.",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "math.map.a.04.04"
+      ]
+    },
+    {
+      "code": "math.map.a.04.06",
+      "name": "微积分基础",
+      "description": "Students grasp limits, derivatives, and basic integration and their geometric meanings.",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "math.map.a.04.05"
+      ]
+    },
+    {
+      "code": "math.map.a.01.10",
+      "name": "抽象代数",
+      "description": "Students study groups, rings, fields, and their homomorphisms.",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.01.09",
+        "math.map.a.04.05"
+      ]
+    },
+    {
+      "code": "math.map.a.04.07",
+      "name": "实分析",
+      "description": "Students rigorously examine limits, continuity, differentiation, and integration.",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "math.map.a.04.06"
+      ]
+    },
+    {
+      "code": "math.map.a.02.10",
+      "name": "微分几何",
+      "description": "Students explore curves, surfaces, curvature, and the basics of manifolds.",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "math.map.a.02.08",
+        "math.map.a.04.06"
+      ]
+    },
+    {
+      "code": "math.map.a.04.08",
+      "name": "拓扑学",
+      "description": "Students learn about open sets, continuity, compactness, and connectedness in topological spaces.",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "math.map.a.04.07"
+      ]
+    },
+    {
+      "code": "math.map.a.01.11",
+      "name": "复分析",
+      "description": "Students study analytic functions, contour integration, and residue theorem.",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "math.map.a.04.06"
+      ]
+    },
+    {
+      "code": "math.map.a.03.10",
+      "name": "数值分析",
+      "description": "Students develop algorithms for solving equations, interpolation, and numerical integration.",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "math.map.a.04.06",
+        "math.map.a.03.08"
+      ]
+    },
+    {
+      "code": "math.map.a.01.12",
+      "name": "千以内数的认识",
+      "description": "Students learn to read, write, and compare three-digit numbers using place value concepts.",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.01.13",
+      "name": "加减法策略",
+      "description": "Students develop fluency with mental and written strategies for adding and subtracting within 1000.",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.01.14",
+      "name": "乘法概念初步",
+      "description": "Students explore multiplication as repeated addition and begin to use basic multiplication facts.",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.02.11",
+      "name": "长度与时间测量",
+      "description": "Students measure objects using standard units of length and tell time to the nearest five minutes.",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.01.15",
+      "name": "多位数乘除法",
+      "description": "Students multiply and divide up to 4-digit numbers by 1-digit numbers using standard algorithms.",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.01.16",
+      "name": "分数运算理解",
+      "description": "Students add and subtract fractions with like denominators and multiply fractions by whole numbers.",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.03.11",
+      "name": "条形图数据解读",
+      "description": "Students read, create, and interpret bar graphs to solve problems and draw conclusions.",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.03.12",
+      "name": "计数符号与图画图数据收集与表示",
+      "description": "Students gather simple data and display it using tally marks and picture graphs to answer questions.",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.01.18",
+      "name": "因数、倍数与质数",
+      "description": "Students identify factors and multiples of numbers, and recognize prime and composite numbers up to 100.",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.02.14",
+      "name": "复合图形周长与面积",
+      "description": "Students calculate perimeter and area of shapes made by combining rectangles and squares.",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "math.map.a.03.13",
+      "name": "折线图表示数据",
+      "description": "Students organize measurement data in line plots and interpret trends such as mode and range.",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 3,
+      "prerequisites": []
+    }
+  ],
+  "frontierHints": [
+    "University abstract algebra courses study groups, rings, and fields as foundational structures.",
+    "Real analysis provides the rigorous underpinnings of calculus and measure theory.",
+    "Differential geometry investigates curved spaces, essential for general relativity and modern physics.",
+    "Topology explores properties preserved under continuous deformations, influencing many mathematical fields.",
+    "Complex analysis extends calculus to complex numbers, with applications in engineering and physics.",
+    "Numerical analysis focuses on algorithms for approximating solutions to mathematical problems."
+  ],
+  "reviewedAt": "2026-09-27"
+}

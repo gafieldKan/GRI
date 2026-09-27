@@ -1,0 +1,477 @@
+{
+  "subject": "chn",
+  "subjectName": "语文",
+  "generatedAt": "2026-09-27T05:40:55.766Z",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "status": "published",
+  "fields": [
+    {
+      "code": "chn.map.f.01",
+      "name": "语言基础",
+      "description": "覆盖汉字、词语、句子、语音及基本修辞与文言文的初步学习。"
+    },
+    {
+      "code": "chn.map.f.02",
+      "name": "阅读与鉴赏",
+      "description": "通过现代文、古诗词、名著及外国文学的阅读，培养理解、分析与鉴赏能力。"
+    },
+    {
+      "code": "chn.map.f.03",
+      "name": "写作与表达",
+      "description": "从看图写话到议论文、应用文及口头表达，系统提升学生的书面和口头表达能力。"
+    },
+    {
+      "code": "chn.map.f.04",
+      "name": "文化与传统",
+      "description": "了解中华传统节日、历史故事、文学发展及地方文化，增强文化认同与跨文化视野。"
+    },
+    {
+      "code": "chn.map.f.05",
+      "name": "语言实践与媒体素养",
+      "description": "通过听说、调查、多媒体制作及网络信息评估，培养语言综合运用与信息素养。"
+    },
+    {
+      "code": "chn.map.f.06",
+      "name": "语言学与学科前沿",
+      "description": "探讨语言的理论体系与现代技术应用，为大学语言学及相关前沿方向做准备。"
+    }
+  ],
+  "areas": [
+    {
+      "code": "chn.map.a.01.01",
+      "name": "汉字识别与书写",
+      "description": "认识常用汉字，掌握基本笔画和结构，能正确书写。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.01.02",
+      "name": "词语理解与积累",
+      "description": "理解常用词语的意思，积累近义词、反义词、成语。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chn.map.a.01.01"
+      ]
+    },
+    {
+      "code": "chn.map.a.01.03",
+      "name": "句子结构与标点",
+      "description": "认识句子成分，掌握基本标点符号用法。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chn.map.a.01.02"
+      ]
+    },
+    {
+      "code": "chn.map.a.01.04",
+      "name": "语音与韵律",
+      "description": "学习普通话音节、声调，感受语言韵律。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.01.05",
+      "name": "修辞手法初识",
+      "description": "认识比喻、拟人、排比等常见修辞手法。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chn.map.a.01.03"
+      ]
+    },
+    {
+      "code": "chn.map.a.01.06",
+      "name": "文言文基础",
+      "description": "学习常用文言虚词、句式，能读懂简单文言短文。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chn.map.a.01.05"
+      ]
+    },
+    {
+      "code": "chn.map.a.01.07",
+      "name": "古诗词鉴赏入门",
+      "description": "能背诵唐诗宋词，初步感受意象和情感。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "chn.map.a.01.03"
+      ]
+    },
+    {
+      "code": "chn.map.a.02.01",
+      "name": "现代文阅读技巧",
+      "description": "学习抓住中心、理解作者意图、进行信息筛选。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chn.map.a.01.03"
+      ]
+    },
+    {
+      "code": "chn.map.a.02.02",
+      "name": "记叙文阅读与赏析",
+      "description": "理解记叙文的六要素，分析情节与人物。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.02.03",
+      "name": "说明文阅读与信息提取",
+      "description": "学习说明文的结构特点，提取关键信息。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.02.04",
+      "name": "议论文阅读与评析",
+      "description": "识别论点、论据，评价论证的合理性。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.02.05",
+      "name": "古诗词深度鉴赏",
+      "description": "分析诗词的意象、情感、表达技巧。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chn.map.a.01.07"
+      ]
+    },
+    {
+      "code": "chn.map.a.02.06",
+      "name": "文言文阅读与翻译",
+      "description": "能借助注释翻译中等难度的文言文。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "chn.map.a.01.06"
+      ]
+    },
+    {
+      "code": "chn.map.a.02.07",
+      "name": "名著导读（中国古典名著）",
+      "description": "了解《红楼梦》《三国演义》等名著的情节与主题。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.02.08",
+      "name": "外国文学选读",
+      "description": "阅读世界名著摘录，比较中外文学特征。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.02.09",
+      "name": "阅读与写作结合训练",
+      "description": "通过阅读范文提升写作水平。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.01",
+      "name": "看图写话与基础作文",
+      "description": "根据图片进行口头描述和简单句子写作。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.02",
+      "name": "记叙文写作",
+      "description": "学习写人记事，突出事件经过和感受。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.03",
+      "name": "说明文写作",
+      "description": "学习解释事物的特点、用途，使用恰当的说明方法。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.04",
+      "name": "议论文写作",
+      "description": "学习提出观点，用事实和理由进行论证。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.05",
+      "name": "应用文写作",
+      "description": "学习写通知、请假条、调查报告等实用文体。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.06",
+      "name": "创意写作与诗歌创作",
+      "description": "尝试写诗歌、短故事，培养想象力和语言感。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.07",
+      "name": "演讲与口头表达",
+      "description": "学习准备演讲稿，进行语调、肢体语言训练。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.08",
+      "name": "辩论与批判性思维",
+      "description": "进行有组织的辩论，培养逻辑思维和说服力。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.03.09",
+      "name": "修改与润色",
+      "description": "学习自我修改稿件，提升语言准确性和流畅性。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.04.01",
+      "name": "中国传统节日与民俗",
+      "description": "了解春节、端午、中秋等节日的由来和习俗。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.04.02",
+      "name": "中国古代历史故事",
+      "description": "通过故事了解重要历史人物和事件。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.04.03",
+      "name": "中国古典文学概览",
+      "description": "了解唐诗、宋词、元曲、明清小说的发展脉络。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.04.04",
+      "name": "名人名言与文化常识",
+      "description": "积累中华文化中的名言警句和常见典故。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.04.05",
+      "name": "地方文化与方言",
+      "description": "了解本地的方言、戏曲、民间艺术。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.04.06",
+      "name": "中国现代文学史",
+      "description": "了解五四运动以后的文学发展和代表作家。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.04.07",
+      "name": "世界文化遗产与跨文化交流",
+      "description": "了解世界遗产项目，探讨中外文化交流。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.01",
+      "name": "听力与口语交际",
+      "description": "通过听故事、对话培养听力和口头表达能力。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.02",
+      "name": "课堂讨论与合作学习",
+      "description": "学习在小组中发表观点，倾听他人。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.03",
+      "name": "阅读笔记与思维导图",
+      "description": "学习做阅读笔记，使用思维导图组织信息。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.04",
+      "name": "调查研究与报告撰写",
+      "description": "进行小型调查，撰写调查报告。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.05",
+      "name": "多媒体制作与演示",
+      "description": "学习使用PPT、视频等多媒体工具进行展示。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.06",
+      "name": "网络信息检索与评估",
+      "description": "学习使用搜索引擎，判断网络信息的可靠性。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.07",
+      "name": "媒体素养与广告分析",
+      "description": "分析新闻、广告的信息传播方式和价值取向。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.05.08",
+      "name": "语言实践综合项目",
+      "description": "完成一次跨学科的语言实践活动，如校刊编辑、社区访谈。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.06.01",
+      "name": "现代汉语语音学与声调研究",
+      "description": "研究普通话声调、音变及其在语音识别中的应用。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 6,
+      "prerequisites": [
+        "chn.map.a.01.04",
+        "chn.map.a.01.03"
+      ]
+    },
+    {
+      "code": "chn.map.a.06.02",
+      "name": "语义学与语用学",
+      "description": "探究词义、句义及语境在意义建构中的作用。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 6,
+      "prerequisites": [
+        "chn.map.a.01.02"
+      ]
+    },
+    {
+      "code": "chn.map.a.06.03",
+      "name": "计算语言学与自然语言处理",
+      "description": "利用统计和深度学习方法进行文本分析、机器翻译等。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 6,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.06.04",
+      "name": "文本批评与数字人文",
+      "description": "运用数字工具进行大规模文本挖掘、文学网络分析。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 6,
+      "prerequisites": []
+    },
+    {
+      "code": "chn.map.a.06.05",
+      "name": "认知语言学与语言习得",
+      "description": "研究语言在大脑中的加工机制及第一/第二语言习得。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 6,
+      "prerequisites": [
+        "chn.map.a.01.01"
+      ]
+    }
+  ],
+  "frontierHints": [
+    "大学课程：现代汉语语音学；前沿方向：语音识别、语音合成与声纹技术。",
+    "大学课程：语义学与语用学；前沿方向：自然语言理解、对话系统与 pragmatics 在 AI 中的应用。",
+    "大学课程：计算语言学；前沿方向：深度学习驱动的机器翻译、文本生成与语言模型。",
+    "大学课程：数字人文与文本批评；前沿方向：大规模文学网络分析、主题建模与文化计量学。",
+    "大学课程：认知语言学与语言习得；前沿方向：第一语言习得理论、双语脑机成像与语言障碍干预。"
+  ],
+  "reviewedAt": "2026-09-27"
+}

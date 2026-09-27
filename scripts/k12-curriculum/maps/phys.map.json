@@ -1,0 +1,502 @@
+{
+  "subject": "phys",
+  "subjectName": "物理",
+  "generatedAt": "2026-09-27T05:49:57.204Z",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "status": "published",
+  "fields": [
+    {
+      "code": "phys.map.f.01",
+      "name": "力学",
+      "description": "研究物体的运动、力、能量和动量等基本规律。"
+    },
+    {
+      "code": "phys.map.f.02",
+      "name": "热学",
+      "description": "研究温度、热传递、气体状态和热力学定律。"
+    },
+    {
+      "code": "phys.map.f.03",
+      "name": "电磁学",
+      "description": "研究电荷、电场、磁场及其相互作用和电磁波。"
+    },
+    {
+      "code": "phys.map.f.04",
+      "name": "光学与波动",
+      "description": "研究波的性质、声音、光的传播、反射、折射、干涉等现象。"
+    },
+    {
+      "code": "phys.map.f.05",
+      "name": "现代物理",
+      "description": "涉及原子结构、核物理、相对论、量子力学等前沿理论。"
+    }
+  ],
+  "areas": [
+    {
+      "code": "phys.map.a.01.01",
+      "name": "基础运动与描述",
+      "description": "学会用位移、速度、加速度描述物体的运动状态。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.01.02",
+      "name": "牛顿第一、第二定律",
+      "description": "理解惯性和力与加速度的关系，能够用F=ma解决问题。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "phys.map.a.01.01"
+      ]
+    },
+    {
+      "code": "phys.map.a.01.03",
+      "name": "牛顿第三定律与力的合成",
+      "description": "掌握作用力与反作用力，以及多个力的合成与分解。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "phys.map.a.01.02"
+      ]
+    },
+    {
+      "code": "phys.map.a.01.04",
+      "name": "功与能",
+      "description": "学会计算功、动能和势能，理解能量守恒定律。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "phys.map.a.01.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.01.05",
+      "name": "动量与冲量",
+      "description": "理解动量定理和冲量，能够分析碰撞过程。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "phys.map.a.01.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.01.06",
+      "name": "简谐振动与波动基础",
+      "description": "掌握简谐运动的特征及其与波的关系。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "phys.map.a.01.04"
+      ]
+    },
+    {
+      "code": "phys.map.a.01.07",
+      "name": "转动运动与转动惯量",
+      "description": "学习角速度、角加速度、转动惯量及其定律。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "phys.map.a.01.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.01.08",
+      "name": "天体运动与万有引力",
+      "description": "理解开普勒定律和万有引力定律，能够计算轨道运动。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "phys.map.a.01.07"
+      ]
+    },
+    {
+      "code": "phys.map.a.02.01",
+      "name": "温度与热传导",
+      "description": "认识温度尺度和热传导、对流、辐射三种传热方式。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.02.02",
+      "name": "比热容与热量计算",
+      "description": "掌握比热容的概念，能够计算吸收或放出的热量。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "phys.map.a.02.01"
+      ]
+    },
+    {
+      "code": "phys.map.a.02.03",
+      "name": "气体状态方程",
+      "description": "了解博伊尔、盖-吕萨克和查理定律，理想气体状态方程PV=nRT。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "phys.map.a.02.02"
+      ]
+    },
+    {
+      "code": "phys.map.a.02.04",
+      "name": "热力学第一定律",
+      "description": "理解内能变化等于热量加功，能够进行热力学计算。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "phys.map.a.02.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.02.05",
+      "name": "热力学第二定律与熵的概念",
+      "description": "认识热不可逆过程和熵增原理，理解热机的限制。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "phys.map.a.02.04"
+      ]
+    },
+    {
+      "code": "phys.map.a.02.06",
+      "name": "热机与效率",
+      "description": "学习热机工作循环，计算其热效率。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "phys.map.a.02.05"
+      ]
+    },
+    {
+      "code": "phys.map.a.03.01",
+      "name": "电荷与静电力",
+      "description": "了解电荷的性质和库仑定律，能够计算静电力。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.03.02",
+      "name": "电场与电势",
+      "description": "掌握电场强度和电势的概念，能够画出电场线。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "phys.map.a.03.01"
+      ]
+    },
+    {
+      "code": "phys.map.a.03.03",
+      "name": "电流、电阻与欧姆定律",
+      "description": "理解电流方向、电阻及欧姆定律的应用。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "phys.map.a.03.02"
+      ]
+    },
+    {
+      "code": "phys.map.a.03.04",
+      "name": "串并联电路与功率",
+      "description": "能够分析串并联电路，计算总电阻和功率。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "phys.map.a.03.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.03.05",
+      "name": "磁场与磁力",
+      "description": "了解磁场的产生及洛伦兹力对运动电荷的作用。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "phys.map.a.03.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.03.06",
+      "name": "电磁感应与法拉第定律",
+      "description": "掌握磁通量变化产生感应电动势及其定律。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "phys.map.a.03.05"
+      ]
+    },
+    {
+      "code": "phys.map.a.03.07",
+      "name": "交流电与变压器",
+      "description": "了解正弦交流电的特征及变压器的工作原理。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "phys.map.a.03.06"
+      ]
+    },
+    {
+      "code": "phys.map.a.03.08",
+      "name": "电磁波简介",
+      "description": "认识电磁波的性质、频谱及其传播速度。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "phys.map.a.03.06"
+      ]
+    },
+    {
+      "code": "phys.map.a.04.01",
+      "name": "波的基本性质",
+      "description": "掌握振幅、波长、频率、波速的关系及波的叠加。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.04.02",
+      "name": "声音的产生与传播",
+      "description": "了解声音作为机械波的产生方式及在介质中的传播。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "phys.map.a.04.01"
+      ]
+    },
+    {
+      "code": "phys.map.a.04.03",
+      "name": "光的直线传播与反射",
+      "description": "理解光在均匀介质中的直线传播及反射定律。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "phys.map.a.04.01"
+      ]
+    },
+    {
+      "code": "phys.map.a.04.04",
+      "name": "折射与全反射",
+      "description": "掌握斯涅尔定律及全反射条件，能够计算折射角。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "phys.map.a.04.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.04.05",
+      "name": "凸透镜与成像原理",
+      "description": "学习凸透镜的成像规则及其在仪器中的应用。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "phys.map.a.04.04"
+      ]
+    },
+    {
+      "code": "phys.map.a.04.06",
+      "name": "光的干涉与衍射",
+      "description": "理解光的干涉条件及单缝衍射的基本特征。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "phys.map.a.04.05"
+      ]
+    },
+    {
+      "code": "phys.map.a.04.07",
+      "name": "偏振光与光的色散",
+      "description": "了解光的偏振现象及色散导致的光谱分离。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "phys.map.a.04.06"
+      ]
+    },
+    {
+      "code": "phys.map.a.05.01",
+      "name": "原子结构与核模型",
+      "description": "了解原子的层层结构及核子组成，掌握放射性衰变基本规律。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "phys.map.a.03.08",
+        "phys.map.a.04.01"
+      ]
+    },
+    {
+      "code": "phys.map.a.05.02",
+      "name": "特殊相对论",
+      "description": "理解时空观的改变及质能方程E=mc²的含义。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "phys.map.a.05.01",
+        "phys.map.a.01.04"
+      ]
+    },
+    {
+      "code": "phys.map.a.05.03",
+      "name": "量子力学基础",
+      "description": "掌握波粒二象性、不确定性原理及薛定谔方程的基本形式。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "phys.map.a.05.01",
+        "phys.map.a.05.02"
+      ]
+    },
+    {
+      "code": "phys.map.a.05.04",
+      "name": "粒子物理与标准模型",
+      "description": "了解基本粒子分类及相互作用的规范理论框架。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "phys.map.a.05.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.05.05",
+      "name": "凝聚态物理与超导",
+      "description": "研究固体的电子带结构及无电阻超导现象。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "phys.map.a.05.03"
+      ]
+    },
+    {
+      "code": "phys.map.a.01.09",
+      "name": "物体的运动状态",
+      "description": "学生能够用语言描述物体是静止还是运动，并能比较快慢。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.04.08",
+      "name": "光与影子的关系",
+      "description": "学生能够解释光被遮挡产生影子的现象，并能根据光源位置判断影子方向。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.04.09",
+      "name": "声音的特性",
+      "description": "学生能够区分声音的高低（音高）和大小（音量），并了解振动产生声音。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.01.10",
+      "name": "力的初步认识",
+      "description": "学生能够举出生活中推、拉、压等力的例子，并能用语言描述力的作用效果。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.02.07",
+      "name": "温度的感知与测量",
+      "description": "学生能够用手感知物体的冷热，并学会使用温度计读取温度。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.03.09",
+      "name": "简单电路中的灯泡亮起",
+      "description": "学生能够认识电池、导线、灯泡的基本连接，并解释灯泡亮起的条件。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.01.11",
+      "name": "日常生活中的推拉力",
+      "description": "学生能够识别生活中常见的推拉力并用语言描述其方向和大小。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.02.08",
+      "name": "认识温度计",
+      "description": "学生学会读取简单的温度计并理解温度的升降表示冷热变化。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.01.12",
+      "name": "简单机械——杠杆与滑轮",
+      "description": "学生了解杠杆和滑轮的基本结构，并能说明它们如何省力或改变力的方向。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "phys.map.a.04.10",
+      "name": "光的颜色与混合",
+      "description": "学生认识可见光的基本颜色，并通过混色实验了解颜色的叠加规律。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 4,
+      "prerequisites": []
+    }
+  ],
+  "frontierHints": [
+    "特殊相对论对应大学现代物理课程中的相对论部分，涉及时空几何和高能物理。",
+    "量子力学基础对应大学量子力学导论，是理解原子和固体物理的核心。",
+    "粒子物理与标准模型对应大学高能物理课程，探索基本相互作用和宇宙起源。",
+    "凝聚态物理与超导对应大学凝聚态物理前沿，包括高温超导和拓扑材料。"
+  ],
+  "reviewedAt": "2026-09-27"
+}

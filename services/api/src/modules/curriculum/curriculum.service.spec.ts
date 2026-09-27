@@ -153,4 +153,94 @@ describe('CurriculumService K12 课程体系门面', () => {
     expect(r.from).toBe('published');
     expect(r.to).toBe('published');
   });
+
+  // ---- 0.4.0 学科知识版图（knowledgeMap：领域→知识域两级树 + 比重 + 登录掌握度叠加） ----
+
+  /** knowledgeMap 的 mock 查询序：subject → areas → pres → kpCounts → [mastery] */
+  function mockMapDb(rows: { subject?: any[]; areas?: any[]; pres?: any[]; kpCounts?: any[]; mastery?: any[] }) {
+    return jest
+      .fn()
+      .mockResolvedValueOnce({ rows: rows.subject ?? [] })
+      .mockResolvedValueOnce({ rows: rows.areas ?? [] })
+      .mockResolvedValueOnce({ rows: rows.pres ?? [] })
+      .mockResolvedValueOnce({ rows: rows.kpCounts ?? [] })
+      .mockResolvedValueOnce({ rows: rows.mastery ?? [] });
+  }
+
+  const MAP_FIXTURE = {
+    subject: [{ id: 'sub1', code: 'MATH', name: '数学' }],
+    areas: [
+      { id: 'f1', code: 'math.map.f.01', name: '数与代数', description: '数系与运算', scope: 'k12', grade_level: null, parent_id: null },
+      { id: 'a1', code: 'math.map.a.01.01', name: '有理数', description: null, scope: 'k12', grade_level: 7, parent_id: 'f1' },
+      { id: 'a2', code: 'math.map.a.01.02', name: '一元一次方程', description: null, scope: 'k12', grade_level: 7, parent_id: 'f1' },
+      { id: 'a3', code: 'math.map.a.01.03', name: '二次函数', description: null, scope: 'k12', grade_level: 9, parent_id: 'f1' },
+      { id: 'a4', code: 'math.map.a.01.04', name: '抽象代数', description: '群环域', scope: 'frontier', grade_level: null, parent_id: 'f1' },
+    ],
+    pres: [{ from_code: 'math.map.a.01.01', to_code: 'math.map.a.01.02' }],
+    kpCounts: [{ grade_level: 7, n: 12 }, { grade_level: 9, n: 4 }],
+  };
+
+  it('knowledgeMap 匿名：两级树 + 比重算术 + byGrade 全键 + 无 mastery', async () => {
+    const query = mockMapDb(MAP_FIXTURE);
+    const svc = new CurriculumService(mockDb(query));
+
+    const map = await svc.knowledgeMap('math');
+
+    expect(map.subject.name).toBe('数学');
+    expect(map.fields).toHaveLength(1);
+    expect(map.fields[0].code).toBe('math.map.f.01');
+    expect(map.areas).toHaveLength(4); // a.* 知识域 4（领域行不计入）
+    const eq: any = map.areas.find((a: any) => a.code === 'math.map.a.01.02');
+    expect(eq.fieldCode).toBe('math.map.f.01'); // 父领域 code 已解析
+    expect(eq.prerequisites).toEqual(['math.map.a.01.01']); // DAG 边按 to_code 挂载
+    expect(eq.mastery).toBeUndefined(); // 游客无 mastery
+    // 比重算术锁形：k12=3 / total=4 → 0.75
+    expect(map.stats).toEqual({
+      total: 4,
+      k12: 3,
+      frontier: 1,
+      coverageRatio: 0.75,
+      byGrade: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 2, '8': 0, '9': 1, '10': 0, '11': 0, '12': 0 },
+    });
+    // published 过滤 + archived 不出（SQL 锁形）
+    const [sqlAreas] = query.mock.calls[1] as [string];
+    expect(sqlAreas).toContain("ka.status = 'published'");
+    expect(sqlAreas).toContain('ontology.knowledge_area');
+  });
+
+  it('knowledgeMap 登录：mastery_snapshots 按年级聚合叠加各知识域', async () => {
+    const query = mockMapDb({ ...MAP_FIXTURE, mastery: [{ grade_level: 7, avg_mastery: '62.5' }] });
+    const svc = new CurriculumService(mockDb(query));
+
+    const map = await svc.knowledgeMap('math', 'user-1');
+
+    const [sqlMastery, paramsMastery] = query.mock.calls[4] as [string, unknown[]];
+    expect(sqlMastery).toContain('mastery_snapshots');
+    expect(paramsMastery[0]).toBe('user-1');
+    const g7: any = map.areas.find((a: any) => a.code === 'math.map.a.01.01');
+    expect(g7.mastery).toBe(62.5); // G7 落位知识域拿到该年级均值
+    const g9: any = map.areas.find((a: any) => a.code === 'math.map.a.01.03');
+    expect(g9.mastery).toBeUndefined(); // 无数据年级不硬造
+    const frontier: any = map.areas.find((a: any) => a.scope === 'frontier');
+    expect(frontier.mastery).toBeUndefined(); // 峰外无掌握度语义
+  });
+
+  it('knowledgeMap kpCount 叠加：题库层衔接锚点（G7=12 题）', async () => {
+    const query = mockMapDb(MAP_FIXTURE);
+    const svc = new CurriculumService(mockDb(query));
+
+    const map = await svc.knowledgeMap('math');
+
+    const g7: any = map.areas.find((a: any) => a.gradeLevel === 7);
+    expect(g7.kpCount).toBe(12);
+    const frontier: any = map.areas.find((a: any) => a.scope === 'frontier');
+    expect(frontier.kpCount).toBe(0); // 峰外不锚 KP
+  });
+
+  it('knowledgeMap 学科不存在 → NotFoundException', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+    const svc = new CurriculumService(mockDb(query));
+
+    await expect(svc.knowledgeMap('nosuch')).rejects.toBeInstanceOf(NotFoundException);
+  });
 });

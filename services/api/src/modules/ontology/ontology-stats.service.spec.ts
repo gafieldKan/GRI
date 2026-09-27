@@ -169,9 +169,13 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
     expect(stats.designPatterns.behavioral).toHaveLength(5);
     expect(stats.ooFeatures.map((f) => f.name)).toEqual(['多态', '继承', '封装', '生命周期']);
     expect(stats.realWorldMappings).toHaveLength(3);
-    expect(stats.devProcess.snapshotDate).toBe('2026-09-25');
-    expect(stats.devProcess.commits.total).toBe(15);
+    expect(stats.devProcess.snapshotDate).toBe('2026-09-27');
+    expect(stats.devProcess.commits.total).toBe(21);
+    expect(stats.devProcess.tests.jestApi).toBe(242);
     expect(stats.devProcess.plans.active).toHaveLength(4);
+    expect(stats.devProcess.milestones.map((m) => m.stage)).toEqual(
+      expect.arrayContaining(['人本', 'P1', 'P2', 'P3', '改造', '版图']),
+    );
     expect(stats.devProcess.milestones[0]).toEqual({
       stage: '人本', name: expect.stringContaining('以人为本'), status: '起点',
     });

@@ -243,6 +243,102 @@ async function upsertStaging(staging) {
 }
 
 // ---------------------------------------------------------------------------
+// 5. 学科知识版图（maps/*.map.json，人工审核后入 git 的真源）→ 幂等灌库
+//    code 锚点（f.NN 领域 / a.NN.MM 知识域）；scope 闭集门禁；前置按 code 解析（未命中跳过）。
+//    更新机制：改 map json → 重跑 import——比重/图谱/登峰页运行时直读 DB 自动跟随。
+// ---------------------------------------------------------------------------
+
+const AREA_SCOPES = new Set(['k12', 'frontier'])
+
+async function upsertKnowledgeMap(mapFile) {
+  const map = JSON.parse(await fs.readFile(mapFile, 'utf8'))
+  const subject = map.subject
+  if (!subject) throw new Error(`${mapFile} 缺 subject`)
+  let subjectId = (await Q(`SELECT id FROM ontology.subject WHERE code = $1`, [String(subject).toUpperCase()])).rows[0]?.id
+  if (!subjectId) {
+    // 学科自举：版图六学科是完整学科集，不能依赖教材批次先行（chn/eng/chem/bio 无教材时也要有版图）。
+    // map 文件自报 subjectName，与 upsertSubject 同源逻辑灌 subject 行。
+    if (!map.subjectName) throw new Error(`学科 ${subject} 不在 ontology.subject 且 map 缺 subjectName，无法自举`)
+    await Q(
+      `INSERT INTO ontology.subject (code, name) VALUES ($1,$2)
+       ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name`,
+      [String(subject).toUpperCase(), map.subjectName],
+    )
+    await Q(
+      `INSERT INTO ontology.master_data (kind, label, code, value, is_builtin, sort_order) VALUES ('Subject', $1, $2, '{}'::jsonb, true, 20)
+       ON CONFLICT (kind, code) DO NOTHING`,
+      [map.subjectName, String(subject).toUpperCase()],
+    )
+    subjectId = (await Q(`SELECT id FROM ontology.subject WHERE code = $1`, [String(subject).toUpperCase()])).rows[0].id
+    console.log(`  + 学科自举：${String(subject).toUpperCase()}（${map.subjectName}）——版图先于教材批次`)
+  }
+
+  let n = 0
+  const areaIdByCode = new Map()
+  // 领域（f.NN，一级）
+  for (const f of map.fields ?? []) {
+    if (!f.code || !f.name) continue
+    await Q(
+      `INSERT INTO ontology.knowledge_area (code, name, description, scope, grade_level, status, subject_id, sort_order)
+       VALUES ($1,$2,$3,'k12',NULL,'published',$4,$5)
+       ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, subject_id=EXCLUDED.subject_id`,
+      [f.code, f.name, f.description ?? null, subjectId, f.sortOrder ?? null],
+    )
+    areaIdByCode.set(f.code, (await Q(`SELECT id FROM ontology.knowledge_area WHERE code = $1`, [f.code])).rows[0].id)
+    n++
+  }
+  // 知识域（a.NN.MM，二级；frontier 不落年级）
+  for (const a of map.areas ?? []) {
+    if (!a.code || !a.name) continue
+    const scope = a.frontier ? 'frontier' : 'k12'
+    if (!AREA_SCOPES.has(scope)) throw new Error(`版图 ${a.code} scope "${scope}" 不在闭集 [k12/frontier]`)
+    // 父领域推导：fieldIdx 是领域序（生成器赋锚形态）——按 code 前缀 a.NN.MM → f.NN 对位（key 名不依赖生成器内部字段名）
+    const am = a.code.match(/\.a\.(\d{2})\./)
+    const parentCode = am ? `${subject}.map.f.${am[1]}` : null
+    const parentId = parentCode ? areaIdByCode.get(parentCode) ?? null : null
+    await Q(
+      `INSERT INTO ontology.knowledge_area (code, name, description, scope, grade_level, status, subject_id, parent_id, sort_order)
+       VALUES ($1,$2,$3,$4,$5,'published',$6,$7,$8)
+       ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description,
+         scope=EXCLUDED.scope, grade_level=EXCLUDED.grade_level, parent_id=EXCLUDED.parent_id`,
+      [a.code, a.name, a.description ?? null, scope, a.frontier ? null : (a.gradeLevel ?? null), subjectId, parentId, a.sortOrder ?? null],
+    )
+    areaIdByCode.set(a.code, (await Q(`SELECT id FROM ontology.knowledge_area WHERE code = $1`, [a.code])).rows[0].id)
+    n++
+  }
+  // 前置边（按 code 解析；未命中跳过不报错——同 kp_prerequisite 容错）
+  const fromAreas = new Set((map.areas ?? []).map((a) => a.code))
+  for (const a of map.areas ?? []) {
+    for (const pre of a.prerequisites ?? []) {
+      const toId = areaIdByCode.get(pre)
+      const fromId = areaIdByCode.get(a.code)
+      if (!toId || !fromId || !fromAreas.has(pre)) continue
+      await Q(
+        `INSERT INTO ontology.area_prerequisite (from_area, to_area) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+        [fromId, toId],
+      )
+    }
+  }
+  // 真源对齐（可变本体红线）：map 是版图真源——真源中消失的节点归档（archived）而非物理删，
+  // 保历史掌握度/打卡记录可关联；其前置边物理删（边无历史语义）。先查存量再比对。
+  const liveRows = (await Q(
+    `SELECT id, code, status FROM ontology.knowledge_area WHERE subject_id = $1 AND code LIKE $2`,
+    [subjectId, `${subject}.map.%`],
+  )).rows
+  const mapCodes = new Set([...(map.fields ?? []), ...(map.areas ?? [])].map((x) => x.code).filter(Boolean))
+  let archived = 0, edgesRemoved = 0
+  for (const row of liveRows) {
+    if (mapCodes.has(row.code)) continue
+    await Q(`DELETE FROM ontology.area_prerequisite WHERE from_area = $1 OR to_area = $1`, [row.id])
+    edgesRemoved += 1 // 保守计（实际边数可能为 0，此处计节点数口径）
+    await Q(`UPDATE ontology.knowledge_area SET status = 'archived' WHERE id = $1`, [row.id])
+    archived++
+  }
+  if (archived) console.log(`  ↯ 真源对齐：${archived} 个真源已删节点转 archived（掌握度/打卡历史保留）`)
+  return { subject, nodes: n }
+}
+
+// ---------------------------------------------------------------------------
 // 主流程
 // ---------------------------------------------------------------------------
 
@@ -296,6 +392,19 @@ async function main() {
       const staging = JSON.parse(await fs.readFile(path.join(stagingDir, f), 'utf8'))
       kpN += await upsertStaging(staging)
       console.log(`✓ staging 灌库：${f}`)
+    }
+
+    // 5. 学科知识版图（maps/*.map.json，人工审核通过者）
+    const mapsDir = path.join(__dirname, 'maps')
+    let mapFiles = []
+    try {
+      mapFiles = (await fs.readdir(mapsDir)).filter((f) => f.endsWith('.map.json'))
+    } catch { /* maps 目录可不存在 */ }
+    let areaN = 0
+    for (const f of mapFiles) {
+      const { subject, nodes } = await upsertKnowledgeMap(path.join(mapsDir, f))
+      areaN += nodes
+      console.log(`✓ 版图灌库：${subject}（节点 ${nodes}）← ${f}`)
     }
 
     if (DRY_RUN) {

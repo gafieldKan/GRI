@@ -7,6 +7,9 @@ import {
   Textbook,
   Chapter,
   KnowledgePoint,
+  KnowledgeField,
+  KnowledgeArea,
+  KnowledgeMapStats,
 } from './curriculum.types';
 
 /**
@@ -203,6 +206,129 @@ export class CurriculumService {
         .map((p) => ({ source: p.to_kp, target: p.from_kp, relation: 'prerequisite-of' as const })),
     ];
     return { nodes, edges };
+  }
+
+  /**
+   * 学科知识版图（0.4.0 版图层）：领域 → 知识域两级树 + 前置 DAG + 覆盖比重。
+   * 匿名出结构；登录（userId）叠加各知识域掌握度均值（mastery_snapshots 按 subject+grade 聚合，
+   * 无数据显示空）——镜像 knowledge-graph 的 OptionalAuth 先例。
+   * 比重口径（诚实方法论）：coverageRatio = k12 节点数 / (k12 + frontier)，节点粒度近似值。
+   */
+  async knowledgeMap(subject: string, userId?: string) {
+    const subjectRow = (
+      await this.db.query(
+        `SELECT id, code, name FROM ontology.subject WHERE LOWER(code) = LOWER($1)`,
+        [subject],
+      )
+    ).rows[0];
+    if (!subjectRow) throw new NotFoundException(`学科不存在：${subject}`);
+
+    // 版图节点（status=published；archived 不出——真源对齐语义）
+    const areas = await this.db.query(
+      `SELECT ka.id, ka.code, ka.name, ka.description, ka.scope, ka.grade_level, ka.parent_id
+         FROM ontology.knowledge_area ka
+        WHERE ka.subject_id = $1 AND ka.status = 'published'
+        ORDER BY ka.scope, ka.grade_level NULLS LAST, ka.sort_order NULLS LAST, ka.code`,
+      [subjectRow.id],
+    );
+    // 前置边（同图内）
+    const pres = await this.db.query(
+      `SELECT af.code AS from_code, at_.code AS to_code
+         FROM ontology.area_prerequisite apr
+         JOIN ontology.knowledge_area af ON af.id = apr.from_area
+         JOIN ontology.knowledge_area at_ ON at_.id = apr.to_area
+        WHERE af.subject_id = $1`,
+      [subjectRow.id],
+    );
+    // 知识点数（各知识域锚定的 KP 数——题库层衔接可见锚点）
+    const kpCounts = await this.db.query(
+      `SELECT kp.grade_level, COUNT(*)::int AS n
+         FROM edu.knowledge_points kp
+        WHERE LOWER(kp.subject) = LOWER($1) AND kp.status = 'published'
+        GROUP BY kp.grade_level`,
+      [subjectRow.code],
+    );
+    // 个人掌握度叠加（按年级聚合均值；知识域落位年级即掌握度落点）
+    const masteryByGrade = new Map<number, number>();
+    if (userId) {
+      const ms = await this.db.query(
+        `SELECT kp.grade_level, AVG(ms.mastery_score) AS avg_mastery
+           FROM edu.mastery_snapshots ms
+           JOIN edu.knowledge_points kp ON kp.id = ms.knowledge_point_id
+          WHERE ms.user_id = $1 AND LOWER(kp.subject) = LOWER($2)
+          GROUP BY kp.grade_level`,
+        [userId, subjectRow.code],
+      );
+      for (const r of ms.rows) {
+        if (r.grade_level != null) masteryByGrade.set(Number(r.grade_level), Number(r.avg_mastery));
+      }
+    }
+    const kpCountByGrade = new Map<number, number>();
+    for (const r of kpCounts.rows) {
+      if (r.grade_level != null) kpCountByGrade.set(Number(r.grade_level), Number(r.n));
+    }
+
+    // 领域（f.*，parent 为空）→ 知识域（a.*，parent 指向领域）两级树
+    const byId = new Map<string, { row: any; fieldCode?: string }>();
+    const fields: KnowledgeField[] = [];
+    const areaList: KnowledgeArea[] = [];
+    for (const r of areas.rows) {
+      if (r.code.includes('.map.f.')) {
+        fields.push({
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          description: r.description,
+        });
+      }
+    }
+    const fieldIdToCode = new Map<string, string>();
+    for (const f of fields) fieldIdToCode.set(f.id, f.code);
+    const preByTo = new Map<string, string[]>();
+    for (const p of pres.rows) {
+      if (!preByTo.has(p.to_code)) preByTo.set(p.to_code, []);
+      preByTo.get(p.to_code)!.push(p.from_code);
+    }
+    for (const r of areas.rows) {
+      if (!r.code.includes('.map.a.')) continue;
+      const fieldCode = r.parent_id ? fieldIdToCode.get(r.parent_id) : undefined;
+      const gl = r.grade_level != null ? Number(r.grade_level) : null;
+      areaList.push({
+        id: r.id,
+        code: r.code,
+        fieldCode: fieldCode ?? '',
+        name: r.name,
+        description: r.description,
+        scope: r.scope,
+        gradeLevel: gl,
+        mastery: userId && gl != null ? masteryByGrade.get(gl) : undefined,
+        kpCount: gl != null ? kpCountByGrade.get(gl) ?? 0 : 0,
+        prerequisites: preByTo.get(r.code) ?? [],
+      });
+    }
+
+    // 统计（诚实口径：节点粒度近似值；byGrade G1–G12 全键列出，无节点为 0）
+    const k12Areas = areaList.filter((a) => a.scope === 'k12');
+    const frontierAreas = areaList.filter((a) => a.scope === 'frontier');
+    const total = areaList.length;
+    const byGrade: Record<string, number> = {};
+    for (let g = 1; g <= 12; g++) byGrade[String(g)] = 0;
+    for (const a of k12Areas) {
+      if (a.gradeLevel != null) byGrade[String(a.gradeLevel)] += 1;
+    }
+    const stats: KnowledgeMapStats = {
+      total,
+      k12: k12Areas.length,
+      frontier: frontierAreas.length,
+      coverageRatio: total > 0 ? Number((k12Areas.length / total).toFixed(4)) : 0,
+      byGrade,
+    };
+    return {
+      subject: { code: subjectRow.code, name: subjectRow.name },
+      fields,
+      areas: areaList,
+      stats,
+    };
   }
 
   /** 单知识点（含前置依赖与状态）。 */

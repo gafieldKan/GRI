@@ -1,0 +1,667 @@
+{
+  "subject": "bio",
+  "subjectName": "生物",
+  "generatedAt": "2026-09-27T05:58:00.767Z",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "status": "published",
+  "fields": [
+    {
+      "code": "bio.map.f.01",
+      "name": "细胞与生命系统",
+      "description": "研究生命的基本单位——细胞的结构、功能及其代谢与分裂过程。"
+    },
+    {
+      "code": "bio.map.f.02",
+      "name": "遗传与进化",
+      "description": "探讨遗传信息的传递、变异以及生物多样性形成的进化机制。"
+    },
+    {
+      "code": "bio.map.f.03",
+      "name": "生物体的调节",
+      "description": "考察植物和动物如何通过神经、内分泌、免疫等系统维持生命活动的稳态。"
+    },
+    {
+      "code": "bio.map.f.04",
+      "name": "生态与环境",
+      "description": "分析生物与其环境之间的相互作用、种群动态以及生态系统的可持续性。"
+    },
+    {
+      "code": "bio.map.f.05",
+      "name": "生物技术与应用",
+      "description": "介绍利用生物原理进行发酵、基因工程、细胞工程及信息学的现代技术。"
+    }
+  ],
+  "areas": [
+    {
+      "code": "bio.map.a.01.01",
+      "name": "观察生命现象与基本特征",
+      "description": "通过观察日常生命现象，认识生物的基本特征和生命活动的共性。",
+      "frontier": false,
+      "gradeLevel": 3,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.01.02",
+      "name": "显微镜下的细胞结构",
+      "description": "学习使用光学显微镜观察原核细胞和真核细胞的基本结构。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "bio.map.a.01.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.01.03",
+      "name": "细胞膜与物质运输",
+      "description": "理解细胞膜的流动马赛克模型以及物质跨膜运输的方式。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "bio.map.a.01.02"
+      ]
+    },
+    {
+      "code": "bio.map.a.01.04",
+      "name": "细胞代谢：呼吸与光合作用",
+      "description": "掌握细胞呼吸和光合作用的基本原理及其能量转换过程。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "bio.map.a.01.03"
+      ]
+    },
+    {
+      "code": "bio.map.a.01.05",
+      "name": "细胞器的功能分工",
+      "description": "认识线粒体、叶绿体、核糖体等主要细胞器的结构与功能。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "bio.map.a.01.02"
+      ]
+    },
+    {
+      "code": "bio.map.a.01.06",
+      "name": "细胞分裂：有丝分裂与减数分裂",
+      "description": "掌握有丝分裂和减数分裂的阶段及其在生长、繁殖和遗传中的意义。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "bio.map.a.01.05"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.01",
+      "name": "性状的遗传与变异",
+      "description": "通过杂交实验观察性状的遗传规律和变异来源。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.01.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.02",
+      "name": "孟德尔遗传定律",
+      "description": "学习孟德尔的分离定律和自由组合定律及其应用。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.02.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.03",
+      "name": "DNA 是遗传物质",
+      "description": "认识DNA的双螺旋结构及其作为遗传信息载体的实验证据。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.02.02"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.04",
+      "name": "基因表达与蛋白质合成",
+      "description": "理解转录、翻译过程以及基因调控的基本概念。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.02.03"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.05",
+      "name": "染色体变异与基因突变",
+      "description": "了解染色体数目和结构变异以及点突变的类型和影响。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.02.03",
+        "bio.map.a.02.04"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.06",
+      "name": "进化理论：自然选择与物种形成",
+      "description": "掌握达尔文自然选择理论以及物种形成的机制。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.02.05"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.07",
+      "name": "分子进化与系统发育",
+      "description": "学习利用分子数据构建系统发育树并研究分子钟。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.02.06"
+      ]
+    },
+    {
+      "code": "bio.map.a.03.01",
+      "name": "植物的生长与发育",
+      "description": "认识植物从种子萌发到开花结果的生长过程及其影响因素。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "bio.map.a.01.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.03.02",
+      "name": "植物的激素调节",
+      "description": "理解植物激素的种类及其在生长发育中的调制作用。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "bio.map.a.03.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.03.03",
+      "name": "动物的神经调节",
+      "description": "掌握神经系统的基本结构、神经冲动的传递及反射弧。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "bio.map.a.01.01",
+        "bio.map.a.03.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.03.04",
+      "name": "动物的内分泌调节",
+      "description": "认识内分泌腺及其激素在代谢、生长和应激中的调节作用。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "bio.map.a.03.01",
+        "bio.map.a.03.03"
+      ]
+    },
+    {
+      "code": "bio.map.a.03.05",
+      "name": "免疫系统与疾病防御",
+      "description": "了解免疫系统的组成、免疫反应过程及常见疾病的防治。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "bio.map.a.03.04"
+      ]
+    },
+    {
+      "code": "bio.map.a.03.06",
+      "name": "行为与社会行为",
+      "description": "探讨动物行为的遗传基础、学习过程以及社会行为的形成。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 3,
+      "prerequisites": [
+        "bio.map.a.03.03",
+        "bio.map.a.03.04",
+        "bio.map.a.03.05"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.01",
+      "name": "生态系统的组成与能量流动",
+      "description": "认识生态系统的 biotic 和 abiotic 组成部分以及能量在食物链中的传递。",
+      "frontier": false,
+      "gradeLevel": 7,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "bio.map.a.01.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.02",
+      "name": "种群增长与种群相互作用",
+      "description": "掌握种群增长模型以及竞争、捕食、共生等种间关系。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "bio.map.a.04.01"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.03",
+      "name": "群落与生态系统的稳定性",
+      "description": "了解群落结构、演替过程以及生态系统的恢复力。",
+      "frontier": false,
+      "gradeLevel": 9,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "bio.map.a.04.02"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.04",
+      "name": "生物多样性与保护",
+      "description": "认识生物多样性的价值、威胁以及保护生物多样性的策略。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "bio.map.a.04.03"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.05",
+      "name": "全球变化与环境问题",
+      "description": "了解气候变化、污染等全球环境问题对生态系统的影响。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "bio.map.a.04.04"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.06",
+      "name": "可持续发展与生态文明",
+      "description": "探讨可持续发展理念以及生态文明建设的路径和措施。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "bio.map.a.04.05"
+      ]
+    },
+    {
+      "code": "bio.map.a.05.01",
+      "name": "发酵技术与传统酿造",
+      "description": "学习微生物发酵的基本原理及其在食品、饮料和工业中的应用。",
+      "frontier": false,
+      "gradeLevel": 8,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "bio.map.a.01.01",
+        "bio.map.a.01.04"
+      ]
+    },
+    {
+      "code": "bio.map.a.05.02",
+      "name": "基因工程基本原理",
+      "description": "掌握限制酶、连接酶、载体以及重组DNA技术的基本步骤。",
+      "frontier": false,
+      "gradeLevel": 10,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "bio.map.a.02.03",
+        "bio.map.a.02.04"
+      ]
+    },
+    {
+      "code": "bio.map.a.05.03",
+      "name": "转基因生物与安全评价",
+      "description": "了解转基因生物的制作方法、应用领域以及安全性评价体系。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "bio.map.a.05.02"
+      ]
+    },
+    {
+      "code": "bio.map.a.05.04",
+      "name": "细胞工程与克隆技术",
+      "description": "认识体细胞核移植、胚胎干细胞技术及其在克隆和再生医学中的应用。",
+      "frontier": false,
+      "gradeLevel": 11,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "bio.map.a.01.06",
+        "bio.map.a.05.02"
+      ]
+    },
+    {
+      "code": "bio.map.a.05.05",
+      "name": "生物信息学入门",
+      "description": "学习生物序列数据库、比对工具以及基本的基因组分析方法。",
+      "frontier": false,
+      "gradeLevel": 12,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "bio.map.a.02.03",
+        "bio.map.a.02.07",
+        "bio.map.a.05.02"
+      ]
+    },
+    {
+      "code": "bio.map.a.01.07",
+      "name": "单细胞测序与组学技术",
+      "description": "掌握单细胞RNA测序、ATAC-seq等技术原理及其在细胞异质性研究中的应用。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 1,
+      "prerequisites": [
+        "bio.map.a.01.02",
+        "bio.map.a.02.03",
+        "bio.map.a.02.04"
+      ]
+    },
+    {
+      "code": "bio.map.a.02.08",
+      "name": "CRISPR 基因编辑及其治疗应用",
+      "description": "了解CRISPR-Cas9系统的机制、基因编辑流程及其在遗传病治疗中的前景。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 2,
+      "prerequisites": [
+        "bio.map.a.05.02",
+        "bio.map.a.05.03"
+      ]
+    },
+    {
+      "code": "bio.map.a.05.06",
+      "name": "合成生物学与人工生命构建",
+      "description": "学习设计构建人工基因组、代谢通路及合成生物体的基本原则。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 5,
+      "prerequisites": [
+        "bio.map.a.05.02",
+        "bio.map.a.05.04",
+        "bio.map.a.05.05"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.07",
+      "name": "生态宏基因组学与微生物群落功能",
+      "description": "掌握宏基因组测序技术及其在评估微生物群落功能与环境响应中的应用。",
+      "frontier": true,
+      "gradeLevel": null,
+      "fieldIdx": 4,
+      "prerequisites": [
+        "bio.map.a.04.01",
+        "bio.map.a.04.02",
+        "bio.map.a.04.03",
+        "bio.map.a.05.05"
+      ]
+    },
+    {
+      "code": "bio.map.a.04.08",
+      "name": "认识常见植物与动物",
+      "description": "学生能够观察并描述周围常见植物和动物的外形特征和生活习性。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.03.07",
+      "name": "人体的五官功能初步认识",
+      "description": "学生能够说出眼睛、耳朵、鼻子、嘴巴的基本功能。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.01.08",
+      "name": "生命的基本特征",
+      "description": "学生能够说出生物具有生长、繁殖、需要营养和对刺激作出反应等基本特征。",
+      "frontier": false,
+      "gradeLevel": 1,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.09",
+      "name": "简单食物链与食物网",
+      "description": "学生能够举例说明草原或池塘中的简单食物链关系。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.03.08",
+      "name": "动物的基本运动方式",
+      "description": "学生能够描述鱼、鸟、哺乳动物等常见动物的运动方式。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.01.09",
+      "name": "植物的基本结构（根、茎、叶）",
+      "description": "学生能够识别植物的根、茎、叶并说出它们的主要功能。",
+      "frontier": false,
+      "gradeLevel": 2,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.10",
+      "name": "生态系统的组成部分",
+      "description": "学生能够说明生态系统中生物因子和非生物因子的概念及举例。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.03.09",
+      "name": "人体的消化系统初步认识",
+      "description": "学生能够说出口腔、胃、肠道的基本功能及食物的消化途径。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.02.09",
+      "name": "生物的遗传现象初步认识",
+      "description": "学生能够观察并描述亲代与后代在某些明显性状上的相似性。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.11",
+      "name": "物种多样性与分类初步",
+      "description": "学生能够根据明显特征将常见动植物分为几大类。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.03.10",
+      "name": "植物的生长过程与环境影响",
+      "description": "学生能够描述光照、水分、温度对植物生长的影响。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.05.07",
+      "name": "常见食品的微生物发酵",
+      "description": "学生能够举例说明酸奶、面包等食品中利用微生物发酵的原理。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 5,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.12",
+      "name": "环境保护与资源合理利用",
+      "description": "学生能够提出日常生活中节约水、能源和减少垃圾的具体措施。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.03.11",
+      "name": "人体的呼吸系统基本结构",
+      "description": "学生能够说出鼻腔、气管、肺的基本结构及其在气体交换中的作用。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.02.10",
+      "name": "简单的进化概念：适应性状",
+      "description": "学生能够举例说明动植物为了适应环境而具有的特殊结构或行为。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 2,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.13",
+      "name": "植物的生活需求与生长条件",
+      "description": "学生将学会描述植物对光、水、空气和土壤的基本需求及其对生长的影响。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.14",
+      "name": "动物的基本需求与栖息地",
+      "description": "学生将学会说明动物需要食物、水、空气和适宜栖息地以维持生命。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.15",
+      "name": "简单的食物链角色：生产者、消费者、分解者",
+      "description": "学生将学会识别食物链中生产者、消费者和分解者的功能及其能量传递关系。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.16",
+      "name": "学校观察园中的微生态观察",
+      "description": "学生将学会在学校观察园中记录微生物、小型动植物及其相互作用的基本观察方法。",
+      "frontier": false,
+      "gradeLevel": 4,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.03.12",
+      "name": "人体的运动与协调：肌肉与骨骼基本认识",
+      "description": "学生将学会描述肌肉和骨骼如何协作产生基本的身体运动。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.01.10",
+      "name": "植物的繁殖方式：种子、孢子与营养繁殖",
+      "description": "学生将学会区分植物的有性繁殖（种子、孢子）和无性繁殖（营养繁殖）的基本特征。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 1,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.17",
+      "name": "季节变化对动植物生活的影响",
+      "description": "学生将学会解释季节变化如何影响植物的生长周期和动物的行为与迁徙。",
+      "frontier": false,
+      "gradeLevel": 5,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.18",
+      "name": "地方常见物种的观察与记录",
+      "description": "学生将学会观察本地常见植物和动物，并使用简单记录表记录其特征和分布。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.04.19",
+      "name": "生态系统中的物质循环：水循环与碳循环初步认识",
+      "description": "学生将学会描述水循环和碳循环在生态系统中的基本过程及其对生物的意义。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 4,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.03.13",
+      "name": "感觉器官对刺激的反应机制初步认识",
+      "description": "学生将学会说明眼睛、耳朵、皮肤等感觉器官如何接收外部刺激并产生神经反应。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 3,
+      "prerequisites": []
+    },
+    {
+      "code": "bio.map.a.01.11",
+      "name": "简单的生物实验设计：变量控制与观察记录",
+      "description": "学生将学会设计一个简单的生物实验，明确自变量、因变量和控制变量，并记录观察结果。",
+      "frontier": false,
+      "gradeLevel": 6,
+      "fieldIdx": 1,
+      "prerequisites": []
+    }
+  ],
+  "frontierHints": [
+    "对应大学的分子生物学、基因组学及单细胞组学前沿课程。",
+    "对应大学的遗传学、分子医学及基因治疗前沿方向。",
+    "对应大学的合成生物学、生物工程及系统生物学前沿课程。",
+    "对应大学的微生物生态学、环境基因组学及生态信息学前沿方向。"
+  ],
+  "reviewedAt": "2026-09-27"
+}

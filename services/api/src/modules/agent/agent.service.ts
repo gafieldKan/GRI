@@ -1050,6 +1050,58 @@ export class AgentService implements OnModuleDestroy {
           };
         },
       }),
+      makeTool({
+        // 版图探索（0.4.0 学科知识版图）：山体摘要——学生在山的哪里/前方是什么/顶峰之外有什么。
+        // 与 /api/curriculum/knowledge-map 同源同数据（直读 knowledge_area/area_prerequisite）。
+        name: 'map.explorer',
+        description:
+          '探索学科知识版图（登山视图）：给学科/年级，返回该学科全学段知识山体摘要——当前位置（该年级已学知识域）、前方待攀（更高年级知识域）、峰外地带（K12 之后的学科前沿）。学生问「这门学科都学什么/我学到哪了/以后学什么/这门课的尽头是什么/山顶之外有什么」时调它，用山体比喻给学生讲清全貌与位置感。',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            subject: { type: 'string', description: '学科 code（math/chn/eng/phys/chem/bio，缺省用学生当前学科）' },
+            gradeLevel: { type: 'number', description: '年级数字 1-12（缺省用学生档案年级）' },
+          },
+        },
+        async execute(ctx, args) {
+          const subject = String(args.subject ?? ctx.student?.subject ?? 'math').toLowerCase();
+          const gradeLevel = Number(args.gradeLevel ?? ctx.student?.gradeLevel ?? 7);
+          const subj = (await ctx.store.query(
+            `SELECT id, code, name FROM ontology.subject WHERE LOWER(code) = LOWER($1)`,
+            [subject],
+          )).rows[0];
+          if (!subj) return { ok: false, reason: `未知学科：${subject}` };
+          const areas = (await ctx.store.query(
+            `SELECT code, name, description, scope, grade_level
+               FROM ontology.knowledge_area
+              WHERE subject_id = $1 AND status = 'published'
+              ORDER BY grade_level NULLS LAST, code`,
+            [subj.id],
+          )).rows;
+          if (!areas.length) return { ok: false, reason: `学科 ${subj.name} 版图尚未灌库` };
+          const k12 = areas.filter((a: any) => a.scope === 'k12');
+          const frontier = areas.filter((a: any) => a.scope === 'frontier');
+          const passed = k12.filter((a: any) => a.grade_level < gradeLevel);
+          const current = k12.filter((a: any) => a.grade_level === gradeLevel);
+          const ahead = k12.filter((a: any) => a.grade_level > gradeLevel);
+          const coverageRatio = areas.length ? Math.round((k12.length / areas.length) * 100) : 0;
+          return {
+            ok: true,
+            subject: { code: subj.code, name: subj.name },
+            studentGrade: gradeLevel,
+            stats: {
+              totalAreas: areas.length,
+              k12Areas: k12.length,
+              frontierAreas: frontier.length,
+              coverageRatioPct: coverageRatio,
+            },
+            climbed: passed.map((a: any) => ({ name: a.name, grade: a.grade_level })),
+            here: current.map((a: any) => ({ name: a.name, description: a.description })),
+            ahead: ahead.map((a: any) => ({ name: a.name, grade: a.grade_level })),
+            beyondPeak: frontier.map((a: any) => ({ name: a.name, description: a.description })),
+          };
+        },
+      }),
     ];
   }
 
@@ -1064,6 +1116,7 @@ export class AgentService implements OnModuleDestroy {
       description: '学情诊断→讲解→测验的完整教师流程',
       instructions:
         '当学生发起学习请求时：(0) 学生问「该学什么/有哪些章节/教学体系/先学哪部分」时，先用 curriculum.lookup 导航教学体系（按学科/年级查教材章节与知识点），再针对具体知识点讲解或出题；' +
+        '学生问「这门学科都学什么/我学到哪了/以后学什么/山顶之外有什么」这类全貌与位置感问题时，改用 map.explorer（学科知识版图）拿山体摘要（已攀/当前/前方/峰外），用登山比喻讲清该生位置与前路；' +
         '(1) 需要摸底就用 question.lookup 抽几题诊断，或先调 diagnosis.state 取该学生的真实作答掌握度与未解决错题，紧扣真实数据给出个性化讲解；' +
         '(2) 依据对错用 answer.grade 讲解知识点；(3) 学生要「诊断/进度/错题」时先调 diagnosis.state；要「计划/学习安排」时先 diagnosis.state 再用 plan.generate 把弱项落成计划，并告知计划已在学习计划页生成；' +
         '(4) 学生报告「做完/完成」某条任务时，用 plan.complete 标记完成并回灌掌握度，答对会消除对应错题，全部完成会把计划置为已完成；' +

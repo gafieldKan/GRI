@@ -68,3 +68,34 @@ export interface KnowledgePoint {
   mastery?: number; // 个人掌握度叠加（auth 请求时）
   prerequisites?: string[]; // 前置 KP code 列表（JOIN kp_prerequisite 附加）
 }
+
+/** 版图领域（ontology.knowledge_area，一级；f.NN）。 */
+export interface KnowledgeField {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+}
+
+/** 版图知识域（ontology.knowledge_area，二级；a.NN.MM；k12 落位或 frontier 峰外）。 */
+export interface KnowledgeArea {
+  id: string;
+  code: string;
+  fieldCode: string; // 父领域 code（JOIN 附加）
+  name: string;
+  description: string | null;
+  scope: 'k12' | 'frontier';
+  gradeLevel: number | null; // k12 落位年级（1–12；frontier 为 null）
+  mastery?: number; // 该域个人掌握度均值（登录叠加；无数据 undefined）
+  kpCount?: number; // 该域已入库知识点数（与教材题库层衔接的可见锚点）
+  prerequisites?: string[]; // 前置知识域 code 列表（DAG 边）
+}
+
+/** 版图统计（诚实口径：节点粒度近似值）。 */
+export interface KnowledgeMapStats {
+  total: number; // 版图总节点（k12 + frontier）
+  k12: number;
+  frontier: number;
+  coverageRatio: number; // k12 / total（0–1）
+  byGrade: Record<string, number>; // G1–G12 → k12 节点数（年级为键）
+}

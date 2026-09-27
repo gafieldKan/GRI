@@ -45,7 +45,8 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor-vue': ['vue', 'pinia', 'vue-router'],
-            'vendor-utils': ['axios', 'katex', 'dayjs']
+            // dayjs 已移除——源码无引用且未安装，manualChunks 死引用使 build 硬失败
+            'vendor-utils': ['axios', 'katex']
           }
         }
       }

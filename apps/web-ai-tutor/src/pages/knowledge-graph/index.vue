@@ -3,7 +3,7 @@
     <PageHeader
       title="知识图谱"
       subtitle="可视化知识体系，构建完整认知网络"
-      :actions="[{ label: '切换学科', handler: showSubjectPicker }]"
+      :actions="[{ label: '切换学科', handler: showSubjectPicker }, { label: '🏔 登峰视图', handler: () => uni.navigateTo({ url: '/pages/knowledge-map/index' }) }]"
     />
 
     <!-- 学科选择器（三级联动：学段 → 年级 → 学科） -->

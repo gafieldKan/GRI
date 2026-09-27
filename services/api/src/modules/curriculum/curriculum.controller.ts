@@ -72,6 +72,16 @@ export class CurriculumController {
     );
   }
 
+  /**
+   * 学科知识版图（登峰视图数据源）：领域→知识域两级树 + 前置 DAG + 覆盖比重。
+   * OptionalAuth：匿名出结构、登录叠加各知识域掌握度均值。subject 必填（math/chn/eng/phys/chem/bio）。
+   */
+  @Get('knowledge-map')
+  knowledgeMap(@Query('subject') subject: string, @Req() req?: Request) {
+    const externalId = req ? this.auth(req)?.externalId ?? undefined : undefined;
+    return this.curriculumService.knowledgeMap(subject, externalId);
+  }
+
   @Get('knowledge-points/:id')
   async getKnowledgePoint(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.curriculumService.getKnowledgePoint(id);

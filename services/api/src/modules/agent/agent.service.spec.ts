@@ -289,4 +289,60 @@ describe('AgentService', () => {
     const outHist = await (svc as any)._mockTeach({}, { ...o, userMessage: '历史题目来一套' }, undefined);
     expect(outHist.subject).toBe('hist');
   });
+
+  it('版图工具：map.explorer 注册进每生工具表（第 16 个）', async () => {
+    const svc = makeService(fakeDb());
+    const opened = await svc.openSession('student-a');
+    expect(opened.tools).toContain('map.explorer');
+    expect(opened.tools).toContain('curriculum.lookup'); // 既有 K12 工具不回归
+  });
+
+  it('版图工具：map.explorer 返回山体摘要（已攀/当前/前方/峰外）', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    const tool = (svc as any)._teachingToolDefs().find((t: any) => t.name === 'map.explorer');
+    const spy = jest.spyOn(db, 'query');
+    spy.mockImplementation((text: string, params: any[] = []) => {
+      if (/SELECT id, code, name FROM ontology\.subject WHERE LOWER\(code\)/.test(text)) {
+        return Promise.resolve({ rows: [{ id: 'sub-1', code: 'MATH', name: '数学' }] });
+      }
+      if (/FROM ontology\.knowledge_area\s*WHERE subject_id/.test(text) || /ontology\.knowledge_area/.test(text)) {
+        return Promise.resolve({
+          rows: [
+            { code: 'math.map.a.01.01', name: '有理数', description: null, scope: 'k12', grade_level: 6 },
+            { code: 'math.map.a.01.02', name: '一元一次方程', description: '会解方程', scope: 'k12', grade_level: 7 },
+            { code: 'math.map.a.01.03', name: '二次函数', description: null, scope: 'k12', grade_level: 9 },
+            { code: 'math.map.a.01.04', name: '抽象代数', description: '群环域', scope: 'frontier', grade_level: null },
+          ],
+        });
+      }
+      return Promise.resolve({ rows: [] });
+    });
+
+    const out = await tool.execute(
+      { store: { query: db.query.bind(db) }, memory: {}, entityId: 'student-a', student: { subject: 'math', gradeLevel: 7 } },
+      {},
+    );
+
+    expect(out.ok).toBe(true);
+    expect(out.studentGrade).toBe(7);
+    expect(out.stats.coverageRatioPct).toBe(75); // 3/4 k12
+    expect(out.climbed.map((x: any) => x.name)).toEqual(['有理数']); // 已攀 G<7
+    expect(out.here.map((x: any) => x.name)).toEqual(['一元一次方程']); // 当前 G=7
+    expect(out.ahead.map((x: any) => x.name)).toEqual(['二次函数']); // 前方 G>7
+    expect(out.beyondPeak.map((x: any) => x.name)).toEqual(['抽象代数']); // 峰外 frontier
+  });
+
+  it('版图工具：map.explorer 未知学科 → ok:false（不抛异常）', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    const tool = (svc as any)._teachingToolDefs().find((t: any) => t.name === 'map.explorer');
+    jest.spyOn(db, 'query').mockImplementation(() => Promise.resolve({ rows: [] }));
+    const out = await tool.execute(
+      { store: { query: db.query.bind(db) }, memory: {}, entityId: 'student-a' },
+      { subject: 'nosuch' },
+    );
+    expect(out.ok).toBe(false);
+    expect(out.reason).toContain('未知学科');
+  });
 });
