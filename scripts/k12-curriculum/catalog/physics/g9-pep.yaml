@@ -1,0 +1,209 @@
+# 人教版物理九年级全一册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 物理九年级全一册（2013 课标版，与已入库八年级同口径）。
+# 编码约定：phys.g9.pep.chNN（章号沿用印刷章号 13–22，衔接八下 ch07–12——初中物理 1–22 连续）/
+#   phys.g9.pep.chNN.sNN（节）。
+#   九年级为「全一册」不分上下册（2013 课标版），code 不加 b 后缀；
+#   与数学 g9（上册）无冲突（subject 前缀不同，textbook.code UNIQUE）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2013 课标版结构整理（九年级全一册）；以你手头教材实书目录为准校对。
+#   hint 字段：定性章节/易漂移节带语境提示（防 LLM 生成超初中范围的定量内容）。
+#   学科编码：PHYS（LOWER → 'phys'，命中 k12 本体判别值——import.mjs 闭集门禁验证）。
+
+textbook:
+  code: phys.g9.pep
+  name: 人教版物理九年级全一册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: PHYS
+  subjectName: 物理
+  grade: G9
+chapters:
+- code: phys.g9.pep.ch13
+  name: 第十三章 热和内能
+  order: 1
+  children:
+  - code: phys.g9.pep.ch13.s01
+    name: 13.1 分子的热运动
+    order: 1
+    hint: 初中范围——分子动理论初步（物质由分子组成、扩散、分子间作用力）；不涉及统计力学
+  - code: phys.g9.pep.ch13.s02
+    name: 13.2 内能
+    order: 2
+  - code: phys.g9.pep.ch13.s03
+    name: 13.3 比热容
+    order: 3
+    hint: 初中范围——比热容概念与热量计算 Q=cmΔT；不涉及热力学定律、相变潜热
+- code: phys.g9.pep.ch14
+  name: 第十四章 内能的利用
+  order: 2
+  children:
+  - code: phys.g9.pep.ch14.s01
+    name: 14.1 热机
+    order: 1
+    hint: 四冲程内燃机构造与工作过程定性理解；不涉及热机循环理论计算
+  - code: phys.g9.pep.ch14.s02
+    name: 14.2 热机的效率
+    order: 2
+  - code: phys.g9.pep.ch14.s03
+    name: 14.3 能量的转化和守恒
+    order: 3
+    hint: 能量守恒定律定性理解与能量转化实例；不涉及热力学第二定律、熵
+- code: phys.g9.pep.ch15
+  name: 第十五章 电流和电路
+  order: 3
+  children:
+  - code: phys.g9.pep.ch15.s01
+    name: 15.1 两种电荷
+    order: 1
+    hint: 电荷种类、摩擦起电、电荷间作用规律、验电器；不涉及库仑定律定量计算
+  - code: phys.g9.pep.ch15.s02
+    name: 15.2 电流和电路
+    order: 2
+  - code: phys.g9.pep.ch15.s03
+    name: 15.3 串联和并联
+    order: 3
+  - code: phys.g9.pep.ch15.s04
+    name: 15.4 电流的测量
+    order: 4
+  - code: phys.g9.pep.ch15.s05
+    name: 15.5 串、并联电路中电流的规律
+    order: 5
+- code: phys.g9.pep.ch16
+  name: 第十六章 电压 电阻
+  order: 4
+  children:
+  - code: phys.g9.pep.ch16.s01
+    name: 16.1 电压
+    order: 1
+    hint: 电压概念、常见电压值、电压表使用；不涉及电动势、电源内阻
+  - code: phys.g9.pep.ch16.s02
+    name: 16.2 串、并联电路中电压的规律
+    order: 2
+  - code: phys.g9.pep.ch16.s03
+    name: 16.3 电阻
+    order: 3
+    hint: 电阻概念与影响因素；不涉及电阻率公式 ρl/S 定量计算
+  - code: phys.g9.pep.ch16.s04
+    name: 16.4 变阻器
+    order: 4
+- code: phys.g9.pep.ch17
+  name: 第十七章 欧姆定律
+  order: 5
+  children:
+  - code: phys.g9.pep.ch17.s01
+    name: 17.1 电流与电压和电阻的关系
+    order: 1
+    hint: 控制变量法实验探究；不涉及函数图像以外的定量实验数据处理
+  - code: phys.g9.pep.ch17.s02
+    name: 17.2 欧姆定律
+    order: 2
+    hint: 初中范围——I=U/R 及变形、简单串并联应用；不涉及基尔霍夫定律、复杂混联网络化简
+  - code: phys.g9.pep.ch17.s03
+    name: 17.3 电阻的测量
+    order: 3
+    hint: 伏安法测电阻；不涉及电表内阻修正、系统误差分析
+  - code: phys.g9.pep.ch17.s04
+    name: 17.4 欧姆定律在串、并联电路中的应用
+    order: 4
+    hint: 初中范围——串并联电阻、分压分流简单应用；不涉及复杂网络的等效电阻计算
+- code: phys.g9.pep.ch18
+  name: 第十八章 电功率
+  order: 6
+  children:
+  - code: phys.g9.pep.ch18.s01
+    name: 18.1 电能 电功
+    order: 1
+    hint: 电能表读数、电功 W=UIt；不涉及交流电有效值概念
+  - code: phys.g9.pep.ch18.s02
+    name: 18.2 电功率
+    order: 2
+    hint: P=UI 与额定功率/实际功率；不涉及功率因数
+  - code: phys.g9.pep.ch18.s03
+    name: 18.3 测量小灯泡的电功率
+    order: 3
+  - code: phys.g9.pep.ch18.s04
+    name: 18.4 焦耳定律
+    order: 4
+    hint: 初中范围——Q=I²Rt 纯电阻电路计算；不涉及非纯电阻电路（电动机）的能量分配定量计算
+- code: phys.g9.pep.ch19
+  name: 第十九章 生活用电
+  order: 7
+  children:
+  - code: phys.g9.pep.ch19.s01
+    name: 19.1 家庭电路
+    order: 1
+    hint: 家庭电路组成、测电笔、保险装置；不涉及三相电
+  - code: phys.g9.pep.ch19.s02
+    name: 19.2 家庭电路中电流过大的原因
+    order: 2
+  - code: phys.g9.pep.ch19.s03
+    name: 19.3 安全用电
+    order: 3
+- code: phys.g9.pep.ch20
+  name: 第二十章 电与磁
+  order: 8
+  children:
+  - code: phys.g9.pep.ch20.s01
+    name: 20.1 磁现象 磁场
+    order: 1
+    hint: 磁极、磁化、磁场方向与磁感线；不涉及磁感应强度定量描述
+  - code: phys.g9.pep.ch20.s02
+    name: 20.2 电生磁
+    order: 2
+    hint: 奥斯特实验、通电螺线管与安培定则（右手螺旋定则）；不涉及毕奥-萨伐尔定律
+  - code: phys.g9.pep.ch20.s03
+    name: 20.3 电磁铁 电磁继电器
+    order: 3
+  - code: phys.g9.pep.ch20.s04
+    name: 20.4 电动机
+    order: 4
+    hint: 磁场对通电导线的力与电动机原理定性理解；不涉及安培力大小公式计算
+  - code: phys.g9.pep.ch20.s05
+    name: 20.5 磁生电
+    order: 5
+    hint: 电磁感应现象、产生感应电流的条件、发电机原理定性理解；不涉及法拉第定律定量计算
+- code: phys.g9.pep.ch21
+  name: 第二十一章 信息的传递
+  order: 9
+  children:
+  - code: phys.g9.pep.ch21.s01
+    name: 21.1 现代的顺风耳——电话
+    order: 1
+    hint: 电话基本原理、模拟信号与数字信号概念；不涉及通信协议技术细节
+  - code: phys.g9.pep.ch21.s02
+    name: 21.2 电磁波的海洋
+    order: 2
+    hint: 电磁波产生与传播定性理解、c=λf 简单计算；不涉及麦克斯韦方程组
+  - code: phys.g9.pep.ch21.s03
+    name: 21.3 广播、电视和移动通信
+    order: 3
+    hint: 无线广播/电视/移动电话基本工作流程常识性了解；不涉及调制解调技术细节
+  - code: phys.g9.pep.ch21.s04
+    name: 21.4 越来越宽的信息之路
+    order: 4
+    hint: 微波/卫星/光纤/网络通信常识性了解；不涉及光纤通信技术参数
+- code: phys.g9.pep.ch22
+  name: 第二十二章 能源与可持续发展
+  order: 10
+  children:
+  - code: phys.g9.pep.ch22.s01
+    name: 22.1 能源
+    order: 1
+    hint: 一次能源/二次能源、可再生能源与不可再生能源分类；不涉及能源经济学
+  - code: phys.g9.pep.ch22.s02
+    name: 22.2 核能
+    order: 2
+    hint: 裂变、聚变、链式反应与核电站原理定性了解；不涉及质能方程与核反应计算
+  - code: phys.g9.pep.ch22.s03
+    name: 22.3 太阳能
+    order: 3
+  - code: phys.g9.pep.ch22.s04
+    name: 22.4 能源与可持续发展
+    order: 4
+    hint: 能源利用与可持续发展常识性讨论；不涉及能源政策定量分析
