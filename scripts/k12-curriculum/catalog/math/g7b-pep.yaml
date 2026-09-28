@@ -1,0 +1,112 @@
+# 人教版数学七年级下册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学七年级下册（2013 课标版，与已入库上册同口径）。
+# 编码约定：math.g7b.pep.chNN（章号沿用印刷章号 5–10）/ math.g7b.pep.chNN.sNN（节）。
+#   下册教材 code 加 b 后缀（b=下册）：上册 math.g7.pep 为历史锚定不改（KP code 引用在库），
+#   上下册为不同教材行（textbook.code UNIQUE）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2013 课标版结构整理（与已入库上册同口径，上下册必须同版）；
+#   以你手头教材实书目录为准校对。hint 字段：课题学习/选学/易漂移节带语境提示。
+#   学科编码：MATH（LOWER → 'math'，命中 k12 本体判别值——import.mjs 闭集门禁验证）。
+
+textbook:
+  code: math.g7b.pep
+  name: 人教版数学七年级下册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G7
+chapters:
+- code: math.g7b.pep.ch05
+  name: 第五章 相交线与平行线
+  order: 1
+  children:
+  - code: math.g7b.pep.ch05.s01
+    name: 5.1 相交线
+    order: 1
+  - code: math.g7b.pep.ch05.s02
+    name: 5.2 平行线及其判定
+    order: 2
+  - code: math.g7b.pep.ch05.s03
+    name: 5.3 平行线的性质
+    order: 3
+  - code: math.g7b.pep.ch05.s04
+    name: 5.4 平移
+    order: 4
+- code: math.g7b.pep.ch06
+  name: 第六章 实数
+  order: 2
+  children:
+  - code: math.g7b.pep.ch06.s01
+    name: 6.1 平方根
+    order: 1
+  - code: math.g7b.pep.ch06.s02
+    name: 6.2 立方根
+    order: 2
+  - code: math.g7b.pep.ch06.s03
+    name: 6.3 实数
+    order: 3
+- code: math.g7b.pep.ch07
+  name: 第七章 平面直角坐标系
+  order: 3
+  children:
+  - code: math.g7b.pep.ch07.s01
+    name: 7.1 平面直角坐标系
+    order: 1
+  - code: math.g7b.pep.ch07.s02
+    name: 7.2 坐标方法的简单应用
+    order: 2
+- code: math.g7b.pep.ch08
+  name: 第八章 二元一次方程组
+  order: 4
+  children:
+  - code: math.g7b.pep.ch08.s01
+    name: 8.1 二元一次方程组
+    order: 1
+  - code: math.g7b.pep.ch08.s02
+    name: 8.2 消元——解二元一次方程组
+    order: 2
+  - code: math.g7b.pep.ch08.s03
+    name: 8.3 实际问题与二元一次方程组
+    order: 3
+  - code: math.g7b.pep.ch08.s04
+    name: 8.4 三元一次方程组的解法（选学）
+    order: 4
+    hint: 初中代数选学——用代入/加减消元法解三元一次方程组；不涉及矩阵、行列式或线性代数记号
+- code: math.g7b.pep.ch09
+  name: 第九章 不等式与不等式组
+  order: 5
+  children:
+  - code: math.g7b.pep.ch09.s01
+    name: 9.1 不等式
+    order: 1
+  - code: math.g7b.pep.ch09.s02
+    name: 9.2 一元一次不等式
+    order: 2
+  - code: math.g7b.pep.ch09.s03
+    name: 9.3 一元一次不等式组
+    order: 3
+  - code: math.g7b.pep.ch09.s04
+    name: 9.4 课题学习 利用不等关系分析比赛
+    order: 4
+    hint: 初中代数课题——用不等式（组）分析比赛积分与赛程情境；不涉及概率论、组合数学或编程
+- code: math.g7b.pep.ch10
+  name: 第十章 数据的收集、整理与描述
+  order: 6
+  children:
+  - code: math.g7b.pep.ch10.s01
+    name: 10.1 统计调查
+    order: 1
+  - code: math.g7b.pep.ch10.s02
+    name: 10.2 直方图
+    order: 2
+  - code: math.g7b.pep.ch10.s03
+    name: 10.3 课题学习 从数据谈节水
+    order: 3
+    hint: 初中统计课题——数据的收集、整理与统计图表描述；不涉及统计推断、假设检验等高级方法

@@ -1,0 +1,73 @@
+# 人教版数学九年级下册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学九年级下册（2013 课标版，与已入库上册同口径）。
+# 编码约定：math.g9b.pep.chNN（章号沿用印刷章号 26–29）/ math.g9b.pep.chNN.sNN（节）。
+#   下册教材 code 加 b 后缀（b=下册）：上册 math.g9.pep 为历史锚定不改（KP code 引用在库），
+#   上下册为不同教材行（textbook.code UNIQUE）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2013 课标版结构整理（与已入库上册同口径，上下册必须同版）；
+#   以你手头教材实书目录为准校对。hint 字段：课题学习/选学/易漂移节带语境提示。
+#   学科编码：MATH（LOWER → 'math'，命中 k12 本体判别值——import.mjs 闭集门禁验证）。
+
+textbook:
+  code: math.g9b.pep
+  name: 人教版数学九年级下册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G9
+chapters:
+- code: math.g9b.pep.ch26
+  name: 第二十六章 反比例函数
+  order: 1
+  children:
+  - code: math.g9b.pep.ch26.s01
+    name: 26.1 反比例函数
+    order: 1
+  - code: math.g9b.pep.ch26.s02
+    name: 26.2 实际问题与反比例函数
+    order: 2
+- code: math.g9b.pep.ch27
+  name: 第二十七章 相似
+  order: 2
+  children:
+  - code: math.g9b.pep.ch27.s01
+    name: 27.1 图形的相似
+    order: 1
+  - code: math.g9b.pep.ch27.s02
+    name: 27.2 相似三角形
+    order: 2
+  - code: math.g9b.pep.ch27.s03
+    name: 27.3 位似
+    order: 3
+- code: math.g9b.pep.ch28
+  name: 第二十八章 锐角三角函数
+  order: 3
+  children:
+  - code: math.g9b.pep.ch28.s01
+    name: 28.1 锐角三角函数
+    order: 1
+    hint: 初中范围——直角三角形中锐角的正弦/余弦/正切及 30°/45°/60° 特殊角；不涉及弧度制、任意角三角函数或单位圆定义
+  - code: math.g9b.pep.ch28.s02
+    name: 28.2 解直角三角形
+    order: 2
+- code: math.g9b.pep.ch29
+  name: 第二十九章 投影与视图
+  order: 4
+  children:
+  - code: math.g9b.pep.ch29.s01
+    name: 29.1 投影
+    order: 1
+  - code: math.g9b.pep.ch29.s02
+    name: 29.2 三视图
+    order: 2
+  - code: math.g9b.pep.ch29.s03
+    name: 29.3 课题学习 制作立体模型
+    order: 3
+    hint: 初中几何课题——由视图想象立体图形并用纸板等制作模型（展开与折叠）；不涉及三维建模软件或投影变换矩阵

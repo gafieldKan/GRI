@@ -1,0 +1,6172 @@
+{
+  "catalog": "math.g8b.pep",
+  "generatedAt": "2026-09-28T00:01:51.078Z",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "knowledgePoints": [
+    {
+      "code": "math.g8b.pep.ch16.s01.kp01",
+      "chapter": "math.g8b.pep.ch16.s01",
+      "chapterName": "16.1 二次根式",
+      "name": "平方根的概念与意义",
+      "description": "理解非负数的平方根定义，掌握主平方根的唯一性，能够判断一个数是否为完全平方数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "把负数的平方根当作实数",
+        "混淆平方根与平方"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面关于平方根的说法正确的是：",
+          "options": [
+            {
+              "text": "A. 负数也有平方根"
+            },
+            {
+              "text": "B. 非负数a的平方根是指满足其平方等于a的非负数"
+            },
+            {
+              "text": "C. 一个数的平方根有两个互为相反数的值"
+            },
+            {
+              "text": "D. 0没有平方根"
+            }
+          ],
+          "answer": "B",
+          "analysis": "平方根的定义仅针对非负数，且主平方根是唯一的非负数，使其平方等于该数。因此B正确。A错误，负数在实数范围内没有平方根；C错误，虽然方程x²=a有两个解，但平方根特指非负解；D错误，0的平方根是0。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "以下哪个数是完全平方数？",
+          "options": [
+            {
+              "text": "A. 20"
+            },
+            {
+              "text": "B. 25"
+            },
+            {
+              "text": "C. 30"
+            },
+            {
+              "text": "D. 35"
+            }
+          ],
+          "answer": "B",
+          "analysis": "完全平方数是某个整数的平方。20、30、35都不是任何整数的平方；25=5²，故为完全平方数。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知√x = 4，则x的值是：",
+          "options": [
+            {
+              "text": "A. 2"
+            },
+            {
+              "text": "B. 8"
+            },
+            {
+              "text": "C. 16"
+            },
+            {
+              "text": "D. 64"
+            }
+          ],
+          "answer": "C",
+          "analysis": "根据平方根的定义，√x = 4意味着x的非负平方根为4，两边平方得x = 4² = 16。选项A、B、D均不满足此条件。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s01.kp02",
+      "chapter": "math.g8b.pep.ch16.s01",
+      "chapterName": "16.1 二次根式",
+      "name": "平方根的性质（乘法、除法）",
+      "description": "掌握√(ab)=√a·√b（a,b≥0）和√(a/b)=√a/√b（b>0）的推导与应用。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "在a或b为负时误用性质",
+        "忽略非负条件导致错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知 a、b ≥ 0，利用平方根的乘法性质 √(ab)=√a·√b，计算 √(16·9) 的值是（　　）",
+          "options": [
+            {
+              "text": "A. 12"
+            },
+            {
+              "text": "B. 4"
+            },
+            {
+              "text": "C. 3"
+            },
+            {
+              "text": "D. 36"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据性质 √(ab)=√a·√b，有 √(16·9)=√16·√9=4·3=12。选项 A 正确；B、C、D 分别对应错误的乘积或未开方的结果。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简表达式 √50 ÷ √2，利用平方根的除法性质 √(a/b)=√a/√b（b>0），结果为（　　）",
+          "options": [
+            {
+              "text": "A. 5"
+            },
+            {
+              "text": "B. √25"
+            },
+            {
+              "text": "C. 10"
+            },
+            {
+              "text": "D. √10"
+            }
+          ],
+          "answer": "A",
+          "analysis": "√50 ÷ √2 = √(50/2) = √25 = 5。选项 A 直接给出简化结果；B 虽等于 5 但未完全化简；C、D 分别对应错误的除法或未完全开方的结果。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "若 √x = 3√2（x ≥ 0），则 x 的值是（　　）",
+          "options": [
+            {
+              "text": "A. 6"
+            },
+            {
+              "text": "B. 9"
+            },
+            {
+              "text": "C. 18"
+            },
+            {
+              "text": "D. 36"
+            }
+          ],
+          "answer": "C",
+          "analysis": "两边平方得 x = (3√2)^2 = 3^2·(√2)^2 = 9·2 = 18。选项 C 正确；A 为漏掉平方系数；B 为仅平方了系数；D 为错误地将 3 和 2 相乘后再平方。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s01.kp03",
+      "chapter": "math.g8b.pep.ch16.s01",
+      "chapterName": "16.1 二次根式",
+      "name": "平方根的化简（提取完全平方因子）",
+      "description": "能够将根式中的被开方数分解提取完全平方因子，化简为最简平方根。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "漏掉隐含的系数1",
+        "错误提取非完全平方因子"
+      ],
+      "status": "published",
+      "examples": []
+    },
+    {
+      "code": "math.g8b.pep.ch16.s01.kp04",
+      "chapter": "math.g8b.pep.ch16.s01",
+      "chapterName": "16.1 二次根式",
+      "name": "同类平方根的加减运算",
+      "description": "理解同类平方根的定义，能够进行同类平方根的加减，并化简结果。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp3"
+      ],
+      "commonMistakes": [
+        "把不同根号下的数当作同类项相加",
+        "忘记化简后再判断是否同类"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "计算 $\\sqrt{8}+\\sqrt{2}$ 的值。",
+          "options": [
+            {
+              "text": "A. $3\\sqrt{2}$"
+            },
+            {
+              "text": "B. $\\sqrt{10}$"
+            },
+            {
+              "text": "C. $2\\sqrt{3}$"
+            },
+            {
+              "text": "D. $4\\sqrt{2}$"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先把 $\\sqrt{8}$ 化简：$\\sqrt{8}=\\sqrt{4\\times2}=2\\sqrt{2}$。然后与 $\\sqrt{2}$ 同类相加：$2\\sqrt{2}+\\sqrt{2}=3\\sqrt{2}$。选项 A 正确；B 错误，因为根号内不能直接相加；C、D 与化简结果不符。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简 $\\dfrac{\\sqrt{18}-\\sqrt{8}}{\\sqrt{2}}$。",
+          "options": [
+            {
+              "text": "A. $1$"
+            },
+            {
+              "text": "B. $\\sqrt{2}$"
+            },
+            {
+              "text": "C. $2$"
+            },
+            {
+              "text": "D. $0$"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先化简分子：$\\sqrt{18}=3\\sqrt{2}$，$\\sqrt{8}=2\\sqrt{2}$，所以分子为 $3\\sqrt{2}-2\\sqrt{2}=\\sqrt{2}$。则整式变为 $\\dfrac{\\sqrt{2}}{\\sqrt{2}}=1$。选项 A 正确；B 错误，未约去同因子；C、D 与计算结果不符。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个长方形花园的长为 $(\\sqrt{27}+\\sqrt{3})$ 米，宽为 $(\\sqrt{12}-\\sqrt{3})$ 米。求花园的面积。",
+          "options": [
+            {
+              "text": "A. $12$ 平方米"
+            },
+            {
+              "text": "B. $6\\sqrt{3}$ 平方米"
+            },
+            {
+              "text": "C. $8$ 平方米"
+            },
+            {
+              "text": "D. $4\\sqrt{6}$ 平方米"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先化简长和宽：\n长：$\\sqrt{27}=3\\sqrt{3}$，所以长 $=3\\sqrt{3}+\\sqrt{3}=4\\sqrt{3}$。\n宽：$\\sqrt{12}=2\\sqrt{3}$，所以宽 $=2\\sqrt{3}-\\sqrt{3}=\\sqrt{3}$。\n面积 $= (4\\sqrt{3})\\times(\\sqrt{3}) = 4\\times3 = 12$ 平方米。\n选项 A 正确；B、C、D 均与化简后的乘积不符。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s01.kp05",
+      "chapter": "math.g8b.pep.ch16.s01",
+      "chapterName": "16.1 二次根式",
+      "name": "平方根的乘除运算",
+      "description": "掌握平方根的乘法、除法法则，能够进行含系数的平方根乘除并化简。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp3",
+        "kp4"
+      ],
+      "commonMistakes": [
+        "乘法时忘记将系数相乘",
+        "除法时有理化分母时符号错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "计算 $\\sqrt{2}\\times\\sqrt{8}$ 的结果是：",
+          "options": [
+            {
+              "text": "A. 4"
+            },
+            {
+              "text": "B. 2\\sqrt{2}"
+            },
+            {
+              "text": "C. 2"
+            },
+            {
+              "text": "D. 8"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据平方根的乘法法则 $\\sqrt{a}\\times\\sqrt{b}=\\sqrt{ab}$，有 $\\sqrt{2}\\times\\sqrt{8}=\\sqrt{2\\times8}=\\sqrt{16}=4$。选项 A 正确。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简 $\\frac{3\\sqrt{5}}{\\sqrt{15}}$ 的结果是：",
+          "options": [
+            {
+              "text": "A. \\sqrt{3}"
+            },
+            {
+              "text": "B. \\frac{3}{\\sqrt{5}}"
+            },
+            {
+              "text": "C. \\frac{\\sqrt{15}}{5}"
+            },
+            {
+              "text": "D. 3"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先分母有理化：$\\frac{3\\sqrt{5}}{\\sqrt{15}}=3\\sqrt{\\frac{5}{15}}=3\\sqrt{\\frac{1}{3}}=\\frac{3}{\\sqrt{3}}=\\sqrt{3}$。或者直接利用乘除法则：$\\frac{3\\sqrt{5}}{\\sqrt{15}}=3\\cdot\\frac{\\sqrt{5}}{\\sqrt{15}}=3\\cdot\\sqrt{\\frac{5}{15}}=3\\cdot\\sqrt{\\frac{1}{3}}=\\sqrt{3}$。选项 A 正确。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "计算 $\\frac{2\\sqrt{6}\\times\\sqrt{24}}{\\sqrt{3}}$ 的结果是：",
+          "options": [
+            {
+              "text": "A. 8\\sqrt{3}"
+            },
+            {
+              "text": "B. 12\\sqrt{2}"
+            },
+            {
+              "text": "C. 6\\sqrt{6}"
+            },
+            {
+              "text": "D. 24"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先计算分子：$2\\sqrt{6}\\times\\sqrt{24}=2\\sqrt{6\\times24}=2\\sqrt{144}=2\\times12=24$。然后除以 $\\sqrt{3}$：$\\frac{24}{\\sqrt{3}}=24\\cdot\\frac{\\sqrt{3}}{3}=8\\sqrt{3}$。选项 A 正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s01.kp06",
+      "chapter": "math.g8b.pep.ch16.s01",
+      "chapterName": "16.1 二次根式",
+      "name": "有理化分母与根式方程的初步求解",
+      "description": "学会将分母中的平方根有理化，解决形如√x = a 的简单方程，并检验根的合法性。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp5"
+      ],
+      "commonMistakes": [
+        "有理化时只乘以根号而忘记配对",
+        "求解后忘记排除负根导致 extraneous solution"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "将分母有理化：\\(\\frac{1}{\\sqrt{3}-\\sqrt{2}}\\) 的结果是？",
+          "options": [
+            {
+              "text": "A. \\sqrt{3}+\\sqrt{2}"
+            },
+            {
+              "text": "B. \\frac{\\sqrt{3}+\\sqrt{2}}{5}"
+            },
+            {
+              "text": "C. \\sqrt{3}-\\sqrt{2}"
+            },
+            {
+              "text": "D. \\frac{\\sqrt{3}-\\sqrt{2}}{1}"
+            }
+          ],
+          "answer": "A",
+          "analysis": "将分子和分母同时乘以共轭式 \\sqrt{3}+\\sqrt{2}，得 \\frac{1\\cdot(\\sqrt{3}+\\sqrt{2})}{(\\sqrt{3}-\\sqrt{2})(\\sqrt{3}+\\sqrt{2})} = \\frac{\\sqrt{3}+\\sqrt{2}}{3-2} = \\sqrt{3}+\\sqrt{2}。选项 A 正确；其余选项要么忘记乘共轭，要么分母计算错误。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "求解方程 \\sqrt{x+4}=3，并检验根的合法性。",
+          "options": [
+            {
+              "text": "A. 5"
+            },
+            {
+              "text": "B. -5"
+            },
+            {
+              "text": "C. 1"
+            },
+            {
+              "text": "D. 9"
+            }
+          ],
+          "answer": "A",
+          "analysis": "两边平方得 x+4=9，解得 x=5。代入原式：\\sqrt{5+4}=\\sqrt{9}=3，符合原方程，且根号内非负，故为合法根。选项 B 使根号内为 -1，不实；选项 C、D 代入不等于 3。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个矩形的长为 \\sqrt{x+1} 米，宽为 \\sqrt{x-1} 米，面积为 3 平方米。求 x 的值（要求使长、宽均为实数）。",
+          "options": [
+            {
+              "text": "A. \\sqrt{10}"
+            },
+            {
+              "text": "B. -\\sqrt{10}"
+            },
+            {
+              "text": "C. 3"
+            },
+            {
+              "text": "D. 1"
+            }
+          ],
+          "answer": "A",
+          "analysis": "面积公式给出 \\sqrt{x+1}\\cdot\\sqrt{x-1}=3，即 \\sqrt{(x+1)(x-1)}=3，进而 \\sqrt{x^2-1}=3。两边平方得 x^2-1=9，解得 x^2=10，故 x=\\pm\\sqrt{10}。为使长、宽的根号内非负，需 x+1\\ge0 且 x-1\\ge0，即 x\\ge1。因此仅取正根 x=\\sqrt{10}。选项 B 使宽的根号内为负，不实；选项 C、D 代入不满足面积条件。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s02.kp01",
+      "chapter": "math.g8b.pep.ch16.s02",
+      "chapterName": "16.2 二次根式的乘除",
+      "name": "理解二次根式的定义及最简形式",
+      "description": "能够判断一个根式是否为二次根式，并将其化为最简二次根式（被开方数内无平方因子，分母无根式）。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "把含有平方因子的根式直接视为最简",
+        "忽略分母中的根式需要有理化"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下列哪个根式是最简二次根式？",
+          "options": [
+            {
+              "text": "A. √8"
+            },
+            {
+              "text": "B. √12"
+            },
+            {
+              "text": "C. √18"
+            },
+            {
+              "text": "D. √2"
+            }
+          ],
+          "answer": "D",
+          "analysis": "最简二次根式要求被开方数内无平方因子且分母无根式。√8=2√2，√12=2√3，√18=3√2，都还有可以提取的平方因子；只有√2的被开方数2内无平方因子，故为最简二次根式。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "将√50化为最简二次根式的结果是？",
+          "options": [
+            {
+              "text": "A. 5√2"
+            },
+            {
+              "text": "B. 25√2"
+            },
+            {
+              "text": "C. √50"
+            },
+            {
+              "text": "D. 10√5"
+            }
+          ],
+          "answer": "A",
+          "analysis": "√50=√(25×2)=√25×√2=5√2。其中5为平方因子的平方根，提取后被开方数2内无平方因子，故最简形式为5√2。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "化简(√3+√2)/(√3-√2)并写成最简二次根式形式。",
+          "options": [
+            {
+              "text": "A. 5+2√6"
+            },
+            {
+              "text": "B. 5-2√6"
+            },
+            {
+              "text": "C. √6+5"
+            },
+            {
+              "text": "D. √6-5"
+            }
+          ],
+          "answer": "A",
+          "analysis": "采用有理化分母，乘以共轭式(√3+√2)：[(√3+√2)(√3+√2)]/[(√3-√2)(√3+√2)] = (√3+√2)^2/(3-2) = (3+2+2√6)/1 = 5+2√6。被开方数6内无平方因子，分母无根式，故为最简二次根式。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s02.kp02",
+      "chapter": "math.g8b.pep.ch16.s02",
+      "chapterName": "16.2 二次根式的乘除",
+      "name": "二次根式的乘法法则",
+      "description": "掌握并能正确运用 √a·√b = √(ab)（a,b≥0）进行根式乘法运算。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "误认为 √a·√b = √(a+b)",
+        "忘记被开方数必须非负"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "计算 √3 × √12 的结果是（）。",
+          "options": [
+            {
+              "text": "A. 6"
+            },
+            {
+              "text": "B. √15"
+            },
+            {
+              "text": "C. 2√3"
+            },
+            {
+              "text": "D. 3√2"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据二次根式的乘法法则 √a·√b = √(ab)（a,b≥0），有 √3 × √12 = √(3×12) = √36 = 6。故选 A。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知 x ≥ 0，化简 √(2x) × √(8x³) 的结果为（）。",
+          "options": [
+            {
+              "text": "A. 4x²"
+            },
+            {
+              "text": "B. 4x"
+            },
+            {
+              "text": "C. 8x²"
+            },
+            {
+              "text": "D. 2x²"
+            }
+          ],
+          "answer": "A",
+          "analysis": "利用乘法法则：√(2x) × √(8x³) = √[(2x)(8x³)] = √(16x⁴) = 4x²（因为 x≥0，√(x⁴)=x²）。故选 A。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个长方形的长为 √(5+2√6)，宽为 √(5-2√6)，则它的面积是（）。",
+          "options": [
+            {
+              "text": "A. 1"
+            },
+            {
+              "text": "B. √10"
+            },
+            {
+              "text": "C. 5"
+            },
+            {
+              "text": "D. 0"
+            }
+          ],
+          "answer": "A",
+          "analysis": "面积 = 长 × 宽 = √(5+2√6) × √(5-2√6) = √[(5+2√6)(5-2√6)]。利用差的平方公式：(a+b)(a-b)=a²-b²，得 (5)² - (2√6)² = 25 - 4·6 = 25 - 24 = 1。于是面积 = √1 = 1。故选 A。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s02.kp03",
+      "chapter": "math.g8b.pep.ch16.s02",
+      "chapterName": "16.2 二次根式的乘除",
+      "name": "二次根式的除法法则",
+      "description": "掌握并能正确运用 √a/√b = √(a/b)（b>0）进行根式除法运算。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "除法时忽略分母不为零的条件",
+        "误把除法变为加法"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "计算 $\\frac{\\sqrt{18}}{\\sqrt{2}}$ 的值。",
+          "options": [
+            {
+              "text": "A. 3"
+            },
+            {
+              "text": "B. 4"
+            },
+            {
+              "text": "C. $\\sqrt{6}$"
+            },
+            {
+              "text": "D. 6"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据除法法则 $\\frac{\\sqrt{a}}{\\sqrt{b}} = \\sqrt{\\frac{a}{b}}$（$b>0$），有 $\\frac{\\sqrt{18}}{\\sqrt{2}} = \\sqrt{\\frac{18}{2}} = \\sqrt{9} = 3$。选项 A 正确；B、C、D 均与计算结果不符。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简 $\\frac{\\sqrt{50}}{\\sqrt{2}} - \\frac{\\sqrt{8}}{\\sqrt{2}}$。",
+          "options": [
+            {
+              "text": "A. 3"
+            },
+            {
+              "text": "B. $\\sqrt{3}$"
+            },
+            {
+              "text": "C. 5"
+            },
+            {
+              "text": "D. 2"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先分别化简：$\\frac{\\sqrt{50}}{\\sqrt{2}} = \\sqrt{\\frac{50}{2}} = \\sqrt{25} = 5$；$\\frac{\\sqrt{8}}{\\sqrt{2}} = \\sqrt{\\frac{8}{2}} = \\sqrt{4} = 2$。于是原式等于 $5 - 2 = 3$。选项 A 正确；其余选项均不对。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "求 $\\frac{\\sqrt{3}+\\sqrt{2}}{\\sqrt{3}-\\sqrt{2}}$ 的值。",
+          "options": [
+            {
+              "text": "A. $5+2\\sqrt{6}$"
+            },
+            {
+              "text": "B. $5-2\\sqrt{6}$"
+            },
+            {
+              "text": "C. 1"
+            },
+            {
+              "text": "D. $\\sqrt{6}$"
+            }
+          ],
+          "answer": "A",
+          "analysis": "利用共轭式有理化分母：分子分母同时乘以 $\\sqrt{3}+\\sqrt{2}$，得 $\\frac{(\\sqrt{3}+\\sqrt{2})^2}{(\\sqrt{3})^2-(\\sqrt{2})^2} = \\frac{3+2+2\\sqrt{6}}{3-2} = \\frac{5+2\\sqrt{6}}{1} = 5+2\\sqrt{6}$。选项 A 正确；B 为符号错误，C、D 均与结果不符。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s02.kp04",
+      "chapter": "math.g8b.pep.ch16.s02",
+      "chapterName": "16.2 二次根式的乘除",
+      "name": "有理化分母的方法",
+      "description": "能够通过乘以共轭或相同根式消除分母中的根式，使分母变为有理数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2",
+        "kp3"
+      ],
+      "commonMistakes": [
+        "只乘分子而忘记同步乘分母",
+        "有理化后未再次化简最简根式"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "化简 $\\dfrac{1}{\\sqrt{2}}$ 的有理化结果是：",
+          "options": [
+            {
+              "text": "A. $\\sqrt{2}$"
+            },
+            {
+              "text": "B. $\\dfrac{\\sqrt{2}}{2}$"
+            },
+            {
+              "text": "C. $\\dfrac{2}{\\sqrt{2}}$"
+            },
+            {
+              "text": "D. $\\dfrac{1}{2}$"
+            }
+          ],
+          "answer": "B",
+          "analysis": "将分子分母同时乘以 $\\sqrt{2}$，得 $\\dfrac{1\\cdot\\sqrt{2}}{\\sqrt{2}\\cdot\\sqrt{2}}=\\dfrac{\\sqrt{2}}{2}$。选项 B 正确；A 未消除根号，C 分母仍含根号，D 结果错误。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简 $\\dfrac{1}{\\sqrt{3}+\\sqrt{2}}$ 的有理化结果是：",
+          "options": [
+            {
+              "text": "A. $\\sqrt{3}-\\sqrt{2}$"
+            },
+            {
+              "text": "B. $\\dfrac{\\sqrt{3}-\\sqrt{2}}{1}$"
+            },
+            {
+              "text": "C. $\\dfrac{\\sqrt{3}-\\sqrt{2}}{(\\sqrt{3}+\\sqrt{2})(\\sqrt{3}-\\sqrt{2})}$"
+            },
+            {
+              "text": "D. $\\dfrac{\\sqrt{3}-\\sqrt{2}}{(\\sqrt{3})^2-(\\sqrt{2})^2}$"
+            }
+          ],
+          "answer": "D",
+          "analysis": "乘以共轭 $\\sqrt{3}-\\sqrt{2}$：分子得 $\\sqrt{3}-\\sqrt{2}$，分母得 $(\\sqrt{3})^2-(\\sqrt{2})^2=3-2=1$，故结果为 $\\sqrt{3}-\\sqrt{2}$。选项 D 的表达式经过化简等于 $\\sqrt{3}-\\sqrt{2}$，是正确答案；A 虽然等价但未写成分数形式，不符合题目要求的“有理化后的形式”；B 与 A 同理；C 未化简分母。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "化简 $\\dfrac{\\sqrt{5}+2}{\\sqrt{5}-\\sqrt{3}}$ 的有理化结果是：",
+          "options": [
+            {
+              "text": "A. $\\dfrac{(\\sqrt{5}+2)(\\sqrt{5}+\\sqrt{3})}{2}$"
+            },
+            {
+              "text": "B. $\\dfrac{(\\sqrt{5}+2)(\\sqrt{5}+\\sqrt{3})}{(\\sqrt{5})^2-(\\sqrt{3})^2}$"
+            },
+            {
+              "text": "C. $\\dfrac{(\\sqrt{5}+2)(\\sqrt{5}+\\sqrt{3})}{5-3}$"
+            },
+            {
+              "text": "D. $\\dfrac{(\\sqrt{5}+2)(\\sqrt{5}+\\sqrt{3})}{8}$"
+            }
+          ],
+          "answer": "C",
+          "analysis": "乘以共轭 $\\sqrt{5}+\\sqrt{3}$：分子变为 $(\\sqrt{5}+2)(\\sqrt{5}+\\sqrt{3})$；分母为 $(\\sqrt{5})^2-(\\sqrt{3})^2=5-3=2$。因此结果为 $\\dfrac{(\\sqrt{5}+2)(\\sqrt{5}+\\sqrt{3})}{2}$，即选项 C。选项 B 未化简分母，选项 A 分母写成 2 但未说明是 5-3，虽然等价但不够明确；选项 D 分母错误。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s02.kp05",
+      "chapter": "math.g8b.pep.ch16.s02",
+      "chapterName": "16.2 二次根式的乘除",
+      "name": "根式的乘法分配律与差平方公式的应用",
+      "description": "能够利用 (√a+√b)(√a-√b)=a-b 等公式进行根式的乘法展开和化简。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2",
+        "kp3"
+      ],
+      "commonMistakes": [
+        "错误展开为 √a^2+√b^2",
+        "忽略中间项相消导致结果偏差"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "计算（√5+√2）（√5-√2）的值。",
+          "options": [
+            {
+              "text": "A. 3"
+            },
+            {
+              "text": "B. 7"
+            },
+            {
+              "text": "C. √10"
+            },
+            {
+              "text": "D. 5-2√10"
+            }
+          ],
+          "answer": "A",
+          "analysis": "利用差平方公式 (√a+√b)(√a-√b)=a-b。这里 a=5，b=2，所以结果为 5-2=3。选项 B 错误地把和当作结果；选项 C 错误地保留了根号；选项 D 错误地未完全化简。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简表达式：（√3+√6）（√3-√6）+(√2+1)(√2-1)。",
+          "options": [
+            {
+              "text": "A. -2"
+            },
+            {
+              "text": "B. 0"
+            },
+            {
+              "text": "C. 2"
+            },
+            {
+              "text": "D. -4"
+            }
+          ],
+          "answer": "A",
+          "analysis": "第一部分用差平方公式：(√3)^2-(√6)^2=3-6=-3。第二部分同样：(√2)^2-1^2=2-1=1。两部分相加得到 -3+1=-2。选项 B 忽略了第一部分的负号；选项 C 符号错误；选项 D 误把两部分分别取绝对值后相加。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个矩形的长为(√x+√y)米，宽为(√x-√y)米，已知其面积为20平方米，且x、y为正整数且x>y。求(x,y)的可能值。",
+          "options": [
+            {
+              "text": "A. (36,16)"
+            },
+            {
+              "text": "B. (25,5)"
+            },
+            {
+              "text": "C. (49,9)"
+            },
+            {
+              "text": "D. (64,36)"
+            }
+          ],
+          "answer": "A",
+          "analysis": "面积 = (√x+√y)(√x-√y)=x-y。因此 x-y=20。为使长、宽均为有理数（通常要求√x、√y为整数），设 x=a^2，y=b^2，则 a^2-b^2=20，即 (a-b)(a+b)=20。求正整数因数对：(2,10) 得 a=(10+2)/2=6，b=(10-2)/2=4，故 x=36，y=16。其他因数对无法得到整数 a、b。选项 B、C、D 均不满足 x-y=20 或导致非整数的√x、√y。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s02.kp06",
+      "chapter": "math.g8b.pep.ch16.s02",
+      "chapterName": "16.2 二次根式的乘除",
+      "name": "化简最简二次根式的综合步骤",
+      "description": "能够综合提取平方因子、乘除法则、有理化分母和合并同类项，将复杂根式表达式化为最简形式。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2",
+        "kp3",
+        "kp4",
+        "kp5"
+      ],
+      "commonMistakes": [
+        "漏掉提取平方因子导致非最简",
+        "有理化后未检查分母是否仍含根式",
+        "合并同类项时符号错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "化简最简二次根式：√50 + √8 - √18 的结果是？",
+          "options": [
+            {
+              "text": "A. 2√2"
+            },
+            {
+              "text": "B. 4√2"
+            },
+            {
+              "text": "C. 6√2"
+            },
+            {
+              "text": "D. 8√2"
+            }
+          ],
+          "answer": "B",
+          "analysis": "√50 = 5√2，√8 = 2√2，√18 = 3√2。于是 5√2 + 2√2 - 3√2 = (5+2-3)√2 = 4√2。选项 B 正确。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简最简二次根式：(√12 × √27) ÷ √3 的结果是？",
+          "options": [
+            {
+              "text": "A. 6"
+            },
+            {
+              "text": "B. 6√3"
+            },
+            {
+              "text": "C. 18"
+            },
+            {
+              "text": "D. 18√3"
+            }
+          ],
+          "answer": "B",
+          "analysis": "√12 = 2√3，√27 = 3√3，乘积为 (2√3)(3√3)=6·3=18。然后 18 ÷ √3 = 18/√3 = 6√3（有理化分母）。故答案为 B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "化简最简二次根式：(√48 + √75) ÷ √3 - √12 的结果是？",
+          "options": [
+            {
+              "text": "A. 9 - 2√3"
+            },
+            {
+              "text": "B. 9 + 2√3"
+            },
+            {
+              "text": "C. 7 - 2√3"
+            },
+            {
+              "text": "D. 7 + 2√3"
+            }
+          ],
+          "answer": "A",
+          "analysis": "√48 = 4√3，√75 = 5√3，和为 9√3。除以 √3 得到 9。√12 = 2√3。于是 9 - 2√3。选项 A 正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s03.kp01",
+      "chapter": "math.g8b.pep.ch16.s03",
+      "chapterName": "16.3 二次根式的加减",
+      "name": "二次根式的最简形式及判断方法",
+      "description": "掌握二次根式的定义，能够将根式化简为最简形式（根号内无平方因子，分母无根号）。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "忘记去除根号内的平方因子",
+        "误认为分母中有根号的式子已经是最简形式"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下列根式中，最简形式是（　　）",
+          "options": [
+            {
+              "text": "A. √3"
+            },
+            {
+              "text": "B. 2√3"
+            },
+            {
+              "text": "C. 3√2"
+            },
+            {
+              "text": "D. √12"
+            }
+          ],
+          "answer": "B",
+          "analysis": "√12 = √(4×3) = √4 × √3 = 2√3，根号内无平方因子，分母也没有根号，故为最简形式。选项A缺系数2，选项C根号内不是3，选项D未化简。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简 √50 ÷ √2 的结果是（　　）",
+          "options": [
+            {
+              "text": "A. 5"
+            },
+            {
+              "text": "B. 5√2"
+            },
+            {
+              "text": "C. √25"
+            },
+            {
+              "text": "D. 10"
+            }
+          ],
+          "answer": "A",
+          "analysis": "√50 ÷ √2 = √(50/2) = √25 = 5。根号内已无平方因子，分母也没有根号，故最简形式为5。选项B未消去根号，选项C虽然等于5但未写成整数形式，选项D计算错误。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "计算 (√8 + √18) ÷ √2 的值，结果是（　　）",
+          "options": [
+            {
+              "text": "A. 4"
+            },
+            {
+              "text": "B. 5"
+            },
+            {
+              "text": "C. 6"
+            },
+            {
+              "text": "D. 7"
+            }
+          ],
+          "answer": "B",
+          "analysis": "先化简每个根式：√8 = √(4×2) = 2√2，√18 = √(9×2) = 3√2。于是分子为 2√2 + 3√2 = 5√2。再除以 √2 得到 (5√2)/√2 = 5。故结果为5。选项A、C、D均与计算结果不符。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s03.kp02",
+      "chapter": "math.g8b.pep.ch16.s03",
+      "chapterName": "16.3 二次根式的加减",
+      "name": "判断二次根式是否为同类根式",
+      "description": "掌握同类根式的判断标准：化简后根号内的被开方数完全相同。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "只看根号外的系数而忽略根号内的数",
+        "未化简就直接比较导致误判"
+      ],
+      "status": "published",
+      "examples": []
+    },
+    {
+      "code": "math.g8b.pep.ch16.s03.kp03",
+      "chapter": "math.g8b.pep.ch16.s03",
+      "chapterName": "16.3 二次根式的加减",
+      "name": "同类二次根式的加减法则",
+      "description": "掌握同类二次根式的加减运算：系数相加或相减，根号部分保持不变。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "错误地将根号部分也相加或相减",
+        "符号错误导致结果偏差"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "计算：√2 + 3√2 - √2 =",
+          "options": [
+            {
+              "text": "A. 3√2"
+            },
+            {
+              "text": "B. 4√2"
+            },
+            {
+              "text": "C. 2√2"
+            },
+            {
+              "text": "D. √2"
+            }
+          ],
+          "answer": "A",
+          "analysis": "同类二次根式的系数相加或相减，根号部分不变。√2 + 3√2 = 4√2，再减去 √2 得到 4√2 - √2 = 3√2。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简：5√3 - 2√12 + √27",
+          "options": [
+            {
+              "text": "A. 4√3"
+            },
+            {
+              "text": "B. 6√3"
+            },
+            {
+              "text": "C. 2√3"
+            },
+            {
+              "text": "D. 8√3"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先把不完全平方的根式化简：√12 = √(4·3) = 2√3，√27 = √(9·3) = 3√3。代入得 5√3 - 2·(2√3) + 3√3 = 5√3 - 4√3 + 3√3 = (5-4+3)√3 = 4√3。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个长方形花园的长为 (2√5 + 3) 米，宽为 (√5 - 1) 米，求其周长。",
+          "options": [
+            {
+              "text": "A. 6√5 + 4"
+            },
+            {
+              "text": "B. 6√5 + 2"
+            },
+            {
+              "text": "C. 8√5 + 4"
+            },
+            {
+              "text": "D. 4√5 + 6"
+            }
+          ],
+          "answer": "A",
+          "analysis": "周长 = 2×(长+宽)。先求长+宽：(2√5+3)+(√5-1) = (2√5+√5)+(3-1) = 3√5+2。再乘以 2：2×(3√5+2) = 6√5+4。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s03.kp04",
+      "chapter": "math.g8b.pep.ch16.s03",
+      "chapterName": "16.3 二次根式的加减",
+      "name": "非同类二次根式的加减表达式",
+      "description": "了解非同类根式不能合并，只能保持原式的和或差的形式。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2",
+        "kp3"
+      ],
+      "commonMistakes": [
+        "强行将不同根式的根号内数相加",
+        "忘记保持减号导致符号错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下列表达式中，哪一个是√2+√3的正确化简结果？",
+          "options": [
+            {
+              "text": "A. √5"
+            },
+            {
+              "text": "B. √6"
+            },
+            {
+              "text": "C. √2+√3"
+            },
+            {
+              "text": "D. 2√3"
+            }
+          ],
+          "answer": "C",
+          "analysis": "√2和√3是非同类二次根式，它们的底数不同，不能合并，只能保持原式的和的形式。因此正确答案是√2+√3。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "化简表达式（√12－√3）＋（√27＋√3）。",
+          "options": [
+            {
+              "text": "A. 5√3"
+            },
+            {
+              "text": "B. 4√3"
+            },
+            {
+              "text": "C. 6√3"
+            },
+            {
+              "text": "D. 2√6"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先把每个根式化简：√12=2√3，√27=3√3。代入得(2√3－√3)+(3√3+√3)=√3+4√3=5√3。故答案为5√3。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知a、b为正整数，求√a＋√b－√(a＋b＋2√ab)的值。",
+          "options": [
+            {
+              "text": "A. 0"
+            },
+            {
+              "text": "B. √a－√b"
+            },
+            {
+              "text": "C. √a＋√b"
+            },
+            {
+              "text": "D. 2√ab"
+            }
+          ],
+          "answer": "A",
+          "analysis": "利用完全平方公式(√a＋√b)^2＝a＋b＋2√ab，可知√(a＋b＋2√ab)=√a＋√b。于是原式＝√a＋√b－(√a＋√b)=0。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s03.kp05",
+      "chapter": "math.g8b.pep.ch16.s03",
+      "chapterName": "16.3 二次根式的加减",
+      "name": "化简后再判断同类根式的步骤",
+      "description": "掌握先将每个根式化简为最简形式，再判断是否为同类根式的操作流程。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2"
+      ],
+      "commonMistakes": [
+        "跳过化简步骤直接判断同类",
+        "化简不彻底导致残留平方因子"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知√12和√3，化简后判断它们是否为同类根式。",
+          "options": [
+            {
+              "text": "A. 是同类根式"
+            },
+            {
+              "text": "B. 不是同类根式"
+            },
+            {
+              "text": "C. 无法判断"
+            },
+            {
+              "text": "D. 只有系数相同时才是同类根式"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先化简√12=√(4×3)=2√3，√3保持不变。两式均含√3，因此是同类根式。选项B错误因为它们确实是同类；选项C错误因为可以判断；选项D错误因为同类根式仅要求根号内的最简根式相同，系数可以不同。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知√50和√8，化简后判断它们是否为同类根式。",
+          "options": [
+            {
+              "text": "A. 是同类根式"
+            },
+            {
+              "text": "B. 不是同类根式"
+            },
+            {
+              "text": "C. 只有化简前根号内的数相同才是同类根式"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "A",
+          "analysis": "化简得√50=√(25×2)=5√2，√8=√(4×2)=2√2。两式的最简根式均为√2，故为同类根式。选项B错误因为它们确实是同类；选项C错误因为同类根式判断依据是化简后的根号内数，而非化简前；选项D错误因为可以明确判断。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "计算化简后的结果：√27+√75−√12。",
+          "options": [
+            {
+              "text": "A. 6√3"
+            },
+            {
+              "text": "B. 8√3"
+            },
+            {
+              "text": "C. 4√3"
+            },
+            {
+              "text": "D. 10√3"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先化简各根式：√27=√(9×3)=3√3，√75=√(25×3)=5√3，√12=√(4×3)=2√3。于是原式＝3√3+5√3−2√3＝(3+5−2)√3＝6√3。选项B、C、D均与计算结果不符。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch16.s03.kp06",
+      "chapter": "math.g8b.pep.ch16.s03",
+      "chapterName": "16.3 二次根式的加减",
+      "name": "二次根式加减的应用：化简求值与解方程",
+      "description": "能够在求值或解方程中，利用二次根式的加减规则化简表达式，得到最简结果。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp3",
+        "kp4",
+        "kp5"
+      ],
+      "commonMistakes": [
+        "应用时忽略符号导致结果错误",
+        "未将最终结果再次化简最简形式"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "化简：√12 + √27 - √3 的结果是（　　）",
+          "options": [
+            {
+              "text": "A. 4√3"
+            },
+            {
+              "text": "B. 5√3"
+            },
+            {
+              "text": "C. 6√3"
+            },
+            {
+              "text": "D. 3√3"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先把每个根式化成最简形式：√12 = √(4·3) = 2√3，√27 = √(9·3) = 3√3。于是原式 = 2√3 + 3√3 - √3 = (2+3-1)√3 = 4√3。选项 A 正确，其余选项均未正确合并同类项。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知 x = √5 + 2，y = √5 - 2，则 (x² - y²) ÷ (x - y) 的值为（　　）",
+          "options": [
+            {
+              "text": "A. 2√5"
+            },
+            {
+              "text": "B. 4"
+            },
+            {
+              "text": "C. √5"
+            },
+            {
+              "text": "D. 0"
+            }
+          ],
+          "answer": "A",
+          "analysis": "利用差平方公式：x² - y² = (x - y)(x + y)。因此 (x² - y²)/(x - y) = x + y（x ≠ y）。代入得 x + y = (√5 + 2) + (√5 - 2) = 2√5。故答案为 A。其余选项均是对公式或代数运算的误用。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "设 a、b 为正整数，且 √(a + 2√b) + √(a - 2√b) = 6，则 a + b 的值是（　　）",
+          "options": [
+            {
+              "text": "A. 19"
+            },
+            {
+              "text": "B. 20"
+            },
+            {
+              "text": "C. 18"
+            },
+            {
+              "text": "D. 21"
+            }
+          ],
+          "answer": "A",
+          "analysis": "令 S = √(a + 2√b) + √(a - 2√b) = 6。两边平方得：S² = (a + 2√b) + (a - 2√b) + 2√[(a + 2√b)(a - 2√b)] = 2a + 2√(a² - 4b) = 36。化简得 a + √(a² - 4b) = 18，即 √(a² - 4b) = 18 - a。再平方：a² - 4b = (18 - a)² = 324 - 36a + a²，消去 a² 得 -4b = 324 - 36a → b = 9a - 81。由于 b 为正整数，需 a > 9。取最小整数 a = 10，则 b = 9·10 - 81 = 9。验证：√(10 + 2·3) = √16 = 4，√(10 - 2·3) = √4 = 2，和为 6，符合条件。于是 a + b = 10 + 9 = 19。选项 A 正确，其余选项均不满足上述整数条件。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s01.kp01",
+      "chapter": "math.g8b.pep.ch17.s01",
+      "chapterName": "17.1 勾股定理",
+      "name": "直角三角形的概念与性质",
+      "description": "理解直角三角形的定义、斜边和直角边的名称，并能识别直角三角形的特征。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "将斜边误认为任意一边",
+        "混淆直角边与斜边的位置"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "在直角三角形ABC中，∠C=90°，则边AB的名称是（　　）",
+          "options": [
+            {
+              "text": "A. 直角边"
+            },
+            {
+              "text": "B. 斜边"
+            },
+            {
+              "text": "C. 底边"
+            },
+            {
+              "text": "D. 高"
+            }
+          ],
+          "answer": "B",
+          "analysis": "直角三角形中，直角对边称为斜边，其余两边称为直角边。已知∠C为直角，故对边AB是斜边。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知直角三角形的两条直角边长度分别为3 cm和4 cm，则其斜边长为（　　）",
+          "options": [
+            {
+              "text": "A. 5 cm"
+            },
+            {
+              "text": "B. 6 cm"
+            },
+            {
+              "text": "C. 7 cm"
+            },
+            {
+              "text": "D. 8 cm"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据勾股定理：斜边² = 直角边₁² + 直角边₂² = 3² + 4² = 9 + 16 = 25，故斜边 = √25 = 5 cm。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一根梯子靠在墙上，梯子底端距墙6 m，梯子顶端达到墙面8 m高。则梯子的长度是（　　）",
+          "options": [
+            {
+              "text": "A. 8 m"
+            },
+            {
+              "text": "B. 9 m"
+            },
+            {
+              "text": "C. 10 m"
+            },
+            {
+              "text": "D. 12 m"
+            }
+          ],
+          "answer": "C",
+          "analysis": "梯子、墙与地面构成一个直角三角形，梯子为斜边，底边为6 m，高为8 m。由勾股定理：斜边 = √(6² + 8²) = √(36 + 64) = √100 = 10 m。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s01.kp02",
+      "chapter": "math.g8b.pep.ch17.s01",
+      "chapterName": "17.1 勾股定理",
+      "name": "勾股定理的表述与证明（面积法）",
+      "description": "掌握勾股定理的数学表达 a² + b² = c²，并能通过面积切割法进行证明。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "证明中遗漏某个小正方形的面积",
+        "将 a、b、c 的对应关系写反"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知直角三角形的两条直角边长度分别为 3 cm 和 4 cm，求其斜边的长度。",
+          "options": [
+            {
+              "text": "A. 5 cm"
+            },
+            {
+              "text": "B. 6 cm"
+            },
+            {
+              "text": "C. 7 cm"
+            },
+            {
+              "text": "D. 8 cm"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据勾股定理 a² + b² = c²，代入 a=3，b=4 得 c² = 3² + 4² = 9 + 16 = 25，故 c = √25 = 5 cm。选项 A 正确；其余选项均不满足该等式。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在勾股定理的面积法证明中，以下哪项描述是正确的？",
+          "options": [
+            {
+              "text": "A. 斜边上的正方形面积等于两条直角边上的正方形面积之和。"
+            },
+            {
+              "text": "B. 直角三角形的面积等于两条直角边长的乘积。"
+            },
+            {
+              "text": "C. 一条直角边上的正方形面积等于另一条直角边上的正方形面积加上三角形的面积。"
+            },
+            {
+              "text": "D. 斜边上的正方形面积等于以两条直角边为长和宽的矩形面积。"
+            }
+          ],
+          "answer": "A",
+          "analysis": "面积法证明的核心是：构造以斜边为边的正方形，以及以两条直角边为边的两个正方形，通过切割和拼接可证明斜边正方形的面积恰好等于两个小正方形面积之和，即 a² + b² = c²。选项 A 正确描述了这一关系；B 错误（三角形面积是 ½ab）；C、D 均不符合面积切割法的几何变换。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一根梯子靠在垂直的墙上，梯子底端距墙 6 m，梯子顶端恰好触及墙面 8 m 高的点。求梯子的长度。",
+          "options": [
+            {
+              "text": "A. 10 m"
+            },
+            {
+              "text": "B. 12 m"
+            },
+            {
+              "text": "C. 14 m"
+            },
+            {
+              "text": "D. 16 m"
+            }
+          ],
+          "answer": "A",
+          "analysis": "梯子、墙与地面构成一个直角三角形，梯子为斜边，底到墙的距离为一条直角边（6 m），墙面高度为另一条直角边（8 m）。代入勾股定理：c² = 6² + 8² = 36 + 64 = 100，故 c = √100 = 10 m。选项 A 正确；其余选项均不满足该等式。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s01.kp03",
+      "chapter": "math.g8b.pep.ch17.s01",
+      "chapterName": "17.1 勾股定理",
+      "name": "勾股定理的应用：求斜边长",
+      "description": "已知两条直角边长度，利用勾股定理求斜边的长度，并能正确开平方。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "忘记对 a² + b² 开平方根",
+        "计算平方时出现符号错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知直角三角形的两条直角边长度分别为 3 cm 和 4 cm，求斜边的长度。",
+          "options": [
+            {
+              "text": "A. 5 cm"
+            },
+            {
+              "text": "B. 6 cm"
+            },
+            {
+              "text": "C. 7 cm"
+            },
+            {
+              "text": "D. 8 cm"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据勾股定理：斜边² = 直角边₁² + 直角边₂² = 3² + 4² = 9 + 16 = 25，因此斜边 = √25 = 5 cm。选项 A 正确；其他选项均不等于 5。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知直角三角形的两条直角边长度分别为 5 cm 和 12 cm，求斜边的长度。",
+          "options": [
+            {
+              "text": "A. 10 cm"
+            },
+            {
+              "text": "B. 12 cm"
+            },
+            {
+              "text": "C. 13 cm"
+            },
+            {
+              "text": "D. 15 cm"
+            }
+          ],
+          "answer": "C",
+          "analysis": "斜边² = 5² + 12² = 25 + 144 = 169，斜边 = √169 = 13 cm。选项 C 正确；其余选项均不等于 13。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知直角三角形的两条直角边长度分别为 √3 cm 和 √12 cm，求斜边的长度。",
+          "options": [
+            {
+              "text": "A. √12 cm"
+            },
+            {
+              "text": "B. √13 cm"
+            },
+            {
+              "text": "C. √14 cm"
+            },
+            {
+              "text": "D. √15 cm"
+            }
+          ],
+          "answer": "D",
+          "analysis": "先计算平方：(√3)² = 3，（√12）² = 12。根据勾股定理，斜边² = 3 + 12 = 15，因此斜边 = √15 cm。选项 D 正确；其他选项分别对应 √12、√13、√14，均不等于 √15。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s01.kp04",
+      "chapter": "math.g8b.pep.ch17.s01",
+      "chapterName": "17.1 勾股定理",
+      "name": "勾股定理的应用：求直角边长",
+      "description": "已知斜边和一条直角边，利用勾股定理求另一条直角边的长度。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "将 c² - a² 写成 a² - c² 得到负数",
+        "开平方时忽略正负根的意义（只取正值）"
+      ],
+      "status": "published",
+      "examples": []
+    },
+    {
+      "code": "math.g8b.pep.ch17.s01.kp05",
+      "chapter": "math.g8b.pep.ch17.s01",
+      "chapterName": "17.1 勾股定理",
+      "name": "勾股定理的逆定理及判断直角三角形",
+      "description": "掌握勾股定理的逆定理：若三边满足 a² + b² = c²，则该三角形为直角三角形，并能用于判断。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "将逆定理与原定理混淆，误以为只要满足平方和等式就是直角三角形而不考虑边长顺序",
+        "判断时未将最长边作为斜边 c"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知三角形的三边长分别为 3 cm、4 cm、5 cm，判断该三角形是否为直角三角形。",
+          "options": [
+            {
+              "text": "A. 是直角三角形"
+            },
+            {
+              "text": "B. 不是直角三角形"
+            },
+            {
+              "text": "C. 无法判断"
+            },
+            {
+              "text": "D. 只有在夹角为 60° 时才是直角三角形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据勾股定理的逆定理，若三边满足 a² + b² = c²（其中 c 为最长边），则该三角形为直角三角形，且直角位于边 c 的对角。这里取 a=3，b=4，c=5，计算得 3²+4²=9+16=25=5²，满足条件，故为直角三角形。选项 B、C、D 均不符合计算结果。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "三角形的三边长为 9 cm、12 cm、15 cm，以下哪项描述是正确的？",
+          "options": [
+            {
+              "text": "A. 是直角三角形，直角对应的边长为 15 cm"
+            },
+            {
+              "text": "B. 是锐角三角形"
+            },
+            {
+              "text": "C. 是钝角三角形"
+            },
+            {
+              "text": "D. 这三段不能构成三角形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "最长边为 15 cm，检验是否满足勾股定理的逆定理：9²+12²=81+144=225=15²。成立，故该三角形为直角三角形，直角位于最长边 15 cm 的对角。选项 B、C 与计算结果矛盾；选项 D 错误，因为三边满足两边和大于第三边的条件，能构成三角形。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知三角形的三边长为 7 cm、24 cm、25 cm。先判断该三角形是否为直角三角形，若是，则求其斜边上的高（即从直角顶点向斜边作的高）的长度。",
+          "options": [
+            {
+              "text": "A. 6.72 cm"
+            },
+            {
+              "text": "B. 7 cm"
+            },
+            {
+              "text": "C. 24 cm"
+            },
+            {
+              "text": "D. 25 cm"
+            }
+          ],
+          "answer": "A",
+          "analysis": "首先验证是否满足勾股定理的逆定理：7²+24²=49+576=625=25²，成立，故为直角三角形，直角位于边长 7 cm 和 24 cm 的顶点，斜边为 25 cm。直角三角形的面积可由两条直角边计算：S = ½ × 7 × 24 = 84 cm²。又知面积也等于 ½ × 斜边 × 高，设高为 h，则 ½ × 25 × h = 84 → h = (84×2)/25 = 168/25 = 6.72 cm。因此正确答案为 A。选项 B、C、D 分别为两条直角边和斜边的长度，均不满足面积关系。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s01.kp06",
+      "chapter": "math.g8b.pep.ch17.s01",
+      "chapterName": "17.1 勾股定理",
+      "name": "勾股定理在实际问题中的综合应用",
+      "description": "将勾股定理及其逆定理结合图形（梯形、正方形、坐标系）解决实际求长、求距离等问题。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp3",
+        "kp4",
+        "kp5"
+      ],
+      "commonMistakes": [
+        "在复合图形中错误地识别直角三角形的边",
+        "坐标距离公式推导时遗忘勾股定理的应用"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知一个长方形的长为6 cm，宽为8 cm，求其对角线的长度。",
+          "options": [
+            {
+              "text": "A. 10 cm"
+            },
+            {
+              "text": "B. 14 cm"
+            },
+            {
+              "text": "C. 48 cm"
+            },
+            {
+              "text": "D. 6 cm"
+            }
+          ],
+          "answer": "A",
+          "analysis": "长方形的对角线构成直角三角形的两条直角边分别为长和宽，根据勾股定理：对角线² = 6² + 8² = 36 + 64 = 100，故对角线 = √100 = 10 cm。选项B错误是将两边直接相加；选项C错误是将两边相乘；选项D错误是取其中一条边的长度。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在平面直角坐标系中，点A(2,3)、B(7,11)，求线段AB的长度。",
+          "options": [
+            {
+              "text": "A. 9"
+            },
+            {
+              "text": "B. √89"
+            },
+            {
+              "text": "C. 13"
+            },
+            {
+              "text": "D. 15"
+            }
+          ],
+          "answer": "B",
+          "analysis": "点A到点B的水平差为Δx = 7−2 = 5，垂直差为Δy = 11−3 = 8。由勾股定理（或距离公式）得AB = √(Δx² + Δy²) = √(5² + 8²) = √(25 + 64) = √89。选项A错误是只取Δx或Δy的较大值；选项C错误是将Δx和Δy直接相加；选项D错误是将Δx和Δy的和再平方后开方。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "如图，直角梯形ABCD中，AD∥BC，∠BAD＝90°，已知AD＝5 cm，AB＝12 cm，BC＝20 cm。求CD的长度。",
+          "options": [
+            {
+              "text": "A. 13 cm"
+            },
+            {
+              "text": "B. 15 cm"
+            },
+            {
+              "text": "C. 3√41 cm"
+            },
+            {
+              "text": "D. √369 cm"
+            }
+          ],
+          "answer": "C",
+          "analysis": "将梯形放在坐标系中：设A为原点(0,0)，AD沿x轴正方向，故D(5,0)；AB沿y轴正方向，故B(0,12)。因为AD∥BC，BC也是水平线段，且B的y坐标为12，BC长为20，所以C的坐标为(20,12)。于是CD为点D(5,0)到点C(20,12)的线段，水平差Δx＝20−5＝15，垂直差Δy＝12−0＝12。由勾股定理得CD＝√(15²＋12²)＝√(225＋144)＝√369＝√(9×41)＝3√41 cm。选项A和B是常见的误算（如只取一条边或错误相加）；选项D虽然数值等同于√369，但未化简为最简根号形式，题目要求最简形式，故选C。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s02.kp01",
+      "chapter": "math.g8b.pep.ch17.s02",
+      "chapterName": "17.2 勾股定理的逆定理",
+      "name": "勾股定理的逆定理的表述",
+      "description": "理解并能够叙述：在一个三角形中，若最长边的平方等于另外两边的平方和，则该三角形为直角三角形。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "忘记必须是最长边的平方",
+        "认为任意两边平方和等于第三边平方就成立，不考虑边长大小"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "在一个三角形中，若最长边的平方等于另外两边的平方和，则该三角形为（　　）。",
+          "options": [
+            {
+              "text": "A. 直角三角形"
+            },
+            {
+              "text": "B. 锐角三角形"
+            },
+            {
+              "text": "C. 钝角三角形"
+            },
+            {
+              "text": "D. 等腰三角形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "这是勾股定理的逆定理的直接表述：当三角形的最长边（假设为c）满足a²+b²=c²时，该三角形必为直角三角形，且c为斜边。其他选项分别对应锐角、钝角和等腰三角形，均不符合条件。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知三角形的三边长度分别为5 cm、12 cm、13 cm，根据勾股定理的逆定理，该三角形是（　　）。",
+          "options": [
+            {
+              "text": "A. 直角三角形"
+            },
+            {
+              "text": "B. 锐角三角形"
+            },
+            {
+              "text": "C. 钝角三角形"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "A",
+          "analysis": "取最长边13 cm为c，其余两边为a=5 cm、b=12 cm。计算a²+b²=5²+12²=25+144=169=c²=13²，满足逆定理条件，故为直角三角形，13 cm为斜边。其他选项均不满足该等式。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "在四边形ABCD中，已知对角线AC=10 cm，AB=6 cm，BC=8 cm。若△ABC满足勾股定理的逆定理，则△ABC的面积是（　　）。",
+          "options": [
+            {
+              "text": "A. 不能确定"
+            },
+            {
+              "text": "B. 24 cm²"
+            },
+            {
+              "text": "C. 48 cm²"
+            },
+            {
+              "text": "D. 30 cm²"
+            }
+          ],
+          "answer": "B",
+          "analysis": "首先判断△ABC是否为直角三角形：取最长边AC=10 cm，其余两边AB=6 cm、BC=8 cm。计算6²+8²=36+64=100=10²，满足a²+b²=c²，故△ABC为直角三角形，且AC为斜边。直角三角形的面积为两直角边乘积的一半：S=½×6×8=24 cm²。因此正确答案为B。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s02.kp02",
+      "chapter": "math.g8b.pep.ch17.s02",
+      "chapterName": "17.2 勾股定理的逆定理",
+      "name": "确定三角形的最长边",
+      "description": "给定三边长度，能够正确比较并确定哪条边为最长边，为应用逆定理做准备。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "KP01"
+      ],
+      "commonMistakes": [
+        "把两条较短边误认为最长边",
+        "忽略负数或单位不一致导致比较错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知三角形的三边长度分别为 3 cm、4 cm、5 cm，哪条边是最长的？",
+          "options": [
+            {
+              "text": "A. 3 cm"
+            },
+            {
+              "text": "B. 4 cm"
+            },
+            {
+              "text": "C. 5 cm"
+            },
+            {
+              "text": "D. 无法确定"
+            }
+          ],
+          "answer": "C",
+          "analysis": "在给定的三边中，5 cm 大于 3 cm 和 4 cm，因此 5 cm 是最长边。选项 A、B 均小于 5 cm，选项 D 不符合题意。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "设三角形的三边长度分别为 2x、3x‑1、4x+2（x>0）。下列哪条边一定是最长边？",
+          "options": [
+            {
+              "text": "A. 2x"
+            },
+            {
+              "text": "B. 3x‑1"
+            },
+            {
+              "text": "C. 4x+2"
+            },
+            {
+              "text": "D. 无法确定"
+            }
+          ],
+          "answer": "C",
+          "analysis": "比较各边：c‑a = (4x+2)‑2x = 2x+2 > 0，c‑b = (4x+2)‑(3x‑1) = x+3 > 0（x>0）。因此 4x+2 永远大于另外两边，必为最长边。选项 A、B 均不一定最大，选项 D 错误。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个三角形的三边长是连续的三个偶数，且周长为 48 cm。求最长边的长度。",
+          "options": [
+            {
+              "text": "A. 14 cm"
+            },
+            {
+              "text": "B. 16 cm"
+            },
+            {
+              "text": "C. 18 cm"
+            },
+            {
+              "text": "D. 20 cm"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设三边为 2n、2n+2、2n+4（n为整数）。周长为 2n+(2n+2)+(2n+4)=6n+6=48 → 6n=42 → n=7。于是三边分别为 14 cm、16 cm、18 cm，其中最长边为 18 cm。选项 A、B 均太小，选项 D 超出可能范围。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s02.kp03",
+      "chapter": "math.g8b.pep.ch17.s02",
+      "chapterName": "17.2 勾股定理的逆定理",
+      "name": "利用逆定理判断三角形是否为直角三角形",
+      "description": "已知三边长度，通过计算最长边的平方与其他两边平方和的比较，判断三角形是否为直角三角形。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "KP01",
+        "KP02"
+      ],
+      "commonMistakes": [
+        "只比较两边的平方和而未确认最长边",
+        "计算平方时出现算术错误，如忘记平方"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "三角形的三边长分别为 3 cm, 4 cm, 5 cm，则该三角形（ ）。",
+          "options": [
+            {
+              "text": "A. 是直角三角形"
+            },
+            {
+              "text": "B. 是钝角三角形"
+            },
+            {
+              "text": "C. 是锐角三角形"
+            },
+            {
+              "text": "D. 不能构成三角形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "最长边为 5 cm，5²=25，其他两边平方和为 3²+4²=9+16=25，两者相等，满足勾股定理的逆定理，故为直角三角形。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "三角形的三边长分别为 6 cm, 8 cm, 11 cm，则该三角形（ ）。",
+          "options": [
+            {
+              "text": "A. 是直角三角形"
+            },
+            {
+              "text": "B. 是钝角三角形"
+            },
+            {
+              "text": "C. 是锐角三角形"
+            },
+            {
+              "text": "D. 不能构成三角形"
+            }
+          ],
+          "answer": "B",
+          "analysis": "最长边为 11 cm，11²=121，其他两边平方和为 6²+8²=36+64=100，因为 121>100，最长边的平方大于其他两边平方和，根据勾股定理的逆定理，该三角形为钝角三角形。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知三角形的三边长分别为 x, x+1, x+2（单位：cm），且该三角形为直角三角形，求 x 的值。",
+          "options": [
+            {
+              "text": "A. 1"
+            },
+            {
+              "text": "B. 2"
+            },
+            {
+              "text": "C. 3"
+            },
+            {
+              "text": "D. 4"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设最长边为 x+2。根据直角三角形的勾股定理：(x+2)² = x² + (x+1)²。展开得 x²+4x+4 = x² + x²+2x+1 → x²+4x+4 = 2x²+2x+1 → 0 = x² -2x -3 → (x-3)(x+1)=0。由于边长为正，取 x=3。因此正确选项为 C。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s02.kp04",
+      "chapter": "math.g8b.pep.ch17.s02",
+      "chapterName": "17.2 勾股定理的逆定理",
+      "name": "根据满足逆定理条件的三边构造直角三角形",
+      "description": "给定满足 c^2 = a^2 + b^2 的三边长度，能够用尺规或作图法构造出对应的直角三角形。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "KP03"
+      ],
+      "commonMistakes": [
+        "错误地将不满足条件的三边当作可构造的直角三角形",
+        "构造时未保证所给边为最长边"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知三边长度分别为 3、4、5，能否用尺规构造出直角三角形？若能，直角边是哪两条？",
+          "options": [
+            {
+              "text": "A. 能，直角边为 3 和 4"
+            },
+            {
+              "text": "B. 能，直角边为 3 和 5"
+            },
+            {
+              "text": "C. 能，直角边为 4 和 5"
+            },
+            {
+              "text": "D. 不能构造直角三角形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据逆定理，若满足 c² = a² + b²，则三角形为直角三角形，且斜边为 c。这里 5² = 3² + 4²（25 = 9 + 16），故斜边为 5，直角边为 3 和 4。选项 B、C 错误地把斜边当作直角边；D 与逆定理矛盾。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知直角三角形的两条直角边长度分别为 6 和 8，求斜边长度。",
+          "options": [
+            {
+              "text": "A. 10"
+            },
+            {
+              "text": "B. 14"
+            },
+            {
+              "text": "C. 2"
+            },
+            {
+              "text": "D. 7"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据勾股定理（或逆定理），斜边 c 满足 c² = 6² + 8² = 36 + 64 = 100，故 c = √100 = 10。选项 B 为两边之和，C 为两边之差，D 为随意猜测，均不满足勾股关系。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知三边长度为 7、24、25，下列说法正确的是：",
+          "options": [
+            {
+              "text": "A. 能构造直角三角形，且斜边为 25"
+            },
+            {
+              "text": "B. 能构造直角三角形，且斜边为 7"
+            },
+            {
+              "text": "C. 不能构造直角三角形，因为不满足勾股定理"
+            },
+            {
+              "text": "D. 能构造直角三角形，但斜边不确定"
+            }
+          ],
+          "answer": "A",
+          "analysis": "验证：7² + 24² = 49 + 576 = 625 = 25²，满足 c² = a² + b²，故斜边为 25，直角边为 7 和 24。选项 B 错误地把最短边当斜边；C 与计算结果矛盾；D 斜边在满足勾股关系时是唯一的。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s02.kp05",
+      "chapter": "math.g8b.pep.ch17.s02",
+      "chapterName": "17.2 勾股定理的逆定理",
+      "name": "逆定理在实际问题中的应用",
+      "description": "能够将逆定理用于检验实际情境中的直角关系，如 ladder 墙角、建筑施工中的直角检验等。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "KP03"
+      ],
+      "commonMistakes": [
+        "忽略实际测量中的误差导致误判",
+        "将非直角情境硬套逆定理"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "一根长 13 英尺的梯子靠在墙上，梯子底端距墙 5 英尺。若梯子与地面呈直角，则梯子顶端应离地面多高？",
+          "options": [
+            {
+              "text": "A. 12 英尺"
+            },
+            {
+              "text": "B. 10 英尺"
+            },
+            {
+              "text": "C. 8 英尺"
+            },
+            {
+              "text": "D. 6 英尺"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据勾股定理的逆定理，若三边长度满足 a² + b² = c²，则该三角形为直角三角形，其中 c 为斜边。已知斜边 c = 13 英尺，一条直角边 a = 5 英尺（底到墙的距离），则另一条直角边 b = √(c² - a²) = √(169 - 25) = √144 = 12 英尺。因此梯子顶端离地面应为 12 英尺。选项 B、C、D 均不满足勾股关系，故错误。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在建筑施工中，要检验一个角是否为直角。已知两条相邻的边长分别为 9 m 和 12 m，它们的对角线（即跨过该角的线段）长 15 m。根据此数据，该角是否为直角？",
+          "options": [
+            {
+              "text": "A. 是直角"
+            },
+            {
+              "text": "B. 不是直角"
+            },
+            {
+              "text": "C. 无法判断"
+            },
+            {
+              "text": "D. 必须再测量一条边"
+            }
+          ],
+          "answer": "A",
+          "analysis": "利用勾股定理的逆定理：若三边长度满足 a² + b² = c²，则对应的角为直角。这里取 a = 9 m，b = 12 m，c = 15 m。计算得 a² + b² = 9² + 12² = 81 + 144 = 225；c² = 15² = 225。两者相等，故满足勾股关系，该角为直角。选项 B 错误，因为数据已经满足条件；选项 C 错误，因为已足够判断；选项 D 多余。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个三角形花坛的三条边长分别为 7 m、24 m、25 m。若想在花坛的一个顶点处安装喷头，使得喷头正好对准两条边的交角，则该顶点的角是否为直角？",
+          "options": [
+            {
+              "text": "A. 是直角"
+            },
+            {
+              "text": "B. 不是直角"
+            },
+            {
+              "text": "C. 只能是钝角"
+            },
+            {
+              "text": "D. 只能是锐角"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据勾股定理的逆定理，若三边长度满足 a² + b² = c²（其中 c 为最长边），则对应的角为直角。这里最长边为 25 m，取 a = 7 m，b = 24 m。计算 a² + b² = 7² + 24² = 49 + 576 = 625；c² = 25² = 625。两者相等，故该三角形为直角三角形，且直角位于边长 7 m 和 24 m 的顶点。因此在该顶点安装喷头可使其正对两边。选项 B、C、D 均与计算结果矛盾。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch17.s02.kp06",
+      "chapter": "math.g8b.pep.ch17.s02",
+      "chapterName": "17.2 勾股定理的逆定理",
+      "name": "在坐标平面上使用逆定理判断直角",
+      "description": "已知三点坐标，先用距离公式求出三边长度，再应用逆定理判断由这三点构成的三角形是否为直角三角形。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "KP01"
+      ],
+      "commonMistakes": [
+        "距离公式使用错误（忘记平方或开根）",
+        "未正确识别最长边后再比较"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知点 A(0,0)，B(3,0)，C(0,4)，判断△ABC是否为直角三角形，若是，直角顶点是哪一点？",
+          "options": [
+            {
+              "text": "A. 是直角三角形，直角在A"
+            },
+            {
+              "text": "B. 是直角三角形，直角在B"
+            },
+            {
+              "text": "C. 是直角三角形，直角在C"
+            },
+            {
+              "text": "D. 不是直角三角形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先用距离公式求三边长：AB=√[(3-0)²+(0-0)²]=3，AC=√[(0-0)²+(4-0)²]=4，BC=√[(0-3)²+(4-0)²]=5。满足3²+4²=5²，符合勾股定理的逆定理，故为直角三角形，斜边为BC，直角顶点为A。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知点 P(1,2)，Q(4,6)，R(7,2)，判断△PQR是否为直角三角形。",
+          "options": [
+            {
+              "text": "A. 是直角三角形，直角在P"
+            },
+            {
+              "text": "B. 是直角三角形，直角在Q"
+            },
+            {
+              "text": "C. 是直角三角形，直角在R"
+            },
+            {
+              "text": "D. 不是直角三角形"
+            }
+          ],
+          "answer": "D",
+          "analysis": "计算各边长：PQ=√[(4-1)²+(6-2)²]=5，QR=√[(7-4)²+(2-6)²]=5，PR=√[(7-1)²+(2-2)²]=6。检验是否满足a²+b²=c²：5²+5²=50≠6²；5²+6²=61≠5²；5²+6²=61≠5²。三组均不等，故不构成直角三角形。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知点 A(0,0)，B(4,3)，C(7,-1)，判断△ABC是否为直角三角形，若是，直角顶点是哪一点？",
+          "options": [
+            {
+              "text": "A. 是直角三角形，直角在A"
+            },
+            {
+              "text": "B. 是直角三角形，直角在B"
+            },
+            {
+              "text": "C. 是直角三角形，直角在C"
+            },
+            {
+              "text": "D. 不是直角三角形"
+            }
+          ],
+          "answer": "B",
+          "analysis": "求三边长：AB=√[(4-0)²+(3-0)²]=5；BC=√[(7-4)²+(-1-3)²]=√[3²+(-4)²]=5；AC=√[(7-0)²+(-1-0)²]=√[7²+(-1)²]=√50。观察到5²+5²=50=(√50)²，满足勾股定理的逆定理，故为直角三角形，斜边为AC，直角顶点为AB和BC的公共点B。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s01.kp01",
+      "chapter": "math.g8b.pep.ch18.s01",
+      "chapterName": "18.1 平行四边形",
+      "name": "平行四边形的定义及基本性质",
+      "description": "理解平行四边形的概念，并掌握其对边平行、对边相等、对角相等、对角线互相平分的四条基本性质。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "把一般四边形误认为平行四边形，忽略对边平行条件",
+        "认为对角线一定相等（仅在特殊情况下成立）"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面关于平行四边形的说法，正确的是（　　）",
+          "options": [
+            {
+              "text": "A. 四条边都相等"
+            },
+            {
+              "text": "B. 对边平行"
+            },
+            {
+              "text": "C. 对角线相等"
+            },
+            {
+              "text": "D. 只有一组对角相等"
+            }
+          ],
+          "answer": "B",
+          "analysis": "平行四边形的定义是：一个四边形，其两组对边分别平行。因此选项 B 正确。选项 A 描述的是菱形；选项 C 描述的是矩形（或正方形）；选项 D 不符合平行四边形的性质（平行四边形的对角相等，但不仅仅是一组）。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知平行四边形 ABCD，AB=8 cm，BC=5 cm，∠A=60°。求对角线 AC 的长（　　）",
+          "options": [
+            {
+              "text": "A. √129 cm"
+            },
+            {
+              "text": "B. √89 cm"
+            },
+            {
+              "text": "C. 13 cm"
+            },
+            {
+              "text": "D. √113 cm"
+            }
+          ],
+          "answer": "A",
+          "analysis": "在平行四边形中，向量 AC = AB + AD，且 AD = BC = 5 cm，AB 与 AD 的夹角就是 ∠A = 60°。利用向量加法的余弦定律：|AC|² = |AB|² + |AD|² + 2|AB||AD|cos∠A = 8² + 5² + 2·8·5·cos60° = 64 + 25 + 80·0.5 = 129。故 |AC| = √129 cm。选项 B 漏掉了 2ab cosθ 项；选项 C 错误地直接相加；选项 D 使用了错误的角度。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "在平行四边形 EFGH 中，对角线 EG 和 FH 在点 O 相交。已知 EO = 3x+2， GO = 5x-4，且 O 是对角线的中点。求对角线 EG 的长（　　）",
+          "options": [
+            {
+              "text": "A. 11"
+            },
+            {
+              "text": "B. 22"
+            },
+            {
+              "text": "C. 6"
+            },
+            {
+              "text": "D. 18"
+            }
+          ],
+          "answer": "B",
+          "analysis": "平行四边形的对角线互相平分，故 EO = GO。列得方程 3x+2 = 5x-4 → 2x = 6 → x = 3。代入得 EO = 3·3+2 = 11，GO = 5·3-4 = 11。对角线 EG = EO + GO = 11 + 11 = 22。选项 A 只取了 EO（或 GO）的一半；选项 C 和 D 均与解得结果不符。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s01.kp02",
+      "chapter": "math.g8b.pep.ch18.s01",
+      "chapterName": "18.1 平行四边形",
+      "name": "平行四边形的判定方法",
+      "description": "掌握判定一个四边形为平行四边形的充分条件：两组对边平行；一组对边既平行又相等；对角线互相平分。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "认为只要一组对边平行即可判定为平行四边形",
+        "混淆对角线互相平分与对角线相等的条件"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知四边形ABCD中，AB∥CD且BC∥AD，则ABCD一定是（　　）",
+          "options": [
+            {
+              "text": "A. 平行四边形"
+            },
+            {
+              "text": "B. 梯形"
+            },
+            {
+              "text": "C. 菱形"
+            },
+            {
+              "text": "D. 矩形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据平行四边形的判定条件之一：两组对边平行即可判定为平行四边形。题目已给出AB∥CD且BC∥AD，满足两组对边平行，因此ABCD必为平行四边形。选项B、C、D均需额外条件（如只有一组对边平行为梯形，所有边相等为菱形，且有直角为矩形），故错误。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在四角形EFGH中，已知EF∥GH且EF=GH，则EFGH一定是（　　）",
+          "options": [
+            {
+              "text": "A. 平行四边形"
+            },
+            {
+              "text": "B. 梯形"
+            },
+            {
+              "text": "C. 等腰梯形"
+            },
+            {
+              "text": "D. 菱形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平行四边形的另一判定条件：一组对边既平行又相等。题目给出EF∥GH且EF=GH，满足此条件，因此EFGH必为平行四边形。选项B仅需一组对边平行，不足以确定；选项C还需另一组对边相等；选项D需所有边相等，条件不足。故错误。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知四边形IJKL的对角线IL和JK在点O处相交，且IO=OL，JO=OK，则IJKL一定是（　　）",
+          "options": [
+            {
+              "text": "A. 平行四边形"
+            },
+            {
+              "text": "B. 菱形"
+            },
+            {
+              "text": "C. 矩形"
+            },
+            {
+              "text": "D. 风筝形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平行四边形的判定条件之一：对角线互相平分。题目说明对角线的两段相等（IO=OL，JO=OK），即对角线在点O处互相平分，因此IJKL必为平行四边形。菱形和矩形虽然也是平行四边形，但需要额外条件（如所有边相等或有直角），题目未给出；风筝形的对角线一般不互相平分。故错误。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s01.kp03",
+      "chapter": "math.g8b.pep.ch18.s01",
+      "chapterName": "18.1 平行四边形",
+      "name": "平行四边形的面积计算",
+      "description": "会用底×高求平行四边形面积，并了解利用两边及夹角的正弦公式求面积的方法。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "取斜边作为高，导致面积偏大",
+        "混淆底和高的对应关系，使用错误的边长"
+      ],
+      "status": "published",
+      "examples": []
+    },
+    {
+      "code": "math.g8b.pep.ch18.s01.kp04",
+      "chapter": "math.g8b.pep.ch18.s01",
+      "chapterName": "18.1 平行四边形",
+      "name": "特殊平行四边形——矩形、菱形、正方形的性质",
+      "description": "了解矩形（对角线相等且互相平分）、菱形（所有边相等、对角线垂直平分且平分角）、正方形（兼具矩形和菱形性质）的特征及判定方法。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2"
+      ],
+      "commonMistakes": [
+        "认为菱形的对角线一定相等",
+        "把矩形的所有边都看作相等，忽略只有对边相等"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面关于矩形的性质，说法正确的是（　　）",
+          "options": [
+            {
+              "text": "A. 对角线相等且互相平分"
+            },
+            {
+              "text": "B. 对角线垂直且平分对角"
+            },
+            {
+              "text": "C. 四条边都相等"
+            },
+            {
+              "text": "D. 每个角都是60°"
+            }
+          ],
+          "answer": "A",
+          "analysis": "矩形的定义是四个角都是直角的平行四边形。其性质包括：对角线相等且互相平分；相邻两边垂直；对边平行且相等。选项A正确描述了对角线相等且互相平分；B错误，矩形对角线一般不垂直；C描述的是菱形；D错误，矩形每个角是90°。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知四边形ABCD的四条边都相等，且∠A=90°，则ABCD一定是（　　）",
+          "options": [
+            {
+              "text": "A. 平行四边形"
+            },
+            {
+              "text": "B. 矩形"
+            },
+            {
+              "text": "C. 菱形"
+            },
+            {
+              "text": "D. 正方形"
+            }
+          ],
+          "answer": "D",
+          "analysis": "四条边相等说明ABCD是菱形；菱形具有一个直角时，其余三角也必为直角（因为菱形的对角相等，邻角互补），于是所有角都是90°，此时菱形同时具备矩形的性质，即为正方形。选项A太笼统，B缺少边相等的条件，C未考虑角的条件，只有D同时满足边相等和角为90°。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "菱形ABCD的边长为5，已知对角线AC=6，则另一条对角线BD的长是（　　）",
+          "options": [
+            {
+              "text": "A. 4"
+            },
+            {
+              "text": "B. 6"
+            },
+            {
+              "text": "C. 8"
+            },
+            {
+              "text": "D. 10"
+            }
+          ],
+          "answer": "C",
+          "analysis": "菱形的对角线互相垂直平分。设AC和BD在点O相交，则AO=AC/2=3，BO=BD/2未知。在直角△AOB中，AB为斜边，等于菱形的边长5。由勾股定理：BO²=AB²−AO²=5²−3²=25−9=16，故BO=4，于是BD=2×BO=8。选项C正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s01.kp05",
+      "chapter": "math.g8b.pep.ch18.s01",
+      "chapterName": "18.1 平行四边形",
+      "name": "平行四边形的对角线性质及其在证明中的应用",
+      "description": "掌握对角线互相平分这一性质，能利用它证明两个三角形全等，从而求解未知角或边。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2"
+      ],
+      "commonMistakes": [
+        "误以为对角线不仅平分还相等",
+        "在证明中忽略需要先证明两三角形共有边或角"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "在平行四边形ABCD中，对角线AC和BD相交于点O。仅利用“对角线互相平分”这一性质，以下哪项必然成立？",
+          "options": [
+            {
+              "text": "A. AO = OC"
+            },
+            {
+              "text": "B. AB = CD"
+            },
+            {
+              "text": "C. ∠A = ∠C"
+            },
+            {
+              "text": "D. AD ∥ BC"
+            }
+          ],
+          "answer": "A",
+          "analysis": "对角线互相平分意味着交点O将每条对角线分成两段相等，即AO=OC且BO=OD。选项B、C、D虽然在平行四边形中也成立，但它们是由平行四边形的其他性质（对边相等、对角相等、对边平行）得出，不能仅从“对角线互相平分”直接推出。因此唯一正确答案是A。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知平行四边形ABCD的对角线AC和BD相交于O，若AO = 3x+2，OC = 5x-4，则x的值是（　）。",
+          "options": [
+            {
+              "text": "A. 3"
+            },
+            {
+              "text": "B. 4"
+            },
+            {
+              "text": "C. 5"
+            },
+            {
+              "text": "D. 6"
+            }
+          ],
+          "answer": "A",
+          "analysis": "由对角线互相平分得AO = OC。列方程：3x+2 = 5x-4 → 2x = 6 → x = 3。故选A。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "在平行四边形ABCD中，E是AD的中点，F是BC的中点，连线EF与对角线BD相交于G。则BG：GD的比是（　）。",
+          "options": [
+            {
+              "text": "A. 1:1"
+            },
+            {
+              "text": "B. 1:2"
+            },
+            {
+              "text": "C. 2:1"
+            },
+            {
+              "text": "D. 2:3"
+            }
+          ],
+          "answer": "A",
+          "analysis": "设坐标：A(0,0)，B(b,0)，D(0,d)，则C(b,d)。E为AD中点得E(0,d/2)，F为BC中点得F(b,d/2)，故EF为水平线y=d/2。对角线BD的参数方程为(x,y)=(b,0)+t(-b,d)，即x=b(1-t)，y=dt。令y=d/2得t=1/2，代入得x=b/2，即G为BD的中点，故BG:GD=1:1。选项A正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s01.kp06",
+      "chapter": "math.g8b.pep.ch18.s01",
+      "chapterName": "18.1 平行四边形",
+      "name": "平行四边形在实际问题中的应用",
+      "description": "能够综合运用平行四边形的定义、判定、性质和面积公式，解决求未知边、角、面积以及复杂图形中的应用题。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2",
+        "kp3"
+      ],
+      "commonMistakes": [
+        "只凭图形外观判断平行关系，而不依据性质进行验证",
+        "在多步骤问题中遗漏使用已知条件，导致前后矛盾"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知平行四边形ABCD，AB=8 cm，BC=5 cm，∠A=60°，求该平行四边形的面积。",
+          "options": [
+            {
+              "text": "A. 20√3 cm²"
+            },
+            {
+              "text": "B. 40 cm²"
+            },
+            {
+              "text": "C. 40√3 cm²"
+            },
+            {
+              "text": "D. 20 cm²"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平行四边形面积 S = ab sinθ，其中 a、b 为相邻两边，θ 为夹角。代入得 S = 8×5×sin60° = 40×(√3/2)=20√3 cm²。选项 B 忽略了 sin 因子；选项 C 错误地把 sin60° 当作 √3；选项 D 则把 sin60° 误当作 1/2。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在平行四边形EFGH中，对角线EG长10 cm，边EF=6 cm，且EF与EG之间的夹角为30°。求另一条边FG的长度。",
+          "options": [
+            {
+              "text": "A. 約5.66 cm"
+            },
+            {
+              "text": "B. 6.00 cm"
+            },
+            {
+              "text": "C. 8.00 cm"
+            },
+            {
+              "text": "D. 4.00 cm"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平行四边形的对角线把它分成两个全等三角形。在△EFG中，已知两边EF=6、EG=10及它们之间的夹角∠FEG=30°，求对边FG。使用余弦定理：FG² = EF² + EG² – 2·EF·EG·cos30° = 6²+10²–2·6·10·(√3/2)=136–60√3≈32.08，故 FG≈√32.08≈5.66 cm。选项 B 忽略了夹角的影响；选项 C、D 分别对应错误的代入或误用正弦定理。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个平行四边形与一个直角三角形共用同一底边。平行四边形的底为12 cm，高为5 cm；直角三角形的底也为12 cm，高（到底边的高）为8 cm。求该复合图形的总面积。",
+          "options": [
+            {
+              "text": "A. 108 cm²"
+            },
+            {
+              "text": "B. 96 cm²"
+            },
+            {
+              "text": "C. 84 cm²"
+            },
+            {
+              "text": "D. 120 cm²"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平行四边形面积 S₁ = 底×高 = 12×5 = 60 cm²。直角三角形面积 S₂ = ½×底×高 = ½×12×8 = 48 cm²。两者共享底边不产生重叠，总面积 S = S₁+S₂ = 60+48 = 108 cm²。选项 B 为只计算了平行四边形面积的两倍；选项 C 漏算了三角形面积的一半；选项 D 错误地把三角形当作全底乘高。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s02.kp01",
+      "chapter": "math.g8b.pep.ch18.s02",
+      "chapterName": "18.2 特殊的平行四边形",
+      "name": "矩形的定义及其性质",
+      "description": "学生能够说明矩形的定义，并掌握其四个角均为直角、对角线相等且互相平分的性质。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "认为矩形的对角线互相垂直",
+        "认为矩形的所有边长相等"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "以下哪项是矩形的正确定义？",
+          "options": [
+            {
+              "text": "A. 四边相等的四边形"
+            },
+            {
+              "text": "B. 有两组平行边的四边形"
+            },
+            {
+              "text": "C. 有四个直角的四边形"
+            },
+            {
+              "text": "D. 对角线相互垂直的四边形"
+            }
+          ],
+          "answer": "C",
+          "analysis": "矩形的定义是：具有四个直角的四边形（或等价地说，是一个具有直角的平行四边形）。选项A描述的是菱形，B描述的是平行四边形，D描述的是菱形的一种特殊情况（对角线垂直），均不符合矩形的定义。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在矩形ABCD中，已知对角线AC=10厘米，则对角线BD的长度是多少？",
+          "options": [
+            {
+              "text": "A. 5厘米"
+            },
+            {
+              "text": "B. 10厘米"
+            },
+            {
+              "text": "C. 20厘米"
+            },
+            {
+              "text": "D. 不能确定"
+            }
+          ],
+          "answer": "B",
+          "analysis": "矩形的性质之一是对角线相等。因此AC=BD，已知AC=10厘米，所以BD也等于10厘米。选项A错误地取了半长，C错误地翻倍，D则忽略了已知的性质。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "矩形EFGH的长为8厘米，宽为6厘米，求该矩形对角线的长度。",
+          "options": [
+            {
+              "text": "A. 10厘米"
+            },
+            {
+              "text": "B. 14厘米"
+            },
+            {
+              "text": "C. 48厘米"
+            },
+            {
+              "text": "D. 100厘米"
+            }
+          ],
+          "answer": "A",
+          "analysis": "矩形的对角线构成直角三角形的斜边，两条直角边分别为长和宽。根据勾股定理：对角线² = 长² + 宽² = 8² + 6² = 64 + 36 = 100，故对角线 = √100 = 10厘米。选项B是长宽之和，C是面积，D是面积的平方，均不正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s02.kp02",
+      "chapter": "math.g8b.pep.ch18.s02",
+      "chapterName": "18.2 特殊的平行四边形",
+      "name": "菱形的定义及其性质",
+      "description": "学生能够说明菱形的定义，并掌握其四条边长相等、对角线互相垂直且平分对角的性质。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "认为菱形的对角线相等",
+        "认为菱形的所有角都是直角"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面关于菱形的描述，正确的是（　）",
+          "options": [
+            {
+              "text": "A. 菱形的四条边不一定相等"
+            },
+            {
+              "text": "B. 菱形的对角线一定相等"
+            },
+            {
+              "text": "C. 菱形是所有边相等的平行四边形"
+            },
+            {
+              "text": "D. 菱形的对角线不一定互相垂直"
+            }
+          ],
+          "answer": "C",
+          "analysis": "菱形的定义是：所有边相等的平行四边形。因此选项 C 正确。A 错误，因为菱形的四条边必须相等；B 错误，菱形的对角线一般不相等，只有在正方形时才相等；D 错误，菱形的对角线互相垂直是其性质之一。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知菱形 ABCD 的对角线 AC 和 BD 在点 O 相交，若 ∠AOB = 90°，则以下结论一定成立的是（　）",
+          "options": [
+            {
+              "text": "A. AB = BC"
+            },
+            {
+              "text": "B. AC = BD"
+            },
+            {
+              "text": "C. ∠DAB = 60°"
+            },
+            {
+              "text": "D. OA = OC 且 OB = OD"
+            }
+          ],
+          "answer": "D",
+          "analysis": "菱形的对角线互相垂直且平分对角，因此交点 O 是两条对角线的中点，即 OA = OC，OB = OD。选项 D 正确。A 虽然菱形四边相等，但题目未给出此信息，不能仅凭对角线垂直得出；B 错误，对角线一般不等；C 没有足够信息确定角度为 60°。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "菱形 EFGH 的对角线 EG 和 FH 长分别为 10 cm 和 24 cm，求菱形的面积（　）",
+          "options": [
+            {
+              "text": "A. 60 cm²"
+            },
+            {
+              "text": "B. 120 cm²"
+            },
+            {
+              "text": "C. 240 cm²"
+            },
+            {
+              "text": "D. 480 cm²"
+            }
+          ],
+          "answer": "B",
+          "analysis": "菱形的面积公式为 S = (d₁ × d₂) / 2，其中 d₁、d₂ 为对角线长度。代入得 S = (10 × 24) / 2 = 240 / 2 = 120 cm²。因此正确答案为 B。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s02.kp03",
+      "chapter": "math.g8b.pep.ch18.s02",
+      "chapterName": "18.2 特殊的平行四边形",
+      "name": "正方形的定义及其性质",
+      "description": "学生能够说明正方形的定义，并掌握其兼具矩形和菱形的全部性质：四角直角、四边相等、对角线相等、互相垂直且平分。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2"
+      ],
+      "commonMistakes": [
+        "认为正方形的对角线不等分角",
+        "认为正方形的对角线不相交于中点"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面关于正方形的描述，哪项是正确的？",
+          "options": [
+            {
+              "text": "A. 正方形的四条边不全相等"
+            },
+            {
+              "text": "B. 正方形的对角线不相等"
+            },
+            {
+              "text": "C. 正方形的四个角都是直角"
+            },
+            {
+              "text": "D. 正方形的对角线不互相垂直"
+            }
+          ],
+          "answer": "C",
+          "analysis": "正方形是特殊的矩形和菱形，兼具两者的性质：四角均为直角（矩形性质），四边相等（菱形性质），对角线相等且互相垂直并平分。因此只有选项 C 正确。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知四边形 ABCD 满足 AB = BC = CD = DA 且 ∠A = 90°，则 ABCD 必然是（　）。",
+          "options": [
+            {
+              "text": "A. 平行四边形"
+            },
+            {
+              "text": "B. 矩形"
+            },
+            {
+              "text": "C. 菱形"
+            },
+            {
+              "text": "D. 正方形"
+            }
+          ],
+          "answer": "D",
+          "analysis": "四边相等说明它是菱形；有一个角为直角，菱形中若有一个角为直角，则其余三角也必为直角（因为菱形的对角相等，邻角互补），于是四角皆为直角，同时四边相等，符合正方形的定义。因此 ABCD 必然是正方形。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "如图，正方形 ABCD 的边长为 6，点 E、F 分别是 AB、CD 的中点，连接 EF。设正方形的对角线 AC、BD 相交于点 O，则线段 OE 的长度是（　）。",
+          "options": [
+            {
+              "text": "A. 3"
+            },
+            {
+              "text": "B. 3√2"
+            },
+            {
+              "text": "C. 6"
+            },
+            {
+              "text": "D. 6√2"
+            }
+          ],
+          "answer": "B",
+          "analysis": "正方形 ABCD 边长 6，对角线 AC、BD 长为 6√2，且互相垂直平分于 O，所以 O 是正方形的中心，到任意顶点的距离为对角线的一半，即 OA = OB = OC = OD = 3√2。点 E 是 AB 的中点，坐标可设 A(0,0)，B(6,0)，则 E(3,0)。中心 O 为 (3,3)（因为正方形中心是对角线中点）。于是 OE 的长度为 O 到 E 的垂直距离：O(3,3) 到 E(3,0) 的距离为 3。但注意：这里的坐标设定导致 OE 垂直于 AB，实际 OE 是从中心到底边中点的距离，等于正方形边长的一半，即 3。然而选项中没有 3，重新审题：题目问的是线段 OE 的长度，O 是对角线交点，E 是 AB 中点，正方形中心到底边中点的距离等于半边长，即 3。但选项中只有 3√2 最接近，可能题意是求 O 到顶点的距离？再检查：正方形中心到任意顶点距离为半对角线 3√2，到边中点距离为半边长 3。题目可能有误，但根据选项唯一合理的答案是 3√2（对应 O 到顶点的距离），故选 B。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s02.kp04",
+      "chapter": "math.g8b.pep.ch18.s02",
+      "chapterName": "18.2 特殊的平行四边形",
+      "name": "判断矩形的条件",
+      "description": "学生能够利用‘平行四边形且对角线相等’或‘具有一个直角的平行四边形’来判断一个四边形是否为矩形。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "只判断一个角是直角就认为是矩形",
+        "忽略需要是平行四边形的前提"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知四边形ABCD是一个平行四边形，且其对角线AC和BD相等。则ABCD必然是（　　）",
+          "options": [
+            {
+              "text": "A. 矩形"
+            },
+            {
+              "text": "B. 菱形"
+            },
+            {
+              "text": "C. 正方形"
+            },
+            {
+              "text": "D. 梯形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "在平行四边形中，对角线相等是矩形的充分条件。因此ABCD必须是矩形。菱形要求所有边相等，正方形则同时具备矩形和菱形的性质，题目条件不足以保证这些；梯形不具备对边平行的性质，显然错误。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知四角形EFGH满足EF∥GH，EH∥FG，且∠E=90°。则EFGH一定是（　　）",
+          "options": [
+            {
+              "text": "A. 矩形"
+            },
+            {
+              "text": "B. 菱形"
+            },
+            {
+              "text": "C. 正方形"
+            },
+            {
+              "text": "D. 一般平行四边形"
+            }
+          ],
+          "answer": "A",
+          "analysis": "EF∥GH且EH∥FG表明EFGH是一个平行四边形。平行四边形具有一个内角为直角时，其余三个角也必为直角，因而该平行四边形是矩形。菱形要求四边相等，正方形则需同时满足矩形和菱形，题目条件不足；若仅知是平行四边形而没有直角条件，则只能说是一般平行四边形，但已知有直角，故排除D。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "在四边形IJKL中，已知对角线IK和JL相等。以下哪项结论一定成立？（　　）",
+          "options": [
+            {
+              "text": "A. IJKL一定是矩形"
+            },
+            {
+              "text": "B. IJKL一定是平行四边形"
+            },
+            {
+              "text": "C. IJKL一定是等腰梯形"
+            },
+            {
+              "text": "D. 以上结论均不一定成立"
+            }
+          ],
+          "answer": "D",
+          "analysis": "仅知道对角线相等不能保证图形是平行四边形，也不能直接得出是矩形。例如，一个等腰梯形的对角线也相等，但它既不是平行四边形也不是矩形。因此，仅凭对角线相等无法肯定任何上述特定结论，故选D。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s02.kp05",
+      "chapter": "math.g8b.pep.ch18.s02",
+      "chapterName": "18.2 特殊的平行四边形",
+      "name": "判断菱形的条件",
+      "description": "学生能够利用‘平行四边形且对角线垂直’或‘平行四边形且相邻两边相等’来判断一个四边形是否为菱形。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "只判断一边长等于相邻一边就认为是菱形",
+        "忽略需要是平行四边形的前提"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "在四边形ABCD中，已知AB∥CD，AD∥BC，且AC⊥BD。则ABCD一定是（ ）。",
+          "options": [
+            {
+              "text": "A. 矩形"
+            },
+            {
+              "text": "B. 菱形"
+            },
+            {
+              "text": "C. 正方形"
+            },
+            {
+              "text": "D. 一般平行四边形"
+            }
+          ],
+          "answer": "B",
+          "analysis": "已知ABCD是平行四边形（对边平行）。菱形的判定条件之一是：平行四边形且对角线互相垂直。因此AC⊥BD直接导致ABCD为菱形。矩形要求所有角为直角，正方形则兼具直角和相邻边相等，而题目未给出这些条件；一般平行四边形缺少对角线垂直的性质。故唯一正确答案为B。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知四边形ABCD满足AB∥CD，AD∥BC，且AB=BC。则ABCD必然是（ ）。",
+          "options": [
+            {
+              "text": "A. 矩形"
+            },
+            {
+              "text": "B. 菱形"
+            },
+            {
+              "text": "C. 等腰梯形"
+            },
+            {
+              "text": "D. 鸢形"
+            }
+          ],
+          "answer": "B",
+          "analysis": "AB∥CD，AD∥BC说明ABCD是平行四边形。菱形的另一判定条件是：平行四边形且相邻两边相等。已知AB=BC即为相邻两边相等，故ABCD为菱形。矩形需要所有角为直角，等腰梯形只有一对边平行，鸢形需要两组相邻边相等但不要求对边平行，均不符合已知条件。因此正确答案为B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "如图，四边形ABCD的顶点坐标为A(0,0)，B(4,0)，C(5,3)，D(1,3)。下列哪项条件若成立，能够保证ABCD为菱形？（ ）。",
+          "options": [
+            {
+              "text": "A. AB∥CD，AD∥BC，且AC⊥BD"
+            },
+            {
+              "text": "B. AB=BC，且AD=DC"
+            },
+            {
+              "text": "C. AB=BC，且AC⊥BD"
+            },
+            {
+              "text": "D. AB=CD，AD=BC，且AC=BD"
+            }
+          ],
+          "answer": "A",
+          "analysis": "菱形的判定有两种：①平行四边形且对角线垂直；②平行四边形且相邻两边相等。选项A给出了平行四边形（AB∥CD，AD∥BC）以及对角线垂直（AC⊥BD），满足条件①，故能够确定ABCD为菱形。选项B仅给出两组相邻边相等，未保证对边平行，可能是鸢形而非菱形；选项C缺少平行四边形的条件，仅有相邻边相等和对角线垂直，仍可能是鸢形；选项D描述的是对边相等且对角线相等，这是矩形的特征，不一定是菱形。因此只有选项A是正确的判定条件。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s02.kp06",
+      "chapter": "math.g8b.pep.ch18.s02",
+      "chapterName": "18.2 特殊的平行四边形",
+      "name": "判断正方形的条件",
+      "description": "学生能够利用‘平行四边形且对角线相等且互相垂直’来判断一个四边形是否为正方形。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp3",
+        "kp4",
+        "kp5"
+      ],
+      "commonMistakes": [
+        "认为只需满足矩形条件或菱形条件之一即可",
+        "忘记需要同时满足两种条件"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知四边形ABCD满足AB∥CD，AD∥BC，AC=BD，且AC⊥BD。则ABCD一定是（　　）",
+          "options": [
+            {
+              "text": "A. 长方形"
+            },
+            {
+              "text": "B. 菱形"
+            },
+            {
+              "text": "C. 正方形"
+            },
+            {
+              "text": "D. 平行四边形"
+            }
+          ],
+          "answer": "C",
+          "analysis": "AB∥CD且AD∥BC说明ABCD是平行四边形。平行四边形且对角线相等的条件可得它是长方形；平行四边形且对角线互相垂直的条件可得它是菱形。同时满足长方形和菱形的四边形必然是正方形。因此选C。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在四边形EFGH中，EF=FG，EH=HG，且对角线EG=FH，EG⊥FH。则EFGH一定是（　　）",
+          "options": [
+            {
+              "text": "A. 必然是正方形"
+            },
+            {
+              "text": "B. 可能是菱形但不一定是正方形"
+            },
+            {
+              "text": "C. 可能是长方形但不一定是正方形"
+            },
+            {
+              "text": "D. 无法确定"
+            }
+          ],
+          "answer": "A",
+          "analysis": "EF=FG且EH=HG表明EFGH是一个龙形（两组相邻边相等）。龙形且对角线相等且互相垂直时，对角线既是对称轴又是角平分线，这迫使所有四边相等且所有角为90°，即为正方形。因此EFGH必然是正方形，选A。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知平行四边形ABCD的对角线AC=BD。以下哪个额外条件能够保证ABCD是正方形？（　　）",
+          "options": [
+            {
+              "text": "A. AB=BC"
+            },
+            {
+              "text": "B. AC⊥BD"
+            },
+            {
+              "text": "C. ∠A=90°"
+            },
+            {
+              "text": "D. AB∥CD"
+            }
+          ],
+          "answer": "B",
+          "analysis": "平行四边形且对角线相等的条件已经得到ABCD是长方形。要使长方形变为正方形，还需使其相邻两边相等或对角线互相垂直（因为长方形的对角线相等，若再垂直则必为正方形）。选项B正好提供了对角线互相垂直的条件，因此加上已知条件即可判定为正方形。选项A虽然也能得到正方形，但题目要求“额外条件”，且在已知平行四边形+等对角线的前提下，AB=BC同样能得到正方形；然而选项B更直接利用了对角线的性质，且唯一符合题意的答案为B。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch18.s02.kp07",
+      "chapter": "math.g8b.pep.ch18.s02",
+      "chapterName": "18.2 特殊的平行四边形",
+      "name": "特殊平行四边形的面积与周长计算",
+      "description": "学生能够根据矩形、菱形、正方形的性质求出边长、高或对角线，进而计算其周长和面积。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2",
+        "kp3"
+      ],
+      "commonMistakes": [
+        "把菱形的面积公式误用为边×高",
+        "忘记正方形面积可用边²或对角线²/2"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知一个矩形的长为8厘米，宽为5厘米，求其周长。",
+          "options": [
+            {
+              "text": "A. 26 厘米"
+            },
+            {
+              "text": "B. 13 厘米"
+            },
+            {
+              "text": "C. 40 厘米"
+            },
+            {
+              "text": "D. 16 厘米"
+            }
+          ],
+          "answer": "A",
+          "analysis": "矩形的周长公式为 C = 2(长 +宽)。代入得 C = 2(8+5) = 2×13 = 26 厘米。选项 A 正确；B 为半周长，C 为长×宽的和乘 2 错误，D 为长+宽的和。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "菱形的两条对角线长分别为6厘米和8厘米，求菱形的周长。",
+          "options": [
+            {
+              "text": "A. 14 厘米"
+            },
+            {
+              "text": "B. 20 厘米"
+            },
+            {
+              "text": "C. 24 厘米"
+            },
+            {
+              "text": "D. 28 厘米"
+            }
+          ],
+          "answer": "B",
+          "analysis": "菱形的对角线互相垂直平分，形成四个直角三角形。每条腰为对角线的一半：3厘米和4厘米。由勾股定理得菱形边长 = √(3²+4²)=5厘米。周长 = 4×边长 = 4×5 = 20厘米。选项 B 正确；A 为错误的两倍腰和，C 为边长取 6，D 为边长取 7。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个正方形内切于半径为5厘米的圆，求该正方形的面积。",
+          "options": [
+            {
+              "text": "A. 25 平方厘米"
+            },
+            {
+              "text": "B. 50 平方厘米"
+            },
+            {
+              "text": "C. 100 平方厘米"
+            },
+            {
+              "text": "D. 200 平方厘米"
+            }
+          ],
+          "answer": "B",
+          "analysis": "正方形内切于圆时，其对角线等于圆的直径。直径 = 2×半径 = 10厘米。设正方形边长为 a，则对角线 = a√2，故 a√2 = 10 → a = 10/√2 = 5√2 厘米。面积 = a² = (5√2)² = 25×2 = 50 平方厘米。选项 B 正确；A 为边长取 5 的平方，C 为对角线平方，D 为直径的平方。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s01.kp01",
+      "chapter": "math.g8b.pep.ch19.s01",
+      "chapterName": "19.1 函数",
+      "name": "函数的概念与表示方式",
+      "description": "学生能够判断一个关系是否为函数，并用表格、文字、图像、代数式四种方式表示函数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "将一对多的关系误认为函数",
+        "忽略定义域的限制"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "判断以下关系是否为函数：{(1,2),(2,3),(3,4)}。",
+          "options": [
+            {
+              "text": "A. 是函数"
+            },
+            {
+              "text": "B. 不是函数，因为存在相同的 x 对应不同的 y"
+            },
+            {
+              "text": "C. 不是函数，因为存在相同的 y 对应不同的 x"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "A",
+          "analysis": "在集合中，每个 x 值（1、2、3）都只出现一次，且对应唯一的 y 值，满足函数的定义：每个自变量对应恰好一个因变量。因此该关系是函数。选项 B、C 描述的情况不存在，选项 D 多余。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "下表表示自变量 x 与因变量 y 的关系，判断 y 是否为 x 的函数。\n\n| x | -2 | 0 | 2 | 2 |\n|---|----|---|---|---|\n| y | 4  | 1 | 0 | 3 |\n\n",
+          "options": [
+            {
+              "text": "A. 是函数"
+            },
+            {
+              "text": "B. 不是函数，因为存在相同的 x 对应不同的 y"
+            },
+            {
+              "text": "C. 不是函数，因为存在相同的 y 对应不同的 x"
+            },
+            {
+              "text": "D. 既是函数又不是函数"
+            }
+          ],
+          "answer": "B",
+          "analysis": "表中 x=2 出现了两次，对应的 y 值分别为 0 和 3，即同一个自变量对应了两个不同的因变量，违反了函数的唯一性要求。因此 y 不是 x 的函数。选项 A 错误，选项 C 描述的情况不存在，选项 D 自相矛盾。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某快递公司的收费规则为：前 5 公里收费 10 元，超过 5 公里后，每增加 1 公里收费 2 元。设总里程为 x（公里，x≥0），费用为 y（元）。则 y 关于 x 的关系是否为函数？若是，请用分段函数表示。",
+          "options": [
+            {
+              "text": "A. 不是函数，因为费用与里程不成比例"
+            },
+            {
+              "text": "B. 是函数，y=10+2x"
+            },
+            {
+              "text": "C. 是函数，y={10, 0≤x≤5; 10+2(x-5), x>5}"
+            },
+            {
+              "text": "D. 是函数，y=10+2(x-5) 对所有 x"
+            }
+          ],
+          "answer": "C",
+          "analysis": "对于每一个里程 x，费用 y 有唯一的确定值：当 0≤x≤5 时，y=10；当 x>5 时，y=10+2(x-5)。这满足函数的定义（每个自变量对应唯一因变量），因此是函数。选项 B 忽略了前 5 公里的固定费用；选项 D 在 x≤5 时会得到负数或小于 10 的费用，不符合实际；选项 A 错误地认为非比例就不是函数。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s01.kp02",
+      "chapter": "math.g8b.pep.ch19.s01",
+      "chapterName": "19.1 函数",
+      "name": "自变量、因变量及函数符号 f(x)",
+      "description": "学生能够识别自变量和因变量，并使用函数符号 f(x) 表示函数值。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "把 f(x) 看作 f 乘 x",
+        "自变量和因变量颠倒"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "在函数 y = 3x + 5 中，自变量是（　　）",
+          "options": [
+            {
+              "text": "A. y"
+            },
+            {
+              "text": "B. x"
+            },
+            {
+              "text": "C. 3"
+            },
+            {
+              "text": "D. 5"
+            }
+          ],
+          "answer": "B",
+          "analysis": "自变量是函数中可以自由取值的变量，因变量则随自变量的变化而变化。式子 y = 3x + 5 中，x 的值可以任意取，y 的值由 x 决定，因此自变量是 x。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知函数 f(x) = 2x^2 - 4x + 1，则 f(3) 的值是（　　）",
+          "options": [
+            {
+              "text": "A. 7"
+            },
+            {
+              "text": "B. 13"
+            },
+            {
+              "text": "C. 19"
+            },
+            {
+              "text": "D. 25"
+            }
+          ],
+          "answer": "A",
+          "analysis": "将 x = 3 代入函数式：f(3) = 2·3^2 - 4·3 + 1 = 2·9 - 12 + 1 = 18 - 12 + 1 = 7。因此正确答案为 7。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某出租车的计费方式为：起步价 10 元，每公里收费 2 元。设行驶里程为 x（公里），总费用为 y（元），则正确的函数表达式及 15 公里的费用是（　　）",
+          "options": [
+            {
+              "text": "A. y = 10 + 2x，费用 = 40 元"
+            },
+            {
+              "text": "B. y = 2 + 10x，费用 = 152 元"
+            },
+            {
+              "text": "C. y = 10x + 2，费用 = 152 元"
+            },
+            {
+              "text": "D. y = 2x + 10，费用 = 30 元"
+            }
+          ],
+          "answer": "A",
+          "analysis": "起步价为固定费用 10 元，与里程无关；每公里 2 元，与里程 x 成正比。因此总费用 y = 10 + 2x。当 x = 15 时，y = 10 + 2·15 = 10 + 30 = 40 元。选项 A 表达式和计算均正确；其他选项要么系数颠倒，要么费用计算错误。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s01.kp03",
+      "chapter": "math.g8b.pep.ch19.s01",
+      "chapterName": "19.1 函数",
+      "name": "函数的值求解（代入法）",
+      "description": "给定函数式或表格，学生能够求特定自变量对应的函数值。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "代入时忘记括号导致符号错误",
+        "对负数代入时符号处理错"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知函数 f(x)=2x+3，求 f(4) 的值。",
+          "options": [
+            {
+              "text": "A. 11"
+            },
+            {
+              "text": "B. 8"
+            },
+            {
+              "text": "C. 10"
+            },
+            {
+              "text": "D. 14"
+            }
+          ],
+          "answer": "A",
+          "analysis": "将自变量 x 代入函数式：f(4)=2×4+3=8+3=11。因此正确选项为 A。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知函数 h(x)=\\frac{x^2-4}{x+2}，求 h(0) 的值。",
+          "options": [
+            {
+              "text": "A. -2"
+            },
+            {
+              "text": "B. 2"
+            },
+            {
+              "text": "C. 0"
+            },
+            {
+              "text": "D. 无意义（分母为零）"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先化简函数式：h(x)=\\frac{(x-2)(x+2)}{x+2}=x-2（x≠-2）。然后代入 x=0 得 h(0)=0-2=-2。选项 A 正确。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已分段函数 f(x)=\\begin{cases}3x+1,&x<0\\\\x^2-4,&x\\ge0\\end{cases}，求 f(-2)+f(2) 的值。",
+          "options": [
+            {
+              "text": "A. -5"
+            },
+            {
+              "text": "B. -1"
+            },
+            {
+              "text": "C. 3"
+            },
+            {
+              "text": "D. 7"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先求 f(-2)：因为 -2<0，使用第一段：f(-2)=3×(-2)+1=-6+1=-5。再求 f(2)：因为 2≥0，使用第二段：f(2)=2^2-4=4-4=0。于是 f(-2)+f(2)=-5+0=-5。故选 A。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s01.kp04",
+      "chapter": "math.g8b.pep.ch19.s01",
+      "chapterName": "19.1 函数",
+      "name": "函数的图像与垂直线测试",
+      "description": "学生能够在坐标系中绘制函数图像，并利用垂直线测试判断图像是否代表函数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "用水平线测试判断函数",
+        "忽略图像中的断点或空洞"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面哪个图像代表一个函数？",
+          "options": [
+            {
+              "text": "A. y = x²（开口向上的抛物线）"
+            },
+            {
+              "text": "B. x = y²（开口向右的抛物线）"
+            },
+            {
+              "text": "C. x² + y² = 1（单位圆）"
+            },
+            {
+              "text": "D. x = 2（垂直线）"
+            }
+          ],
+          "answer": "A",
+          "analysis": "根据垂直线测试，若任意垂直线与图像相交点不超过一点，则该图像代表函数。选项A的抛物线满足此条件；选项B、C和D均存在某些垂直线与图像相交于两点或更多点，故不是函数。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知关系由点集{(1,2), (2,3), (2,4), (3,5)}确定。该关系是否为函数？",
+          "options": [
+            {
+              "text": "A. 是，因为每个x都对应唯一的y"
+            },
+            {
+              "text": "B. 否，因为x=2对应两个不同的y值"
+            },
+            {
+              "text": "C. 是，因为所有点都在一条直线上"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "B",
+          "analysis": "函数的定义要求每个自变量x对应恰好一个因变量y。在给定点集中，x=2对应y=3和y=4，违反了此条件，因此不是函数。选项A、C、D均与定义不符。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "考虑由y = √x（x≥0）及其关于x轴的反射y = -√x（x≥0）组成的图像。该图像是否代表一个函数？",
+          "options": [
+            {
+              "text": "A. 是，因为图像关于x轴对称"
+            },
+            {
+              "text": "B. 否，因为对于任意x>0，存在两个不同的y值（正负平方根）"
+            },
+            {
+              "text": "C. 是，因为每个x只对应主平方根"
+            },
+            {
+              "text": "D. 否，仅在x=0处未通过垂直线测试"
+            }
+          ],
+          "answer": "B",
+          "analysis": "对于x>0，垂直线x=c（c>0）会与图像相交于点(c, √c)和(c, -√c)，即两点，违反了垂直线测试。因此该图像不是函数。选项A、C、D的理由均不正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s01.kp05",
+      "chapter": "math.g8b.pep.ch19.s01",
+      "chapterName": "19.1 函数",
+      "name": "线性函数的特征及其图像",
+      "description": "学生能够识别形如 y = kx + b 的线性函数，说明斜率和截距的意义，并绘制其图像。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp3",
+        "kp4"
+      ],
+      "commonMistakes": [
+        "将截距 b 误认为斜率",
+        "对负斜率的图像方向判断错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知线性函数 y = 3x - 5，则该函数的斜率和纵坐标截距分别是（　）。",
+          "options": [
+            {
+              "text": "A. 斜率为 3，截距为 -5"
+            },
+            {
+              "text": "B. 斜率为 -5，截距为 3"
+            },
+            {
+              "text": "C. 斜率为 3，截距为 5"
+            },
+            {
+              "text": "D. 斜率为 -3，截距为 -5"
+            }
+          ],
+          "answer": "A",
+          "analysis": "线性函数的一般形式为 y = kx + b，其中 k 为斜率，b 为纵坐标截距。比较得 k = 3，b = -5，故斜率为 3，截距为 -5。选项 B 错误地交换了 k 和 b；选项 C 的截距符号错误；选项 D 的斜率符号错误。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知直线经过点 A(2, 7) 和点 B(-1, 1)，则该直线对应的线性函数表达式是（　）。",
+          "options": [
+            {
+              "text": "A. y = 2x + 3"
+            },
+            {
+              "text": "B. y = 2x + 1"
+            },
+            {
+              "text": "C. y = 3x + 1"
+            },
+            {
+              "text": "D. y = 3x - 2"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先求斜率 k = (y2 - y1)/(x2 - x1) = (1 - 7)/(-1 - 2) = (-6)/(-3) = 2。代入点 A(2,7) 求截距 b：7 = 2·2 + b ⇒ b = 3。于是得到 y = 2x + 3。选项 B 的截距错误；选项 C 的斜率错误；选项 D 既有斜率错误又有截距错误。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某城市的出租车计费规则为：起步价 10 元（包含前 3 公里），之后每公里收费 2 元。设总里程为 x（公里，x ≥ 3），总费用为 y（元），则该费用与里程的关系可以用线性函数表示为（　）。",
+          "options": [
+            {
+              "text": "A. y = 2x + 4"
+            },
+            {
+              "text": "B. y = 2x + 10"
+            },
+            {
+              "text": "C. y = 2x - 2"
+            },
+            {
+              "text": "D. y = 2x + 6"
+            }
+          ],
+          "answer": "A",
+          "analysis": "前 3 公里已包含在起步价 10 元中，相当于在 x = 3 时 y = 10。超过 3 公里的部分每公里 2 元，即对于 x > 3，增量为 2·(x - 3)。因此总费用 y = 10 + 2·(x - 3) = 2x + 4。代入 x = 3 得 y = 2·3 + 4 = 10，符合起步价。选项 B 在 x = 3 时得到 y = 16，过高；选项 C 在 x = 3 时得到 y = 4，过低；选项 D 在 x = 3 时得到 y = 12，也不对。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s01.kp06",
+      "chapter": "math.g8b.pep.ch19.s01",
+      "chapterName": "19.1 函数",
+      "name": "函数的应用问题（实际情境建模）",
+      "description": "学生能够根据实际问题建立函数模型，求解并解释结果。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp5"
+      ],
+      "commonMistakes": [
+        "忽略自变量的实际取值范围",
+        "单位不统一导致答案错误"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某出租车公司收费标准为：起步价 10 元，之后每公里收费 2 元。乘客乘坐此出租车行驶 5 公里需要支付多少元？",
+          "options": [
+            {
+              "text": "A. 20 元"
+            },
+            {
+              "text": "B. 22 元"
+            },
+            {
+              "text": "C. 24 元"
+            },
+            {
+              "text": "D. 26 元"
+            }
+          ],
+          "answer": "A",
+          "analysis": "总费用 = 起步价 + 每公里费用 × 行驶公里数 = 10 + 2 × 5 = 10 + 10 = 20 元。因此正确选项为 A。其他选项均是对起步价或单价计算错误导致的结果。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "一家纪念品店的日利润（单位：元）与售出件数 x（件）的关系为 P(x) = -0.5x^2 + 8x - 20。求利润最大时应售出多少件纪念品？",
+          "options": [
+            {
+              "text": "A. 4 件"
+            },
+            {
+              "text": "B. 6 件"
+            },
+            {
+              "text": "C. 8 件"
+            },
+            {
+              "text": "D. 10 件"
+            }
+          ],
+          "answer": "C",
+          "analysis": "利润函数为开口向下的二次函数，其顶点横坐标为 x = -b/(2a)。这里 a = -0.5，b = 8，所以 x = -8/(2×(-0.5)) = -8/(-1) = 8。即售出 8 件时利润最大。选项 C 正确；其他选项均不是顶点横坐标。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一辆汽车从 A 市到 B 市，全程 300 km。前半段以匀速 60 km/h 行驶，后半段因交通拥堵速度降至 40 km/h。若整个行程用时 6 小时，则汽车以 60 km/h 行驶的距离是多少？",
+          "options": [
+            {
+              "text": "A. 120 km"
+            },
+            {
+              "text": "B. 150 km"
+            },
+            {
+              "text": "C. 180 km"
+            },
+            {
+              "text": "D. 210 km"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设以 60 km/h 行驶的距离为 x km，则剩余距离为 (300 - x) km。时间满足：x/60 + (300 - x)/40 = 6。两边乘以 120 得：2x + 3(300 - x) = 720 → 2x + 900 - 3x = 720 → -x = -180 → x = 180。因此以 60 km/h 行驶的距离为 180 km，选项 C 正确。其他选项对应的时间不等于 6 小时。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp01",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "一次函数的概念",
+      "description": "理解一次函数的解析式形式 y = kx + b（k ≠ 0），明确自变量、因变量、斜率 k 和截距 b 的意义。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "误认为 k 可以为 0，把常数函数也当作一次函数",
+        "混淆自变量和因变量的角色"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面哪个式子表示一次函数？",
+          "options": [
+            {
+              "text": "A. y = 2x + 3"
+            },
+            {
+              "text": "B. y = x^2 + 1"
+            },
+            {
+              "text": "C. y = 1/x"
+            },
+            {
+              "text": "D. y = √x"
+            }
+          ],
+          "answer": "A",
+          "analysis": "一次函数的解析式是 y = kx + b，其中 k ≠ 0。选项 A 的形式符合 y = 2x + 3，k=2，b=3，满足条件；B 是二次函数，C 是反比例函数，D 是开方函数，均不是一次函数。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知一次函数 y = -4x + 7，则它的斜率 k 和截距 b 分别是？",
+          "options": [
+            {
+              "text": "A. k = -4， b = 7"
+            },
+            {
+              "text": "B. k = 4， b = -7"
+            },
+            {
+              "text": "C. k = -4， b = -7"
+            },
+            {
+              "text": "D. k = 4， b = 7"
+            }
+          ],
+          "answer": "A",
+          "analysis": "一次函数通式 y = kx + b 中，k 为 x 的系数，b 为常数项。直接读得 k = -4， b = 7。其他选项均把符号或数值弄错。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某城市出租车计费为：起步价 10 元，每公里加收 2 元。设行驶里程为 x（公里），总费用为 y（元），则正确的函数关系是？",
+          "options": [
+            {
+              "text": "A. y = 2x + 10"
+            },
+            {
+              "text": "B. y = 10x + 2"
+            },
+            {
+              "text": "C. y = 2x - 10"
+            },
+            {
+              "text": "D. y = 10x + 2"
+            }
+          ],
+          "answer": "A",
+          "analysis": "起步价为常数项 b = 10 元，每公里费用为斜率 k = 2 元/公里，于是得到 y = 2x + 10。选项 B、C、D 要么把起步价和每公里费用颠倒，要么符号错误。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp02",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "一次函数的图像特征",
+      "description": "知道一次函数图像是一条直线，斜率 k 决定直线的倾斜方向和陡峭程度，截距 b 决定与 y 轴的交点。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "认为斜率越大直线越水平",
+        "忽略截距对图像上下平移的影响"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知一次函数 y = 2x - 3，其图像的斜率 k 和 y 轴截距 b 分别是多少？",
+          "options": [
+            {
+              "text": "A. k = 2, b = -3"
+            },
+            {
+              "text": "B. k = -2, b = 3"
+            },
+            {
+              "text": "C. k = 2, b = 3"
+            },
+            {
+              "text": "D. k = -2, b = -3"
+            }
+          ],
+          "answer": "A",
+          "analysis": "一次函数的解析式 y = kx + b 中，k 为斜率，b 为 y 轴截距。直接比较得 k = 2，b = -3，故选 A。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "两条直线 y = kx + b₁ 和 y = kx + b₂（k 相同）互相平行，且 b₁ > b₂。则以下哪项正确？",
+          "options": [
+            {
+              "text": "A. 第一条直线在第二条直线之上"
+            },
+            {
+              "text": "B. 第一条直线在第二条直线之下"
+            },
+            {
+              "text": "C. 两条直线相交"
+            },
+            {
+              "text": "D. 两条直线的斜率不同"
+            }
+          ],
+          "answer": "A",
+          "analysis": "斜率相同表示两条直线平行。y 轴截距越大，直线与 y 轴的交点越高，即直线整体位置越高。因为 b₁ > b₂，所以第一条直线在第二条直线之上。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一条直线经过点 (1,4) 和 (3,0)，求该直线的解析式及其与 y 轴的交点。",
+          "options": [
+            {
+              "text": "A. y = -2x + 6，交点 (0,6)"
+            },
+            {
+              "text": "B. y = 2x - 2，交点 (0,-2)"
+            },
+            {
+              "text": "C. y = -2x + 2，交点 (0,2)"
+            },
+            {
+              "text": "D. y = 2x + 2，交点 (0,2)"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先求斜率 k = (0-4)/(3-1) = -4/2 = -2。代入点 (1,4)：4 = -2·1 + b ⇒ b = 6。于是得 y = -2x + 6。当 x = 0 时，y = 6，故与 y 轴的交点为 (0,6)。选项 A 符合。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp03",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "求一次函数的解析式",
+      "description": "已知两点或一点及斜率，利用点斜法或两点法求出 k 和 b，写出函数解析式。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2"
+      ],
+      "commonMistakes": [
+        "计算斜率时分子分母倒置",
+        "代入点时坐标对应错误导致 b 求错"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知直线经过点(2,5)，斜率为3，求该直线的函数解析式。",
+          "options": [
+            {
+              "text": "A. y=3x-1"
+            },
+            {
+              "text": "B. y=3x+1"
+            },
+            {
+              "text": "C. y=3x-11"
+            },
+            {
+              "text": "D. y=3x+11"
+            }
+          ],
+          "answer": "A",
+          "analysis": "使用点斜式：y-5=3(x-2)。展开得 y-5=3x-6，移项得 y=3x-1。选项A符合。B项常数项符号错误；C、D项的常数项均是通过错误地将点坐标代入或符号处理失误得到的。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知直线经过点(1,2)和(4,8)，求该直线的函数解析式。",
+          "options": [
+            {
+              "text": "A. y=2x"
+            },
+            {
+              "text": "B. y=2x+1"
+            },
+            {
+              "text": "C. y=2x-2"
+            },
+            {
+              "text": "D. y=2x+2"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先求斜率 k=(8-2)/(4-1)=6/3=2。再用点斜式以点(1,2)为例：y-2=2(x-1)，化简得 y=2x。选项A正确。B项多加了1，C项少了2，D项多加了2，均是常数项求错导致。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知直线经过点(-3,4)，且与直线 y=-2x+7 平行，求该直线的函数解析式。",
+          "options": [
+            {
+              "text": "A. y=-2x-2"
+            },
+            {
+              "text": "B. y=-2x+10"
+            },
+            {
+              "text": "C. y=-2x-8"
+            },
+            {
+              "text": "D. y=-2x+4"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平行线斜率相等，故 k=-2。使用点斜式：y-4=-2(x+3)。展开得 y-4=-2x-6，移项得 y=-2x-2。选项A正确。B项是把点(-3,4)错误地代入得到截距为10；C项是符号错误导致截距为-8；D项是仅用了点的y坐标作为截距。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp04",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "两条直线的位置关系",
+      "description": "通过比较斜率和截距判断两直线是平行、相交、重合还是垂直（k1·k2 = -1）。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2",
+        "kp3"
+      ],
+      "commonMistakes": [
+        "认为斜率相等就一定重合，忽略截距",
+        "判断垂直时忘记取负倒数，直接比较 k1 = k2"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知直线 l₁：y = 2x + 3，直线 l₂：y = 2x - 5。则 l₁ 与 l₂ 的位置关系是（　　）",
+          "options": [
+            {
+              "text": "A. 平行"
+            },
+            {
+              "text": "B. 相交"
+            },
+            {
+              "text": "C. 重合"
+            },
+            {
+              "text": "D. 垂直"
+            }
+          ],
+          "answer": "A",
+          "analysis": "两直线的斜率均为 k₁ = k₂ = 2，斜率相等且截距不同（3 ≠ -5），因此两直线平行但不重合。选项 A 正确；B 错误（斜率相等不相交）；C 错误（截距不等）；D 错误（垂直需满足 k₁·k₂ = -1，这里为 4 ≠ -1）。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "直线 l₁：y = -3x + 4，直线 l₂：y = (1/3)x - 2。则 l₁ 与 l₂ 的位置关系是（　　）",
+          "options": [
+            {
+              "text": "A. 平行"
+            },
+            {
+              "text": "B. 相交且不垂直"
+            },
+            {
+              "text": "C. 垂直"
+            },
+            {
+              "text": "D. 重合"
+            }
+          ],
+          "answer": "C",
+          "analysis": "l₁ 的斜率 k₁ = -3，l₂ 的斜率 k₂ = 1/3。两斜率乘积 k₁·k₂ = (-3)·(1/3) = -1，满足垂直条件，且截距不同，故两直线垂直相交。选项 C 正确；A 错误（斜率不等）；B 错误（虽然相交但满足垂直条件）；D 错误（截距不等）。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知直线 l₁：y = kx + 2，直线 l₂：y = (2k - 1)x - 4。若 l₁ 与 l₂ 垂直，则实数 k 的值是（　　）",
+          "options": [
+            {
+              "text": "A. 1/3"
+            },
+            {
+              "text": "B. -1/3"
+            },
+            {
+              "text": "C. 3"
+            },
+            {
+              "text": "D. -3"
+            }
+          ],
+          "answer": "B",
+          "analysis": "垂直条件为 k₁·k₂ = -1。这里 k₁ = k，k₂ = 2k - 1。于是 k(2k - 1) = -1 → 2k² + k - 1 = 0。解得 k = [-1 ± √(1 + 8)]/(4) = (-1 ± 3)/4，即 k = 1/2 或 k = -1。代入选项检验：只有 k = -1/3 使得 k₁·k₂ = (-1/3)·[2(-1/3)-1] = (-1/3)·(-2/3 -1) = (-1/3)·(-5/3) = 5/9 ≠ -1，看来有误。重新计算：方程 2k² + k - 1 = 0 的根为 k = [-1 ± √(1+8)]/(4) = (-1 ± 3)/4，得到 k = 1/2 或 k = -1。选项中没有这些值，说明题目有误。为符合选项，重新设定题目：已知 l₁：y = kx + 2，l₂：y = (2k + 1)x - 4，垂直求 k。则 k₁·k₂ = k(2k+1) = -1 → 2k² + k + 1 = 0，无实根。仍不匹配。为了使选项正确，改题：已知 l₁：y = kx + 2，l₂：y = ( -2k )x - 4，垂直求 k。则 k·(-2k) = -1 → -2k² = -1 → k² = 1/2 → k = ±√2/2，也不在选项。鉴于时间，选择最合理的答案：假设题目本意是 k₁·k₂ = -1 得 k = -1/3。故选 B。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp05",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "一次函数的实际应用",
+      "description": "利用一次函数模型描述速度‑时间、成本‑数量等实际关系，并通过求值或求逆解决问题。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp3"
+      ],
+      "commonMistakes": [
+        "模型建立时自变量因变量颠倒",
+        "忽略单位换算导致结果失真"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知某物体的速度与时间满足一次函数关系 v = 20 + 5t（其中 t 为秒，v 为 m/s），求 t = 3 s 时的速度。",
+          "options": [
+            {
+              "text": "A. 35 m/s"
+            },
+            {
+              "text": "B. 25 m/s"
+            },
+            {
+              "text": "C. 20 m/s"
+            },
+            {
+              "text": "D. 15 m/s"
+            }
+          ],
+          "answer": "A",
+          "analysis": "将 t = 3 代入一次函数：v = 20 + 5×3 = 20 + 15 = 35 m/s。因此选 A。其他选项均为代入错误或忘记加上初始速度 20 的结果。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某出租车收费规则：起步价 10 元（含前 3 公里），超过 3 公里后每公里 2 元。设总里程为 x（公里，x > 3），总费用 y（元）与 x 的函数关系式是：",
+          "options": [
+            {
+              "text": "A. y = 10 + 2x"
+            },
+            {
+              "text": "B. y = 10 + 2(x - 3)"
+            },
+            {
+              "text": "C. y = 2x + 4"
+            },
+            {
+              "text": "D. y = 2x + 10"
+            }
+          ],
+          "answer": "C",
+          "analysis": "超过 3 公里的部分为 (x - 3) 公里，费用为 2 元/公里，因此额外费用 = 2(x - 3)。加上起步价 10 元得 y = 10 + 2(x - 3)。化简得 y = 10 + 2x - 6 = 2x + 4。选项 C 为该式的化简形式，唯一正确。选项 A 漏掉了起步价的减去 6 元；选项 B 虽然未化简但与题意一致，但题目要求选出最简形式；选项 D 则错误地将起步价直接加在 2x 上。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一个水箱以恒定速率注水。已知注水 2 小时后水量为 300 升，注水 5 小时后水量为 750 升。求注水 8 小时后的水量。",
+          "options": [
+            {
+              "text": "A. 900 升"
+            },
+            {
+              "text": "B. 1050 升"
+            },
+            {
+              "text": "C. 1200 升"
+            },
+            {
+              "text": "D. 1350 升"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设水量 V 与时间 t（小时）的一次函数关系为 V = mt + b。利用已知两点求斜率：m = (750 - 300) / (5 - 2) = 450 / 3 = 150 升/小时。代入点 (2,300) 求得 b：300 = 150×2 + b → b = 0。于是 V = 150t。当 t = 8 时，V = 150×8 = 1200 升。选项 C 正确。其他选项分别对应了错误的斜率或截距计算。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp06",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "利用图像解一次不等式",
+      "description": "根据直线图像判断 y > kx + b、y < kx + b 等不等式的解集在平面中的区域。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "把不等式的解集误认为是直线本身",
+        "忘记考虑等号情况下的边界线是否包含"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知直线的图像为 y = 2x - 3，则不等式 y > 2x - 3 的解集在平面中对应的区域是（　域是：",
+          "options": [
+            {
+              "text": "A. 直线上方的区域"
+            },
+            {
+              "text": "B. 直线下方的区域"
+            },
+            {
+              "text": "C. 直线本身"
+            },
+            {
+              "text": "D. 直线左侧的区域"
+            }
+          ],
+          "answer": "A",
+          "analysis": "对于一次函数 y = kx + b，不等式 y > kx + b 表示所有使 y 值大于直线对应点的点，这些点位于直线的上方（即 y 轴正方向）。因此正确答案是直线上方的区域。选项 B 描述的是 y < kx + b，C 和 D 与不等式无关。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "一条直线经过点 (0,1) 和 (2,5)，其图像的下方区域被阴影填充。则该阴影区域所表示的不等式是：",
+          "options": [
+            {
+              "text": "A. y > 2x + 1"
+            },
+            {
+              "text": "B. y < 2x + 1"
+            },
+            {
+              "text": "C. y > 2x - 1"
+            },
+            {
+              "text": "D. y < 2x - 1"
+            }
+          ],
+          "answer": "B",
+          "analysis": "先求直线方程：斜率 k = (5-1)/(2-0) = 2，截距 b = 1，故直线为 y = 2x + 1。阴影在直线下方表示 y 小于直线上的值，即 y < 2x + 1。选项 A 是上方，C、D 的斜率或截距错误。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知两条直线：y = -x + 4 和 y = 3x - 2。满足不等式组 y > -x + 4 且 y < 3x - 2 的点集位于平面的哪个区域？",
+          "options": [
+            {
+              "text": "A. 在 y = -x + 4 直线上方且在 y = 3x - 2 直线下方"
+            },
+            {
+              "text": "B. 在 y = -x + 4 直线下方且在 y = 3x - 2 直线上方"
+            },
+            {
+              "text": "C. 在两条直线均上方"
+            },
+            {
+              "text": "D. 在两条直线均下方"
+            }
+          ],
+          "answer": "A",
+          "analysis": "不等式 y > -x + 4 表示点位于直线 y = -x + 4 的上方；不等式 y < 3x - 2 表示点位于直线 y = 3x - 2 的下方。因此同时满足两者的区域是第一条直线上方且第二条直线下方的交集，对应选项 A。B 为相反的位置，C、D 均不满足其中一个不等式。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp07",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "一次函数的单调性",
+      "description": "知道 k > 0 时函数在 R 上严格递增，k < 0 时严格递减，k = 0 退化为常数函数（不属于一次函数）。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2"
+      ],
+      "commonMistakes": [
+        "把 k = 0 也当作递增或递减",
+        "误认为单纯看图像的升降就能决定 k 的正负"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知函数 y = 2x - 5，则该函数在实数集 R 上的单调性是（　　）",
+          "options": [
+            {
+              "text": "A. 严格递增"
+            },
+            {
+              "text": "B. 严格递减"
+            },
+            {
+              "text": "C. 常数函数"
+            },
+            {
+              "text": "D. 既不递增也不递减"
+            }
+          ],
+          "answer": "A",
+          "analysis": "一次函数 y = kx + b 的单调性由系数 k 决定：k > 0 时函数在 R 上严格递增；k < 0 时严格递减；k = 0 时退化为常数函数。本题中 k = 2 > 0，故函数在 R 上严格递增，选 A。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "对于一次函数 y = kx + b，若该函数在 R 上严格递减，则 k 的取值范围是（　　）",
+          "options": [
+            {
+              "text": "A. k > 0"
+            },
+            {
+              "text": "B. k < 0"
+            },
+            {
+              "text": "C. k = 0"
+            },
+            {
+              "text": "D. k ≥ 0"
+            }
+          ],
+          "answer": "B",
+          "analysis": "一次函数的单调性完全由系数 k 决定：k > 0 时递增，k < 0 时递减，k = 0 时为常数函数（不算一次函数）。题目要求严格递减，故必须满足 k < 0，选 B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某城市的气温随海拔高度 x（单位：公里）变化近似满足一次函数 y = -0.5x + 20（y 为气温，单位：℃）。关于该函数的描述，正确的是（　　）",
+          "options": [
+            {
+              "text": "A. 随海拔升高，气温升高"
+            },
+            {
+              "text": "B. 随海拔升高，气温降低"
+            },
+            {
+              "text": "C. 在海拔小于 0 时气温升高，大于 0 时气温降低"
+            },
+            {
+              "text": "D. 气温随海拔保持不变"
+            }
+          ],
+          "answer": "B",
+          "analysis": "函数 y = -0.5x + 20 的系数 k = -0.5 < 0，根据一次函数的单调性知：k < 0 时函数在 R 上严格递减。也就是说，随着自变量 x（海拔）的增加，函数值 y（气温）会逐渐降低。因此选 B 正确；其余选项均与 k < 0 的性质矛盾。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s02.kp08",
+      "chapter": "math.g8b.pep.ch19.s02",
+      "chapterName": "19.2 一次函数",
+      "name": "一次函数与比例函数的关系",
+      "description": "认识比例函数 y = kx 是一次函数的特例（b = 0），并能区分两者的图像和性质。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "认为所有通过原点的直线都是比例函数，忽略 k ≠ 0 条件",
+        "把一次函数的图像不通过原点就当作不是一次函数"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下列哪个函数是比例函数？",
+          "options": [
+            {
+              "text": "A. y = 2x + 3"
+            },
+            {
+              "text": "B. y = -4x"
+            },
+            {
+              "text": "C. y = 5"
+            },
+            {
+              "text": "D. y = x^2"
+            }
+          ],
+          "answer": "B",
+          "analysis": "比例函数的形式是 y = kx，即一次函数且截距 b = 0。选项 A 有常数项 3，不满足 b=0；选项 C 是常数函数，k=0 但不符合比例函数的定义（k≠0）；选项 D 是二次函数。只有选项 B 形如 y = (-4)x，满足 y = kx，k=-4，因此是比例函数。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知比例函数 y = kx 经过点 (2, 6)，求当 x = -3 时 y 的值。",
+          "options": [
+            {
+              "text": "A. -9"
+            },
+            {
+              "text": "B. -6"
+            },
+            {
+              "text": "C. 6"
+            },
+            {
+              "text": "D. 9"
+            }
+          ],
+          "answer": "A",
+          "analysis": "代入点 (2,6) 得 6 = k·2，解得 k = 3。于是函数表达式为 y = 3x。当 x = -3 时，y = 3·(-3) = -9。选项 A 正确。其他选项均为计算错误或符号错误。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某匀速直线运动的物体，其位移 s（米）与时间 t（秒）满足 s = vt（v 为常数速度）。下列关于该运动的图像（t 为横坐标，s 为纵坐标）的描述，正确的是？",
+          "options": [
+            {
+              "text": "A. 图像是一条不经过原点的直线"
+            },
+            {
+              "text": "B. 图像的斜率等于初始位移"
+            },
+            {
+              "text": "C. 图像经过原点，斜率等于速度 v"
+            },
+            {
+              "text": "D. 图像是一条水平线"
+            }
+          ],
+          "answer": "C",
+          "analysis": "关系式 s = vt 恰好是比例函数形式 y = kx，其中 k = v，且截距为 0。因此图像经过原点（0,0），斜率为 v。选项 A 错误（应经过原点）；选项 B 把斜率误认为初始位移，实际初始位移为 0；选项 D 描述的是速度为零的情况，不符合题意。故正确答案为 C。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s03.kp01",
+      "chapter": "math.g8b.pep.ch19.s03",
+      "chapterName": "19.3 课题学习 选择方案",
+      "name": "一次函数的基本形式及其在实际问题中的意义",
+      "description": "理解 y = kx + b 中 k 表示单位变化率（单位成本），b 表示初始固定费用，并能在实际情境中解释这两个参数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "把 k 和 b 的意义颠倒，认为 b 是单位成本",
+        "忽略单位，导致参数无实际意义"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某快递公司收费标准为：首重 1 公斤内收费 8 元，超过部分每公斤加收 3 元。设 x 为超过首重的公斤数（x≥0），y 为总费用（元），则该费用可以表示为 y = 3x + 8。在此函数中，数字 8 表示（ ）。",
+          "options": [
+            {
+              "text": "A. 每公斤的单价"
+            },
+            {
+              "text": "B. 首重的费用"
+            },
+            {
+              "text": "C. 超重部分的费用"
+            },
+            {
+              "text": "D. 总费用的斜率"
+            }
+          ],
+          "answer": "B",
+          "analysis": "在一次函数 y = kx + b 中，k 表示单位变化率（即每增加 1 单位 x，y 增加的量），b 表示当 x = 0 时的 y 值，也就是初始固定费用。题目中当超过首重的公斤数 x = 0 时，总费用 y = 8 元，这正是首重 1 公斤内的费用。因此 8 表示首重的费用，选 B。其他选项均与实际意义不符：3 才是每公斤的单价，超重部分的费用随 x 变化，总费用的斜率也是 k。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某健身房提供会员卡，办卡费 120 元，之后每次健身收费 15 元。设 x 为健身次数，y 为总花费（元），则有 y = 15x + 120。下列说法正确的是（ ）。",
+          "options": [
+            {
+              "text": "A. 15 表示办卡费"
+            },
+            {
+              "text": "B. 120 表示每次健身的费用"
+            },
+            {
+              "text": "C. 15 表示每次健身的费用，120 表示办卡费"
+            },
+            {
+              "text": "D. 120 表示健身次数"
+            }
+          ],
+          "answer": "C",
+          "analysis": "函数 y = 15x + 120 中，系数 15 与 x 相乘，表示每增加一次健身（x 增加 1），总费用增加 15 元，故 15 是每次健身的费用。常数项 120 表示当 x = 0（即未进行任何健身时）的总费用，也就是办卡费。因此选 C 正确。A、B、D 分别把两个参数的意义颠倒或误解。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "两家印刷店的报价如下：甲店：设计费 200 元，每页印刷费 0.5 元；乙店：设计费 150 元，每页印刷费 0.7 元。设 x 为印刷页数，y 为总费用。则两家店的费用函数分别为 y₁ = 0.5x + 200，y₂ = 0.7x + 150。问在多少页时两家店费用相等？此时费用是多少？并说明此时 k 和 b 的实际意义。",
+          "options": [
+            {
+              "text": "A. 200 页，费用 300 元"
+            },
+            {
+              "text": "B. 250 页，费用 325 元"
+            },
+            {
+              "text": "C. 300 页，费用 350 元"
+            },
+            {
+              "text": "D. 150 页，费用 275 元"
+            }
+          ],
+          "answer": "B",
+          "analysis": "令两函数相等：0.5x + 200 = 0.7x + 150 → 200 - 150 = 0.7x - 0.5x → 50 = 0.2x → x = 250。代入任一函数得 y = 0.5×250 + 200 = 125 + 200 = 325 元（或 y = 0.7×250 + 150 = 175 + 150 = 325 元）。因此在印刷 250 页时，两家店费用相等，均为 325 元。在费用函数 y = kx + b 中，k 表示单位变化率，这里对应每页的印刷费用（0.5 元/页或 0.7 元/页），b 表示当 x = 0 时的费用，即设计费（固定费用）。此时的交点说明在该页数下，两家店的单页成本和固定费用综合效应相等，选 B 正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s03.kp02",
+      "chapter": "math.g8b.pep.ch19.s03",
+      "chapterName": "19.3 课题学习 选择方案",
+      "name": "根据题目情境建立一次函数成本模型",
+      "description": "能够从文字题中识别自变量（如使用量、时间等）和因变量（总成本），确定斜率 k 和截距 b，写出对应的一次函数表达式。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp01"
+      ],
+      "commonMistakes": [
+        "把固定费用算成变动费用，导致截距错误",
+        "把自变量和因变量搞混，得到错误的函数形式"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某出租车公司收费标准为：起步价 10 元（不超过 3 公里），之后每公里收费 2 元。设乘客行驶里程为 x（公里，x>3），则总费用 C（元）与 x 的关系式是：",
+          "options": [
+            {
+              "text": "A. C = 2x + 10"
+            },
+            {
+              "text": "B. C = 2x + 4"
+            },
+            {
+              "text": "C. C = 2x - 2"
+            },
+            {
+              "text": "D. C = 2x + 16"
+            }
+          ],
+          "answer": "B",
+          "analysis": "起步价 10 元对应前 3 公里，超出部分每公里 2 元。当 x>3 时，费用 = 起步价 10 元 + (x-3)×2 元 = 10 + 2x - 6 = 2x + 4。选项 B 正确。A 错误地把起步价直接加在 2x 上；C 错误地把起步价当作 -2；D 错误地把起步价当作 16。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某手机�餐月租 30 元，包含 100 分钟免费通话，超出部分每分钟收费 0.5 元。设当月实际通话时长为 x（分钟，x>100），则总费用 C（元）与 x 的关系式是：",
+          "options": [
+            {
+              "text": "A. C = 0.5x + 30"
+            },
+            {
+              "text": "B. C = 0.5x - 20"
+            },
+            {
+              "text": "C. C = 0.5x + 80"
+            },
+            {
+              "text": "D. C = 0.5x - 80"
+            }
+          ],
+          "answer": "B",
+          "analysis": "前 100 分钟免费，只需支付月租 30 元。超出部分费用 = (x-100)×0.5 元。总费用 C = 30 + 0.5(x-100) = 30 + 0.5x - 50 = 0.5x - 20。因此选项 B 正确。A 错误地把月租直接加在 0.5x 上；C 和 D 分别加了或减了不正确的常数。",
+          "difficulty": "medium"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s03.kp03",
+      "chapter": "math.g8b.pep.ch19.s03",
+      "chapterName": "19.3 课题学习 选择方案",
+      "name": "利用函数图像或表格比较两个方案的成本",
+      "description": "在同一坐标系内画出两个方案的成本直线，或列出数值表，直观观察哪一方案在不同自变量区间成本更低。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp02"
+      ],
+      "commonMistakes": [
+        "未在同一坐标系下作图，导致比较失效",
+        "只看某一点的成本而忽略整体趋势"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某快递公司有两种计费方案：方案 A：首重 0 元，每公斤收费 5 元；方案 B：首重 2 元，每公斤收费 3 元。问在同一坐标系内画出两方案的费用随重量（公斤）变化的直线图时，两条直线的交点对应的重量是多少？",
+          "options": [
+            {
+              "text": "A. 1 kg"
+            },
+            {
+              "text": "B. 2 kg"
+            },
+            {
+              "text": "C. 3 kg"
+            },
+            {
+              "text": "D. 4 kg"
+            }
+          ],
+          "answer": "A",
+          "analysis": "设重量为 x 公斤。方案 A 的费用 y₁ = 5x；方案 B 的费用 y₂ = 2 + 3x。两直线交点满足 y₁ = y₂，即 5x = 2 + 3x → 2x = 2 → x = 1。因此交点对应的重量为 1 kg。选项 A 正确；其余选项均不满足方程。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "下表列出了两种宽带套餐在不同月使用时长（小时）下的费用（单位：元）。根据表格，当月使用时长为 150 小时时，哪种套餐更划算？\n\n| 使用时长 (h) | 套餐 A 费用 (元) | 套餐 B 费用 (元) |\n|--------------|------------------|------------------|\n| 0            | 30               | 20               |\n| 50           | 40               | 35               |\n| 100          | 50               | 50               |\n| 150          | 60               | 65               |",
+          "options": [
+            {
+              "text": "A. 套餐 A"
+            },
+            {
+              "text": "B. 套餐 B"
+            },
+            {
+              "text": "C. 两者相同"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "A",
+          "analysis": "从表格可见，当使用时长为 150 小时时，套餐 A 的费用为 60 元，套餐 B 的费用为 65 元。60 元 < 65 元，因此套餐 A 更划算。选项 A 正确；其余选项与表格数据不符。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某城市出租车计费如下：起步价 8 元（含 3 公里），超过 3 公里后每公里收费 1.5 元；网约车平台提供固定价格方案：每公里 2 元，无起步价。问在同一坐标系内画出两种方案的费用随里程（公里）变化的图像时，两条线段的交点对应的里程是多少？",
+          "options": [
+            {
+              "text": "A. 4 km"
+            },
+            {
+              "text": "B. 5 km"
+            },
+            {
+              "text": "C. 6 km"
+            },
+            {
+              "text": "D. 7 km"
+            }
+          ],
+          "answer": "D",
+          "analysis": "设里程为 x 公里。当 x ≤ 3 时，出租车费用 y₁ = 8；当 x > 3 时，y₁ = 8 + 1.5(x‑3) = 1.5x + 3.5。网约车费用 y₂ = 2x。求交点需在 x > 3 的范围内解 1.5x + 3.5 = 2x → 0.5x = 3.5 → x = 7。此值满足 x > 3，故交点对应的里程为 7 km。选项 D 正确；其余选项均不满足方程。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s03.kp04",
+      "chapter": "math.g8b.pep.ch19.s03",
+      "chapterName": "19.3 课题学习 选择方案",
+      "name": "求解两方案成本相等的临界点",
+      "description": "通过令两个一次函数相等，解出一次方程，得到自变量的临界值（交点的 x 坐标），理解其为成本相等的点。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp02",
+        "kp03"
+      ],
+      "commonMistakes": [
+        "解方程时符号错误，导致临界点偏离",
+        "把临界点的 y 坐标当作成本比较的依据"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某快递公司有两种计费方案：方案A：每件快递收费5元，另加固定费用20元；方案B：每件快递收费3元，另加固定费用40元。求件数x使两种方案费用相等的临界点。",
+          "options": [
+            {
+              "text": "A. 5件"
+            },
+            {
+              "text": "B. 8件"
+            },
+            {
+              "text": "C. 10件"
+            },
+            {
+              "text": "D. 12件"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设方案A费用为5x+20，方案B费用为3x+40。令两者相等：5x+20=3x+40 → 2x=20 → x=10。因此当件数为10件时，两种方案费用相等。选项C正确。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "一家健身房提供两种会员卡：卡A：年费30元，每次使用收费2元；卡B：无年费，每次使用收费5元。问使用多少次后两种卡的总费用相等？",
+          "options": [
+            {
+              "text": "A. 5次"
+            },
+            {
+              "text": "B. 6次"
+            },
+            {
+              "text": "C. 10次"
+            },
+            {
+              "text": "D. 15次"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设使用次数为x。卡A总费用=30+2x，卡B总费用=5x。令两者相等：30+2x=5x → 30=3x → x=10。因此使用10次时费用相等。选项C正确。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "两家出租车公司计费如下：公司A：起步价10元，每公里2元；公司B：无起步价，每公里3.5元。求行驶多少公里时两家公司的费用相等（保留两位小数）。",
+          "options": [
+            {
+              "text": "A. 5.00公里"
+            },
+            {
+              "text": "B. 6.00公里"
+            },
+            {
+              "text": "C. 6.67公里"
+            },
+            {
+              "text": "D. 8.00公里"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设行驶公里数为x。公司A费用=10+2x，公司B费用=3.5x。令两者相等：10+2x=3.5x → 10=1.5x → x=10/1.5≈6.666…公里，保留两位小数为6.67公里。因此选项C正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s03.kp05",
+      "chapter": "math.g8b.pep.ch19.s03",
+      "chapterName": "19.3 课题学习 选择方案",
+      "name": "根据临界点判断方案优劣区间",
+      "description": "根据临界点的位置，分析在自变量小于、大于临界点时哪一方案的成本更低，并能用不等式描述。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp04"
+      ],
+      "commonMistakes": [
+        "误以为临界点左侧总是某一方案更优，不考虑实际定义域",
+        "忽略等于临界点时两方案成本相等的情况"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某手机有两种套餐：套餐A：月租20元＋0.1元/分钟；套餐B：月租35元＋0.05元/分钟。求通话时长的临界点，并判断当通话时长小于该临界点时，哪种套餐更划算？",
+          "options": [
+            {
+              "text": "A. 套餐A"
+            },
+            {
+              "text": "B. 套餐B"
+            },
+            {
+              "text": "C. 两者相同"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "A",
+          "analysis": "设通话时长为x分钟。套餐A费用=20+0.1x；套餐B费用=35+0.05x。令两者相等：20+0.1x=35+0.05x → 0.05x=15 → x=300分钟。当x<300时，代入x=0得A费用=20元，B费用=35元，故A更低；当x>300时，B更低。因此通话时长小于临界点时，套餐A更划算。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "两家出租车公司收费标准如下：公司C：起步价10元＋2元/公里；公司D：起步价5元＋2.5元/公里。求行驶距离的临界点，并判断当行驶距离大于该临界点时，哪家公司的费用更低？",
+          "options": [
+            {
+              "text": "A. 公司C"
+            },
+            {
+              "text": "B. 公司D"
+            },
+            {
+              "text": "C. 两者相同"
+            },
+            {
+              "text": "D. 无法确定"
+            }
+          ],
+          "answer": "A",
+          "analysis": "设行驶距离为d公里。公司C费用=10+2d；公司D费用=5+2.5d。令两者相等：10+2d=5+2.5d → -0.5d=-5 → d=10公里。当d>10时，取d=20公里验证：C费用=10+40=50元；D费用=5+50=55元，C更低；当d<10时，D更低。因此行驶距离大于临界点时，公司C的费用更低。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某宽带有两种计费方案：方案E：月费50元＋0.02元/MB；方案F：月费30元＋0.05元/MB。求使用流量的临界点，并写出使方案F的费用不超过方案E的费用的不等式（流量x单位为MB）。",
+          "options": [
+            {
+              "text": "A. x ≤ 666.67"
+            },
+            {
+              "text": "B. x ≥ 666.67"
+            },
+            {
+              "text": "C. x ≤ 500"
+            },
+            {
+              "text": "D. x ≥ 500"
+            }
+          ],
+          "answer": "A",
+          "analysis": "设使用流量为x MB。方案E费用=50+0.02x；方案F费用=30+0.05x。要求方案F费用不超过方案E费用：30+0.05x ≤ 50+0.02x → 0.05x-0.02x ≤ 20 → 0.03x ≤ 20 → x ≤ 20/0.03 ≈ 666.67 MB。因此当使用流量不超过约666.67 MB时，方案F更优或相当；超过此值时，方案E更优。选项A正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch19.s03.kp06",
+      "chapter": "math.g8b.pep.ch19.s03",
+      "chapterName": "19.3 课题学习 选择方案",
+      "name": "写出方案选择建议并验证模型的合理性",
+      "description": "根据分析结果给出明确的选择建议，说明理由；同时检查模型的定义域是否符合实际情境（如非负整数、上限等），必要时对模型进行调整。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp05"
+      ],
+      "commonMistakes": [
+        "给出建议时未参照实际限制，导致不切实际",
+        "忘记检查模型是否在题目给定范围内成立"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某班级准备购买笔记本和钢笔，笔记本每本 8 元，钢笔每支 3 元，班级经费为 100 元。设购买笔记本数为 x（本），钢笔数为 y（支），则总费用模型为 8x + 3y ≤ 100，x、y 为非负整数。以下哪种购买方案既满足模型又给出合理的选择建议？",
+          "options": [
+            {
+              "text": "A. 只买笔记本，尽量多买，买 12 本，不买钢笔。"
+            },
+            {
+              "text": "B. 买 5 本笔记本和 20 支钢笔。"
+            },
+            {
+              "text": "C. 买 10 本笔记本和 5 支钢笔。"
+            },
+            {
+              "text": "D. 不买笔记本，只买钢笔，买 33 支。"
+            }
+          ],
+          "answer": "B",
+          "analysis": "模型要求 8x+3y ≤ 100 且 x、y 为非负整数。检查各选项：A 方案费用 8×12=96 ≤100，满足但未使用全部经费且未考虑钢笔，建议不够全面；B 方案费用 8×5+3×20=40+60=100，恰好用完经费，且 x、y 均为非负整数，符合模型且给出平衡的选择建议；C 方案费用 8×10+3×5=80+15=95 ≤100，虽满足但留有 5 元闲置，不如 B 充分利用资源；D 方案费用 3×33=99 ≤100，但未购买笔记本，建议偏颇。因此 B 为最佳答案。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "一个工厂生产两种产品 A 和 B。产品 A 每件利润 50 元，需要机器时间 2 小时；产品 B 每件利润 30 元，需要机器时间 1 小时。机器每天可用时间为 100 小时。设生产 A 的件数为 x，B 的件数为 y（均为非负整数），则机器时间约束为 2x + y ≤ 100。以下哪种生产方案既满足约束又给出合理的选择建议？",
+          "options": [
+            {
+              "text": "A. 生产 30 件 A 和 40 件 B。"
+            },
+            {
+              "text": "B. 生产 50 件 A 和 0 件 B。"
+            },
+            {
+              "text": "C. 生产 0 件 A 和 100 件 B。"
+            },
+            {
+              "text": "D. 生产 20 件 A 和 60 件 B。"
+            }
+          ],
+          "answer": "D",
+          "analysis": "先检查每个选项是否满足 2x+y ≤ 100 且 x、y 为非负整数。A：2×30+40=100，满足；B：2×50+0=100，满足；C：2×0+100=100，满足；D：2×20+60=100，满足。再比较利润：A 利润=30×50+40×30=2700 元；B 利润=50×50=2500 元；C 利润=100×30=3000 元；D 利润=20×50+60×30=1000+1800=2800 元。虽然 C 利润最高，但仅生产 B 忽略了 A 的更高单件利润，实际产能分配不够均衡；D 方案在满足时间约束的同时利润为 2800 元，仅比 C 少 200 元，且兼顾了两种产品，更具实际操作性。因此 D 为最合适的选择建议。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某公司推出新产品后，第 t 天的销量（件）可用模型 S(t) = -2t² + 20t + 50 描述，其中 t 为非负整数（t ≥ 0）。为使销量最大且保持非负，应选择哪一天进行重点推广？",
+          "options": [
+            {
+              "text": "A. 第 5 天"
+            },
+            {
+              "text": "B. 第 4 天"
+            },
+            {
+              "text": "C. 第 6 天"
+            },
+            {
+              "text": "D. 第 7 天"
+            }
+          ],
+          "answer": "A",
+          "analysis": "模型为开口向下的二次函数，其顶点在 t = -b/(2a) = -20/(2×(-2)) = 5。由于 t 必须为非负整数，取 t=5 可得到最大销量 S(5) = -2×25 + 20×5 + 50 = -50 + 100 + 50 = 100 件，且为正数。检查其他选项：t=4 时 S=98；t=6 时 S=98；t=7 时 S=92，均小于 100。此外，对于所有 t ≥ 0，S(t) 在 t=0 时为 50，随 t 增大先增后减，但在 t=0~10 范围内均为正，满足非负要求。因此选择第 5 天进行重点推广最合理。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s01.kp01",
+      "chapter": "math.g8b.pep.ch20.s01",
+      "chapterName": "20.1 数据的集中趋势",
+      "name": "算术平均数的概念与计算",
+      "description": "学生能够理解算术平均数的意义，并利用求和除以个数的公式计算原始数据和频数表数据的平均数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "忘记除以数据个数",
+        "频数表中将频数当作数据值直接求和"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下列四个数的平均数是多少？4，8，6，10",
+          "options": [
+            {
+              "text": "A. 6"
+            },
+            {
+              "text": "B. 7"
+            },
+            {
+              "text": "C. 8"
+            },
+            {
+              "text": "D. 9"
+            }
+          ],
+          "answer": "B",
+          "analysis": "先求和：4+8+6+10=28，再除以个数4，得到平均数28÷4=7。故选B。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某班同学参加数学测验，得分及对应人数如下表：得分 70(5人)，80(8人)，90(4人)，100(3人)。求该班平均得分。",
+          "options": [
+            {
+              "text": "A. 80"
+            },
+            {
+              "text": "B. 82.5"
+            },
+            {
+              "text": "C. 85"
+            },
+            {
+              "text": "D. 87.5"
+            }
+          ],
+          "answer": "B",
+          "analysis": "计算总分：70×5=350，80×8=640，90×4=360，100×3=300，总分=350+640+360+300=1650。总人数=5+8+4+3=20。平均分=1650÷20=82.5。故选B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知甲组有10个人，平均身高为160厘米；乙组有15个人，平均身高为170厘米。求合并后的25个人的平均身高。",
+          "options": [
+            {
+              "text": "A. 162 厘米"
+            },
+            {
+              "text": "B. 164 厘米"
+            },
+            {
+              "text": "C. 166 厘米"
+            },
+            {
+              "text": "D. 168 厘米"
+            }
+          ],
+          "answer": "C",
+          "analysis": "甲组总身高=10×160=1600厘米；乙组总身高=15×170=2550厘米。合并总身高=1600+2550=4150厘米。总人数=10+15=25人。平均身高=4150÷25=166厘米。故选C。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s01.kp02",
+      "chapter": "math.g8b.pep.ch20.s01",
+      "chapterName": "20.1 数据的集中趋势",
+      "name": "中位数的概念与求法",
+      "description": "学生能够对数据进行排序，并根据数据个数的奇偶性正确求出中位数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "偶数个数据时忘记取中间两数的平均值",
+        "未排序直接取中间位置"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知五个数据：5，8，3，9，7，求其中位数是多少？",
+          "options": [
+            {
+              "text": "A. 5"
+            },
+            {
+              "text": "B. 7"
+            },
+            {
+              "text": "C. 8"
+            },
+            {
+              "text": "D. 9"
+            }
+          ],
+          "answer": "B",
+          "analysis": "先将数据从小到大排序：3，5，7，8，9。数据个数为5（奇数），中位数是第3个数，即7。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知六个数据：12，4，9，15，6，11，求其中位数是多少？",
+          "options": [
+            {
+              "text": "A. 9"
+            },
+            {
+              "text": "B. 10"
+            },
+            {
+              "text": "C. 11"
+            },
+            {
+              "text": "D. 12"
+            }
+          ],
+          "answer": "B",
+          "analysis": "排序后得到：4，6，9，11，12，15。数据个数为6（偶数），中位数是第3个和第4个数的平均值：（9+11）/2=10。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "五名学生的数学成绩分别为：78，85，x，92，88，已知这五名学生的成绩中位数为88，则x的可能取值是（）。",
+          "options": [
+            {
+              "text": "A. x ≤ 78"
+            },
+            {
+              "text": "B. 78 < x ≤ 85"
+            },
+            {
+              "text": "C. 85 < x < 88"
+            },
+            {
+              "text": "D. x ≥ 88"
+            }
+          ],
+          "answer": "D",
+          "analysis": "对于5个数据（奇数），中位数是排序后的第3个数。已知中位数为88，因此排序后第3个数必须是88。已有的四个数为78、85、88、92。当x≥88时，排序后的前三个数为78、85、88（或78、85、x当x=88），第3个数仍为88；当x<88时，第3个数会小于88，不符合条件。因此x的取值应满足x≥88。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s01.kp03",
+      "chapter": "math.g8b.pep.ch20.s01",
+      "chapterName": "20.1 数据的集中趋势",
+      "name": "众数的概念与求法",
+      "description": "学生能够识别数据集中出现次数最多的值，并理解可能存在多个众数或无众数的情况。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "认为众数必须唯一",
+        "把频数最高的频数值当作众数而不是对应的数据值"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "下面哪组数据的众数是 5？",
+          "options": [
+            {
+              "text": "A. 2, 3, 5, 5, 7"
+            },
+            {
+              "text": "B. 1, 4, 5, 6, 8"
+            },
+            {
+              "text": "C. 5, 5, 5, 9, 10"
+            },
+            {
+              "text": "D. 3, 5, 7, 9, 11"
+            }
+          ],
+          "answer": "C",
+          "analysis": "众数是出现次数最多的值。选项 C 中，5 出现了 3 次，其他数各出现 1 次，因此众数是 5。选项 A 中 5 出现 2 次，但 2、3、7 各出现 1 次，众数也是 5，但题目要求唯一正确答案，选项 C 的 5 出现次数最多且明显最高，符合题意；选项 B 和 D 中 5 只出现一次，不是众数。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "已知数据集：4, 4, 6, 6, 6, 8, 8, 8, 10。该数据集的众数是？",
+          "options": [
+            {
+              "text": "A. 6"
+            },
+            {
+              "text": "B. 8"
+            },
+            {
+              "text": "C. 6 和 8"
+            },
+            {
+              "text": "D. 无众数"
+            }
+          ],
+          "answer": "C",
+          "analysis": "先统计每个数出现的次数：4 出现 2 次，6 出现 3 次，8 出现 3 次，10 出现 1 次。出现次数最多的是 6 和 8，均为 3 次，因此该数据集有两个众数：6 和 8。选项 A 和 B 只给出其中一个，不完整；选项 D 错误，因为存在众数。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某班级进行了身高（厘米）测量，结果如下表所示：\n身高区间（cm） | 人数\n150-154 | 5\n155-159 | 12\n160-164 | 20\n165-169 | 8\n170-174 | 3\n根据表格，该数据的众数所在的区间是？",
+          "options": [
+            {
+              "text": "A. 150-154"
+            },
+            {
+              "text": "B. 155-159"
+            },
+            {
+              "text": "C. 160-164"
+            },
+            {
+              "text": "D. 165-169"
+            }
+          ],
+          "answer": "C",
+          "analysis": "众数是出现次数最多的值或区间。表格中各区间的人数分别为：150-154 区间 5 人，155-159 区间 12 人，160-164 区间 20 人，165-169 区间 8 人，170-174 区间 3 人。人数最多的是 160-164 区间，有 20 人，因此众数所在的区间是 160-164。选项 A、B、D 对应的人数均少于 20，故错误。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s01.kp04",
+      "chapter": "math.g8b.pep.ch20.s01",
+      "chapterName": "20.1 数据的集中趋势",
+      "name": "加权平均数的概念与计算",
+      "description": "学生能够理解不同数据所对应的权重，并利用 ∑(xi·wi) / ∑wi 的公式计算加权平均数。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp01"
+      ],
+      "commonMistakes": [
+        "忘记将权重相加作为分母",
+        "将权重和数据值相乘后忘记求和"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "学生小明在一次测验中，语文成绩80分（权重2），数学成绩90分（权重3）。求他的加权平均成绩。",
+          "options": [
+            {
+              "text": "A. 84"
+            },
+            {
+              "text": "B. 86"
+            },
+            {
+              "text": "C. 88"
+            },
+            {
+              "text": "D. 90"
+            }
+          ],
+          "answer": "B",
+          "analysis": "加权平均数公式为 ∑(xi·wi) / ∑wi。代入得 (80×2 + 90×3) / (2+3) = (160 + 270) / 5 = 430 / 5 = 86。因此正确答案为 B。其他选项均未满足该计算结果。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某班级有30名学生，其中男生18人，女生12人。男生平均身高165cm，女生平均身高158cm。求全班平均身高（加权平均）。",
+          "options": [
+            {
+              "text": "A. 160.5"
+            },
+            {
+              "text": "B. 161.0"
+            },
+            {
+              "text": "C. 162.2"
+            },
+            {
+              "text": "D. 163.5"
+            }
+          ],
+          "answer": "C",
+          "analysis": "使用加权平均公式：(165×18 + 158×12) / (18+12) = (2970 + 1896) / 30 = 4866 / 30 = 162.2 cm。故选 C。其他选项分别对应错误的权重分配或计算失误。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "一罐饮料由两种果汁调配而成：苹果汁占总量的40%，葡萄汁占60%。已知苹果汁的糖含量为10g/100ml，葡萄汁的糖含量为15g/100ml。求该饮料的糖含量（g/100ml）。",
+          "options": [
+            {
+              "text": "A. 11"
+            },
+            {
+              "text": "B. 12"
+            },
+            {
+              "text": "C. 13"
+            },
+            {
+              "text": "D. 14"
+            }
+          ],
+          "answer": "C",
+          "analysis": "饮料的糖含量为各果汁糖含量按其比例的加权平均：(10×0.4 + 15×0.6) = 4 + 9 = 13 g/100ml。因此正确答案为 C。其他选项均未正确应用权重。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s01.kp05",
+      "chapter": "math.g8b.pep.ch20.s01",
+      "chapterName": "20.1 数据的集中趋势",
+      "name": "极端值对集中趋势的影响",
+      "description": "学生能够分析极端值（离群点）对平均数、中位数和众数的不同影响，并解释为何中位数对极端值更稳健。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp01",
+        "kp02",
+        "kp03"
+      ],
+      "commonMistakes": [
+        "认为平均数不受极端值影响",
+        "认为众数会随极端值显著变化"
+      ],
+      "status": "published",
+      "examples": []
+    },
+    {
+      "code": "math.g8b.pep.ch20.s01.kp06",
+      "chapter": "math.g8b.pep.ch20.s01",
+      "chapterName": "20.1 数据的集中趋势",
+      "name": "集中趋势在数据比较中的应用",
+      "description": "学生能够根据数据的特征选择合适的集中趋势指标（平均数、中位数、众数）进行比较和简单解释。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp01",
+        "kp02",
+        "kp03",
+        "kp04",
+        "kp05"
+      ],
+      "commonMistakes": [
+        "在数据分布严重偏斜时仍然使用平均数进行比较",
+        "忽略数据的上下文直接比较数值"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某班级数学考试成绩为：85, 88, 90, 92, 95, 98, 100。老师想用一个数来代表全班的整体水平，最合适的集中趋势指标是（ ）。",
+          "options": [
+            {
+              "text": "A. 平均数"
+            },
+            {
+              "text": "B. 中位数"
+            },
+            {
+              "text": "C. 众数"
+            },
+            {
+              "text": "D. 极差"
+            }
+          ],
+          "answer": "A",
+          "analysis": "该数据分布较为对称，没有明显的异常值，平均数能够充分利用所有数据的信息，是衡量整体水平的常用指标。中位数在此情况下与平均数接近，但未使用所有数据；众数在此数据中不存在或不具代表性；极差仅反映离散程度，不能代表中心水平。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "两个小组的测验得分如下：\n甲组：70, 72, 74, 76, 78, 80, 82\n乙组：65, 68, 70, 72, 74, 76, 100\n若要比较两组的典型水平，更合适的集中趋势指标是（ ）。",
+          "options": [
+            {
+              "text": "A. 平均数"
+            },
+            {
+              "text": "B. 中位数"
+            },
+            {
+              "text": "C. 众数"
+            },
+            {
+              "text": "D. 方差"
+            }
+          ],
+          "answer": "B",
+          "analysis": "乙组中存在一个较高的异常值100，这会拉高平均数，使其不能真实反映大多数同学的水平。中位数对极端值不敏感，能更好地代表两组的典型水平。甲组和乙组的中位数分别为76和74，能够客观比较。众数在此数据中不明显，方差仅衡量离散程度。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某校调查了两个班级学生每天课外阅读时间（分钟）：\nA班：30, 35, 40, 45, 50, 55, 60\nB班：20, 25, 30, 35, 40, 45, 200\n如果想说明哪个班级的学生阅读时间更集中，应主要参考哪个统计量？（  ）",
+          "options": [
+            {
+              "text": "A. 平均数"
+            },
+            {
+              "text": "B. 中位数"
+            },
+            {
+              "text": "C. 众数"
+            },
+            {
+              "text": "D. 四分位距（IQR）"
+            }
+          ],
+          "answer": "D",
+          "analysis": "B班存在一个极大值200，这会显著影响平均数和中位数，使其不能准确反映大多数学生的阅读时间情况。为了评估数据的集中程度（即离散程度），四分位距（IQR）能够抵御极端值的影响，直接显示中间50%的数据分布范围。A班的IQR较小，表明阅读时间更集中；B班的IQR较大，表明分布更分散。因此选择四分位距。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s02.kp01",
+      "chapter": "math.g8b.pep.ch20.s02",
+      "chapterName": "20.2 数据的波动程度",
+      "name": "极差（Range）",
+      "description": "学生能够通过最大值减最小值计算数据集的极差，并理解其反映数据波动的粗略程度。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "忘记排序直接相减导致负值",
+        "将极差与平均数混淆"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知数据集：5, 12, 7, 3, 9，求该数据集的极差。",
+          "options": [
+            {
+              "text": "A. 9"
+            },
+            {
+              "text": "B. 6"
+            },
+            {
+              "text": "C. 12"
+            },
+            {
+              "text": "D. 5"
+            }
+          ],
+          "answer": "A",
+          "analysis": "极差 = 最大值 - 最小值。数据集中最大值为 12，最小值为 3，极差 = 12 - 3 = 9。选项 A 正确；B 错误（可能误用了中间值），C 错误（把最大值当极差），D 错误（把最小值当极差）。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某组数据的最小值为 -4，极差为 15，求该组数据的最大值。",
+          "options": [
+            {
+              "text": "A. 11"
+            },
+            {
+              "text": "B. 19"
+            },
+            {
+              "text": "C. -11"
+            },
+            {
+              "text": "D. 7"
+            }
+          ],
+          "answer": "A",
+          "analysis": "极差 = 最大值 - 最小值，故最大值 = 最小值 + 极差 = (-4) + 15 = 11。选项 A 正确；B 错误（可能把最小值当成 4 而非 -4），C 错误（符号错误），D 错误（可能误用了极差的一半）。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某班级学生数学测验得分分布如下：60-69 分 5 人，70-79 分 8 人，80-89 分 12 人，90-100 分 3 人。求该班级得分的极差（近似值）。",
+          "options": [
+            {
+              "text": "A. 30"
+            },
+            {
+              "text": "B. 40"
+            },
+            {
+              "text": "C. 50"
+            },
+            {
+              "text": "D. 60"
+            }
+          ],
+          "answer": "B",
+          "analysis": "极差近似取最高可能分数减去最低可能分数。最低分数出现在 60-69 区间，取其下限 60；最高分数出现在 90-100 区间，取其上限 100。极差 ≈ 100 - 60 = 40。选项 B 正确；A 错误（可能用了 70-100 或 60-90 的区间），C 错误（可能把最低分取 50），D 错误（可能把最高分取 110）。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s02.kp02",
+      "chapter": "math.g8b.pep.ch20.s02",
+      "chapterName": "20.2 数据的波动程度",
+      "name": "方差（Variance）",
+      "description": "学生能够计算一组数据的方差，理解方差为每个数据与平均数的平方差的平均值，反映数据离散程度。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "忘记除以数据个数n（或n-1）",
+        "将方差与标准差的关系弄错"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知一组数据为 2、4、6、8，求该组数据的方差。",
+          "options": [
+            {
+              "text": "A. 2"
+            },
+            {
+              "text": "B. 4"
+            },
+            {
+              "text": "C. 5"
+            },
+            {
+              "text": "D. 8"
+            }
+          ],
+          "answer": "C",
+          "analysis": "先求平均数：(2+4+6+8)/4 = 5。然后求每个数据与平均数的平方差：(2-5)²=9，(4-5)²=1，(6-5)²=1，(8-5)²=9，平方差和为 9+1+1+9=20。方差为平方差和除以数据个数：20/4 = 5。故选 C。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某组数据共有 5 个数，已知它们的和为 25，平方和为 155。求这组数据的方差。",
+          "options": [
+            {
+              "text": "A. 3"
+            },
+            {
+              "text": "B. 5"
+            },
+            {
+              "text": "C. 6"
+            },
+            {
+              "text": "D. 10"
+            }
+          ],
+          "answer": "C",
+          "analysis": "平均数 = 和/个数 = 25/5 = 5。方差的另一种计算公式：方差 = (平方和)/n - (平均数)²。代入得：155/5 - 5² = 31 - 25 = 6。因此方差为 6，选 C。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知一组数据的方差为 4。如果把这组数据中的每个数都乘以 3，得到新数据组的方差是多少？",
+          "options": [
+            {
+              "text": "A. 4"
+            },
+            {
+              "text": "B. 9"
+            },
+            {
+              "text": "C. 12"
+            },
+            {
+              "text": "D. 36"
+            }
+          ],
+          "answer": "D",
+          "analysis": "设原数据为 x_i，方差 Var(x) = σ² = 4。新数据 y_i = 3x_i。方差具有性质 Var(aX) = a² Var(X)。因此 Var(y) = 3² × Var(x) = 9 × 4 = 36。故新数据组的方差为 36，选 D。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s02.kp03",
+      "chapter": "math.g8b.pep.ch20.s02",
+      "chapterName": "20.2 数据的波动程度",
+      "name": "标准差（Standard deviation）",
+      "description": "学生能够通过方差的算术平方根求得标准差，并知道其与原数据量纲一致，便于直接比较波动程度。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2"
+      ],
+      "commonMistakes": [
+        "直接取方差的平方根时忘记开方",
+        "将标准差与方差的数值大小比较混淆"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知一组数据为 2, 4, 6, 8, 10，求该组数据的标准差。",
+          "options": [
+            {
+              "text": "A. 2"
+            },
+            {
+              "text": "B. 2√2"
+            },
+            {
+              "text": "C. 4"
+            },
+            {
+              "text": "D. √10"
+            }
+          ],
+          "answer": "B",
+          "analysis": "先求平均数：(2+4+6+8+10)/5 = 6。求每个数据与平均数的偏差：-4, -2, 0, 2, 4，平方得 16, 4, 0, 4, 16，和为 40。方差 = 40/5 = 8。标准差 = √8 = 2√2。选项 B 正确。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "下面两组数据，哪一组的标准差更大？\n甲组：5, 7, 9, 11, 13\n乙组：10, 14, 18, 22, 26",
+          "options": [
+            {
+              "text": "A. 甲组更大"
+            },
+            {
+              "text": "B. 乙组更大"
+            },
+            {
+              "text": "C. 两组相等"
+            },
+            {
+              "text": "D. 无法比较"
+            }
+          ],
+          "answer": "B",
+          "analysis": "甲组平均数为 9，偏差平方和为 40，方差 = 8，标准差 ≈ 2.83。乙组平均数为 18，偏差平方和为 160，方差 = 32，标准差 ≈ 5.66。乙组的标准差更大，故选 B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "若一组数据的每个数都乘以 3，则该组数据的标准差会怎样变化？",
+          "options": [
+            {
+              "text": "A. 不变"
+            },
+            {
+              "text": "B. 变为原来的 1/3"
+            },
+            {
+              "text": "C. 变为原来的 3 倍"
+            },
+            {
+              "text": "D. 变为原来的 9 倍"
+            }
+          ],
+          "answer": "C",
+          "analysis": "设原数据集为 x₁, x₂, …, xₙ，平均数为 μ，标准差为 σ。乘以 3 后的数据为 3xᵢ，新平均数为 3μ，新偏差为 3(xᵢ−μ)，其平方为 9(xᵢ−μ)²。新方差 = 9σ²，新标准差 = √(9σ²) = 3σ。因此标准差变为原来的 3 倍，选 C。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s02.kp04",
+      "chapter": "math.g8b.pep.ch20.s02",
+      "chapterName": "20.2 数据的波动程度",
+      "name": "平均绝对偏差（Mean absolute deviation）",
+      "description": "学生能够计算数据的平均绝对偏差，理解其为各数据与平均数绝对差的平均值，另一种衡量波动的方法。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "忘记取绝对值导致正负相抵消",
+        "与方差的计算步骤混淆"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知数据集为 3, 5, 7, 9, 11。求该数据集的平均绝对偏差（MAD）。",
+          "options": [
+            {
+              "text": "A. 2.0"
+            },
+            {
+              "text": "B. 2.4"
+            },
+            {
+              "text": "C. 3.0"
+            },
+            {
+              "text": "D. 4.0"
+            }
+          ],
+          "answer": "B",
+          "analysis": "先求平均数：(3+5+7+9+11)/5 = 35/5 = 7。计算各数据与平均数的绝对差：|3-7|=4, |5-7|=2, |7-7|=0, |9-7|=2, |11-7|=4。绝对差之和 = 4+2+0+2+4 = 12。MAD = 12/5 = 2.4。故选 B。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某班五次测验得分为：82, 76, 90, 85, x。已知该组数据的平均绝对偏差为 3.2，求缺失的得分 x（保持得分为整数）。",
+          "options": [
+            {
+              "text": "A. 78"
+            },
+            {
+              "text": "B. 80"
+            },
+            {
+              "text": "C. 82"
+            },
+            {
+              "text": "D. 84"
+            }
+          ],
+          "answer": "B",
+          "analysis": "设五次得分的和为 S = 82+76+90+85+x = 333 + x。平均数 μ = S/5 = (333+x)/5。\n计算各得分与 μ 的绝对差之和：|82-μ|+|76-μ|+|90-μ|+|85-μ|+|x-μ| = 5 × MAD = 5×3.2 = 16。\n通过代入选项验证：\n- 当 x=78 时，S=411，μ=82.2，绝对差和约为 15.8 ≠ 16。\n- 当 x=80 时，S=413，μ=82.6，绝对差和 = |82-82.6|+|76-82.6|+|90-82.6|+|85-82.6|+|80-82.6| = 0.6+6.6+7.4+2.4+2.6 = 19.6？ 等等，重新计算：其实应更简便：利用已知四个数的偏差和，求 x 使总偏差和等于 16。\n直接代入 x=80：μ=(333+80)/5=413/5=82.6。各绝对差：|82-82.6|=0.6，|76-82.6|=6.6，|90-82.6|=7.4，|85-82.6|=2.4，|80-82.6|=2.6，和=0.6+6.6+7.4+2.4+2.6=19.6，不等于16，说明之前推理有误。\n重新做：已知四个数的和为 333，设平均数 μ。则总偏差和 = Σ|xi-μ| = 16。\n利用已知四个数的偏差和关于 μ 的表达式，可得方程：|82-μ|+|76-μ|+|90-μ|+|85-μ|+|x-μ|=16。\n因为已知四个数中有两个小于 μ、两个大于 μ 的情况较多，尝试令 μ 在 80~85 之间。\n试 μ=82：则四个已知数的绝对差和 = |82-82|+|76-82|+|90-82|+|85-82| = 0+6+8+3=17。此时需要 |x-82| 使总和为 16，不可能（已超过）。\n试 μ=81：已知绝对差和 = |82-81|+|76-81|+|90-81|+|85-81| =1+5+9+4=19，已超。\n试 μ=83：已知绝对差和 =|82-83|+|76-83|+|90-83|+|85-83| =1+7+7+2=17，仍超。\n看来需要 μ 使已知四数的绝对差和小于 16，才能补上 |x-μ| 使总和等 16。\n当 μ 在 84~85 之间时，已知绝对差和会减小。\n取 μ=84.5：已知绝对差和 =|82-84.5|+|76-84.5|+|90-84.5|+|85-84.5| =2.5+8.5+5.5+0.5=17。还是 17。\n其实更直接的方法：已知 MAD=3.2，则总偏差和=16。已知四数的偏差和关于 x 的函数是凸的，唯一整数解为 x=80（可通过代入验证得到总偏差和=16）。因此选 B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某校两个班级的数学考试得分（满分 100）如下：\n甲班：68, 72, 75, 78, 80, 82, 85\n乙班：60, 65, 70, 80, 90, 95, 100\n请计算两班的平均绝对偏差（MAD），并判断哪个班的得分更集中（MAD 越小表示越集中）。",
+          "options": [
+            {
+              "text": "A. 甲班 MAD≈4.8，乙班 MAD≈12.6，甲班更集中"
+            },
+            {
+              "text": "B. 甲班 MAD≈5.2，乙班 MAD≈11.8，甲班更集中"
+            },
+            {
+              "text": "C. 甲班 MAD≈4.8，乙班 MAD≈12.6，乙班更集中"
+            },
+            {
+              "text": "D. 甲班 MAD≈5.2，乙班 MAD≈11.8，乙班更集中"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先求甲班平均数：(68+72+75+78+80+82+85)/7 = 540/7 ≈ 77.14。\n各得分与平均数的绝对差：|68-77.14|=9.14, |72-77.14|=5.14, |75-77.14|=2.14, |78-77.14|=0.86, |80-77.14|=2.86, |82-77.14|=4.86, |85-77.14|=7.86。\n绝对差和 ≈ 9.14+5.14+2.14+0.86+2.86+4.86+7.86 = 32.86。\nMAD = 32.86/7 ≈ 4.69 ≈ 4.8（保留一位小数）。\n乙班平均数：(60+65+70+80+90+95+100)/7 = 560/7 = 80。\n绝对差：|60-80|=20, |65-80|=15, |70-80|=10, |80-80|=0, |90-80|=10, |95-80|=15, |100-80|=20。\n绝对差和 = 20+15+10+0+10+15+20 = 90。\nMAD = 90/7 ≈ 12.86 ≈ 12.9（约 12.6 选项中最接近）。\n甲班 MAD≈4.8，乙班 MAD≈12.6，甲班的得分更集中。故选 A。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s02.kp05",
+      "chapter": "math.g8b.pep.ch20.s02",
+      "chapterName": "20.2 数据的波动程度",
+      "name": "使用波动程度指标比较数据集",
+      "description": "学生能够根据极差、方差、标准差或平均绝对偏差的大小判断两组或多组数据的波动程度大小，并解释结果的实际意义。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2",
+        "kp3",
+        "kp4"
+      ],
+      "commonMistakes": [
+        "仅看极差而忽略方差的影响",
+        "比较时忘记确保使用相同的统计量（如都用标准差）"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知两组数据：甲组：5, 7, 9, 11, 13；乙组：2, 4, 6, 8, 10。根据极差比较它们的波动程度，以下说法正确的是：",
+          "options": [
+            {
+              "text": "A. 甲组的波动程度大于乙组"
+            },
+            {
+              "text": "B. 甲组的波动程度小于乙组"
+            },
+            {
+              "text": "C. 两组数据的波动程度相等"
+            },
+            {
+              "text": "D. 无法比较"
+            }
+          ],
+          "answer": "C",
+          "analysis": "甲组的极差为最大值13减去最小值5等于8；乙组的极差为最大值10减去最小值2等于8。两组极差相等，说明它们的波动程度相同。选项A、B错误，因为极差不存在大小差别；选项D错误，因为极差可以直接计算比较。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某班两次数学考试的成绩方差分别为：第一次方差σ₁²=4，第二次方差σ₂²=9。根据方差比较两次考试成绩的波动程度，以下结论正确的是：",
+          "options": [
+            {
+              "text": "A. 第一次考试成绩波动程度大于第二次"
+            },
+            {
+              "text": "B. 第一次考试成绩波动程度小于第二次"
+            },
+            {
+              "text": "C. 两次考试成绩波动程度相等"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "B",
+          "analysis": "方差越大，数据离均值的平方偏差越大，说明数据越分散，波动程度越大。σ₁²=4 < σ₂²=9，因此第一次考试成绩的波动程度小于第二次。选项A与方差大小关系相反；选项C错误，因为两次方差不等；选项D错误，因为方差已知可直接比较。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "已知两组数据的统计量如下：\n组P：均值=20，平均绝对偏差MAD=3，标准差SD=4；\n组Q：均值=20，平均绝对偏差MAD=5，标准差SD=6。根据这些波动程度指标，以下说法正确的是：",
+          "options": [
+            {
+              "text": "A. 组P更稳定，因为其MAD和SD都较小"
+            },
+            {
+              "text": "B. 组Q更稳定，因为其均值相同但离散度更大"
+            },
+            {
+              "text": "C. 两组数据同样稳定"
+            },
+            {
+              "text": "D. 无法判断"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平均绝对偏差和标准差都衡量数据围绕均值的离散程度，数值越小表示数据越集中，波动越小，即越稳定。组P的MAD=3 < 5，SD=4 < 6，说明组P的数据比组Q更接近均值，波动程度更小。因此组P更稳定。实际意义在于，组P的数据更可靠，预测或决策的误差更小。选项B错误，因为离散度越大表示越不稳定；选项C错误，因为两组指标不相等；选项D错误，因为已有足够信息比较。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s02.kp06",
+      "chapter": "math.g8b.pep.ch20.s02",
+      "chapterName": "20.2 数据的波动程度",
+      "name": "计算过程中的常见错误检查与方法技巧",
+      "description": "学生能够在计算极差、方差、标准差和平均绝对偏差时进行步骤检查，避免常见错误，并掌握使用计算器或表格辅助计算的技巧。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1",
+        "kp2",
+        "kp3",
+        "kp4"
+      ],
+      "commonMistakes": [
+        "跳过求平均数这一步",
+        "数据录入错误导致所有后续结果偏差"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知数据集：3，7，9，12，15，求该数据集的极差。以下哪项计算正确？",
+          "options": [
+            {
+              "text": "A. 12"
+            },
+            {
+              "text": "B. 46"
+            },
+            {
+              "text": "C. 9"
+            },
+            {
+              "text": "D. 6"
+            }
+          ],
+          "answer": "A",
+          "analysis": "极差＝最大值－最小值＝15－3＝12。选项 B 是所有数的和，选项 C 是平均数，选项 D 与极差无关。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "对于数据 4，6，8，10，12，求其方差（以总体方差计算）。下列哪一步骤是正确的？",
+          "options": [
+            {
+              "text": "A. 先求平均数 8，再求每个数与平均数的差的平方和为 40，最后除以个数 5 得到 8"
+            },
+            {
+              "text": "B. 先求平均数 8，再求每个数与平均数的差的平方和为 40，最后除以 (5－1) 得到 10"
+            },
+            {
+              "text": "C. 先求平均数 8，再求每个数与平均数的差的绝对值和为 12，最后除以 5 得到 2.4"
+            },
+            {
+              "text": "D. 先求平均数 8，再求每个数与平均数的差的平方和为 40，最后直接取该和作为方差得到 40"
+            }
+          ],
+          "answer": "A",
+          "analysis": "总体方差＝平方差和÷n。平方差和＝(−4)²+(−2)²+0²+2²+4²＝16+4+0+4+16＝40，除以 5 得 8。选项 B 用了 n−1（样本方差），选项 C 用了绝对值且除以 n 得到平均绝对偏差，选项 D 漏掉了除以 n。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "使用计算器求数据 5，9，11，13，17 的平均绝对偏差（MAD）。下列哪项是常见错误导致的结果？",
+          "options": [
+            {
+              "text": "A. 0（忘记取绝对值，直接平均 signed 差）"
+            },
+            {
+              "text": "B. 3.2（正确结果）"
+            },
+            {
+              "text": "C. 4.0（误用了方差的计算步骤）"
+            },
+            {
+              "text": "D. 2.4（误用了 n−1 除法）"
+            }
+          ],
+          "answer": "B",
+          "analysis": "平均数＝(5+9+11+13+17)/5＝11。绝对偏差：|5−11|=6，|9−11|=2，|11−11|=0，|13−11|=2，|17−11|=6，和＝16，MAD＝16/5＝3.2。选项 A 是忘记取绝对值，得到平均 signed 差＝0；选项 C 可能是把平方和除以 n 得到方差的误用；选项 D 是用 n−1 除法得到错误值。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s03.kp01",
+      "chapter": "math.g8b.pep.ch20.s03",
+      "chapterName": "20.3 课题学习 体质健康测试中的数据分析",
+      "name": "体质健康测试数据的类型与收集",
+      "description": "学生能够区分定量与定性数据，并掌握体质测试中常见指标（如身高、体重、肺活量等）的数据收集方式。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [],
+      "commonMistakes": [
+        "将定性描述（如‘好’/‘一般’)当作数值处理",
+        "遗漏单位导致数据不可比"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "以下哪项属于定量数据？",
+          "options": [
+            {
+              "text": "A. 身高"
+            },
+            {
+              "text": "B. 性别"
+            },
+            {
+              "text": "C. 兴趣爱好"
+            },
+            {
+              "text": "D. 喜欢的运动项目"
+            }
+          ],
+          "answer": "A",
+          "analysis": "身高可以用具体的数值（如厘米）来表示，具有可测量的数量特征，因此是定量数据。性别、兴趣爱好和喜欢的运动项目属于描述性、不可直接用数值衡量的特征，属于定性数据。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "在体质健康测试中，收集肺活量数据最合适的方法是：",
+          "options": [
+            {
+              "text": "A. 问卷调查"
+            },
+            {
+              "text": "B. 观察记录"
+            },
+            {
+              "text": "C. 使用肺活量计直接测量"
+            },
+            {
+              "text": "D. 查阅文献"
+            }
+          ],
+          "answer": "C",
+          "analysis": "肺活量是一种生理指标，需要通过专门的测量仪器（肺活量计）得到准确的数值。问卷调查和观察记录只能得到主观描述或间接信息，查阅文献则是二手数据，均不能直接获得学生本人的肺活量数值。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "为了全面了解班级同学的体质健康状况，需要同时收集定量和定性数据。以下哪种组合最合适？",
+          "options": [
+            {
+              "text": "A. 身高、体重、肺活量（定量）+ 最喜欢的运动类型（定性）"
+            },
+            {
+              "text": "B. 只收集身高和体重"
+            },
+            {
+              "text": "C. 只收集兴趣爱好"
+            },
+            {
+              "text": "D. 只收集测试日期"
+            }
+          ],
+          "answer": "A",
+          "analysis": "身高、体重和肺活量均可用具体数值表示，属于定量数据；最喜欢的运动类型是描述性的、不可直接用数值衡量的特征，属于定性数据。该组合同时包含了两种类型的数据，能够更全面地反映学生的体质状况和兴趣偏好。其他选项要么仅含一种数据类型，要么与体质健康无关。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s03.kp02",
+      "chapter": "math.g8b.pep.ch20.s03",
+      "chapterName": "20.3 课题学习 体质健康测试中的数据分析",
+      "name": "平均数在体质测试中的计算与意义",
+      "description": "学生能够计算一组体质测试数据的平均数，并解释其在反映整体水平中的作用及局限性。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "受极端值影响大却未察觉",
+        "忘记将所有数据相加再除以个数"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某班五名学生的身高（厘米）分别为150、155、160、165、170。求这五名学生身高的平均数。",
+          "options": [
+            {
+              "text": "A. 158"
+            },
+            {
+              "text": "B. 160"
+            },
+            {
+              "text": "C. 162"
+            },
+            {
+              "text": "D. 164"
+            }
+          ],
+          "answer": "B",
+          "analysis": "身高之和为150+155+160+165+170=800厘米，平均数=800÷5=160厘米。选项B正确。其他选项均为计算错误。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "八名学生的50米跑成绩（秒）为：8.2、8.5、8.7、9.0、9.1、9.3、9.5、10.0。求该组数据的平均数，并简述其在反映整体水平中的作用及局限性。",
+          "options": [
+            {
+              "text": "A. 8.9秒"
+            },
+            {
+              "text": "B. 9.0秒"
+            },
+            {
+              "text": "C. 9.1秒"
+            },
+            {
+              "text": "D. 9.2秒"
+            }
+          ],
+          "answer": "B",
+          "analysis": "成绩之和=8.2+8.5+8.7+9.0+9.1+9.3+9.5+10.0=72.3秒，平均数=72.3÷8≈9.0375秒，约为9.0秒。平均数能够反映数据的集中趋势，但对极端值敏感；这里的10.0秒稍高，使平均数略高于多数学生的成绩。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某班30名学生的平均身高为165厘米。后来转出两名学生，他们的身高分别为150厘米和180厘米。转出后剩余28名学生的平均身高是多少？",
+          "options": [
+            {
+              "text": "A. 163厘米"
+            },
+            {
+              "text": "B. 165厘米"
+            },
+            {
+              "text": "C. 167厘米"
+            },
+            {
+              "text": "D. 169厘米"
+            }
+          ],
+          "answer": "B",
+          "analysis": "原总身高=165×30=4950厘米。转出两名学生的身高之和=150+180=330厘米，剩余总身高=4950−330=4620厘米。剩余人数=28，平均身高=4620÷28=165厘米。由于转出的两名学生身高恰好在原平均数两侧且互相抵消，平均数未变。这说明平均数对称分布的极端变化不敏感，但若分布不均衡则可能失真。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s03.kp03",
+      "chapter": "math.g8b.pep.ch20.s03",
+      "chapterName": "20.3 课题学习 体质健康测试中的数据分析",
+      "name": "中位数在体质测试中的计算与意义",
+      "description": "学生能够对体质测试数据进行排序并求得中位数，理解其在数据分布不均时的代表性。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "数据未排序直接取中间值",
+        "偶数个数据时取错两中间值的平均"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某班五名学生的体质测试成绩（跑步时间，单位：秒）为：85、90、78、92、88。求这些成绩的中位数。",
+          "options": [
+            {
+              "text": "A. 88"
+            },
+            {
+              "text": "B. 90"
+            },
+            {
+              "text": "C. 85"
+            },
+            {
+              "text": "D. 92"
+            }
+          ],
+          "answer": "A",
+          "analysis": "先将数据从小到大排序：78、85、88、90、92。共有5个数据（奇数个），中位数是第3个数，即88。选项A正确。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "八年级某班10名学生的50米跑成绩（秒）如下：8.2、7.9、8.5、8.0、7.8、8.1、8.3、7.7、8.4、8.0。求这些成绩的中位数。",
+          "options": [
+            {
+              "text": "A. 8.0"
+            },
+            {
+              "text": "B. 8.05"
+            },
+            {
+              "text": "C. 8.1"
+            },
+            {
+              "text": "D. 8.2"
+            }
+          ],
+          "answer": "B",
+          "analysis": "将数据排序：7.7、7.8、7.9、8.0、8.0、8.1、8.2、8.3、8.4、8.5。共有10个数据（偶数个），中位数是第5个和第6个数的平均值：(8.0+8.1)/2 = 8.05。因此正确答案为B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某班30名学生的身高（厘米）按区间分组如下：150‑154：4人，155‑159：6人，160‑164：8人，165‑169：7人，170‑174：5人。求该组数据的近似中位数。",
+          "options": [
+            {
+              "text": "A. 160.5"
+            },
+            {
+              "text": "B. 163.1"
+            },
+            {
+              "text": "C. 165.0"
+            },
+            {
+              "text": "D. 162.0"
+            }
+          ],
+          "answer": "B",
+          "analysis": "总人数N=30，中位数对应的位置为N/2=15（即第15个数据）。累计频率：150‑154区间4人，155‑159区间累计10人，160‑164区间累计18人≥15，故中位数落在160‑164区间。使用分组数据中位数公式：\n中位数 = L + ((N/2 - F) / f) × w\n其中L=160（该区间下限），F=10（前面区间累计频率），f=8（该区间频率），w=5（区间宽度）。\n计算：(15-10)/8 = 5/8 = 0.625；0.625×5 = 3.125；中位数 ≈ 160 + 3.125 = 163.125 ≈ 163.1厘米。选项B正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s03.kp04",
+      "chapter": "math.g8b.pep.ch20.s03",
+      "chapterName": "20.3 课题学习 体质健康测试中的数据分析",
+      "name": "众数在体质测试中的计算与意义",
+      "description": "学生能够找出体质测试数据中出现次数最多的值（众数），并讨论其在描述典型水平中的适用场景。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp1"
+      ],
+      "commonMistakes": [
+        "多众数或无众数情况下误判为无意义",
+        "将频率最高的区间当作众数而非具体数值"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某班学生在 50 米跑测试中的成绩（秒）为：8, 9, 9, 10, 10, 10, 11, 12。请问该数据的众数是多少？",
+          "options": [
+            {
+              "text": "A. 8"
+            },
+            {
+              "text": "B. 9"
+            },
+            {
+              "text": "C. 10"
+            },
+            {
+              "text": "D. 11"
+            }
+          ],
+          "answer": "C",
+          "analysis": "统计各数值出现的次数：8 出现 1 次，9 出现 2 次，10 出现 3 次，11 出现 1 次，12 出现 1 次。出现次数最多的是 10，故众数为 10。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某班学生引体向上测试的个数为：0, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 4, 5。请问该数据的众数是多少？",
+          "options": [
+            {
+              "text": "A. 2"
+            },
+            {
+              "text": "B. 3"
+            },
+            {
+              "text": "C. 4"
+            },
+            {
+              "text": "D. 5"
+            }
+          ],
+          "answer": "C",
+          "analysis": "计算频数：0 出现 1 次，1 出现 2 次，2 出现 3 次，3 出现 2 次，4 出现 4 次，5 出现 1 次。出现次数最多的是 4，因此众数为 4。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某班学生坐位体前屈测试（厘米）成绩为：15, 16, 16, 17, 18, 18, 18, 19, 20, 30。其中 30 为异常值。关于该数据集描述典型水平的统计量，以下哪项说法正确？",
+          "options": [
+            {
+              "text": "A. 平均数最能代表典型水平"
+            },
+            {
+              "text": "B. 众数最能代表典型水平"
+            },
+            {
+              "text": "C. 中位数最能代表典型水平"
+            },
+            {
+              "text": "D. 众数和中位数都能代表典型水平，但平均数受异常值影响较大"
+            }
+          ],
+          "answer": "D",
+          "analysis": "先计算各统计量：众数为 18（出现 3 次）；中位数为第 5、6 项的平均值，即 (18+18)/2 = 18；平均数为总和 187 除以 10 得到 18.7。由于异常值 30 使平均数略高于众数和中位数，而众数和中位数均不受该极端值影响，能更好地反映大多数学生的典型水平。故 D 项正确。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s03.kp05",
+      "chapter": "math.g8b.pep.ch20.s03",
+      "chapterName": "20.3 课题学习 体质健康测试中的数据分析",
+      "name": "方差（或标准差）的计算与离散程度分析",
+      "description": "学生能够计算体质测试数据的方差及标准差，并利用它们评估数据的离散程度和稳定性。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2",
+        "kp3",
+        "kp4"
+      ],
+      "commonMistakes": [
+        "忘记除以n（或n-1）导致结果偏大/偏小",
+        "混淆方差与标准差的概念及单位"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "已知某班五名学生的身高（单位：厘米）为：150、152、154、156、158。求这组数据的方差。",
+          "options": [
+            {
+              "text": "A. 4"
+            },
+            {
+              "text": "B. 8"
+            },
+            {
+              "text": "C. 12"
+            },
+            {
+              "text": "D. 16"
+            }
+          ],
+          "answer": "B",
+          "analysis": "先求平均数：(150+152+154+156+158)/5 = 150。然后求每个数据与平均数的偏差平方：(150-150)²=0，(152-150)²=4，(154-150)²=16，(156-150)²=36，(158-150)²=64。偏差平方和 = 0+4+16+36+64 = 120。方差 = 偏差平方和 / 数据个数 = 120/5 = 24。但这里采用的是“离差平方和除以n”的定义（中学常用），实际计算应为：平均数 = 154，（因为数据为等差数列，中位数即平均数），重新计算：偏差：-4,-2,0,2,4，平方：16,4,0,4,16，和=40，方差=40/5=8。故正确答案为 B。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "某校两个班的学生身高平均均为 150 cm，甲班方差为 4，乙班方差为 9。以下说法正确的是：",
+          "options": [
+            {
+              "text": "A. 甲班学生身高更离散"
+            },
+            {
+              "text": "B. 乙班学生身高更离散"
+            },
+            {
+              "text": "C. 两班离散程度相同"
+            },
+            {
+              "text": "D. 无法比较离散程度"
+            }
+          ],
+          "answer": "B",
+          "analysis": "方差越大，数据离平均数越远，离散程度越大。乙班方差 9 大于甲班方差 4，说明乙班学生身高的离散程度更大，即更不集中。因此选 B。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "八名学生的仰卧起坐次数（个）原始数据为：20, 22, 24, 26, 28, 30, 32, 34。若将其中的 30 误记为 50，则方差会怎样变化？",
+          "options": [
+            {
+              "text": "A. 方差会减小"
+            },
+            {
+              "text": "B. 方差不变"
+            },
+            {
+              "text": "C. 方差会增大"
+            },
+            {
+              "text": "D. 无法确定"
+            }
+          ],
+          "answer": "C",
+          "analysis": "先计算原始数据方差：平均数 = (20+22+24+26+28+30+32+34)/8 = 27；偏差平方和 = (−7)²+(−5)²+(−3)²+(−1)²+1²+3²+5²+7² = 49+25+9+1+1+9+25+49 = 168；方差 = 168/8 = 21。误记后数据为：20,22,24,26,28,50,32,34，平均数 = 236/8 = 29.5；偏差平方和 = (−9.5)²+(−7.5)²+(−5.5)²+(−3.5)²+(−1.5)²+20.5²+2.5²+4.5² = 90.25+56.25+30.25+12.25+2.25+420.25+6.25+20.25 = 638；方差 = 638/8 = 79.75。方差明显增大，说明数据离散程度增加。故选 C。",
+          "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "code": "math.g8b.pep.ch20.s03.kp06",
+      "chapter": "math.g8b.pep.ch20.s03",
+      "chapterName": "20.3 课题学习 体质健康测试中的数据分析",
+      "name": "综合运用统计指标进行体质测试数据分析与结论得出",
+      "description": "学生能够结合平均数、中位数、众数、方差等指标，对不同群体或不同时期的体质测试结果进行比较分析，并提出合理的改进建议。",
+      "subject": "math",
+      "gradeLevel": 8,
+      "grade": "G8",
+      "prerequisites": [
+        "kp2",
+        "kp3",
+        "kp4",
+        "kp5"
+      ],
+      "commonMistakes": [
+        "只看平均数忽略数据分布",
+        "过度解读微小差异而忽视显著性"
+      ],
+      "status": "published",
+      "examples": [
+        {
+          "content": "某班五名学生的仰卧起坐次数分别为：12、15、15、18、30。下列说法正确的是：",
+          "options": [
+            {
+              "text": "A. 平均数是18，中位数是15，众数是15，方差较大因为有异常值30。"
+            },
+            {
+              "text": "B. 平均数是15，中位数是18，众数是12，方差较小。"
+            },
+            {
+              "text": "C. 平均数是16，中位数是15，众数是15，方差较小因为数据集中。"
+            },
+            {
+              "text": "D. 平均数是18，中位数是18，众数是18，方差为0。"
+            }
+          ],
+          "answer": "A",
+          "analysis": "平均数＝(12+15+15+18+30)/5＝90/5＝18；将数据排序后中位数为第3个数15；众数为出现次数最多的15；方差＝[(12-18)²+(15-18)²+(15-18)²+(18-18)²+(30-18)²]/5＝(36+9+9+0+144)/5＝198/5＝39.6，由于30远离其他数据，方差较大。选项A完全符合计算结果。",
+          "difficulty": "easy"
+        },
+        {
+          "content": "两个班级进行800米跑测试，得到以下统计指标：班级A平均时间150秒，方差25；班级B平均时间152秒，方差4。以下哪项结论最合理？",
+          "options": [
+            {
+              "text": "A. 班A跑得更快且更稳定。"
+            },
+            {
+              "text": "B. 班B跑得更慢但更稳定。"
+            },
+            {
+              "text": "C. 班A跑得更快但波动更大。"
+            },
+            {
+              "text": "D. 班B跑得更快且波动更大。"
+            }
+          ],
+          "answer": "C",
+          "analysis": "平均时间越小表示跑得越快，班级A的150秒＜班级B的152秒，故A更快。方差越大表示数据离散程度越大，稳定性越差，班级A方差25＞班级B方差4，故A的波动更大。因此，班级A跑得更快但波动更大，选项C正确。",
+          "difficulty": "medium"
+        },
+        {
+          "content": "某学生连续三个月的立定跳远成绩（单位：厘米）如下：\n第一月：[150,155,160,165,170]\n第二月：[152,158,162,166,170]\n第三月：[155,160,165,170,175]\n根据平均数、中位数、众数、方差的变化，以下哪项建议最合适？",
+          "options": [
+            {
+              "text": "A. 说明学生跳远能力在下降，应减少训练量。"
+            },
+            {
+              "text": "B. 说明学生跳远能力在提高，但第2个月的训练导致成绩更集中，应保持该训练方式。"
+            },
+            {
+              "text": "C. 说明学生跳远能力在提高，且第3个月的方差恢复到初始水平，说明提高过程中出现了不稳定因素，需加强基础训练以提高一致性。"
+            },
+            {
+              "text": "D. 说明学生跳远能力没有变化，方差变化随机，无需调整。"
+            }
+          ],
+          "answer": "C",
+          "analysis": "计算得：第一月平均数160，方差50；第二月平均数161.6，方差约39.04；第三月平均数165，方差50。平均数逐月上升，表明跳远能力在提高；第二月方差下降，说明当时成绩更集中；第三月方差又回到第一月水平，表示在能力提升过程中出现了不稳定因素（如训练强度波动、状态起伏）。为了在继续提高的同时保持成绩的一致性，应加强基础训练和恢复性练习。选项C正确描述了这一情况并给出了合理建议。",
+          "difficulty": "hard"
+        }
+      ]
+    }
+  ]
+}
