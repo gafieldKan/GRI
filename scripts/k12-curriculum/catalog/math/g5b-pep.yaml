@@ -1,0 +1,126 @@
+# 人教版数学五年级下册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学五年级下册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g5b.pep.chNN / math.g5b.pep.chNN.sNN。下册 code 加 b 后缀。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：高段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g5b.pep
+  name: 人教版数学五年级下册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G5
+chapters:
+- code: math.g5b.pep.ch01
+  name: 第一单元 观察物体（三）
+  order: 1
+  children:
+  - code: math.g5b.pep.ch01.s01
+    name: 1. 观察物体（三）
+    order: 1
+    hint: 由三个方向观察由小正方体拼成的立体图形；不涉及三视图术语与棱长计算
+- code: math.g5b.pep.ch02
+  name: 第二单元 因数与倍数
+  order: 2
+  children:
+  - code: math.g5b.pep.ch02.s01
+    name: 1. 因数和倍数
+    order: 1
+    hint: 因数倍数概念、2/3/5 倍数特征；不涉及负因数与绝对值
+  - code: math.g5b.pep.ch02.s02
+    name: 2. 质数和合数
+    order: 2
+    hint: 质数合数、100以内质数表；不涉及质因数分解定理术语（初中正式化）
+- code: math.g5b.pep.ch03
+  name: 第三单元 长方体和正方体
+  order: 3
+  children:
+  - code: math.g5b.pep.ch03.s01
+    name: 1. 长方体和正方体的认识
+    order: 1
+    hint: 面棱顶点特征；不涉及空间向量
+  - code: math.g5b.pep.ch03.s02
+    name: 2. 长方体和正方体的表面积
+    order: 2
+  - code: math.g5b.pep.ch03.s03
+    name: 3. 长方体和正方体的体积
+    order: 3
+    hint: 体积概念与单位（立方厘米/分米/米）、V=abh/V=a³；不涉及容积率与小数密度
+  - code: math.g5b.pep.ch03.s04
+    name: 4. 体积单位间的进率与换算
+    order: 4
+- code: math.g5b.pep.ch04
+  name: 第四单元 分数的意义和性质
+  order: 4
+  children:
+  - code: math.g5b.pep.ch04.s01
+    name: 1. 分数的产生和意义
+    order: 1
+    hint: 单位「1」、分数单位；不涉及无理数
+  - code: math.g5b.pep.ch04.s02
+    name: 2. 分数与除法的关系
+    order: 2
+  - code: math.g5b.pep.ch04.s03
+    name: 3. 真分数和假分数
+    order: 3
+  - code: math.g5b.pep.ch04.s04
+    name: 4. 分数的基本性质
+    order: 4
+    hint: 分子分母同乘除；不涉及分式方程（初中）
+  - code: math.g5b.pep.ch04.s05
+    name: 5. 最大公因数与约分
+    order: 5
+  - code: math.g5b.pep.ch04.s06
+    name: 6. 最小公倍数与通分
+    order: 6
+  - code: math.g5b.pep.ch04.s07
+    name: 7. 分数与小数的互化
+    order: 7
+- code: math.g5b.pep.ch05
+  name: 第五单元 图形的运动（三）
+  order: 5
+  children:
+  - code: math.g5b.pep.ch05.s01
+    name: 1. 旋转
+    order: 1
+    hint: 图形旋转90°（顺时针逆时针）与旋转三要素初步；不涉及旋转坐标公式
+- code: math.g5b.pep.ch06
+  name: 第六单元 分数的加法和减法
+  order: 6
+  children:
+  - code: math.g5b.pep.ch06.s01
+    name: 1. 同分母分数加减法
+    order: 1
+  - code: math.g5b.pep.ch06.s02
+    name: 2. 异分母分数加减法
+    order: 2
+    hint: 通分后相加减；不涉及分式运算与字母分数
+  - code: math.g5b.pep.ch06.s03
+    name: 3. 分数加减混合运算
+    order: 3
+    hint: 含括号运算顺序与整数运算律推广；不涉及繁分数化简
+- code: math.g5b.pep.ch07
+  name: 第七单元 折线统计图
+  order: 7
+  children:
+  - code: math.g5b.pep.ch07.s01
+    name: 1. 折线统计图
+    order: 1
+    hint: 单式复式折线图绘制与读取、趋势描述；不涉及相关系数与回归术语
+- code: math.g5b.pep.ch08
+  name: 第八单元 数学广角——找次品
+  order: 8
+  children:
+  - code: math.g5b.pep.ch08.s01
+    name: 1. 找次品
+    order: 1
+    hint: 天平称量推理最优策略（分三份）；不涉及信息论证明

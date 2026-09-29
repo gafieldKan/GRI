@@ -1,0 +1,102 @@
+# 人教版数学六年级下册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学六年级下册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g6b.pep.chNN / math.g6b.pep.chNN.sNN。下册 code 加 b 后缀。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：高段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g6b.pep
+  name: 人教版数学六年级下册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G6
+chapters:
+- code: math.g6b.pep.ch01
+  name: 第一单元 负数
+  order: 1
+  children:
+  - code: math.g6b.pep.ch01.s01
+    name: 1. 负数的认识
+    order: 1
+    hint: 负数表示相反意义的量、正负数读写、数轴上表示；不涉及有理数四则运算（七年级学）
+- code: math.g6b.pep.ch02
+  name: 第二单元 百分数（二）
+  order: 2
+  children:
+  - code: math.g6b.pep.ch02.s01
+    name: 1. 折扣、成数
+    order: 1
+    hint: 打折（几折即十分之几）、成数；不涉及连续折扣复合计算中的术语陷阱
+  - code: math.g6b.pep.ch02.s02
+    name: 2. 税率、利率
+    order: 2
+    hint: 应纳税额=收入×税率、利息=本金×利率×时间；不涉及复利公式
+- code: math.g6b.pep.ch03
+  name: 第三单元 圆柱与圆锥
+  order: 3
+  children:
+  - code: math.g6b.pep.ch03.s01
+    name: 1. 圆柱的认识
+    order: 1
+    hint: 侧面展开为长方形；不涉及斜圆柱
+  - code: math.g6b.pep.ch03.s02
+    name: 2. 圆柱的表面积
+    order: 2
+    hint: 侧面积+两个底面；不涉及球面积
+  - code: math.g6b.pep.ch03.s03
+    name: 3. 圆柱的体积
+    order: 3
+    hint: V=Sh=πr²h；不涉及祖暅原理术语
+  - code: math.g6b.pep.ch03.s04
+    name: 4. 圆锥的认识与体积
+    order: 4
+    hint: V=⅓Sh（等底等高圆柱的三分之一）；不涉及圆锥侧面展开与扇形弧长
+- code: math.g6b.pep.ch04
+  name: 第四单元 比例
+  order: 4
+  children:
+  - code: math.g6b.pep.ch04.s01
+    name: 1. 比例的意义和基本性质
+    order: 1
+    hint: 内项外项积相等、解比例；不涉及比例尺函数图像
+  - code: math.g6b.pep.ch04.s02
+    name: 2. 正比例和反比例
+    order: 2
+    hint: 正比 y/x=k、反比 xy=k 判断；不涉及一次函数反比例函数图像平移（初中）
+  - code: math.g6b.pep.ch04.s03
+    name: 3. 比例尺及应用
+    order: 3
+    hint: 图上距离/实际距离=比例尺；不涉及坡度术语
+- code: math.g6b.pep.ch05
+  name: 第五单元 数学广角——鸽巢问题
+  order: 5
+  children:
+  - code: math.g6b.pep.ch05.s01
+    name: 1. 鸽巢问题（抽屉原理）
+    order: 1
+    hint: 简单抽屉原理（n+1个物体放进n个抽屉至少2个同放一层）；不涉及一般形式证明与计数
+- code: math.g6b.pep.ch06
+  name: 第六单元 整理与复习
+  order: 6
+  children:
+  - code: math.g6b.pep.ch06.s01
+    name: 1. 数与代数整理复习
+    order: 1
+    hint: 数系梳理（整数小数分数百分数负数）、四则运算与方程复习；不引入新知识
+  - code: math.g6b.pep.ch06.s02
+    name: 2. 图形与几何整理复习
+    order: 2
+    hint: 平面图形周长面积、立体图形表面积体积总复习；不引入新公式
+  - code: math.g6b.pep.ch06.s03
+    name: 3. 统计与概率整理复习
+    order: 3
+    hint: 三种统计图特征、可能性复习；不引入新统计量

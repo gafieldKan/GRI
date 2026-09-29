@@ -1,0 +1,115 @@
+# 人教版数学六年级上册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学六年级上册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g6.pep.chNN / math.g6.pep.chNN.sNN。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：高段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g6.pep
+  name: 人教版数学六年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G6
+chapters:
+- code: math.g6.pep.ch01
+  name: 第一单元 分数乘法
+  order: 1
+  children:
+  - code: math.g6.pep.ch01.s01
+    name: 1. 分数乘法
+    order: 1
+    hint: 分数乘整数/分数乘分数算理（分子乘分子分母乘分母）；不涉及负分数
+  - code: math.g6.pep.ch01.s02
+    name: 2. 解决问题（求一个数的几分之几）
+    order: 2
+  - code: math.g6.pep.ch01.s03
+    name: 3. 倒数的认识
+    order: 3
+    hint: 乘积为1的两个数互为倒数；不涉及负倒数与零指数
+- code: math.g6.pep.ch02
+  name: 第二单元 位置与方向（二）
+  order: 2
+  children:
+  - code: math.g6.pep.ch02.s01
+    name: 1. 位置与方向（二）
+    order: 1
+    hint: 用方向（北偏东等）与距离确定位置；不涉及极坐标与方位角术语
+- code: math.g6.pep.ch03
+  name: 第三单元 分数除法
+  order: 3
+  children:
+  - code: math.g6.pep.ch03.s01
+    name: 1. 分数除法
+    order: 1
+    hint: 除以一个数等于乘它的倒数；不涉及负分数除法
+  - code: math.g6.pep.ch03.s02
+    name: 2. 解决问题（已知一个数的几分之几求这个数）
+    order: 2
+    hint: 用除法或方程解「已知部分求整体」；不涉及分式方程
+- code: math.g6.pep.ch04
+  name: 第四单元 比
+  order: 4
+  children:
+  - code: math.g6.pep.ch04.s01
+    name: 1. 比的意义和基本性质
+    order: 1
+    hint: 比的意义、比值、化简比；不涉及比例函数（初中）
+  - code: math.g6.pep.ch04.s02
+    name: 2. 比的应用（按比分配）
+    order: 2
+- code: math.g6.pep.ch05
+  name: 第五单元 圆
+  order: 5
+  children:
+  - code: math.g6.pep.ch05.s01
+    name: 1. 圆的认识
+    order: 1
+    hint: 圆心半径直径、d=2r；不涉及圆系与轨迹
+  - code: math.g6.pep.ch05.s02
+    name: 2. 圆的周长
+    order: 2
+    hint: 圆周率π、C=πd=2πr；不涉及弧长公式（初中）
+  - code: math.g6.pep.ch05.s03
+    name: 3. 圆的面积
+    order: 3
+    hint: 转化推导 S=πr²；不涉及扇形面积与弓形（初中）
+- code: math.g6.pep.ch06
+  name: 第六单元 百分数（一）
+  order: 6
+  children:
+  - code: math.g6.pep.ch06.s01
+    name: 1. 百分数的意义和写法
+    order: 1
+    hint: 百分数表示一个数是另一个数的百分之几；不涉及百分点辨析术语考试化
+  - code: math.g6.pep.ch06.s02
+    name: 2. 百分数和分数、小数的互化
+    order: 2
+  - code: math.g6.pep.ch06.s03
+    name: 3. 用百分数解决问题
+    order: 3
+    hint: 求百分率（达标率发芽率）、求一个数的百分之几；不涉及复利与统计概率
+- code: math.g6.pep.ch07
+  name: 第七单元 扇形统计图
+  order: 7
+  children:
+  - code: math.g6.pep.ch07.s01
+    name: 1. 扇形统计图
+    order: 1
+    hint: 扇形图表示部分与整体关系、选择合适统计图；不涉及圆心角度数计算
+- code: math.g6.pep.ch08
+  name: 第八单元 数学广角——数与形
+  order: 8
+  children:
+  - code: math.g6.pep.ch08.s01
+    name: 1. 数与形
+    order: 1
+    hint: 正方形数与三角形数等形数结合规律；不涉及数列求和公式证明

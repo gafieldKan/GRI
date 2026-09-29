@@ -1,0 +1,129 @@
+# 人教版数学五年级上册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学五年级上册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g5.pep.chNN / math.g5.pep.chNN.sNN。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：高段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g5.pep
+  name: 人教版数学五年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G5
+chapters:
+- code: math.g5.pep.ch01
+  name: 第一单元 小数乘法
+  order: 1
+  children:
+  - code: math.g5.pep.ch01.s01
+    name: 1. 小数乘整数
+    order: 1
+    hint: 小数乘整数算理（因数变化引起积变化）；不涉及负数与字母代数式
+  - code: math.g5.pep.ch01.s02
+    name: 2. 小数乘小数
+    order: 2
+    hint: 小数乘小数笔算（积的小数位数）；不涉及近似乘法误差分析术语
+  - code: math.g5.pep.ch01.s03
+    name: 3. 积的近似值
+    order: 3
+    hint: 四舍五入求积的近似值；不涉及有效数字术语
+  - code: math.g5.pep.ch01.s04
+    name: 4. 连乘、乘加、乘减
+    order: 4
+  - code: math.g5.pep.ch01.s05
+    name: 5. 整数乘法运算定律推广到小数
+    order: 5
+    hint: 交换律结合律分配律推广到小数；不涉及负数运算
+- code: math.g5.pep.ch02
+  name: 第二单元 位置
+  order: 2
+  children:
+  - code: math.g5.pep.ch02.s01
+    name: 1. 用数对确定位置
+    order: 1
+    hint: 列行数对（先列后行）；不涉及负坐标与平面直角坐标系术语（初中）
+- code: math.g5.pep.ch03
+  name: 第三单元 小数除法
+  order: 3
+  children:
+  - code: math.g5.pep.ch03.s01
+    name: 1. 小数除以整数
+    order: 1
+  - code: math.g5.pep.ch03.s02
+    name: 2. 一个数除以小数
+    order: 2
+    hint: 除数是小数的除法（移动小数点转化）；不涉及负数除法
+  - code: math.g5.pep.ch03.s03
+    name: 3. 商的近似值
+    order: 3
+  - code: math.g5.pep.ch03.s04
+    name: 4. 循环小数
+    order: 4
+    hint: 循环小数概念、循环节、有限无限小数分类；不涉及无理数术语（七年级学）
+  - code: math.g5.pep.ch03.s05
+    name: 5. 用计算器探索规律
+    order: 5
+  - code: math.g5.pep.ch03.s06
+    name: 6. 解决问题
+    order: 6
+    hint: 进一法去尾法取近似值；不涉及复杂利润率问题
+- code: math.g5.pep.ch04
+  name: 第四单元 可能性
+  order: 4
+  children:
+  - code: math.g5.pep.ch04.s01
+    name: 1. 可能性
+    order: 1
+    hint: 确定事件与不确定事件、可能性的大小直观比较；不涉及概率计算公式（七年级学）
+- code: math.g5.pep.ch05
+  name: 第五单元 简易方程
+  order: 5
+  children:
+  - code: math.g5.pep.ch05.s01
+    name: 1. 用字母表示数
+    order: 1
+    hint: 字母表示数与含字母式子；不涉及函数概念（初中）
+  - code: math.g5.pep.ch05.s02
+    name: 2. 解简易方程
+    order: 2
+    hint: 等式性质解 ax±b=c、ax=b 类型方程；不涉及一元一次方程术语与移项术语（七年级）
+  - code: math.g5.pep.ch05.s03
+    name: 3. 实际问题与方程
+    order: 3
+    hint: 列方程解应用题（和差、倍数关系）；不涉及方程组（七年级学）
+- code: math.g5.pep.ch06
+  name: 第六单元 多边形的面积
+  order: 6
+  children:
+  - code: math.g5.pep.ch06.s01
+    name: 1. 平行四边形的面积
+    order: 1
+    hint: 割补法推导 S=ah；不涉及三角函数
+  - code: math.g5.pep.ch06.s02
+    name: 2. 三角形的面积
+    order: 2
+    hint: 拼摆法推导 S=ah÷2；不涉及勾股定理（初中）
+  - code: math.g5.pep.ch06.s03
+    name: 3. 梯形的面积
+    order: 3
+    hint: S=(a+b)h÷2；不涉及圆面积（六年级学）
+  - code: math.g5.pep.ch06.s04
+    name: 4. 组合图形的面积
+    order: 4
+- code: math.g5.pep.ch07
+  name: 第七单元 数学广角——植树问题
+  order: 7
+  children:
+  - code: math.g5.pep.ch07.s01
+    name: 1. 植树问题
+    order: 1
+    hint: 两端都栽/一端栽/两端不栽的间隔问题；不涉及复杂方阵与数列通项
