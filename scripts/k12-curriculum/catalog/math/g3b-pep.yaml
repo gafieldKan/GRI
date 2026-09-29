@@ -1,0 +1,108 @@
+# 人教版数学三年级下册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学三年级下册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g3b.pep.chNN / math.g3b.pep.chNN.sNN。下册 code 加 b 后缀。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：中段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g3b.pep
+  name: 人教版数学三年级下册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G3
+chapters:
+- code: math.g3b.pep.ch01
+  name: 第一单元 位置与方向（一）
+  order: 1
+  children:
+  - code: math.g3b.pep.ch01.s01
+    name: 1. 位置与方向（一）
+    order: 1
+    hint: 东南西北八个方向辨认、简单线路图描述；不涉及经纬度与坐标表示
+- code: math.g3b.pep.ch02
+  name: 第二单元 除数是一位数的除法
+  order: 2
+  children:
+  - code: math.g3b.pep.ch02.s01
+    name: 1. 口算除法
+    order: 1
+    hint: 整十整百数除以一位数口算（如 60÷3）；不涉及除数是两位数（四年级学）
+  - code: math.g3b.pep.ch02.s02
+    name: 2. 笔算除法
+    order: 2
+    hint: 一位数除三位数笔算（含商中间末尾有0）与验算；不涉及小数除法与余数小数处理
+  - code: math.g3b.pep.ch02.s03
+    name: 3. 解决问题（估算）
+    order: 3
+- code: math.g3b.pep.ch03
+  name: 第三单元 复式统计表
+  order: 3
+  children:
+  - code: math.g3b.pep.ch03.s01
+    name: 1. 复式统计表
+    order: 1
+    hint: 简单复式统计表读取与填写；不涉及百分比与平均数计算
+- code: math.g3b.pep.ch04
+  name: 第四单元 两位数乘两位数
+  order: 4
+  children:
+  - code: math.g3b.pep.ch04.s01
+    name: 1. 口算乘法
+    order: 1
+  - code: math.g3b.pep.ch04.s02
+    name: 2. 笔算乘法
+    order: 2
+    hint: 两位数乘两位数笔算（不进位/进位）；不涉及三位数乘两位数（四年级学）与乘法分配律术语
+- code: math.g3b.pep.ch05
+  name: 第五单元 面积
+  order: 5
+  children:
+  - code: math.g3b.pep.ch05.s01
+    name: 1. 面积和面积单位
+    order: 1
+    hint: 面积概念、平方厘米/平方分米/平方米；不涉及公顷平方千米（四年级学）与小数边长
+  - code: math.g3b.pep.ch05.s02
+    name: 2. 长方形、正方形的面积计算
+    order: 2
+    hint: 长方形正方形面积公式 S=ab/S=a²；不涉及三角形与平行四边形面积（五年级学）
+- code: math.g3b.pep.ch06
+  name: 第六单元 年、月、日
+  order: 6
+  children:
+  - code: math.g3b.pep.ch06.s01
+    name: 1. 年、月、日
+    order: 1
+    hint: 大小月、平年闰年（二月28/29天）、季度；不涉及世纪与复杂历法推算
+  - code: math.g3b.pep.ch06.s02
+    name: 2. 24时计时法
+    order: 2
+    hint: 24时计时法与普通计时法互化、简单经过时间；不涉及时区换算
+- code: math.g3b.pep.ch07
+  name: 第七单元 小数的初步认识
+  order: 7
+  children:
+  - code: math.g3b.pep.ch07.s01
+    name: 1. 小数的初步认识
+    order: 1
+    hint: 一位小数读写、以元角米为单位的小数含义、一位小数比较大小；不涉及两位小数与四则运算（四年级学）
+  - code: math.g3b.pep.ch07.s02
+    name: 2. 简单的小数加、减法
+    order: 2
+    hint: 一位小数加减法；不涉及两位小数与乘除法
+- code: math.g3b.pep.ch08
+  name: 第八单元 数学广角——搭配（二）
+  order: 8
+  children:
+  - code: math.g3b.pep.ch08.s01
+    name: 1. 搭配（二）
+    order: 1
+    hint: 简单排列组合（衣裤搭配、数字组成）；不涉及排列数组合数公式与符号

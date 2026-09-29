@@ -1,0 +1,132 @@
+# 人教版数学三年级上册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学三年级上册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g3.pep.chNN / math.g3.pep.chNN.sNN。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：中段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g3.pep
+  name: 人教版数学三年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G3
+chapters:
+- code: math.g3.pep.ch01
+  name: 第一单元 时、分、秒
+  order: 1
+  children:
+  - code: math.g3.pep.ch01.s01
+    name: 1. 秒的认识
+    order: 1
+    hint: 秒针、1分=60秒、时间单位简单换算；不涉及小数表示时间与速度计算
+  - code: math.g3.pep.ch01.s02
+    name: 2. 时间的计算
+    order: 2
+    hint: 简单经过时间计算（整时段）；不涉及跨日复杂时刻运算
+- code: math.g3.pep.ch02
+  name: 第二单元 万以内的加法和减法（一）
+  order: 2
+  children:
+  - code: math.g3.pep.ch02.s01
+    name: 1. 两位数加两位数口算
+    order: 1
+  - code: math.g3.pep.ch02.s02
+    name: 2. 两位数减两位数口算
+    order: 2
+  - code: math.g3.pep.ch02.s03
+    name: 3. 几百几十加减几百几十
+    order: 3
+    hint: 笔算几百几十数加减（如 380+550）；不涉及三位数乘法与四则混合
+- code: math.g3.pep.ch03
+  name: 第三单元 测量
+  order: 3
+  children:
+  - code: math.g3.pep.ch03.s01
+    name: 1. 毫米、分米的认识
+    order: 1
+    hint: 毫米/分米、1厘米=10毫米、1分米=10厘米、1米=10分米；不涉及微米与单位换算的小数形式
+  - code: math.g3.pep.ch03.s02
+    name: 2. 千米的认识
+    order: 2
+    hint: 千米、1千米=1000米、估测距离；不涉及速度与单位复合运算
+  - code: math.g3.pep.ch03.s03
+    name: 3. 吨的认识
+    order: 3
+    hint: 吨、1吨=1000千克；不涉及小数表示质量
+- code: math.g3.pep.ch04
+  name: 第四单元 万以内的加法和减法（二）
+  order: 4
+  children:
+  - code: math.g3.pep.ch04.s01
+    name: 1. 加法
+    order: 1
+    hint: 三位数加三位数笔算（连续进位）；不涉及四位数与运算律
+  - code: math.g3.pep.ch04.s02
+    name: 2. 减法
+    order: 2
+    hint: 三位数减三位数笔算（连续退位）与验算；不涉及四位数与小数加减
+- code: math.g3.pep.ch05
+  name: 第五单元 倍的认识
+  order: 5
+  children:
+  - code: math.g3.pep.ch05.s01
+    name: 1. 倍的认识
+    order: 1
+    hint: 倍的概念（一个数是另一个数的几倍）、求一个数的几倍是多少；不涉及分数倍与小数倍
+- code: math.g3.pep.ch06
+  name: 第六单元 多位数乘一位数
+  order: 6
+  children:
+  - code: math.g3.pep.ch06.s01
+    name: 1. 口算乘法
+    order: 1
+    hint: 整十整百数乘一位数口算（如 20×3）；不涉及两位数乘两位数（四年级学）
+  - code: math.g3.pep.ch06.s02
+    name: 2. 笔算乘法
+    order: 2
+    hint: 多位数乘一位数笔算（含中间有0、末尾有0）；不涉及两位数乘两位数
+  - code: math.g3.pep.ch06.s03
+    name: 3. 解决问题（估算）
+    order: 3
+    hint: 用估算解决问题（往大估往小估）；不涉及精确计算复杂应用
+- code: math.g3.pep.ch07
+  name: 第七单元 长方形和正方形
+  order: 7
+  children:
+  - code: math.g3.pep.ch07.s01
+    name: 1. 四边形
+    order: 1
+    hint: 四边形特征辨认、长方形正方形特征（边角）；不涉及平行四边形面积与内角和定理证明
+  - code: math.g3.pep.ch07.s02
+    name: 2. 周长
+    order: 2
+    hint: 周长概念、长方形正方形周长计算；不涉及面积（下册学）与小数边长
+- code: math.g3.pep.ch08
+  name: 第八单元 分数的初步认识
+  order: 8
+  children:
+  - code: math.g3.pep.ch08.s01
+    name: 1. 分数的初步认识
+    order: 1
+    hint: 几分之一、几分之几、分数各部分名称、简单分数比较；不涉及分数加减法（下一节学）与分数单位换算
+  - code: math.g3.pep.ch08.s02
+    name: 2. 分数的简单计算
+    order: 2
+    hint: 同分母分数加减、1减去几分之几；不涉及异分母分数运算（五年级学）与约分
+- code: math.g3.pep.ch09
+  name: 第九单元 数学广角——集合
+  order: 9
+  children:
+  - code: math.g3.pep.ch09.s01
+    name: 1. 集合
+    order: 1
+    hint: 韦恩图直观表示重叠问题；不涉及集合符号运算与交集并集术语

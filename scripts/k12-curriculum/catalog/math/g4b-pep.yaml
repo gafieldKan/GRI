@@ -1,0 +1,136 @@
+# 人教版数学四年级下册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学四年级下册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g4b.pep.chNN / math.g4b.pep.chNN.sNN。下册 code 加 b 后缀。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：中段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g4b.pep
+  name: 人教版数学四年级下册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G4
+chapters:
+- code: math.g4b.pep.ch01
+  name: 第一单元 四则运算
+  order: 1
+  children:
+  - code: math.g4b.pep.ch01.s01
+    name: 1. 加、减法的意义和各部分间关系
+    order: 1
+  - code: math.g4b.pep.ch01.s02
+    name: 2. 乘、除法的意义和各部分间关系
+    order: 2
+  - code: math.g4b.pep.ch01.s03
+    name: 3. 括号与运算顺序
+    order: 3
+    hint: 含括号的四则混合运算顺序、0的运算特性；不涉及负数运算与繁分数
+- code: math.g4b.pep.ch02
+  name: 第二单元 观察物体（二）
+  order: 2
+  children:
+  - code: math.g4b.pep.ch02.s01
+    name: 1. 观察物体（二）
+    order: 1
+    hint: 从不同方向观察立体图形（最多由4个小正方体拼成）；不涉及三视图术语与棱锥
+- code: math.g4b.pep.ch03
+  name: 第三单元 运算定律
+  order: 3
+  children:
+  - code: math.g4b.pep.ch03.s01
+    name: 1. 加法运算定律
+    order: 1
+    hint: 加法交换律结合律、连减性质；不涉及字母表示律的正式代数表述（五年级学）
+  - code: math.g4b.pep.ch03.s02
+    name: 2. 乘法运算定律
+    order: 2
+    hint: 乘法交换律结合律分配律、连除性质；不涉及字母符号运算与提取公因式
+- code: math.g4b.pep.ch04
+  name: 第四单元 小数的意义和性质
+  order: 4
+  children:
+  - code: math.g4b.pep.ch04.s01
+    name: 1. 小数的意义和读写法
+    order: 1
+    hint: 小数意义、数位顺序、读写；不涉及循环小数（五年级学）
+  - code: math.g4b.pep.ch04.s02
+    name: 2. 小数的性质和大小比较
+    order: 2
+  - code: math.g4b.pep.ch04.s03
+    name: 3. 小数点移动引起小数大小变化
+    order: 3
+  - code: math.g4b.pep.ch04.s04
+    name: 4. 小数与单位换算
+    order: 4
+    hint: 名数改写（含小数）；不涉及复名数复杂混合换算
+  - code: math.g4b.pep.ch04.s05
+    name: 5. 小数的近似数
+    order: 5
+    hint: 四舍五入求近似数、改写成万亿作单位；不涉及有效数字术语
+- code: math.g4b.pep.ch05
+  name: 第五单元 三角形
+  order: 5
+  children:
+  - code: math.g4b.pep.ch05.s01
+    name: 1. 三角形的特性
+    order: 1
+    hint: 三角形定义、稳定性、三边关系（两边之和大于第三边）、底和高；不涉及余弦定理
+  - code: math.g4b.pep.ch05.s02
+    name: 2. 三角形的分类
+    order: 2
+    hint: 按角分类（锐直钝）按边分类（等腰等边）；不涉及外角与勾股定理（初中）
+  - code: math.g4b.pep.ch05.s03
+    name: 3. 三角形的内角和
+    order: 3
+    hint: 内角和180°；不涉及外角和与n边形内角和（形式推导）
+- code: math.g4b.pep.ch06
+  name: 第六单元 小数的加法和减法
+  order: 6
+  children:
+  - code: math.g4b.pep.ch06.s01
+    name: 1. 小数加减法
+    order: 1
+    hint: 小数加减法竖式（小数点对齐）；不涉及小数乘除法（五年级学）
+  - code: math.g4b.pep.ch06.s02
+    name: 2. 小数加减混合运算
+    order: 2
+- code: math.g4b.pep.ch07
+  name: 第七单元 图形的运动（二）
+  order: 7
+  children:
+  - code: math.g4b.pep.ch07.s01
+    name: 1. 轴对称
+    order: 1
+    hint: 轴对称图形性质（对应点到对称轴距离相等）、补全轴对称图形；不涉及旋转对称n次
+  - code: math.g4b.pep.ch07.s02
+    name: 2. 平移
+    order: 2
+    hint: 在方格纸上平移图形（画出平移后图形）；不涉及坐标变换公式
+- code: math.g4b.pep.ch08
+  name: 第八单元 平均数与条形统计图
+  order: 8
+  children:
+  - code: math.g4b.pep.ch08.s01
+    name: 1. 平均数
+    order: 1
+    hint: 平均数意义与计算（总数÷份数）；不涉及加权平均数与中位数众数（初中统计）
+  - code: math.g4b.pep.ch08.s02
+    name: 2. 复式条形统计图
+    order: 2
+- code: math.g4b.pep.ch09
+  name: 第九单元 数学广角——鸡兔同笼
+  order: 9
+  children:
+  - code: math.g4b.pep.ch09.s01
+    name: 1. 鸡兔同笼
+    order: 1
+    hint: 列表尝试法、假设法解鸡兔同笼；不涉及二元一次方程组（七年级学）

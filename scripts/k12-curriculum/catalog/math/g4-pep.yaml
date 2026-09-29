@@ -1,0 +1,115 @@
+# 人教版数学四年级上册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学四年级上册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g4.pep.chNN / math.g4.pep.chNN.sNN。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：中段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g4.pep
+  name: 人教版数学四年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G4
+chapters:
+- code: math.g4.pep.ch01
+  name: 第一单元 大数的认识
+  order: 1
+  children:
+  - code: math.g4.pep.ch01.s01
+    name: 1. 亿以内数的认识
+    order: 1
+    hint: 亿以内数位顺序、读写与比较大小；不涉及科学记数法（七年级学）
+  - code: math.g4.pep.ch01.s02
+    name: 2. 数的产生与十进制计数法
+    order: 2
+  - code: math.g4.pep.ch01.s03
+    name: 3. 亿以上数的认识
+    order: 3
+    hint: 亿以上数读写与改写（用亿作单位）；不涉及负数与科学记数法
+  - code: math.g4.pep.ch01.s04
+    name: 4. 计算工具的认识与计算器使用
+    order: 4
+- code: math.g4.pep.ch02
+  name: 第二单元 公顷和平方千米
+  order: 2
+  children:
+  - code: math.g4.pep.ch02.s01
+    name: 1. 公顷和平方千米
+    order: 1
+    hint: 1公顷=10000平方米、1平方千米=100公顷；不涉及小数面积换算与亩
+- code: math.g4.pep.ch03
+  name: 第三单元 角的度量
+  order: 3
+  children:
+  - code: math.g4.pep.ch03.s01
+    name: 1. 线段、直线、射线
+    order: 1
+  - code: math.g4.pep.ch03.s02
+    name: 2. 角的度量
+    order: 2
+    hint: 量角器使用、角分类（锐直钝平周）；不涉及对顶角与圆弧度（初中学）
+  - code: math.g4.pep.ch03.s03
+    name: 3. 角的画法
+    order: 3
+- code: math.g4.pep.ch04
+  name: 第四单元 三位数乘两位数
+  order: 4
+  children:
+  - code: math.g4.pep.ch04.s01
+    name: 1. 三位数乘两位数笔算
+    order: 1
+    hint: 三位数乘两位数笔算（速度×时间路程模型）；不涉及小数乘法（五年级学）
+  - code: math.g4.pep.ch04.s02
+    name: 2. 积的变化规律
+    order: 2
+  - code: math.g4.pep.ch04.s03
+    name: 3. 乘法估算
+    order: 3
+- code: math.g4.pep.ch05
+  name: 第五单元 平行四边形和梯形
+  order: 5
+  children:
+  - code: math.g4.pep.ch05.s01
+    name: 1. 垂直与平行
+    order: 1
+    hint: 垂直平行的概念与画法；不涉及坐标系斜率表示
+  - code: math.g4.pep.ch05.s02
+    name: 2. 平行四边形和梯形
+    order: 2
+    hint: 平行四边形/梯形特征、底和高；不涉及面积计算（五年级学）
+- code: math.g4.pep.ch06
+  name: 第六单元 除数是两位数的除法
+  order: 6
+  children:
+  - code: math.g4.pep.ch06.s01
+    name: 1. 口算除法
+    order: 1
+  - code: math.g4.pep.ch06.s02
+    name: 2. 笔算除法
+    order: 2
+    hint: 除数两位数笔算（试商调商）、商不变规律；不涉及小数除法（五年级学）与余数小数
+- code: math.g4.pep.ch07
+  name: 第七单元 条形统计图
+  order: 7
+  children:
+  - code: math.g4.pep.ch07.s01
+    name: 1. 条形统计图
+    order: 1
+    hint: 条形统计图绘制与读取（1格表示多个单位）；不涉及折线图（下册学）与百分比
+- code: math.g4.pep.ch08
+  name: 第八单元 数学广角——优化
+  order: 8
+  children:
+  - code: math.g4.pep.ch08.s01
+    name: 1. 烙饼问题与沏茶问题
+    order: 1
+    hint: 简单优化统筹（合理安排工序）；不涉及线性规划术语
