@@ -1,0 +1,113 @@
+# 人教版数学二年级上册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学二年级上册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g2.pep.chNN / math.g2.pep.chNN.sNN。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：低段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g2.pep
+  name: 人教版数学二年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G2
+chapters:
+- code: math.g2.pep.ch01
+  name: 第一单元 长度单位
+  order: 1
+  children:
+  - code: math.g2.pep.ch01.s01
+    name: 1. 厘米和米
+    order: 1
+    hint: 认识厘米/米、1 米=100 厘米、测量线段；不涉及毫米千米与单位换算的小数形式
+  - code: math.g2.pep.ch01.s02
+    name: 2. 线段
+    order: 2
+- code: math.g2.pep.ch02
+  name: 第二单元 100以内的加法和减法（二）
+  order: 2
+  children:
+  - code: math.g2.pep.ch02.s01
+    name: 1. 加法
+    order: 1
+    hint: 两位数加两位数竖式（不进位与进位）；不涉及三位数加法（二年级下册学万以内）
+  - code: math.g2.pep.ch02.s02
+    name: 2. 减法
+    order: 2
+    hint: 两位数减两位数竖式（不退位与退位）；退位概念点到即止，不涉及连续退位
+  - code: math.g2.pep.ch02.s03
+    name: 3. 连加、连减和加减混合
+    order: 3
+  - code: math.g2.pep.ch02.s04
+    name: 4. 解决问题
+    order: 4
+    hint: 求比一个数多（少）几的数；不涉及和差倍问题系统方法
+- code: math.g2.pep.ch03
+  name: 第三单元 角的初步认识
+  order: 3
+  children:
+  - code: math.g2.pep.ch03.s01
+    name: 1. 角的初步认识
+    order: 1
+    hint: 角的组成（顶点边）、直角锐角钝角直观辨认与画法；不涉及角度量（四年级学量角器）与角的概念定义
+- code: math.g2.pep.ch04
+  name: 第四单元 表内乘法（一）
+  order: 4
+  children:
+  - code: math.g2.pep.ch04.s01
+    name: 1. 乘法的初步认识
+    order: 1
+    hint: 相同加数连加引出乘法、乘号读法；不涉及乘法交换律术语
+  - code: math.g2.pep.ch04.s02
+    name: 2. 2～6的乘法口诀
+    order: 2
+    hint: 2～6 口诀与求商准备；口诀记忆为主，不涉及乘法竖式（三年级下册学）
+- code: math.g2.pep.ch05
+  name: 第五单元 观察物体（一）
+  order: 5
+  children:
+  - code: math.g2.pep.ch05.s01
+    name: 1. 观察物体（一）
+    order: 1
+    hint: 前后左右上面观察同一物体看到的形状；不涉及三视图术语与正等测投影
+- code: math.g2.pep.ch06
+  name: 第六单元 表内乘法（二）
+  order: 6
+  children:
+  - code: math.g2.pep.ch06.s01
+    name: 1. 7的乘法口诀
+    order: 1
+  - code: math.g2.pep.ch06.s02
+    name: 2. 8的乘法口诀
+    order: 2
+  - code: math.g2.pep.ch06.s03
+    name: 3. 9的乘法口诀
+    order: 3
+  - code: math.g2.pep.ch06.s04
+    name: 4. 解决问题
+    order: 4
+    hint: 用口诀解决简单的倍数/份数问题（乘法意义）；不涉及除法（二年级下册学表内除法）
+- code: math.g2.pep.ch07
+  name: 第七单元 认识时间
+  order: 7
+  children:
+  - code: math.g2.pep.ch07.s01
+    name: 1. 认识时间
+    order: 1
+    hint: 几时几分（5 分一格读法）；不涉及秒的认识（三年级上册学）与经过时间计算
+- code: math.g2.pep.ch08
+  name: 第八单元 数学广角——搭配（一）
+  order: 8
+  children:
+  - code: math.g2.pep.ch08.s01
+    name: 1. 搭配（一）
+    order: 1
+    hint: 简单排列组合（如 1、2、3 组成两位数）；不涉及计算公式与乘法原理术语

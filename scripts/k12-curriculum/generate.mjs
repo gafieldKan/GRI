@@ -51,7 +51,7 @@ const gradeLevelOf = (code) => parseInt(String(code).replace(/^G/i, ''), 10)
 
 async function chat(messages, maxTokens = 4096) {
   let lastErr
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const res = await fetch(LLM.apiUrl, {
         method: 'POST',
@@ -67,11 +67,12 @@ async function chat(messages, maxTokens = 4096) {
       return msg.content || msg.reasoning_content || ''
     } catch (e) {
       lastErr = e
-      // 5xx/网络抖动指数退避重试；4xx（如 key 无效）直接抛
-      const retryable = /LLM 5\d{2}|fetch failed|network/.test(e.message)
-      if (!retryable || attempt === 4) throw e
+      // 5xx/网络抖动/429 限流指数退避重试；其余 4xx（如 key 无效）直接抛。
+      // 429 是限流类（配额窗口）——退避等待是唯一正解，不重试则整批前功尽弃。
+      const retryable = /LLM 5\d{2}|LLM 429|fetch failed|network/.test(e.message)
+      if (!retryable || attempt === 5) throw e
       const wait = 2000 * 2 ** (attempt - 1)
-      console.warn(`  ⚠ ${e.message.slice(0, 80)}——${wait / 1000}s 后重试（${attempt}/4）`)
+      console.warn(`  ⚠ ${e.message.slice(0, 80)}——${wait / 1000}s 后重试（${attempt}/5）`)
       await new Promise((r) => setTimeout(r, wait))
     }
   }
@@ -155,12 +156,25 @@ async function main() {
   }
   console.log(`章节展开：${sections.length} 个（含节）`)
 
+  // 断点续跑 checkpoint：每节完成即落盘，重跑时跳过已完成节（429/503 中断后零浪费续跑）。
+  // checkpoint 形态与 staging 同构（knowledgePoints 数组），中断后重跑自动从断点续。
+  const outName = CATALOG.replace(/[/.]/g, '-').replace(/-yaml$/, '') + '.staging.json'
+  const outPath = path.join(__dirname, 'staging', outName)
+  const ckptPath = outPath.replace(/\.staging\.json$/, '.checkpoint.json')
   const knowledgePoints = []
+  let doneSections = new Set()
+  try {
+    const ckpt = JSON.parse(await fs.readFile(ckptPath, 'utf8'))
+    knowledgePoints.push(...(ckpt.knowledgePoints ?? []))
+    doneSections = new Set(knowledgePoints.map((k) => k.chapter))
+    console.log(`✓ 断点续跑：已有 ${doneSections.size} 节 ${knowledgePoints.length} KP（重跑自动跳过）`)
+  } catch { /* 无 checkpoint → 全量 */ }
   const sectionByCode = new Map(sections.map((s) => [s.code, s]))
 
   for (const sec of sections) {
     // 章级生成 KP（挂在节上更细；章级只汇总）——只对「节」生成
     if (!sec.isSection) continue
+    if (doneSections.has(sec.code)) continue
     if (ONLY.length && !ONLY.includes(sec.code.replace(`${catalog.textbook.code}.`, ''))) continue
     const hint = sec.hint ? `\n课题语境提示（务必遵守）：${sec.hint}` : ''
     const kpReply = await chat([
@@ -229,6 +243,10 @@ async function main() {
       knowledgePoints.push(item)
       console.log(`  ✓ ${code} ${item.name}（例题 ${item.examples.length}）`)
     }
+    // 本节完成即落盘 checkpoint（原子替换：先写临时文件再 rename，防中断写半个 JSON）
+    const tmp = ckptPath + '.tmp'
+    await fs.writeFile(tmp, JSON.stringify({ catalog: catalog.textbook.code, knowledgePoints }, null, 1), 'utf8')
+    await fs.rename(tmp, ckptPath)
   }
 
   // staging 输出（draft——人工审核门禁）
@@ -263,8 +281,6 @@ async function main() {
   // staging 输出（draft——人工审核门禁）
   // 增量补生成（--only）：保留既有 staging 中未被重命的节，重命节以新生成覆盖；
   // 其余情况为全量生成，直接整册覆盖。
-  const outName = CATALOG.replace(/[/.]/g, '-').replace(/-yaml$/, '') + '.staging.json'
-  const outPath = path.join(__dirname, 'staging', outName)
   let knowledgePointsFinal = knowledgePoints
   if (ONLY.length) {
     try {
@@ -283,6 +299,7 @@ async function main() {
   }
   await fs.mkdir(path.dirname(outPath), { recursive: true })
   await fs.writeFile(outPath, JSON.stringify(data, null, 2), 'utf8')
+  try { await fs.unlink(ckptPath) } catch { /* 无 checkpoint */ }
   console.log(`\n✓ staging 输出：${outPath}（${knowledgePointsFinal.length} 知识点，status=draft 待人工审核）`)
 }
 

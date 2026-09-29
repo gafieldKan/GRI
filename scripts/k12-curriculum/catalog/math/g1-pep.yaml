@@ -1,0 +1,146 @@
+# 人教版数学一年级上册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学一年级上册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g1.pep.chNN（NN=印刷单元号）/ math.g1.pep.chNN.sNN（节）。
+#   小学各册单元号独立重新编号（印刷实际如此，与初中跨册连续章号不同）；
+#   code 全局唯一性由教材 code 前缀保证（textbook.code UNIQUE，章节 code 含教材前缀）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：低段易漂移节带认知边界提示（防 LLM 生成超学段内容——如钟表只到整时）。
+#   学科编码：MATH（LOWER → 'math'，命中 k12 本体判别值——import.mjs 闭集门禁验证）。
+
+textbook:
+  code: math.g1.pep
+  name: 人教版数学一年级上册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G1
+chapters:
+- code: math.g1.pep.ch01
+  name: 第一单元 准备课
+  order: 1
+  children:
+  - code: math.g1.pep.ch01.s01
+    name: 1. 数一数
+    order: 1
+    hint: 一年级起点——点数 10 以内物体个数、按顺序数数；不涉及数字书写规范与符号运算
+  - code: math.g1.pep.ch01.s02
+    name: 2. 比多少
+    order: 2
+    hint: 一一对应比较多少（同样多、多些、少些）；不涉及不等式符号与减法比较
+- code: math.g1.pep.ch02
+  name: 第二单元 位置
+  order: 2
+  children:
+  - code: math.g1.pep.ch02.s01
+    name: 1. 上、下、前、后
+    order: 1
+    hint: 用上下前后描述物体相对位置；不涉及坐标系与方位角
+  - code: math.g1.pep.ch02.s02
+    name: 2. 左、右
+    order: 2
+    hint: 以自身为中心分辨左右；不涉及镜面左右推理题（超出一年级认知）
+- code: math.g1.pep.ch03
+  name: 第三单元 1～5的认识和加减法
+  order: 3
+  children:
+  - code: math.g1.pep.ch03.s01
+    name: 1. 1～5的认识
+    order: 1
+  - code: math.g1.pep.ch03.s02
+    name: 2. 比多少
+    order: 2
+    hint: 用一一对应比较 5 以内数量；不涉及大于小于号（一年级下学期才引入）
+  - code: math.g1.pep.ch03.s03
+    name: 3. 第几
+    order: 3
+    hint: 序数意义（第 1～第 5）与基数意义的区分；不涉及分数与比例
+  - code: math.g1.pep.ch03.s04
+    name: 4. 分与合
+    order: 4
+    hint: 5 以内数的组成（如 4 和 1 组成 5）；不涉及数的分解式书写格式要求
+  - code: math.g1.pep.ch03.s05
+    name: 5. 加法
+    order: 5
+    hint: 5 以内加法的含义与口算（合并情境）；不涉及加法竖式（二年级学竖式）
+  - code: math.g1.pep.ch03.s06
+    name: 6. 减法
+    order: 6
+    hint: 5 以内减法的含义与口算（去掉情境）；不涉及减法竖式与借位
+  - code: math.g1.pep.ch03.s07
+    name: 7. 0的认识
+    order: 7
+    hint: 0 表示没有/起点；不涉及负数与绝对值
+- code: math.g1.pep.ch04
+  name: 第四单元 认识图形（一）
+  order: 4
+  children:
+  - code: math.g1.pep.ch04.s01
+    name: 1. 认识图形（一）
+    order: 1
+    hint: 立体图形直观辨认：长方体、正方体、圆柱、球；不涉及平面图形（一年级下册学）与面棱顶点计数
+- code: math.g1.pep.ch05
+  name: 第五单元 6～10的认识和加减法
+  order: 5
+  children:
+  - code: math.g1.pep.ch05.s01
+    name: 1. 6和7
+    order: 1
+  - code: math.g1.pep.ch05.s02
+    name: 2. 8和9
+    order: 2
+  - code: math.g1.pep.ch05.s03
+    name: 3. 10
+    order: 3
+  - code: math.g1.pep.ch05.s04
+    name: 4. 连加连减
+    order: 4
+    hint: 10 以内三数连加连减口算；不涉及混合运算顺序术语
+  - code: math.g1.pep.ch05.s05
+    name: 5. 加减混合
+    order: 5
+    hint: 10 以内加减混合口算（从左往右）；不涉及带括号运算（一年级下册学小括号）
+- code: math.g1.pep.ch06
+  name: 第六单元 11～20各数的认识
+  order: 6
+  children:
+  - code: math.g1.pep.ch06.s01
+    name: 1. 数数、读数
+    order: 1
+  - code: math.g1.pep.ch06.s02
+    name: 2. 写数
+    order: 2
+    hint: 20 以内数的写法与组成（十位个位初步）；不涉及数位顺序表（二年级学万以内数位）
+  - code: math.g1.pep.ch06.s03
+    name: 3. 10加几和相应的减法
+    order: 3
+    hint: 如 10+3、13-3 的口算；不涉及 20 以上进位退位运算
+- code: math.g1.pep.ch07
+  name: 第七单元 认识钟表
+  order: 7
+  children:
+  - code: math.g1.pep.ch07.s01
+    name: 1. 认识钟表
+    order: 1
+    hint: 整时的认识与读法（分针指向 12）；不涉及几时几分（二年级上册学认识时间）与 24 时计时法
+- code: math.g1.pep.ch08
+  name: 第八单元 20以内的进位加法
+  order: 8
+  children:
+  - code: math.g1.pep.ch08.s01
+    name: 1. 9加几
+    order: 1
+    hint: 凑十法口算（9+几）；不涉及竖式加法（二年级上册学笔算）
+  - code: math.g1.pep.ch08.s02
+    name: 2. 8、7、6加几
+    order: 2
+  - code: math.g1.pep.ch08.s03
+    name: 3. 5、4、3、2加几
+    order: 3

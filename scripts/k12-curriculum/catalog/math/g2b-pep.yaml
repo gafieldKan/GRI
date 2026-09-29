@@ -1,0 +1,107 @@
+# 人教版数学二年级下册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版）义务教育教科书 数学二年级下册（2012 教育部审定，2011 课标版）。
+# 编码约定：math.g2b.pep.chNN / math.g2b.pep.chNN.sNN。下册 code 加 b 后缀。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2012 审定版结构整理；以你手头教材实书目录为准校对。
+#   hint 字段：低段认知边界提示（防 LLM 生成超学段内容）。
+
+textbook:
+  code: math.g2b.pep
+  name: 人教版数学二年级下册
+  version: 人教版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学
+  grade: G2
+chapters:
+- code: math.g2b.pep.ch01
+  name: 第一单元 数据收集整理
+  order: 1
+  children:
+  - code: math.g2b.pep.ch01.s01
+    name: 1. 数据收集整理
+    order: 1
+    hint: 简单调查收集数据、正字计数与简单统计表；不涉及平均数（四年级学）与条形统计图绘制规范
+- code: math.g2b.pep.ch02
+  name: 第二单元 表内除法（一）
+  order: 2
+  children:
+  - code: math.g2b.pep.ch02.s01
+    name: 1. 除法的初步认识
+    order: 1
+    hint: 平均分含义、除号读法；不涉及除法竖式（三年级上册学）
+  - code: math.g2b.pep.ch02.s02
+    name: 2. 用2～6的乘法口诀求商
+    order: 2
+- code: math.g2b.pep.ch03
+  name: 第三单元 图形的运动（一）
+  order: 3
+  children:
+  - code: math.g2b.pep.ch03.s01
+    name: 1. 对称
+    order: 1
+    hint: 轴对称直观辨认与对称轴画法（1 条）；不涉及旋转对称与多次折叠
+  - code: math.g2b.pep.ch03.s02
+    name: 2. 平移
+    order: 2
+    hint: 上下左右平移辨认（格纸上平移几格）；不涉及坐标系平移变换记法
+  - code: math.g2b.pep.ch03.s03
+    name: 3. 旋转
+    order: 3
+    hint: 绕一点转动的旋转直观辨认（风车/转椅）；不涉及旋转角度与方向描述
+- code: math.g2b.pep.ch04
+  name: 第四单元 表内除法（二）
+  order: 4
+  children:
+  - code: math.g2b.pep.ch04.s01
+    name: 1. 用7、8、9的乘法口诀求商
+    order: 1
+  - code: math.g2b.pep.ch04.s02
+    name: 2. 解决问题
+    order: 2
+    hint: 用除法解决平均分/包含除问题；不涉及有余数除法（下一单元学）
+- code: math.g2b.pep.ch05
+  name: 第五单元 有余数的除法
+  order: 5
+  children:
+  - code: math.g2b.pep.ch05.s01
+    name: 1. 有余数的除法
+    order: 1
+    hint: 余数含义与余数<除数；不涉及试商方法系统化与除法竖式
+- code: math.g2b.pep.ch06
+  name: 第六单元 万以内数的认识
+  order: 6
+  children:
+  - code: math.g2b.pep.ch06.s01
+    name: 1. 1000以内数的认识
+    order: 1
+  - code: math.g2b.pep.ch06.s02
+    name: 2. 10000以内数的认识
+    order: 2
+    hint: 数位顺序（个十百千万）、读写与比较大小；不涉及近似数与四舍五入术语（三年级学）
+  - code: math.g2b.pep.ch06.s03
+    name: 3. 整百、整千数加减法
+    order: 3
+    hint: 口算整百整千加减（如 800+600）；不涉及万以内笔算加减法（三年级学）
+- code: math.g2b.pep.ch07
+  name: 第七单元 克和千克
+  order: 7
+  children:
+  - code: math.g2b.pep.ch07.s01
+    name: 1. 克和千克
+    order: 1
+    hint: 质量单位克/千克、1 千克=1000 克、常见物品质量估计；不涉及吨（三年级学）与小数表示
+- code: math.g2b.pep.ch08
+  name: 第八单元 数学广角——推理
+  order: 8
+  children:
+  - code: math.g2b.pep.ch08.s01
+    name: 1. 推理
+    order: 1
+    hint: 简单逻辑推理（两个/三个条件的排除法）；不涉及形式逻辑符号与真值表
