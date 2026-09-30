@@ -1,0 +1,76 @@
+# 人教版数学选择性必修第一册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版A版）普通高中教科书 数学 选择性必修第一册（2019 课标版）。
+# 编码约定：math.g11.pep.chNN（章号沿用印刷章号 1–3）/ math.g11.pep.chNN.sNN（节）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2019 课标人教版A版结构整理；章节划分/节名以你手头教材实书目录为准校对。
+#   高中「选择性必修」跨三册连续编号（选必一 ch1–3、选必二 ch4–5、选必三 ch6–8）。
+#   hint 字段：易漂移节带认知边界提示（防 LLM 生成超学段/大学内容）。
+
+textbook:
+  code: math.g11.pep
+  name: 人教版数学选择性必修第一册
+  version: 人教版A版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学       # 学科展示名（灌 ontology.subject.name / master_data Subject.label）
+  grade: G11
+
+chapters:
+  - code: math.g11.pep.ch01
+    name: 第一章 空间向量与立体几何
+    order: 1
+    children:
+      - code: math.g11.pep.ch01.s01
+        name: 1.1 空间向量及其运算
+        order: 1
+      - code: math.g11.pep.ch01.s02
+        name: 1.2 空间向量基本定理
+        order: 2
+      - code: math.g11.pep.ch01.s03
+        name: 1.3 空间向量及其运算的坐标表示
+        order: 3
+      - code: math.g11.pep.ch01.s04
+        name: 1.4 空间向量的应用
+        order: 4
+        hint: 高中范围——用空间向量坐标法求空间角（异面直线角/线面角/二面角）与距离、证明平行垂直；不涉及矩阵运算、线性代数向量空间公理或外积张量记号
+
+  - code: math.g11.pep.ch02
+    name: 第二章 直线和圆的方程
+    order: 2
+    children:
+      - code: math.g11.pep.ch02.s01
+        name: 2.1 直线的倾斜角与斜率
+        order: 1
+      - code: math.g11.pep.ch02.s02
+        name: 2.2 直线的方程
+        order: 2
+      - code: math.g11.pep.ch02.s03
+        name: 2.3 直线的交点坐标与距离公式
+        order: 3
+      - code: math.g11.pep.ch02.s04
+        name: 2.4 圆的方程
+        order: 4
+      - code: math.g11.pep.ch02.s05
+        name: 2.5 直线与圆、圆与圆的位置关系
+        order: 5
+
+  - code: math.g11.pep.ch03
+    name: 第三章 圆锥曲线的方程
+    order: 3
+    children:
+      - code: math.g11.pep.ch03.s01
+        name: 3.1 椭圆
+        order: 1
+      - code: math.g11.pep.ch03.s02
+        name: 3.2 双曲线
+        order: 2
+      - code: math.g11.pep.ch03.s03
+        name: 3.3 抛物线
+        order: 3
+        hint: 高中范围——椭圆/双曲线/抛物线的定义、标准方程与几何性质（焦点、离心率、准线）；不涉及参数方程与极坐标（旧课标选学内容）、圆锥曲线的射影几何或极坐标统一定义

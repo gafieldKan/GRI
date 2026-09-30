@@ -1,0 +1,73 @@
+# 人教版数学选择性必修第三册教材目录种子（草案——待人工校对）
+#
+# 用途：k12-curriculum 数据管线的结构输入（目录结构是公开信息）。
+#   - import.mjs 读本文件 → 幂等灌库 ontology.textbook / ontology.textbook_chapter
+#   - generate.mjs 读本文件 → 按章节批量生成知识点与例题（staging/*.json）
+#
+# 对齐：人民教育出版社（人教版A版）普通高中教科书 数学 选择性必修第三册（2019 课标版）。
+# 编码约定：math.g12.pep.chNN（章号沿用印刷章号 6–8）/ math.g12.pep.chNN.sNN（节）。
+# 红线：目录整理需人工校对后入库 git；章节树 parent 自引用。
+#
+# ⚠ 校对要点：本草案按 2019 课标人教版A版结构整理；章节划分/节名以你手头教材实书目录为准校对。
+#   高中「选择性必修」跨三册连续编号（选必一 ch1–3、选必二 ch4–5、选必三 ch6–8）。
+#   hint 字段：易漂移节带认知边界提示（防 LLM 生成超学段/大学内容）。
+
+textbook:
+  code: math.g12.pep
+  name: 人教版数学选择性必修第三册
+  version: 人教版A版
+  publisher: 人民教育出版社
+  subject: MATH
+  subjectName: 数学       # 学科展示名（灌 ontology.subject.name / master_data Subject.label）
+  grade: G12
+
+chapters:
+  - code: math.g12.pep.ch06
+    name: 第六章 计数原理
+    order: 6
+    children:
+      - code: math.g12.pep.ch06.s01
+        name: 6.1 分类加法计数原理与分步乘法计数原理
+        order: 1
+      - code: math.g12.pep.ch06.s02
+        name: 6.2 排列与组合
+        order: 2
+      - code: math.g12.pep.ch06.s03
+        name: 6.3 二项式定理
+        order: 3
+
+  - code: math.g12.pep.ch07
+    name: 第七章 随机变量及其分布
+    order: 7
+    children:
+      - code: math.g12.pep.ch07.s01
+        name: 7.1 条件概率与全概率公式
+        order: 1
+      - code: math.g12.pep.ch07.s02
+        name: 7.2 离散型随机变量及其分布列
+        order: 2
+      - code: math.g12.pep.ch07.s03
+        name: 7.3 离散型随机变量的数字特征
+        order: 3
+      - code: math.g12.pep.ch07.s04
+        name: 7.4 二项分布与超几何分布
+        order: 4
+      - code: math.g12.pep.ch07.s05
+        name: 7.5 正态分布
+        order: 5
+        hint: 高中范围——正态分布密度曲线的特征（对称性、参数 μ/σ 的意义）与 3σ 原则的应用；不涉及连续型随机变量的积分定义、概率密度函数的严格测度论或特征函数
+
+  - code: math.g12.pep.ch08
+    name: 第八章 成对数据的统计分析
+    order: 8
+    children:
+      - code: math.g12.pep.ch08.s01
+        name: 8.1 成对数据的相关关系
+        order: 1
+      - code: math.g12.pep.ch08.s02
+        name: 8.2 一元线性回归模型及其应用
+        order: 2
+      - code: math.g12.pep.ch08.s03
+        name: 8.3 列联表与独立性检验
+        order: 3
+        hint: 高中范围——用最小二乘法求一元线性回归方程、用卡方（χ²）独立性检验判断分类变量关联；不涉及矩阵运算、多元回归、线性代数或统计推断的严格理论
