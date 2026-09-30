@@ -10,16 +10,21 @@ import { LlmService } from './llm.service';
 export class ExamScannerAgent {
   constructor(private readonly llm: LlmService) {}
 
-  async scanExam(params: { imageDataUrl: string; subject?: string; gradeLevel?: string }) {
-    const { imageDataUrl, subject = 'math', gradeLevel = '8' } = params;
+  async scanExam(params: { imageDataUrl: string; subject?: string; gradeLevel?: string; rawText?: string }) {
+    const { imageDataUrl, subject = 'math', gradeLevel = '8', rawText } = params;
     try {
-      // Step1: 多模态 OCR 识别（无 key 抛「NO_LLM_KEY」→ 回退 Mock 文本）
+      // Step1: 题面来源 —— 显式 rawText（文本链路）直接用，免发空图给多模态端点；
+      // 否则多模态 OCR 识别图片（无 key 抛「NO_LLM_KEY」→ 回退 Mock 文本）。
       let ocr: { rawText: string; questions: any[] };
-      try {
-        ocr = await this._performOCR(imageDataUrl);
-      } catch (e) {
-        if ((e as Error)?.message === 'NO_LLM_KEY') ocr = this._getMockOCRResult();
-        else throw e;
+      if (rawText) {
+        ocr = { rawText, questions: [] };
+      } else {
+        try {
+          ocr = await this._performOCR(imageDataUrl);
+        } catch (e) {
+          if ((e as Error)?.message === 'NO_LLM_KEY') ocr = this._getMockOCRResult();
+          else throw e;
+        }
       }
       // Step2: 文本 → 结构化题目（LLM 或 mock）
       const parsedQuestions = await this._parseQuestions(ocr.rawText, subject, gradeLevel);

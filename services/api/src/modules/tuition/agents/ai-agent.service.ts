@@ -61,8 +61,8 @@ export class AiAgentService {
         [examId, rawText ? JSON.stringify({ raw_text: rawText }) : null, parsedQuestions.length ? JSON.stringify(parsedQuestions) : null],
       );
     } else if (rawText) {
-      // 文本链路：直接结构化
-      const scan = await this.scanner.scanExam({ imageDataUrl: '', subject, gradeLevel }).catch(() => null);
+      // 文本链路：跳过多模态 OCR（空图请求会让多模态端点挂死），直接结构化 rawText
+      const scan = await this.scanner.scanExam({ imageDataUrl: '', subject, gradeLevel, rawText }).catch(() => null);
       if (scan?.success) parsedQuestions = scan.parsedQuestions || [];
       if (!parsedQuestions.length) {
         parsedQuestions = [{ id: 'q1', type: 'solution', content: rawText, options: [], answer: '', knowledgePoint: '综合' }];
