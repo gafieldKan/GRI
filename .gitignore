@@ -74,3 +74,6 @@ uploads/
 
 # 生产 TLS 证书（自签/LE，运行时生成，勿入库）
 ssl/
+
+# k12-curriculum 版图审核前草稿（真源为 maps/*.map.json，草稿仅推导过程）
+scripts/k12-curriculum/maps-draft/
