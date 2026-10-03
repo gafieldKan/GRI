@@ -257,7 +257,7 @@ export default {
     ]
 
     function goWorld() {
-      uni.navigateTo({ url: '/pages/knowledge-map/index' })
+      uni.navigateTo({ url: '/pages/twin/world' })
     }
 
     async function loadData() {

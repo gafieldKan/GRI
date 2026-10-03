@@ -1,8 +1,8 @@
 <template>
   <view class="page">
     <PageHeader
-      title="学科登峰"
-      subtitle="每门学科都是一座山——从一年级到高三，一路登顶，峰外还有更远的风景"
+      title="虚拟世界 · 学科登峰"
+      subtitle="每门学科都是一座山——知识域是营地，前置依赖是航线，你的学习行动让世界生长"
       :actions="[{ label: '切换学科', handler: () => (showSubjectBar = !showSubjectBar) }]"
     />
 
@@ -18,6 +18,18 @@
       />
     </view>
 
+    <!-- 当前营地（孪生位置）：来自最近一次带场景的学习行动 -->
+    <view class="here-banner" v-if="scene">
+      <view class="here-left">
+        <text class="here-label">📍 当前营地</text>
+        <text class="here-name">{{ scene.name }}</text>
+      </view>
+      <view class="here-actions">
+        <Chip label="练一练" color="green" variant="soft" size="small" @click="practiceHere(scene.code)" />
+        <Chip label="请教教师" color="blue" variant="soft" size="small" @click="askTeacher(scene.name)" />
+      </view>
+    </view>
+
     <!-- 山顶统计条：覆盖比重 + 版图规模（诚实口径页面明示） -->
     <view class="stats-bar" v-if="stats.total > 0">
       <view class="stat-chip">
@@ -26,7 +38,7 @@
       </view>
       <view class="stat-chip">
         <text class="stat-value">{{ stats.k12 }}</text>
-        <text class="stat-label">已学知识域</text>
+        <text class="stat-label">知识域营地</text>
       </view>
       <view class="stat-chip">
         <text class="stat-value">{{ stats.frontier }}</text>
@@ -42,10 +54,8 @@
     </view>
 
     <view class="map-body">
-      <!-- 载入中 -->
       <LoadingSkeleton v-if="knowledgeStore.loading" />
 
-      <!-- 空态：版图未灌库或接口失败 -->
       <EmptyState
         v-else-if="!stats.total"
         icon="🏔"
@@ -55,7 +65,6 @@
 
       <!-- 金字塔分层山体：G1 底层 → G12 顶峰 → 云上远峰（frontier） -->
       <view v-else class="mountain">
-        <!-- 峰外地带（云上远峰：渲染在最上，云雾样式） -->
         <view class="cloud-zone" v-if="frontierAreas.length">
           <view class="zone-label">
             <text>☁️ 峰外地带 · K12 之后</text>
@@ -72,7 +81,6 @@
           </view>
         </view>
 
-        <!-- K12 山体：G12 顶峰在顶 → G1 底层在底（登高自下而上） -->
         <view
           v-for="layer in layers"
           :key="layer.grade"
@@ -88,18 +96,17 @@
               v-for="a in layer.areas"
               :key="a.code"
               class="area-chip"
-              :class="`area-${layerState(layer.grade)}`"
+              :class="[`area-${layerState(layer.grade)}`, { 'area-here': a.code === sceneCode }]"
               :style="areaMasteryStyle(a)"
               @click="openDetail(a)"
             >
-              <text class="area-flag" v-if="layerState(layer.grade) === 'passed'">✔</text>
-              <text class="area-flag" v-else-if="layerState(layer.grade) === 'current'">📍</text>
+              <text class="area-flag" v-if="a.code === sceneCode">📍</text>
+              <text class="area-flag" v-else-if="layerState(layer.grade) === 'passed'">✔</text>
               <text>{{ a.name }}</text>
             </view>
           </view>
         </view>
 
-        <!-- 山脚注：登峰即打卡——每层都是一段学途 -->
         <view class="base-note">
           <text>🚩 {{ knowledgeStore.subjectInfo?.name }}之山 · 由 {{ gradeName(1) }} 起步，{{ gradeName(12) }} 登顶</text>
         </view>
@@ -114,6 +121,22 @@
           <text class="detail-close" @click="detailArea = null">✕</text>
         </view>
         <text class="detail-desc" v-if="detailArea.description">{{ detailArea.description }}</text>
+
+        <!-- 航线：前置依赖链（世界里的路） -->
+        <view class="route" v-if="routeSteps.length">
+          <text class="route-label">航线</text>
+          <view class="route-chain">
+            <text v-for="(r, i) in routeSteps" :key="i" class="route-node">
+              <text v-if="i > 0" class="route-arrow">→ </text>{{ r }}
+            </text>
+            <text class="route-node current"><text class="route-arrow">→ </text>{{ detailArea.name }}</text>
+          </view>
+        </view>
+        <view class="route" v-else>
+          <text class="route-label">航线</text>
+          <text class="route-none">起点营地 —— 无前置依赖，可直接挑战</text>
+        </view>
+
         <view class="detail-rows">
           <view class="detail-row" v-if="detailArea.scope === 'k12'">
             <text class="row-key">落位年级</text>
@@ -127,14 +150,21 @@
             <text class="row-key">所属领域</text>
             <text class="row-val">{{ fieldName(detailArea.fieldCode) }}</text>
           </view>
-          <view class="detail-row" v-if="detailArea.prerequisites && detailArea.prerequisites.length">
-            <text class="row-key">前置</text>
-            <text class="row-val">{{ prereqNames(detailArea).join(' → ') }}</text>
+          <view class="detail-row" v-if="detailArea.mastery != null">
+            <text class="row-key">掌握度</text>
+            <text class="row-val">{{ Math.round(detailArea.mastery) }}%（近似值）</text>
           </view>
           <view class="detail-row" v-if="detailArea.kpCount > 0">
             <text class="row-key">已入库知识点</text>
             <text class="row-val">{{ detailArea.kpCount }} 个（可在知识图谱页展开）</text>
           </view>
+        </view>
+
+        <!-- 行动：在这个营地里可以做什么 -->
+        <view class="detail-actions">
+          <Chip label="🏋 练一练" color="green" variant="filled" size="medium" @click="practiceHere(detailArea.code)" />
+          <Chip label="💬 请教教师" color="blue" variant="filled" size="medium" @click="askTeacher(detailArea.name)" />
+          <Chip label="🧠 知识图谱" color="purple" variant="soft" size="medium" @click="goGraph" />
         </view>
       </view>
     </view>
@@ -145,12 +175,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useKnowledgeStore } from '@/store/knowledge'
+import { usePracticeStore } from '@/store/practice'
+import { useTwinStore } from '@/store/twin'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import Chip from '@/components/ui/Chip.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
 
 const knowledgeStore = useKnowledgeStore()
+const practiceStore = usePracticeStore()
+const twinStore = useTwinStore()
 const showSubjectBar = ref(true)
 const detailArea = ref(null)
 
@@ -164,7 +198,10 @@ const stats = computed(() => knowledgeStore.mapData.stats || { total: 0, k12: 0,
 const coveragePct = computed(() => Math.round((stats.value.coverageRatio || 0) * 100))
 const frontierAreas = computed(() => (knowledgeStore.mapData.areas || []).filter((a) => a.scope === 'frontier'))
 
-// 山体分层：G1 → G12（渲染时 G12 在顶；无节点年级也保留薄层，山的连续性）
+// 当前位置（孪生场景 code）：来自最近一次带 sceneId 的行动
+const scene = computed(() => twinStore.scene)
+const sceneCode = computed(() => scene.value?.code || null)
+
 const layers = computed(() => {
   const k12 = (knowledgeStore.mapData.areas || []).filter((a) => a.scope === 'k12')
   const byGrade = {}
@@ -174,10 +211,9 @@ const layers = computed(() => {
   }
   return Object.entries(byGrade)
     .map(([g, areas]) => ({ grade: Number(g), areas }))
-    .sort((x, y) => y.grade - x.grade) // G12 顶峰在前（页面顶部）
+    .sort((x, y) => y.grade - x.grade)
 })
 
-// 打卡态：已过=亮 / 在学=闪 / 未至=暗
 function layerState(grade) {
   const me = knowledgeStore.currentGrade
   if (grade < me) return 'passed'
@@ -185,7 +221,6 @@ function layerState(grade) {
   return 'ahead'
 }
 
-// 有掌握度数据的营地按均值着色（绿意深浅 = 掌握高低）
 function areaMasteryStyle(a) {
   if (a.mastery == null || a.scope !== 'k12') return ''
   const alpha = Math.max(0.12, Math.min(a.mastery / 100, 0.85))
@@ -197,10 +232,13 @@ function fieldName(fieldCode) {
   return f ? f.name : '—'
 }
 
-function prereqNames(area) {
+// 航线：该营地的前置依赖链（就近展示，最多回溯 3 段，避免长链溢出）
+const routeSteps = computed(() => {
+  if (!detailArea.value) return []
   const byCode = new Map((knowledgeStore.mapData.areas || []).map((a) => [a.code, a]))
-  return (area.prerequisites || []).map((c) => byCode.get(c)?.name ?? c)
-}
+  const direct = (detailArea.value.prerequisites || []).map((c) => byCode.get(c)?.name ?? c)
+  return direct.slice(0, 3)
+})
 
 function openDetail(a) {
   detailArea.value = a
@@ -211,6 +249,24 @@ function switchSubject(subj) {
   loadMap(subj)
 }
 
+// 行动：在该营地练一练（按学科开练习会话，落到练习 tab）
+function practiceHere(campCode) {
+  practiceStore.startSession('topic', { subject: knowledgeStore.currentSubject, topicId: campCode })
+  detailArea.value = null
+  uni.switchTab({ url: '/pages/practice/index' })
+}
+
+// 行动：请教 AI 教师（进入对话 tab；教师可感知当前学科）
+function askTeacher(campName) {
+  detailArea.value = null
+  uni.switchTab({ url: '/pages/chat/chat' })
+}
+
+function goGraph() {
+  detailArea.value = null
+  uni.switchTab({ url: '/pages/knowledge-graph/index' })
+}
+
 async function loadMap(subj) {
   await knowledgeStore.loadKnowledgeMap(subj || knowledgeStore.currentSubject)
 }
@@ -218,11 +274,12 @@ async function loadMap(subj) {
 onMounted(async () => {
   await knowledgeStore.loadCatalog()
   loadMap()
+  if (!twinStore.loaded) twinStore.loadOverview(knowledgeStore.currentSubject || 'math')
 })
 
-// 页面再现（tab/返回）时刷新版图（登录态可能变化 → 掌握度叠加）
 onShow(() => {
   if (knowledgeStore.mapData?.stats?.total) loadMap()
+  twinStore.loadOverview(knowledgeStore.currentSubject || 'math')
 })
 </script>
 
@@ -239,6 +296,40 @@ onShow(() => {
   padding: var(--spacing-sm, 16rpx);
   background: var(--color-bg-card, #fff);
   border-bottom: 1px solid var(--color-border, #e8e8f0);
+}
+
+/* 当前营地横幅 */
+.here-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: var(--spacing-sm, 16rpx);
+  padding: var(--spacing-sm, 16rpx) var(--spacing-md, 24rpx);
+  background: linear-gradient(135deg, #1B7A3D 0%, #2e9d57 100%);
+  border-radius: var(--radius-md, 12rpx);
+  box-shadow: 0 4rpx 16rpx rgba(27, 122, 61, 0.25);
+}
+
+.here-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.here-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.here-name {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 4rpx;
+}
+
+.here-actions {
+  display: flex;
+  gap: var(--spacing-xs, 8rpx);
 }
 
 .stats-bar {
@@ -280,14 +371,12 @@ onShow(() => {
   padding: var(--spacing-sm, 16rpx);
 }
 
-/* ── 山体 ── */
 .mountain {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm, 16rpx);
 }
 
-/* 云上远峰：frontier 域 */
 .cloud-zone {
   padding: var(--spacing-md, 24rpx) var(--spacing-sm, 16rpx);
   background: linear-gradient(180deg, rgba(24, 144, 255, 0.08), rgba(24, 144, 255, 0.02));
@@ -326,7 +415,11 @@ onShow(() => {
   background: transparent;
 }
 
-/* 分层：金字塔宽窄（顶层窄底层宽） */
+.area-here {
+  box-shadow: 0 0 0 4rpx rgba(27, 122, 61, 0.35);
+  font-weight: 700;
+}
+
 .mountain-layer {
   padding: var(--spacing-sm, 16rpx);
   background: var(--color-bg-card, #fff);
@@ -352,7 +445,6 @@ onShow(() => {
   color: var(--color-text-tertiary, #999);
 }
 
-/* 打卡三态 */
 .mountain-layer.passed {
   border-left: 6rpx solid var(--color-success, #52c41a);
 }
@@ -393,7 +485,45 @@ onShow(() => {
   padding: var(--spacing-sm, 16rpx) 0;
 }
 
-/* ── 详情弹层 ── */
+/* 航线 */
+.route {
+  margin-bottom: var(--spacing-md, 24rpx);
+}
+
+.route-label {
+  display: block;
+  font-size: 22rpx;
+  color: var(--color-text-tertiary, #999);
+  margin-bottom: 8rpx;
+}
+
+.route-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.route-node {
+  font-size: 24rpx;
+  color: var(--color-text-secondary, #5F6B65);
+}
+
+.route-node.current {
+  color: var(--color-primary, #1B7A3D);
+  font-weight: 700;
+}
+
+.route-arrow {
+  color: var(--color-text-tertiary, #bbb);
+}
+
+.route-none {
+  font-size: 24rpx;
+  color: var(--color-text-tertiary, #999);
+}
+
+/* 详情弹层 */
 .detail-mask {
   position: fixed;
   inset: 0;
@@ -405,7 +535,7 @@ onShow(() => {
 
 .detail-card {
   width: 100%;
-  max-height: 70vh;
+  max-height: 75vh;
   padding: var(--spacing-lg, 32rpx);
   background: var(--color-bg-card, #fff);
   border-radius: var(--radius-2xl, 32rpx) var(--radius-2xl, 32rpx) 0 0;
@@ -458,5 +588,14 @@ onShow(() => {
 
 .row-val {
   color: var(--color-text-primary, #1A1A2E);
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm, 16rpx);
+  margin-top: var(--spacing-lg, 32rpx);
+  padding-top: var(--spacing-md, 24rpx);
+  border-top: 1px solid var(--color-border, #e8e8f0);
 }
 </style>

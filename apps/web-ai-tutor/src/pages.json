@@ -50,9 +50,9 @@
       }
     },
     {
-      "path": "pages/knowledge-map/index",
+      "path": "pages/twin/world",
       "style": {
-        "navigationBarTitleText": "学科登峰",
+        "navigationBarTitleText": "虚拟世界",
         "enablePullDownRefresh": false
       }
     },
