@@ -20,6 +20,9 @@ interface ReqAuth {
  *   POST /api/twin/me/action     记录一次学习行动（动词闭集 → 经历）
  *   POST /api/twin/me/profile    更新人物画像（白名单 → edu.students，记 profile 经历）
  *   POST /api/twin/me/backfill   历史经历回填（幂等，仅空时间线时执行）
+ *   GET  /api/twin/me/replay     状态回放序列（经历正序，滑杆 scrubbing）
+ *   GET  /api/twin/me/export     导出孪生档案（gri-student-digital-twin v1）
+ *   POST /api/twin/me/import     导入孪生档案（合并：追加经历 + 白名单更新身份）
  */
 @Controller('twin')
 export class TwinController {
@@ -57,5 +60,23 @@ export class TwinController {
   @Post('me/backfill')
   backfill(@Req() req: Request) {
     return this.twinService.backfill(this.entity(req));
+  }
+
+  @Get('me/replay')
+  replay(@Req() req: Request, @Query('limit') limit?: string) {
+    return this.twinService.getReplay(
+      this.entity(req),
+      limit ? parseInt(limit, 10) : 200,
+    );
+  }
+
+  @Get('me/export')
+  exportArchive(@Req() req: Request) {
+    return this.twinService.exportArchive(this.entity(req));
+  }
+
+  @Post('me/import')
+  importArchive(@Req() req: Request, @Body() body: any) {
+    return this.twinService.importArchive(this.entity(req), body ?? {});
   }
 }

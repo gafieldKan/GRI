@@ -146,3 +146,44 @@ export interface TwinOverview {
   memories: TwinMemory[];
   generatedAt: string;
 }
+
+/** 回放一帧（事件的正序视图，滑杆 scrubbing 用）。 */
+export interface TwinReplayFrame {
+  index: number;
+  id: string;
+  at: string;
+  kind: TwinEventKind;
+  title: string;
+  text: string | null;
+  sceneId: string | null;
+  diffs: TwinDiff[];
+  before: unknown;
+  after: unknown;
+}
+
+/** 状态回放序列（正序，最早在前）。 */
+export interface TwinReplay {
+  entityId: string;
+  frames: TwinReplayFrame[];
+  generatedAt: string;
+}
+
+/**
+ * 孪生档案（导出/导入）—— 对齐原型 PERSONA `persona-human-digital-twin` v1。
+ * 只含**个人**部件（身份/状态/经历/记忆）；世界(world)来自共享本体，不随档案搬运。
+ */
+export interface TwinArchive {
+  format: 'gri-student-digital-twin';
+  version: 1;
+  exportedAt: string;
+  profile: TwinProfile;
+  state: TwinState;
+  events: TwinEvent[];
+  memories: TwinMemory[];
+}
+
+/** 导入结果（合并语义：追加经历 + 白名单更新身份；状态由真源装配，不搬运）。 */
+export interface TwinImportResult {
+  events: number; // 新追加的经历条数（去重后）
+  profileUpdated: boolean;
+}

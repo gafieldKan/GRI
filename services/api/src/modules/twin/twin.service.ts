@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { IdentityService } from '../identity/identity.service';
 import { TuitionService } from '../tuition/tuition.service';
@@ -6,12 +6,15 @@ import { CurriculumService } from '../curriculum/curriculum.service';
 import { AgentService } from '../agent/agent.service';
 import {
   TwinActionInput,
+  TwinArchive,
   TwinEvent,
   TwinEventInput,
+  TwinImportResult,
   TwinMemory,
   TwinOverview,
   TwinProfile,
   TwinProfilePatch,
+  TwinReplay,
   TwinSkill,
   TwinState,
   TwinWorld,
@@ -49,6 +52,16 @@ const ACTION_VERBS: Record<string, string> = {
   exam: '测验',
   rest: '休息',
 };
+
+/**
+ * 敏感记忆键守卫（镜像 @gri/agent-core MemoryStore.AVOID_KEYS）。
+ * 导出/装配孪生档案时二次过滤——绝不让密码/令牌等键外泄。
+ */
+const AVOID_KEYS = /(password|secret|token|api_?key|credential)/i;
+
+/** 档案格式契约（fail-fast 校验）。 */
+const ARCHIVE_FORMAT = 'gri-student-digital-twin';
+const ARCHIVE_VERSION = 1;
 
 /**
  * TwinService —— 学生数字孪生的装配与事件溯源。
@@ -310,6 +323,143 @@ export class TwinService {
       before,
       after: snapshot,
     });
+  }
+
+  /**
+   * 状态回放：把经历按**正序**（最早在前）返回，供滑杆 scrubbing。
+   * 不改当前态——回看的是历史快照（before/after），而非重放副作用。
+   */
+  async getReplay(entityId: string, limit = 200): Promise<TwinReplay> {
+    const res = await this.db.query(
+      `SELECT id, entity_id, kind, title, text, source, scene_id, diffs, before, after, at
+         FROM twin.event
+        WHERE entity_id = $1
+        ORDER BY at ASC
+        LIMIT $2`,
+      [entityId, Math.max(1, Math.min(limit, 500))],
+    );
+    const frames = res.rows.map((r: any, i: number) => {
+      const e = this.mapEvent(r);
+      return {
+        index: i,
+        id: e.id,
+        at: e.at,
+        kind: e.kind,
+        title: e.title,
+        text: e.text,
+        sceneId: e.sceneId,
+        diffs: e.diffs,
+        before: e.before,
+        after: e.after,
+      };
+    });
+    return { entityId, frames, generatedAt: new Date().toISOString() };
+  }
+
+  /**
+   * 导出孪生档案（format=gri-student-digital-twin v1）。
+   * 只搬「个人」部件：身份 + 状态 + 经历 + 记忆；世界来自共享本体，不随档案搬运。
+   * 记忆经 AVOID_KEYS 二次过滤——档案绝不含敏感键。
+   */
+  async exportArchive(entityId: string): Promise<TwinArchive> {
+    const overview = await this.assembleOverview(entityId);
+    const memories = overview.memories.filter((m) => !AVOID_KEYS.test(m.key || ''));
+    const events = await this.listEvents(entityId, 500);
+    return {
+      format: ARCHIVE_FORMAT,
+      version: ARCHIVE_VERSION,
+      exportedAt: new Date().toISOString(),
+      profile: overview.profile,
+      state: overview.state,
+      events,
+      memories,
+    };
+  }
+
+  /**
+   * 导入孪生档案（合并语义）——fail-fast 校验格式/版本后：
+   *   1) 白名单更新身份（name/avatarUrl/gradeLevel/textbookVersion/school）；
+   *   2) 追加经历（按 at+kind+title 去重，避免重复导入翻倍）；
+   *   3) 记一条 settings 经历「导入孪生档案」。
+   * 状态由真源装配，不搬运（诚实口径：导入的是经历与身份，不是伪造的当前态）。
+   */
+  async importArchive(entityId: string, archive: any): Promise<TwinImportResult> {
+    if (!archive || typeof archive !== 'object') {
+      throw new BadRequestException('导入失败：档案为空或格式非法');
+    }
+    if (archive.format !== ARCHIVE_FORMAT) {
+      throw new BadRequestException(`导入失败：格式不匹配（期望 ${ARCHIVE_FORMAT}）`);
+    }
+    if (Number(archive.version) !== ARCHIVE_VERSION) {
+      throw new BadRequestException(`导入失败：版本不支持（期望 v${ARCHIVE_VERSION}）`);
+    }
+    const events = Array.isArray(archive.events) ? archive.events : [];
+
+    // 1) 身份：只取白名单字段
+    let profileUpdated = false;
+    const src = archive.profile ?? {};
+    const patch: TwinProfilePatch = {};
+    if (typeof src.name === 'string' && src.name.trim()) patch.name = src.name.trim();
+    if (typeof src.avatarUrl === 'string') patch.avatarUrl = src.avatarUrl;
+    if (src.gradeLevel != null && !Number.isNaN(Number(src.gradeLevel))) {
+      patch.gradeLevel = Number(src.gradeLevel);
+    }
+    if (typeof src.textbookVersion === 'string') patch.textbookVersion = src.textbookVersion;
+    if (typeof src.school === 'string') patch.school = src.school;
+    if (Object.keys(patch).length > 0) {
+      await this.updateProfile(entityId, patch);
+      profileUpdated = true;
+    }
+
+    // 2) 经历：追加（对 at+kind+title 去重）
+    const iso = (v: any): string => {
+      if (!v) return '';
+      const d = v instanceof Date ? v : new Date(v);
+      return Number.isNaN(d.getTime()) ? String(v) : d.toISOString();
+    };
+    const existing = await this.db.query(
+      'SELECT at, kind, title FROM twin.event WHERE entity_id = $1',
+      [entityId],
+    );
+    const seen = new Set<string>(
+      (existing.rows as any[]).map((r) => `${iso(r.at)}|${r.kind}|${r.title}`),
+    );
+    let created = 0;
+    for (const ev of events) {
+      const at = ev?.at ? iso(ev.at) : null;
+      const kind = ev?.kind ?? 'action';
+      const title = String(ev?.title ?? '导入经历');
+      const key = `${at}|${kind}|${title}`;
+      if (at && seen.has(key)) continue;
+      await this.db.query(
+        `INSERT INTO twin.event (entity_id, kind, title, text, source, scene_id, diffs, before, after, at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10::timestamptz, NOW()))`,
+        [
+          entityId,
+          kind,
+          title,
+          ev?.text ?? null,
+          ev?.source ? `${ev.source}（导入）` : '导入',
+          ev?.sceneId ?? null,
+          JSON.stringify(Array.isArray(ev?.diffs) ? ev.diffs : []),
+          ev?.before == null ? null : JSON.stringify(ev.before),
+          ev?.after == null ? null : JSON.stringify(ev.after),
+          at,
+        ],
+      );
+      if (at) seen.add(key);
+      created += 1;
+    }
+
+    // 3) 元经历
+    await this.recordEvent(entityId, {
+      kind: 'settings',
+      title: '导入孪生档案',
+      text: `导入经历 ${created} 条${profileUpdated ? '，并更新人物画像' : ''}。`,
+      source: '数据与设置',
+      diffs: [],
+    });
+    return { events: created, profileUpdated };
   }
 
   // ─────────────────────────── 内部装配 ───────────────────────────

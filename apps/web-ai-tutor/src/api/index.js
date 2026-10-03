@@ -411,6 +411,21 @@ export async function backfillTwin() {
   try { return await api.post('/api/twin/me/backfill') } catch (e) { return { created: 0, skipped: true } }
 }
 
+// 状态回放序列（经历正序，最早在前；滑杆 scrubbing）。
+export async function getTwinReplay(limit = 200) {
+  try { return await api.get('/api/twin/me/replay', { params: { limit } }) } catch (e) { return { entityId: '', frames: [], generatedAt: null } }
+}
+
+// 导出孪生档案（gri-student-digital-twin v1；不含敏感记忆键）。
+export async function exportTwinArchive() {
+  try { return await api.get('/api/twin/me/export') } catch (e) { return null }
+}
+
+// 导入孪生档案（合并：追加经历 + 白名单更新身份）。
+export async function importTwinArchive(archive) {
+  return await api.post('/api/twin/me/import', archive)
+}
+
 export function closeWebSocket(ws) {
   try { if (ws && ws.readyState === WebSocket.OPEN) ws.close() } catch (e) {}
 }

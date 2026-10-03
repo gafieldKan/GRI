@@ -5,11 +5,22 @@ vi.mock('@/api/index.js', () => ({
   getTwinOverview: vi.fn(),
   getTwinEvents: vi.fn(),
   updateTwinProfile: vi.fn(),
-  backfillTwin: vi.fn()
+  backfillTwin: vi.fn(),
+  recordTwinAction: vi.fn(),
+  getTwinReplay: vi.fn(),
+  exportTwinArchive: vi.fn(),
+  importTwinArchive: vi.fn()
 }))
 
 import { useTwinStore } from '@/store/twin'
-import { getTwinOverview, updateTwinProfile } from '@/api/index.js'
+import {
+  getTwinOverview,
+  updateTwinProfile,
+  recordTwinAction,
+  getTwinReplay,
+  exportTwinArchive,
+  importTwinArchive
+} from '@/api/index.js'
 
 const OVERVIEW = {
   profile: { id: 'u1', name: '小智', gradeName: '八年级', avatarUrl: 'a.png', school: '实验中学' },
@@ -78,5 +89,45 @@ describe('Twin Store', () => {
     expect(ok).toBe(true)
     expect(updateTwinProfile).toHaveBeenCalledWith({ gradeLevel: 9 })
     expect(getTwinOverview).toHaveBeenCalledTimes(2) // 初次 + 保存后刷新
+  })
+
+  it('loadReplay 装配回放帧', async () => {
+    getTwinReplay.mockResolvedValueOnce({
+      entityId: 'u1',
+      frames: [{ index: 0, id: 'e1', kind: 'system', title: '建立', at: '2026-10-01T10:00:00Z' }]
+    })
+    const store = useTwinStore()
+    const frames = await store.loadReplay(200)
+    expect(frames).toHaveLength(1)
+    expect(store.replayFrames[0].title).toBe('建立')
+    expect(getTwinReplay).toHaveBeenCalledWith(200)
+  })
+
+  it('exportArchive 透传档案，importArchive 后刷新总览', async () => {
+    exportTwinArchive.mockResolvedValueOnce({ format: 'gri-student-digital-twin', version: 1, events: [] })
+    importTwinArchive.mockResolvedValueOnce({ events: 2, profileUpdated: true })
+    getTwinOverview.mockResolvedValue(OVERVIEW)
+    const store = useTwinStore()
+
+    const a = await store.exportArchive()
+    expect(a.format).toBe('gri-student-digital-twin')
+
+    const r = await store.importArchive(a)
+    expect(r.events).toBe(2)
+    expect(getTwinOverview).toHaveBeenCalledTimes(1) // 导入后刷新
+  })
+
+  it('autoRecord 关闭时 performAction 不写经历', async () => {
+    const store = useTwinStore()
+    store.setAutoRecord(false)
+    const r = await store.performAction('practice', 'math.map.a.01.05')
+    expect(r).toBe(null)
+    expect(recordTwinAction).not.toHaveBeenCalled()
+
+    store.setAutoRecord(true)
+    recordTwinAction.mockResolvedValueOnce({ id: 'new', kind: 'action', title: '完成练习 1 题' })
+    const ev = await store.performAction('practice', null, { title: '完成练习 1 题' })
+    expect(ev.id).toBe('new')
+    expect(store.events[0].id).toBe('new')
   })
 })

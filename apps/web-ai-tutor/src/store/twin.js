@@ -8,7 +8,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getTwinOverview, getTwinEvents, updateTwinProfile, backfillTwin, recordTwinAction } from '@/api/index.js'
+import { getTwinOverview, getTwinEvents, updateTwinProfile, backfillTwin, recordTwinAction, getTwinReplay, exportTwinArchive, importTwinArchive } from '@/api/index.js'
 
 const EMPTY_STATE = {
   subject: 'math',
@@ -21,6 +21,16 @@ const EMPTY_STATE = {
   relations: { teacher: { interactions: 0, bond: 0 } }
 }
 
+// 本地偏好：默认自动记录（缺省/读取异常均视为开）。
+function readAutoRecord() {
+  try {
+    const v = uni.getStorageSync('twin-auto-record')
+    return v === '' || v == null ? true : !!v
+  } catch (e) {
+    return true
+  }
+}
+
 export const useTwinStore = defineStore('twin', () => {
   // ─── State ───
   const profile = ref(null)      // 身份（稳定属性）
@@ -28,7 +38,9 @@ export const useTwinStore = defineStore('twin', () => {
   const world = ref(null)        // 世界（学科版图：节点=知识域，航线=前置）
   const events = ref([])         // 经历（append-only 时间线）
   const memories = ref([])       // 长期记忆（agent.memory）
+  const replayFrames = ref([])   // 状态回放序列（正序快照）
   const generatedAt = ref(null)  // 装配时间戳
+  const autoRecord = ref(readAutoRecord()) // 本地偏好：是否自动把学习行动写入经历
   const loading = ref(false)
   const error = ref(null)
 
@@ -115,6 +127,7 @@ export const useTwinStore = defineStore('twin', () => {
 
   // 记录一次学习行动（行动 → 经历）。成功后把新经历插到时间线头部（即时可见）。
   async function performAction(verb, sceneId, extra = {}) {
+    if (!autoRecord.value) return null // 本地偏好关闭：不自动写入经历
     try {
       const ev = await recordTwinAction({ verb, sceneId, ...extra })
       if (ev && ev.id) events.value = [ev, ...events.value]
@@ -125,12 +138,58 @@ export const useTwinStore = defineStore('twin', () => {
     }
   }
 
+  // 设置本地偏好：是否自动记录学习行动（持久化于本机）。
+  function setAutoRecord(v) {
+    autoRecord.value = !!v
+    try {
+      uni.setStorageSync('twin-auto-record', !!v)
+    } catch (e) {
+      /* 存储不可用不致命 */
+    }
+  }
+
+  // 拉取状态回放序列（经历正序快照，滑杆 scrubbing 用）。
+  async function loadReplay(limit = 200) {
+    try {
+      const r = await getTwinReplay(limit)
+      replayFrames.value = Array.isArray(r?.frames) ? r.frames : []
+      return replayFrames.value
+    } catch (e) {
+      console.error('[Twin] Load replay failed:', e)
+      replayFrames.value = []
+      return []
+    }
+  }
+
+  // 导出孪生档案（gri-student-digital-twin v1）。
+  async function exportArchive() {
+    try {
+      return await exportTwinArchive()
+    } catch (e) {
+      console.error('[Twin] Export archive failed:', e)
+      return null
+    }
+  }
+
+  // 导入孪生档案（合并：追加经历 + 白名单更新身份）；成功后刷新总览。
+  async function importArchive(archive) {
+    try {
+      const r = await importTwinArchive(archive)
+      await loadOverview(state.value?.subject)
+      return r
+    } catch (e) {
+      console.error('[Twin] Import archive failed:', e)
+      throw e
+    }
+  }
+
   function reset() {
     profile.value = null
     state.value = null
     world.value = null
     events.value = []
     memories.value = []
+    replayFrames.value = []
     generatedAt.value = null
     loading.value = false
     error.value = null
@@ -138,12 +197,13 @@ export const useTwinStore = defineStore('twin', () => {
 
   return {
     // State
-    profile, state, world, events, memories, generatedAt, loading, error,
+    profile, state, world, events, memories, replayFrames, generatedAt, autoRecord, loading, error,
     // Getters
     loaded, skills, mastery, progress, scene, teacherBond, fields, areas, worldStats,
     recentEvents, displayName, gradeName, avatarUrl,
     // Actions
-    loadOverview, loadEvents, saveProfile, backfill, performAction, reset
+    loadOverview, loadEvents, saveProfile, backfill, performAction,
+    loadReplay, exportArchive, importArchive, setAutoRecord, reset
   }
 })
 

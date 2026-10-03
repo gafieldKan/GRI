@@ -262,7 +262,9 @@ export default {
       { icon: '📸', label: '拍照解题', desc: '拍照即解析', color: '#faad14', handler: () => uni.navigateTo({ url: '/pages/camera/camera' }) },
       { icon: '🏔', label: '学科登峰', desc: '进入我的世界', color: '#1B7A3D', handler: goWorld },
       { icon: '🧬', label: '人物画像', desc: '编辑稳定身份', color: '#722ed1', handler: () => uni.navigateTo({ url: '/pages/twin/profile' }) },
-      { icon: '🕓', label: '行为与记忆', desc: '经历时间线与记忆', color: '#eb2f96', handler: goMemory }
+      { icon: '🕓', label: '行为与记忆', desc: '经历时间线与记忆', color: '#eb2f96', handler: goMemory },
+      { icon: '⏳', label: '状态回放', desc: '回看孪生如何长成', color: '#13c2c2', handler: () => uni.navigateTo({ url: '/pages/twin/replay' }) },
+      { icon: '🗂', label: '数据与设置', desc: '导出/导入档案', color: '#fa8c16', handler: () => uni.navigateTo({ url: '/pages/twin/data' }) }
     ]
 
     function goWorld() {

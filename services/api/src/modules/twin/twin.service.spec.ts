@@ -16,6 +16,7 @@ function makeService(overrides: {
   map?: any;
   memories?: any;
   backfillCount?: number;
+  existingEventKeys?: any[];
 } = {}) {
   const events = overrides.events ?? [
     {
@@ -34,6 +35,12 @@ function makeService(overrides: {
     query: jest.fn(async (sql: string) => {
       if (sql.includes('SELECT after FROM twin.event')) {
         return { rows: [{ after: { totalAnswered: 19, accuracy: 70 } }] };
+      }
+      if (sql.includes('SELECT at, kind, title FROM twin.event')) {
+        return { rows: overrides.existingEventKeys ?? [] };
+      }
+      if (sql.includes('FROM twin.event') && sql.includes('ORDER BY at ASC')) {
+        return { rows: [...events].reverse() }; // 正序 = 倒序事件反转
       }
       if (sql.includes('FROM twin.event') && sql.includes('ORDER BY at DESC')) {
         return { rows: events };
@@ -201,5 +208,76 @@ describe('TwinService —— 学生数字孪生装配', () => {
       expect.stringContaining('INSERT INTO twin.event'),
       expect.arrayContaining([expect.stringContaining('正确率')]),
     );
+  });
+
+  it('getReplay：经历正序返回并带帧序号（滑杆 scrubbing）', async () => {
+    const { svc } = makeService();
+    const r = await svc.getReplay('u1');
+    expect(r.entityId).toBe('u1');
+    expect(r.frames.map((f) => f.id)).toEqual(['e1', 'e2']); // 最早在前
+    expect(r.frames[0].index).toBe(0);
+    expect(r.frames[1].index).toBe(1);
+  });
+
+  it('exportArchive：格式契约 + 敏感记忆键被过滤', async () => {
+    const { svc } = makeService({
+      memories: [
+        { key: 'setting.preferredDifficulty', value: 'adaptive', strength: 2, updatedAt: null },
+        { key: 'fact.api_key', value: 'sk-should-not-leak', strength: 1, updatedAt: null },
+      ],
+    });
+    const a = await svc.exportArchive('u1');
+    expect(a.format).toBe('gri-student-digital-twin');
+    expect(a.version).toBe(1);
+    expect(a.profile.name).toBe('小智');
+    expect(a.state.mastery.total).toBe(2);
+    expect(a.events).toHaveLength(2);
+    // 敏感键不得外泄
+    expect(a.memories.map((m) => m.key)).toEqual(['setting.preferredDifficulty']);
+  });
+
+  it('importArchive：格式/版本 fail-fast', async () => {
+    const { svc } = makeService();
+    await expect(svc.importArchive('u1', { format: 'nope', version: 1 })).rejects.toThrow(/格式不匹配/);
+    await expect(
+      svc.importArchive('u1', { format: 'gri-student-digital-twin', version: 99 }),
+    ).rejects.toThrow(/版本不支持/);
+  });
+
+  it('importArchive：合并追加经历 + 白名单更新身份', async () => {
+    const { svc, db } = makeService();
+    const archive = {
+      format: 'gri-student-digital-twin',
+      version: 1,
+      profile: { name: '小智', gradeLevel: 9, school: '新学校', password: 'x' },
+      state: {},
+      events: [
+        { at: '2026-09-01T00:00:00Z', kind: 'action', title: '完成练习 3 题' },
+        { at: '2026-09-02T00:00:00Z', kind: 'action', title: '完成练习 4 题' },
+      ],
+    };
+    const r = await svc.importArchive('u1', archive);
+    expect(r).toEqual({ events: 2, profileUpdated: true });
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO edu.students'),
+      expect.arrayContaining(['u1', '小智']),
+    );
+  });
+
+  it('importArchive：重复经历按 at+kind+title 去重', async () => {
+    const { svc } = makeService({
+      existingEventKeys: [{ at: '2026-09-01T00:00:00.000Z', kind: 'action', title: '完成练习 3 题' }],
+    });
+    const r = await svc.importArchive('u1', {
+      format: 'gri-student-digital-twin',
+      version: 1,
+      profile: {},
+      events: [
+        { at: '2026-09-01T00:00:00.000Z', kind: 'action', title: '完成练习 3 题' }, // 重复
+        { at: '2026-09-02T00:00:00Z', kind: 'action', title: '完成练习 4 题' }, // 新
+      ],
+    });
+    expect(r.events).toBe(1); // 仅新的一条
+    expect(r.profileUpdated).toBe(false);
   });
 });
