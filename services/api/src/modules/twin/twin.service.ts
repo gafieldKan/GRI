@@ -5,6 +5,7 @@ import { TuitionService } from '../tuition/tuition.service';
 import { CurriculumService } from '../curriculum/curriculum.service';
 import { AgentService } from '../agent/agent.service';
 import {
+  TwinActionInput,
   TwinEvent,
   TwinEventInput,
   TwinMemory,
@@ -37,6 +38,16 @@ const PROFILE_FIELD_LABELS: Record<string, string> = {
   gradeLevel: '年级',
   textbookVersion: '教材版本',
   school: '学校',
+};
+
+/** 学习动词闭集（世界的行动；默认标题）。 */
+const ACTION_VERBS: Record<string, string> = {
+  lesson: '上课',
+  practice: '练习',
+  review: '复习错题',
+  chat: '请教 AI 教师',
+  exam: '测验',
+  rest: '休息',
 };
 
 /**
@@ -251,6 +262,54 @@ export class TwinService {
       after,
     });
     return after;
+  }
+
+  /**
+   * 记录一次学习行动（世界里的动词）——「行动 → 经历」的挂钩面。
+   * 快照当前真实进度（tuition.computeStats）为 after，取上一条行动经历的 after 为 before，
+   * 派生可读差异（累计答题 / 正确率）；不伪造状态，只如实记录行动后的既成真源。
+   */
+  async recordAction(entityId: string, input: TwinActionInput): Promise<TwinEvent> {
+    const verb = ACTION_VERBS[input.verb] ? input.verb : 'practice';
+
+    let snapshot: any = null;
+    try {
+      const s = await this.tuition.computeStats(entityId);
+      snapshot = {
+        totalAnswered: Number(s?.totalAnswered ?? 0),
+        correctCount: Number(s?.correctCount ?? 0),
+        accuracy: Number(s?.accuracy ?? 0),
+      };
+    } catch {
+      snapshot = null;
+    }
+
+    const prev = await this.db.query(
+      `SELECT after FROM twin.event
+        WHERE entity_id = $1 AND kind = 'action' AND after IS NOT NULL
+        ORDER BY at DESC LIMIT 1`,
+      [entityId],
+    );
+    const before = prev.rows[0]?.after ?? null;
+
+    const diffs =
+      before && snapshot
+        ? [
+            { label: '累计答题', before: String(before.totalAnswered ?? 0), after: String(snapshot.totalAnswered) },
+            { label: '正确率', before: `${before.accuracy ?? 0}%`, after: `${snapshot.accuracy}%` },
+          ].filter((d) => d.before !== d.after)
+        : [];
+
+    return this.recordEvent(entityId, {
+      kind: 'action',
+      title: input.title || ACTION_VERBS[verb],
+      text: input.text ?? null,
+      source: '学习行动',
+      sceneId: input.sceneId ?? null,
+      diffs,
+      before,
+      after: snapshot,
+    });
   }
 
   // ─────────────────────────── 内部装配 ───────────────────────────

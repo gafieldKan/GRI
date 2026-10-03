@@ -57,6 +57,13 @@
       }
     },
     {
+      "path": "pages/twin/memory",
+      "style": {
+        "navigationBarTitleText": "行为与记忆",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
       "path": "pages/wrong-questions/index",
       "style": {
         "navigationBarTitleText": "错题本",

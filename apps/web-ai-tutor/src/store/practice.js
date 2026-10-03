@@ -7,6 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getQuestionBank, submitPracticeAnswer, getSpacedRepetitionQueue, startPracticeSession, completePracticeSession, getPracticeHistory } from '@/api/index.js'
 import { useUserStore } from './user.js'
+import { useTwinStore } from './twin.js'
 
 // 学生业务主键统一从 user store 解出
 function currentStudentId() {
@@ -203,6 +204,15 @@ export const usePracticeStore = defineStore('practice', () => {
         isCorrect,
         timeSpent
       })
+      // 行动挂钩：答完一题即一次「经历」（孪生时间线生长；不阻塞主流程）
+      try {
+        useTwinStore().performAction('practice', currentTopicId.value, {
+          title: '完成练习 1 题',
+          text: isCorrect ? '答对了，掌握度累积中。' : '答错了——它已进入错题本，稍后可复习。'
+        })
+      } catch (e) {
+        /* 孪生不可用不致命 */
+      }
     } catch (e) {
       console.warn('[Practice] Submit answer failed:', e)
     }

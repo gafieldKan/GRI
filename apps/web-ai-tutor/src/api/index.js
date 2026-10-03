@@ -396,6 +396,11 @@ export async function getTwinEvents(limit = 50) {
   try { return await api.get('/api/twin/me/events', { params: { limit } }) } catch (e) { return [] }
 }
 
+// 记录一次学习行动（动词闭集 lesson|practice|review|chat|exam|rest → 一条经历）。
+export async function recordTwinAction(payload) {
+  try { return await api.post('/api/twin/me/action', payload) } catch (e) { return null }
+}
+
 // 更新人物画像（白名单字段落 edu.students；后端自动记一条 profile 经历）。
 export async function updateTwinProfile(patch) {
   try { return await api.post('/api/twin/me/profile', patch) } catch (e) { return { success: false } }

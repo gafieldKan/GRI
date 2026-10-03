@@ -63,6 +63,14 @@ export interface TwinProfile {
   school: string | null;
 }
 
+/** 行动入参（学习动词闭集：上课/练习/复习错题/请教教师/测验/休息）。 */
+export interface TwinActionInput {
+  verb: 'lesson' | 'practice' | 'review' | 'chat' | 'exam' | 'rest' | string;
+  sceneId?: string | null;
+  title?: string | null;
+  text?: string | null;
+}
+
 /** 人物画像自助更新入参（白名单；落 edu.students，并记一条 profile 经历）。 */
 export interface TwinProfilePatch {
   name?: string;

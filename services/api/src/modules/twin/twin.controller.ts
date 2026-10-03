@@ -17,6 +17,7 @@ interface ReqAuth {
  * 端点：
  *   GET  /api/twin/me            孪生总览（profile + state + world + 近期经历 + 记忆）
  *   GET  /api/twin/me/events     行为时间线（分页）
+ *   POST /api/twin/me/action     记录一次学习行动（动词闭集 → 经历）
  *   POST /api/twin/me/profile    更新人物画像（白名单 → edu.students，记 profile 经历）
  *   POST /api/twin/me/backfill   历史经历回填（幂等，仅空时间线时执行）
  */
@@ -41,6 +42,11 @@ export class TwinController {
       this.entity(req),
       limit ? parseInt(limit, 10) : 50,
     );
+  }
+
+  @Post('me/action')
+  action(@Req() req: Request, @Body() body: any) {
+    return this.twinService.recordAction(this.entity(req), body ?? {});
   }
 
   @Post('me/profile')

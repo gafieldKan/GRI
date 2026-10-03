@@ -32,6 +32,9 @@ function makeService(overrides: {
 
   const db = {
     query: jest.fn(async (sql: string) => {
+      if (sql.includes('SELECT after FROM twin.event')) {
+        return { rows: [{ after: { totalAnswered: 19, accuracy: 70 } }] };
+      }
       if (sql.includes('FROM twin.event') && sql.includes('ORDER BY at DESC')) {
         return { rows: events };
       }
@@ -186,6 +189,17 @@ describe('TwinService —— 学生数字孪生装配', () => {
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO twin.event'),
       expect.any(Array),
+    );
+  });
+
+  it('recordAction：记录学习行动并派生进度差异', async () => {
+    const { svc, db } = makeService();
+    const e = await svc.recordAction('u1', { verb: 'practice', sceneId: 'math.map.a.01.05' });
+    expect(e.id).toBe('e9');
+    // 上一条行动快照 70% → 当前 75%：差异写入事件的 diffs JSON
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO twin.event'),
+      expect.arrayContaining([expect.stringContaining('正确率')]),
     );
   });
 });

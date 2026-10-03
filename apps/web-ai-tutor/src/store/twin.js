@@ -8,7 +8,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getTwinOverview, getTwinEvents, updateTwinProfile, backfillTwin } from '@/api/index.js'
+import { getTwinOverview, getTwinEvents, updateTwinProfile, backfillTwin, recordTwinAction } from '@/api/index.js'
 
 const EMPTY_STATE = {
   subject: 'math',
@@ -113,6 +113,18 @@ export const useTwinStore = defineStore('twin', () => {
     }
   }
 
+  // 记录一次学习行动（行动 → 经历）。成功后把新经历插到时间线头部（即时可见）。
+  async function performAction(verb, sceneId, extra = {}) {
+    try {
+      const ev = await recordTwinAction({ verb, sceneId, ...extra })
+      if (ev && ev.id) events.value = [ev, ...events.value]
+      return ev
+    } catch (e) {
+      console.error('[Twin] performAction failed:', e)
+      return null
+    }
+  }
+
   function reset() {
     profile.value = null
     state.value = null
@@ -131,7 +143,7 @@ export const useTwinStore = defineStore('twin', () => {
     loaded, skills, mastery, progress, scene, teacherBond, fields, areas, worldStats,
     recentEvents, displayName, gradeName, avatarUrl,
     // Actions
-    loadOverview, loadEvents, saveProfile, backfill, reset
+    loadOverview, loadEvents, saveProfile, backfill, performAction, reset
   }
 })
 

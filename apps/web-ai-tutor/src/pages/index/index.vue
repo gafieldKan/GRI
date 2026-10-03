@@ -80,7 +80,11 @@
 
           <!-- 最近经历 -->
           <view class="card">
-            <PageHeader title="最近经历" subtitle="你的行为时间线" />
+            <PageHeader
+              title="最近经历"
+              subtitle="你的行为时间线"
+              :actions="[{ label: '查看全部', handler: goMemory }]"
+            />
             <EmptyState
               v-if="!twinStore.recentEvents.length"
               title="还没有经历"
@@ -109,7 +113,11 @@
 
           <!-- 长期记忆 -->
           <view class="card" v-if="twinStore.memories.length">
-            <PageHeader title="长期记忆" subtitle="AI 教师对你的跨会话记忆" />
+            <PageHeader
+              title="长期记忆"
+              subtitle="AI 教师对你的跨会话记忆"
+              :actions="[{ label: '全部经历与记忆', handler: goMemory }]"
+            />
             <view class="memory-list">
               <view v-for="m in twinStore.memories.slice(0, 4)" :key="m.key" class="memory-item">
                 <text class="memory-key">{{ memoryLabel(m.key) }}</text>
@@ -253,11 +261,16 @@ export default {
       { icon: '📝', label: '错题本', desc: '复盘未解决', color: '#ff4d4f', handler: () => uni.navigateTo({ url: '/pages/wrong-questions/index' }) },
       { icon: '📸', label: '拍照解题', desc: '拍照即解析', color: '#faad14', handler: () => uni.navigateTo({ url: '/pages/camera/camera' }) },
       { icon: '🏔', label: '学科登峰', desc: '进入我的世界', color: '#1B7A3D', handler: goWorld },
-      { icon: '🧬', label: '人物画像', desc: '编辑稳定身份', color: '#722ed1', handler: () => uni.navigateTo({ url: '/pages/twin/profile' }) }
+      { icon: '🧬', label: '人物画像', desc: '编辑稳定身份', color: '#722ed1', handler: () => uni.navigateTo({ url: '/pages/twin/profile' }) },
+      { icon: '🕓', label: '行为与记忆', desc: '经历时间线与记忆', color: '#eb2f96', handler: goMemory }
     ]
 
     function goWorld() {
       uni.navigateTo({ url: '/pages/twin/world' })
+    }
+
+    function goMemory() {
+      uni.navigateTo({ url: '/pages/twin/memory' })
     }
 
     async function loadData() {
@@ -282,6 +295,7 @@ export default {
       memoryValue,
       quickActions,
       goWorld,
+      goMemory,
       fallbackContent: () => h(EmptyState, {
         title: '孪生加载失败',
         description: '无法装配你的数字孪生，请稍后重试',
