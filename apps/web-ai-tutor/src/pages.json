@@ -15,6 +15,13 @@
       }
     },
     {
+      "path": "pages/twin/profile",
+      "style": {
+        "navigationBarTitleText": "人物画像",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
       "path": "pages/chat/chat",
       "style": {
         "navigationBarTitleText": "AI 互动辅导",

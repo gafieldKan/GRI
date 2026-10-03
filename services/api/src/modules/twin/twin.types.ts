@@ -63,6 +63,15 @@ export interface TwinProfile {
   school: string | null;
 }
 
+/** 人物画像自助更新入参（白名单；落 edu.students，并记一条 profile 经历）。 */
+export interface TwinProfilePatch {
+  name?: string;
+  avatarUrl?: string;
+  gradeLevel?: number | null;
+  textbookVersion?: string;
+  school?: string;
+}
+
 /** 能力雷达一项（按知识版图领域聚合的掌握度均值）。 */
 export interface TwinSkill {
   fieldCode: string;

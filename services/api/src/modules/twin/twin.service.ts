@@ -10,6 +10,7 @@ import {
   TwinMemory,
   TwinOverview,
   TwinProfile,
+  TwinProfilePatch,
   TwinSkill,
   TwinState,
   TwinWorld,
@@ -27,6 +28,15 @@ const DEFAULT_WORLD: TwinWorld = {
   fields: [],
   areas: [],
   stats: { total: 0, k12: 0, frontier: 0, coverageRatio: 0, byGrade: {} },
+};
+
+/** 人物画像可自助更新字段的展示名（用于经历差异的可读 label）。 */
+const PROFILE_FIELD_LABELS: Record<string, string> = {
+  name: '姓名',
+  avatarUrl: '头像',
+  gradeLevel: '年级',
+  textbookVersion: '教材版本',
+  school: '学校',
 };
 
 /**
@@ -193,6 +203,54 @@ export class TwinService {
       created += 1;
     }
     return { created, skipped: false };
+  }
+
+  /**
+   * 更新人物画像（身份·稳定属性）——白名单字段落 edu.students（upsert），
+   * 并记一条 kind='profile' 经历（含 before/after 快照与差异），「改画像」即一次经历。
+   */
+  async updateProfile(entityId: string, patch: TwinProfilePatch): Promise<TwinProfile> {
+    const before = this.projectProfile(await this.identity.getProfileByExternalId(entityId));
+
+    const cols: Record<string, unknown> = {};
+    if (patch.name !== undefined) cols.name = patch.name;
+    if (patch.avatarUrl !== undefined) cols.avatar_url = patch.avatarUrl;
+    if (patch.gradeLevel !== undefined) cols.grade = patch.gradeLevel;
+    if (patch.textbookVersion !== undefined) cols.textbook_version = patch.textbookVersion;
+    if (patch.school !== undefined) cols.school = patch.school;
+
+    const keys = Object.keys(cols);
+    if (keys.length > 0) {
+      // 列名全部来自白名单集合，无注入风险；$1 恒为 entityId（≡ users.id）
+      const colsSql = keys.join(', ');
+      const placeholders = keys.map((_, i) => `$${i + 2}`).join(', ');
+      const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
+      await this.db.query(
+        `INSERT INTO edu.students (user_id, ${colsSql})
+         VALUES ($1, ${placeholders})
+         ON CONFLICT (user_id) DO UPDATE SET ${setClause}, updated_at = NOW()`,
+        [entityId, ...keys.map((k) => cols[k])],
+      );
+    }
+
+    const after = this.projectProfile(await this.identity.getProfileByExternalId(entityId));
+    const diffs = Object.keys(PROFILE_FIELD_LABELS)
+      .filter((k) => String((before as any)[k] ?? '') !== String((after as any)[k] ?? ''))
+      .map((k) => ({
+        label: PROFILE_FIELD_LABELS[k],
+        before: String((before as any)[k] ?? '—'),
+        after: String((after as any)[k] ?? '—'),
+      }));
+
+    await this.recordEvent(entityId, {
+      kind: 'profile',
+      title: '更新人物画像',
+      source: '人物画像',
+      diffs,
+      before,
+      after,
+    });
+    return after;
   }
 
   // ─────────────────────────── 内部装配 ───────────────────────────

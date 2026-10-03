@@ -169,4 +169,23 @@ describe('TwinService —— 学生数字孪生装配', () => {
     const { svc } = makeService({ backfillCount: 0 });
     await expect(svc.backfill('u1')).resolves.toEqual({ created: 1, skipped: false });
   });
+
+  it('updateProfile：白名单落 edu.students 并记一条 profile 经历', async () => {
+    const { svc, identity, db } = makeService();
+    const base = { id: 'u1', username: 'stu', email: null, role: 'student', avatar_url: null };
+    identity.getProfileByExternalId
+      .mockResolvedValueOnce({ user: base, student: { name: '小智', grade: 8 } })
+      .mockResolvedValueOnce({ user: base, student: { name: '小智', grade: 9 } });
+
+    const p = await svc.updateProfile('u1', { gradeLevel: 9 });
+    expect(p.gradeName).toBe('九年级');
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO edu.students'),
+      expect.arrayContaining(['u1', 9]),
+    );
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO twin.event'),
+      expect.any(Array),
+    );
+  });
 });

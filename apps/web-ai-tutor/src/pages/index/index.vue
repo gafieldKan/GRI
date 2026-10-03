@@ -1,272 +1,203 @@
 <template>
   <ErrorBoundary :showDetails="true" :logError="true" :fallback="fallbackContent">
     <view class="page">
-      <!-- 状态栏占位 -->
       <view class="status-bar" />
 
-      <!-- 主内容区 -->
-      <scroll-view class="main-content" scroll-y="true" :scroll-into-view="scrollIntoView">
+      <scroll-view class="main-content" scroll-y="true">
+        <LoadingSkeleton v-if="twinStore.loading && !twinStore.loaded" variant="card" :rows="4" />
 
-        <!-- 顶部欢迎卡片 -->
-        <view class="welcome-card">
-          <view class="welcome-header">
-            <view class="user-info">
-              <text class="greeting">{{ greeting }}{{ userStore.name }}</text>
-              <text class="subtitle">今日学习时长 {{ formatStudyTime(userStore.todayStudyTime) }}</text>
+        <template v-else>
+          <!-- 孪生主体：数字人物 + 身份 + 当前接地 -->
+          <view class="hero">
+            <view class="hero-top">
+              <AvatarTwin :name="twinStore.displayName" :avatar-url="twinStore.avatarUrl" :size="72" />
+              <view class="hero-ident">
+                <text class="hero-greeting">{{ greeting }}</text>
+                <text class="hero-name">{{ twinStore.displayName }}</text>
+                <view class="hero-meta">
+                  <text v-if="twinStore.gradeName" class="meta-chip">{{ twinStore.gradeName }}</text>
+                  <text v-if="worldName" class="meta-chip">{{ worldName }}</text>
+                  <text v-if="profileSchool" class="meta-chip">{{ profileSchool }}</text>
+                </view>
+              </view>
             </view>
-            <view class="streak-xp">
-              <view class="streak-item">
-                <ProgressRing :value="userStore.streak" :max="7" :size="48" :stroke-width="4" color="#faad14" :show-value="false" />
-                <view class="streak-label">
-                  <text class="streak-value">{{ userStore.streak }}</text>
-                  <text class="streak-text">天连续</text>
-                </view>
-              </view>
-              <view class="divider-line" />
-              <view class="xp-item">
-                <ProgressRing :value="userStore.xpProgress" :max="100" :size="48" :stroke-width="4" :gradient="true" :gradient-colors="xpGradientColors" :show-value="false" />
-                <view class="xp-label">
-                  <text class="xp-value">{{ userStore.level }}</text>
-                  <text class="xp-text">级</text>
-                </view>
-              </view>
+            <view class="hero-scene" v-if="twinStore.scene">
+              <text class="scene-label">当前营地</text>
+              <text class="scene-name">{{ twinStore.scene.name }}</text>
+            </view>
+            <view class="hero-scene empty" v-else>
+              <text class="scene-label">尚未踏入版图</text>
+              <text class="scene-name" @click="goWorld">去学科登峰 →</text>
             </view>
           </view>
 
-          <!-- 每日目标进度 -->
-          <view class="daily-goal">
-            <view class="goal-header">
-              <text class="goal-title">每日目标</text>
-              <text class="goal-progress">{{ userStore.todayStudyTime }} / {{ userStore.dailyGoal }} 分钟</text>
+          <!-- 状态环 -->
+          <view class="rings-row">
+            <view class="ring-item">
+              <ProgressRing :value="twinStore.mastery.avg" :max="100" :size="64" :stroke-width="6" color="#4a6cf7" />
+              <text class="ring-label">掌握度</text>
             </view>
-            <ProgressRing
-              :value="goalPercentage"
-              :max="100"
-              :size="50"
-              :stroke-width="8"
-              :color="goalColor"
-              :show-value="true"
+            <view class="ring-item">
+              <ProgressRing :value="twinStore.progress.accuracy" :max="100" :size="64" :stroke-width="6" color="#52c41a" />
+              <text class="ring-label">正确率</text>
+            </view>
+            <view class="ring-item">
+              <ProgressRing :value="userStore.streak" :max="7" :size="64" :stroke-width="6" color="#faad14" />
+              <text class="ring-label">连续天数</text>
+            </view>
+            <view class="ring-item">
+              <ProgressRing :value="twinStore.teacherBond.bond" :max="100" :size="64" :stroke-width="6" color="#722ed1" />
+              <text class="ring-label">师生关系</text>
+            </view>
+          </view>
+
+          <!-- 能力雷达 -->
+          <view class="card">
+            <PageHeader title="能力雷达" subtitle="按知识版图领域聚合的掌握度" />
+            <SkillRadar :skills="twinStore.skills" color="#4a6cf7" />
+          </view>
+
+          <!-- 世界概览 -->
+          <view class="card">
+            <PageHeader
+              title="我的世界"
+              :subtitle="worldName ? worldName + '知识版图' : '学科知识版图'"
+              :actions="[{ label: '进入世界', handler: goWorld }]"
             />
-            <view class="goal-reward" v-if="userStore.todayStudyTime >= userStore.dailyGoal">
-              <text>🎉 目标达成！+50 XP</text>
-            </view>
-          </view>
-        </view>
-
-        <!-- 继续学习卡片 -->
-        <view v-if="continueLearning" class="continue-card" @click="goToChat">
-          <view class="continue-content">
-            <view class="continue-icon">💬</view>
-            <view class="continue-info">
-              <text class="continue-title">继续学习</text>
-              <text class="continue-topic">{{ continueLearning.topic }}</text>
-            </view>
-            <view class="continue-progress">
-              <ProgressRing
-                :value="continueLearning.progress"
-                :max="100"
-                :size="50"
-                :stroke-width="4"
-                color="#4a6cf7"
-                :show-value="true"
+            <view class="world-stats">
+              <StatCard label="知识域" :value="worldStats.total || 0" icon="🧭" icon-bg="#4a6cf7" />
+              <StatCard label="营地(k12)" :value="worldStats.k12 || 0" icon="⛺" icon-bg="#52c41a" />
+              <StatCard label="云上远峰" :value="worldStats.frontier || 0" icon="🏔" icon-bg="#722ed1" />
+              <StatCard
+                label="掌握(已/总)"
+                :value="twinStore.mastery.mastered"
+                :sublabel="'/' + (twinStore.mastery.total || 0)"
+                icon="📚"
+                icon-bg="#faad14"
               />
             </view>
           </view>
-          <view class="continue-arrow">→</view>
-        </view>
 
-        <!-- 快速入口网格 -->
-        <PageHeader title="快速入口" subtitle="选择开始你的学习" />
-
-        <view class="quick-grid">
-          <QuickAction
-            v-for="(action, index) in quickActions"
-            :key="index"
-            :icon="action.icon"
-            :label="action.label"
-            :desc="action.desc"
-            :color="action.color"
-            :badge="action.badge"
-            @click="action.handler"
-          />
-        </view>
-
-        <!-- 学习统计概览 -->
-        <PageHeader
-          title="学习概览"
-          subtitle="你的进步看得见"
-          :actions="[{ label: '详细报告', handler: goToReport }]"
-        />
-        <LoadingSkeleton v-if="reportStore.loading" variant="card" rows="4" />
-        <view v-else class="stats-grid">
-          <StatCard
-            label="学习天数"
-            :value="reportStore.latestReport?.stats?.studyDays || userStore.streak"
-            icon="📅"
-            icon-bg="#4a6cf7"
-            :trend="statsTrend.studyDays"
-            variant="highlight"
-          />
-          <StatCard
-            label="总练习题数"
-            :value="reportStore.latestReport?.stats?.totalQuestions || 0"
-            icon="✏️"
-            icon-bg="#52c41a"
-            :trend="statsTrend.questions"
-          />
-          <StatCard
-            label="整体正确率"
-            :value="reportStore.latestReport?.stats?.correctRate || 0"
-            :sublabel="percentSign"
-            icon="🎯"
-            icon-bg="#faad14"
-            :trend="statsTrend.accuracy"
-            :progress="reportStore.latestReport?.stats?.correctRate || 0"
-            progress-color="#faad14"
-          />
-          <StatCard
-            label="掌握知识点"
-            :value="knowledgeStore.masteryStats.mastered"
-            :sublabel="slashTotal"
-            icon="📚"
-            icon-bg="#722ed1"
-            :trend="statsTrend.mastered"
-          />
-        </view>
-
-        <!-- 薄弱知识点预警 -->
-        <view v-if="knowledgeStore.weakPoints.length > 0" class="weakness-alert">
-          <PageHeader title="需要关注" subtitle="以下知识点掌握度较低" />
-          <LoadingSkeleton v-if="knowledgeStore.loading" variant="list" rows="3" />
-          <view v-else class="weakness-list">
-            <view
-              v-for="(point, index) in knowledgeStore.weakPoints.slice(0, 3)"
-              :key="index"
-              class="weakness-item"
-            >
-              <view class="weakness-info">
-                <text class="weakness-name">{{ point.name }}</text>
-                <text class="weakness-mastery">{{ Math.round((masteryMap[point.id] || 0) * 100) }}% 掌握度</text>
+          <!-- 最近经历 -->
+          <view class="card">
+            <PageHeader title="最近经历" subtitle="你的行为时间线" />
+            <EmptyState
+              v-if="!twinStore.recentEvents.length"
+              title="还没有经历"
+              description="在世界里执行一次学习行动，时间线就会生长"
+              icon="🕓"
+            />
+            <view v-else class="timeline">
+              <view v-for="ev in twinStore.recentEvents" :key="ev.id" class="tl-item">
+                <view class="tl-dot" :style="{ backgroundColor: kindColor(ev.kind) }" />
+                <view class="tl-body">
+                  <view class="tl-head">
+                    <text class="tl-title">{{ ev.title }}</text>
+                    <text class="tl-time">{{ relTime(ev.at) }}</text>
+                  </view>
+                  <text v-if="ev.text" class="tl-text">{{ ev.text }}</text>
+                  <view v-if="ev.diffs && ev.diffs.length" class="tl-diffs">
+                    <text v-for="(d, i) in ev.diffs" :key="i" class="tl-diff">
+                      {{ d.label }}：{{ d.before }} → {{ d.after }}
+                    </text>
+                  </view>
+                  <text v-if="ev.source" class="tl-source">{{ ev.source }}</text>
+                </view>
               </view>
-              <Chip
-                label="练习"
-                color="red"
-                variant="soft"
-                size="small"
-                @click="() => practiceWeakPoint(point)"
-              />
             </view>
           </view>
-        </view>
 
-        <!-- 今日推荐 -->
-        <PageHeader
-          title="今日推荐"
-          subtitle="基于你的学习情况精选"
-          :actions="[{ label: '查看全部', handler: () => uni.switchTab({ url: '/pages/practice/index' }) }]"
-        />
-        <LoadingSkeleton v-if="practiceStore.loading" variant="card" rows="3" />
-        <view v-else class="recommend-carousel">
-          <view
-            v-for="(item, index) in recommendations"
-            :key="index"
-            class="recommend-card"
-            @click="goToPractice(item)"
-          >
-            <view class="recommend-badge" v-if="item.badge">{{ item.badge }}</view>
-            <view class="recommend-header">
-              <Chip
-                :label="item.subject"
-                :color="item.color"
-                variant="soft"
-                size="small"
-              />
-              <Chip
-                v-if="item.difficulty"
-                :label="item.difficulty"
-                color="gray"
-                variant="outlined"
-                size="small"
-              />
-            </view>
-            <text class="recommend-title">{{ item.title }}</text>
-            <text class="recommend-desc">{{ item.description }}</text>
-            <view class="recommend-meta">
-              <text class="recommend-time">⏱ {{ item.estimatedTime }} 分钟</text>
-              <text class="recommend-xp">⭐ +{{ item.xpReward }} XP</text>
+          <!-- 长期记忆 -->
+          <view class="card" v-if="twinStore.memories.length">
+            <PageHeader title="长期记忆" subtitle="AI 教师对你的跨会话记忆" />
+            <view class="memory-list">
+              <view v-for="m in twinStore.memories.slice(0, 4)" :key="m.key" class="memory-item">
+                <text class="memory-key">{{ memoryLabel(m.key) }}</text>
+                <text class="memory-value">{{ memoryValue(m.value) }}</text>
+              </view>
             </view>
           </view>
-        </view>
 
-        <!-- 成就进度 -->
-        <view v-if="userStore.unlockedAchievements.length > 0 || userStore.lockedAchievements.length > 0" class="achievements-section">
-          <PageHeader
-            title="成就徽章"
-            subtitle="解锁更多成就"
-            :actions="[{ label: '全部', handler: goToAchievements }]"
-          />
-          <view class="achievements-grid">
-            <view
-              v-for="(achievement, index) in displayAchievements"
-              :key="achievement.id"
-              class="achievement-item"
-              :class="{ locked: !achievement.unlocked }"
-            >
-              <text class="achievement-icon">{{ achievement.icon }}</text>
-              <text class="achievement-name">{{ achievement.name }}</text>
-              <text v-if="achievement.unlocked" class="achievement-unlocked">✓ 已解锁</text>
-              <text v-else class="achievement-locked">{{ achievement.desc }}</text>
-            </view>
+          <!-- 快捷行动（学习动词闭集） -->
+          <PageHeader title="行动" subtitle="选择一件事，让孪生生长" />
+          <view class="quick-grid">
+            <QuickAction
+              v-for="(a, i) in quickActions"
+              :key="i"
+              :icon="a.icon"
+              :label="a.label"
+              :desc="a.desc"
+              :color="a.color"
+              @click="a.handler"
+            />
           </view>
-        </view>
 
-        <!-- 底部安全区 -->
-        <view class="safe-area" />
+          <!-- 诚实声明（打破第四面墙） -->
+          <view class="honest-note">
+            <text class="honest-title">关于这个孪生</text>
+            <text class="honest-body">
+              身份来自你填写的资料与学生档案；状态由学习记录推导（掌握度/正确率按知识域聚合，为节点粒度近似值）；
+              关系值为教学互动轮次的派生，并非情感度量。AI 从这里认识你，但它仍是你自己的映像，不是真人。
+            </text>
+          </view>
+
+          <view class="safe-area" />
+        </template>
       </scroll-view>
     </view>
   </ErrorBoundary>
 </template>
 
 <script>
-import { ref, computed, onMounted, h } from 'vue'
+import { computed, onMounted, h } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { useTwinStore } from '@/store/twin'
 import { useUserStore } from '@/store/user'
 import { useKnowledgeStore } from '@/store/knowledge'
-import { usePracticeStore } from '@/store/practice'
-import { useReportStore } from '@/store/report'
-import { getAgentDiagnosis } from '@/api'
+import AvatarTwin from '@/components/twin/AvatarTwin.vue'
+import SkillRadar from '@/components/twin/SkillRadar.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
-import Chip from '@/components/ui/Chip.vue'
 import ProgressRing from '@/components/ui/ProgressRing.vue'
 import QuickAction from '@/components/ui/QuickAction.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
-import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import ErrorBoundary from '@/components/ErrorBoundary.vue'
+
+const KIND_COLORS = {
+  system: '#999',
+  session: '#4a6cf7',
+  profile: '#722ed1',
+  world: '#52c41a',
+  action: '#faad14',
+  memory: '#eb2f96',
+  settings: '#8c8c8c'
+}
 
 export default {
   name: 'Index',
   components: {
+    AvatarTwin,
+    SkillRadar,
     PageHeader,
     StatCard,
-    Chip,
     ProgressRing,
-    QuickAction
+    QuickAction,
+    LoadingSkeleton,
+    EmptyState
   },
   setup() {
+    const twinStore = useTwinStore()
     const userStore = useUserStore()
     const knowledgeStore = useKnowledgeStore()
-    const practiceStore = usePracticeStore()
-    const reportStore = useReportStore()
 
-    const scrollIntoView = ref('')
-    const continueLearning = ref(null)
-    const masteryMap = computed(() => knowledgeStore.masteryMap)
+    const worldName = computed(() => twinStore.world?.subjectName || '')
+    const worldStats = computed(() => twinStore.worldStats)
+    const profileSchool = computed(() => twinStore.profile?.school || '')
 
-    // 问候语
     const greeting = computed(() => {
       const hour = new Date().getHours()
-      if (hour < 6) return '深夜还在学习，'
+      if (hour < 6) return '深夜好，'
       if (hour < 9) return '早安，'
       if (hour < 12) return '上午好，'
       if (hour < 14) return '中午好，'
@@ -274,266 +205,87 @@ export default {
       return '晚上好，'
     })
 
-    // 格式化学习时间
-    const formatStudyTime = (minutes) => {
-      if (minutes < 60) return minutes + '分钟'
-      const hours = Math.floor(minutes / 60)
-      const mins = minutes % 60
-      return mins > 0 ? hours + '小时' + mins + '分钟' : hours + '小时'
+    const kindColor = (k) => KIND_COLORS[k] || '#4a6cf7'
+
+    // 相对时间（刚刚/几分钟前/几小时前/几天前/日期）
+    const relTime = (iso) => {
+      if (!iso) return ''
+      const t = new Date(iso).getTime()
+      const diff = Date.now() - t
+      const min = Math.floor(diff / 60000)
+      if (min < 1) return '刚刚'
+      if (min < 60) return `${min} 分钟前`
+      const hr = Math.floor(min / 60)
+      if (hr < 24) return `${hr} 小时前`
+      const day = Math.floor(hr / 24)
+      if (day < 30) return `${day} 天前`
+      const d = new Date(iso)
+      return `${d.getMonth() + 1}月${d.getDate()}日`
     }
 
-    // 每日目标进度
-    const goalPercentage = computed(() => {
-      return Math.min(100, (userStore.todayStudyTime / userStore.dailyGoal) * 100)
-    })
-
-    const goalColor = computed(() => {
-      const pct = goalPercentage.value
-      if (pct >= 100) return '#52c41a'
-      if (pct >= 70) return '#faad14'
-      return '#4a6cf7'
-    })
-
-    // XP 渐变色
-    const xpGradientColors = computed(() => ['#4a6cf7', '#7c94ff'])
-
-    // 百分号（避免模板解析问题）
-    const percentSign = '%'
-
-    // 斜杠总数
-    const slashTotal = computed(() => '/' + (knowledgeStore.masteryStats.total || 0))
-
-    // 错题本角标
-    const wrongQuestionsBadge = computed(() => {
-      return null
-    })
-
-    // 快速入口
-    const quickActions = [
-      {
-        icon: '💬',
-        label: 'AI 辅导',
-        desc: '智能对话教学',
-        color: '#4a6cf7',
-        badge: null,
-        handler: () => uni.switchTab({ url: '/pages/chat/chat' })
-      },
-      {
-        icon: '📸',
-        label: '拍照解题',
-        desc: '拍照即得解析',
-        color: '#faad14',
-        badge: null,
-        handler: () => uni.navigateTo({ url: '/pages/camera/camera' })
-      },
-      {
-        icon: '📊',
-        label: '学情报告',
-        desc: '掌握度全景图',
-        color: '#52c41a',
-        badge: '新',
-        handler: () => uni.navigateTo({ url: '/pages/report/report' })
-      },
-      {
-        icon: '🧠',
-        label: '知识图谱',
-        desc: '构建知识体系',
-        color: '#722ed1',
-        badge: null,
-        handler: () => uni.switchTab({ url: '/pages/knowledge-graph/index' })
-      },
-      {
-        icon: '🏔',
-        label: '学科登峰',
-        desc: '全学段知识山',
-        color: '#1B7A3D',
-        badge: '新',
-        handler: () => uni.navigateTo({ url: '/pages/knowledge-map/index' })
-      },
-      {
-        icon: '✏️',
-        label: '练习中心',
-        desc: '自适应刷题',
-        color: '#eb2f96',
-        badge: '热',
-        handler: () => uni.switchTab({ url: '/pages/practice/index' })
-      },
-      {
-        icon: '📝',
-        label: '错题本',
-        desc: '错题复盘复习',
-        color: '#ff4d4f',
-        badge: wrongQuestionsBadge,
-        handler: () => uni.navigateTo({ url: '/pages/wrong-questions/index' })
+    // 记忆键展示名（setting.* / mastery.* / fact.* 等约定）
+    const memoryLabel = (key) => {
+      if (!key) return '记忆'
+      const map = {
+        'setting.preferredDifficulty': '偏好难度',
+        'setting.preferredSubjects': '偏好学科'
       }
+      if (map[key]) return map[key]
+      if (key.startsWith('mastery.')) return '掌握 · ' + key.slice(8)
+      if (key.startsWith('setting.')) return '偏好 · ' + key.slice(8)
+      if (key.startsWith('fact.')) return '事实 · ' + key.slice(5)
+      return key
+    }
+
+    const memoryValue = (v) => {
+      if (v == null) return ''
+      if (typeof v === 'string') return v
+      try {
+        return JSON.stringify(v)
+      } catch (e) {
+        return String(v)
+      }
+    }
+
+    const quickActions = [
+      { icon: '💬', label: 'AI 辅导', desc: '向 AI 教师求教', color: '#4a6cf7', handler: () => uni.switchTab({ url: '/pages/chat/chat' }) },
+      { icon: '✏️', label: '练习中心', desc: '自适应刷题', color: '#eb2f96', handler: () => uni.switchTab({ url: '/pages/practice/index' }) },
+      { icon: '📝', label: '错题本', desc: '复盘未解决', color: '#ff4d4f', handler: () => uni.navigateTo({ url: '/pages/wrong-questions/index' }) },
+      { icon: '📸', label: '拍照解题', desc: '拍照即解析', color: '#faad14', handler: () => uni.navigateTo({ url: '/pages/camera/camera' }) },
+      { icon: '🏔', label: '学科登峰', desc: '进入我的世界', color: '#1B7A3D', handler: goWorld },
+      { icon: '🧬', label: '人物画像', desc: '编辑稳定身份', color: '#722ed1', handler: () => uni.navigateTo({ url: '/pages/twin/profile' }) }
     ]
 
-    // 统计趋势（模拟）
-    const statsTrend = computed(() => ({
-      studyDays: userStore.streak > 0 ? 12 : 0,
-      questions: 8,
-      accuracy: userStore.streak > 5 ? 5 : 0,
-      mastered: knowledgeStore.masteryStats.mastered > 0 ? 15 : 0
-    }))
-
-    // 今日推荐
-    const recommendations = ref([
-      {
-        id: 'rec_1',
-        badge: '为你推荐',
-        subject: '数学',
-        color: 'blue',
-        difficulty: '⭐⭐⭐',
-        title: '勾股定理的综合应用',
-        description: '针对你在直角三角形中的薄弱点，推荐专项练习',
-        estimatedTime: 15,
-        xpReward: 100,
-        topicId: 'pythagorean_advanced'
-      },
-      {
-        id: 'rec_2',
-        badge: '复习提醒',
-        subject: '数学',
-        color: 'orange',
-        difficulty: '⭐⭐',
-        title: '二次函数图像性质',
-        description: '该知识点距离上次练习已超过 7 天，建议复习巩固',
-        estimatedTime: 10,
-        xpReward: 80,
-        topicId: 'quadratic_properties'
-      },
-      {
-        id: 'rec_3',
-        badge: '新挑战',
-        subject: '物理',
-        color: 'purple',
-        difficulty: '⭐⭐⭐⭐',
-        title: '牛顿第二定律应用',
-        description: '解锁物理学科新章节，从基础概念开始',
-        estimatedTime: 20,
-        xpReward: 150,
-        topicId: 'newton_second_law'
-      },
-      {
-        id: 'rec_4',
-        badge: '薄弱攻克',
-        subject: '数学',
-        color: 'red',
-        difficulty: '⭐⭐⭐',
-        title: '圆的性质与位置关系',
-        description: '你在该知识点正确率仅 45%，建议专项突破',
-        estimatedTime: 15,
-        xpReward: 120,
-        topicId: 'circle_properties'
-      }
-    ])
-
-    // 成就展示（已解锁 + 部分未解锁）
-    const displayAchievements = computed(() => {
-      const unlocked = userStore.unlockedAchievements.slice(0, 3)
-      const locked = userStore.lockedAchievements.slice(0, 4 - unlocked.length)
-      return [...unlocked, ...locked]
-    })
-
-    // 加载数据
-    const loadData = async () => {
-      await Promise.all([
-        knowledgeStore.loadCatalog(), // 学段/年级/学科清单（三级联动数据源，幂等）
-        knowledgeStore.loadKnowledgePoints(),
-        knowledgeStore.loadKnowledgeGraph(),
-        reportStore.fetchReports(),
-        loadRealMastery()
-      ])
-
-      // 计算继续学习
-      if (knowledgeStore.nextRecommended) {
-        continueLearning.value = {
-          topic: knowledgeStore.nextRecommended.name || '推荐知识点',
-          progress: Math.round((1 - (knowledgeStore.getMastery(knowledgeStore.nextRecommended.id) || 0)) * 100)
-        }
-      }
+    function goWorld() {
+      uni.navigateTo({ url: '/pages/knowledge-map/index' })
     }
 
-    // 首页掌握度接真数：knowledge-points 端点是公开读（不回每用户 mastery），
-    // 真掌握度在 /api/agent/me/diagnosis（从作答记录实算，0-100 刻度、按 kpId 键）。
-    // 此处并行拉取后按 kpId 折算 0-1 写进 masteryMap —— 未登录/无作答时优雅兜底（接口自带）。
-    const loadRealMastery = async () => {
-      try {
-        const d = await getAgentDiagnosis()
-        if (!d?.success || !Array.isArray(d.knowledgePoints)) return
-        d.knowledgePoints.forEach((kp) => {
-          if (kp.kpId && typeof kp.mastery === 'number') {
-            knowledgeStore.updateMastery(kp.kpId, kp.mastery / 100)
-          }
-        })
-      } catch (e) {
-        console.error('[Home] Load real mastery failed:', e)
-      }
-    }
-
-    const practiceWeakPoint = (point) => {
-      practiceStore.setTopic(point.id)
-      practiceStore.startSession('weakness', { subject: knowledgeStore.currentSubject })
-      uni.navigateTo({ url: '/pages/practice/index' })
-    }
-
-    const goToReport = () => {
-      uni.switchTab({ url: '/pages/report/report' })
-    }
-
-    const goToPractice = (item) => {
-      if (item.topicId) {
-        practiceStore.setTopic(item.topicId)
-      }
-      // 推荐卡 subject 是中文展示名 → code（K12 全学科；knowledgeStore.subjectList 为真源）
-      const codeMap = { 数学: 'math', 语文: 'chn', 英语: 'eng', 物理: 'phys', 化学: 'chem', 生物: 'bio' }
-      const real = knowledgeStore.subjectList.find(s => s.name === item.subject)
-      const code = real?.id || codeMap[item.subject] || knowledgeStore.currentSubject
-      practiceStore.startSession('topic', { subject: code })
-      uni.navigateTo({ url: '/pages/practice/index' })
-    }
-
-    const goToAchievements = () => {
-      uni.navigateTo({ url: '/pages/profile/index#achievements' })
-    }
-
-    onMounted(() => {
+    async function loadData() {
       userStore.init()
-      loadData()
-    })
+      knowledgeStore.loadCatalog()
+      twinStore.loadOverview(knowledgeStore.currentSubject || 'math')
+    }
 
-    onShow(() => {
-      loadData()
-    })
+    onMounted(loadData)
+    onShow(loadData)
 
     return {
+      twinStore,
       userStore,
-      knowledgeStore,
-      practiceStore,
-      reportStore,
-      scrollIntoView,
-      continueLearning,
-      masteryMap,
+      worldName,
+      worldStats,
+      profileSchool,
       greeting,
-      formatStudyTime,
-      goalPercentage,
-      goalColor,
+      kindColor,
+      relTime,
+      memoryLabel,
+      memoryValue,
       quickActions,
-      statsTrend,
-      recommendations,
-      displayAchievements,
-      practiceWeakPoint,
-      goToReport,
-      goToPractice,
-      goToAchievements,
-      wrongQuestionsBadge,
-      xpGradientColors,
-      percentSign,
-      slashTotal,
+      goWorld,
       fallbackContent: () => h(EmptyState, {
-        title: '首页加载失败',
-        description: '无法加载首页内容，请稍后重试',
-        icon: '🏠',
+        title: '孪生加载失败',
+        description: '无法装配你的数字孪生，请稍后重试',
+        icon: '🧬',
         actions: [{ label: '重试', handler: () => location.reload() }]
       })
     }
@@ -552,206 +304,241 @@ export default {
   background: transparent;
 }
 
-/* 主内容 */
 .main-content {
   flex: 1;
   padding-bottom: 40px;
 }
 
-/* 欢迎卡片 */
-.welcome-card {
+/* Hero */
+.hero {
   background: linear-gradient(135deg, #4a6cf7 0%, #3b5bd9 100%);
   border-radius: 0 0 24px 24px;
-  padding: 20px 16px 24px;
+  padding: 20px 18px 24px;
   margin: -20px -16px 16px;
   box-shadow: 0 4px 20px rgba(74, 108, 247, 0.3);
 }
 
-.welcome-header {
+.hero-top {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
+  align-items: center;
+  gap: 14px;
 }
 
-.user-info {
+.hero-ident {
   flex: 1;
+  min-width: 0;
 }
 
-.greeting {
-  display: block;
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 4px;
-}
-
-.subtitle {
+.hero-greeting {
   display: block;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.85);
 }
 
-.streak-xp {
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-
-.streak-item,
-.xp-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 16px;
-}
-
-.streak-label,
-.xp-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 6px;
-}
-
-.streak-value,
-.xp-value {
-  font-size: 18px;
+.hero-name {
+  display: block;
+  font-size: 22px;
   font-weight: 700;
   color: #fff;
-  line-height: 1;
+  margin: 2px 0 8px;
 }
 
-.streak-text,
-.xp-text {
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meta-chip {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 2px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 2px 8px;
 }
 
-.divider-line {
-  width: 1px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.2);
-  margin: 0 8px;
-}
-
-.daily-goal {
+.hero-scene {
+  margin-top: 16px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 12px;
-  padding: 16px;
-  backdrop-filter: blur(10px);
-}
-
-.goal-header {
+  padding: 12px 16px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  align-items: baseline;
+  gap: 10px;
 }
 
-.goal-title {
+.scene-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.scene-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.hero-scene.empty .scene-name {
   font-size: 14px;
-  font-weight: 600;
-  color: #fff;
+  text-decoration: underline;
 }
 
-.goal-progress {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.goal-reward {
-  display: block;
-  margin-top: 10px;
-  text-align: center;
-  font-size: 12px;
-  color: #fff;
-  font-weight: 600;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* 继续学习卡片 */
-.continue-card {
+/* 状态环 */
+.rings-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 16px 16px;
-  padding: 16px;
+  justify-content: space-around;
   background: #fff;
   border-radius: 16px;
+  margin: 0 16px 16px;
+  padding: 16px 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--color-border, #e8e8f0);
-  cursor: pointer;
-  transition: all var(--transition-fast);
 }
 
-.continue-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
-}
-
-.continue-content {
+.ring-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 6px;
+}
+
+.ring-label {
+  font-size: 11px;
+  color: var(--color-text-tertiary, #999);
+}
+
+/* 卡片 */
+.card {
+  margin: 0 16px 16px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 4px 12px 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--color-border, #e8e8f0);
+}
+
+.world-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  flex: 1;
+  padding: 0 4px;
 }
 
-.continue-icon {
-  width: 48px;
-  height: 48px;
+/* 时间线 */
+.timeline {
+  padding: 4px 4px 0;
+}
+
+.tl-item {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #4a6cf7 0%, #7c94ff 100%);
-  border-radius: 12px;
-  font-size: 22px;
+  gap: 10px;
+  padding-bottom: 16px;
+  position: relative;
 }
 
-.continue-info {
+.tl-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 14px;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-border, #e8e8f0);
+}
+
+.tl-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.tl-body {
   flex: 1;
+  min-width: 0;
 }
 
-.continue-title {
-  display: block;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a2e;
-  margin-bottom: 2px;
-}
-
-.continue-topic {
-  display: block;
-  font-size: 13px;
-  color: #999;
-}
-
-.continue-progress {
+.tl-head {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 8px;
-  width: 100px;
 }
 
-.progress-text {
-  font-size: 12px;
+.tl-title {
+  font-size: 14px;
   font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.tl-time {
+  font-size: 11px;
+  color: var(--color-text-tertiary, #999);
+  flex-shrink: 0;
+}
+
+.tl-text {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-secondary, #666);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+.tl-diffs {
+  margin-top: 4px;
+}
+
+.tl-diff {
+  display: block;
+  font-size: 11px;
   color: #4a6cf7;
 }
 
-.continue-arrow {
-  font-size: 20px;
-  color: #ccc;
-  margin-left: 8px;
+.tl-source {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-tertiary, #aaa);
+  margin-top: 4px;
 }
 
-/* 快速入口网格 */
+/* 记忆 */
+.memory-list {
+  padding: 0 4px;
+}
+
+.memory-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border, #f0f0f5);
+}
+
+.memory-item:last-child {
+  border-bottom: none;
+}
+
+.memory-key {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+  flex-shrink: 0;
+}
+
+.memory-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 快捷行动 */
 .quick-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -759,297 +546,30 @@ export default {
   padding: 0 16px 16px;
 }
 
-.quick-action {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 12px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--color-border, #e8e8f0);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  position: relative;
-}
-
-.quick-action:active {
-  transform: scale(0.97);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
-
-.quick-action-icon {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  font-size: 20px;
-  margin-bottom: 10px;
-}
-
-.quick-action-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a1a2e;
-  text-align: center;
-  margin-bottom: 2px;
-}
-
-.quick-action-desc {
-  font-size: 11px;
-  color: #999;
-  text-align: center;
-}
-
-.quick-action-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 2px 6px;
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff;
-  background: #ff4d4f;
-  border-radius: 8px;
-}
-
-/* 统计网格 */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 0 16px 16px;
-}
-
-/* 薄弱知识点预警 */
-.weakness-alert {
-  margin-top: 8px;
-}
-
-.weakness-list {
-  padding: 0 16px;
-}
-
-.weakness-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* 诚实声明 */
+.honest-note {
+  margin: 8px 16px 16px;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--color-bg-secondary, #f0f2f7);
   border-radius: 12px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--color-border, #e8e8f0);
+  border: 1px dashed var(--color-border, #dcdfe8);
 }
 
-.weakness-item:last-child {
-  margin-bottom: 16px;
-}
-
-.weakness-info {
-  flex: 1;
-}
-
-.weakness-name {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1a1a2e;
-  margin-bottom: 4px;
-}
-
-.weakness-mastery {
+.honest-title {
   display: block;
   font-size: 12px;
-  color: #ff4d4f;
-  font-weight: 500;
-}
-
-/* 今日推荐轮播 */
-.recommend-carousel {
-  display: flex;
-  gap: 12px;
-  padding: 0 16px 16px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-}
-
-.recommend-card {
-  flex: 0 0 280px;
-  max-width: 280px;
-  scroll-snap-align: start;
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--color-border, #e8e8f0);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  position: relative;
-}
-
-.recommend-card:active {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(74, 108, 247, 0.15);
-}
-
-.recommend-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  padding: 4px 8px;
-  font-size: 10px;
   font-weight: 700;
-  color: #fff;
-  background: #4a6cf7;
-  border-radius: 8px;
-  z-index: 2;
-}
-
-.recommend-header {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.recommend-title {
-  display: block;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a2e;
-  line-height: 1.4;
+  color: var(--color-text-secondary, #666);
   margin-bottom: 6px;
 }
 
-.recommend-desc {
-  display: block;
-  font-size: 12px;
-  color: #666;
-  line-height: 1.6;
-  margin-bottom: 12px;
-}
-
-.recommend-meta {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border, #e8e8f0);
-}
-
-.recommend-time,
-.recommend-xp {
-  font-size: 11px;
-  color: #999;
-}
-
-.recommend-xp {
-  color: #faad14;
-  font-weight: 600;
-}
-
-/* 成就区域 */
-.achievements-section {
-  padding-bottom: 16px;
-}
-
-.achievements-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding: 0 16px 16px;
-}
-
-.achievement-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 14px 10px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--color-border, #e8e8f0);
-  transition: all var(--transition-base);
-  opacity: 1;
-}
-
-.achievement-item.locked {
-  opacity: 0.5;
-  filter: grayscale(1);
-}
-
-.achievement-item.locked:active {
-  opacity: 0.7;
-}
-
-.achievement-item.just-unlocked {
-  animation: achievementPop 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  border-color: #faad14;
-  box-shadow: 0 0 0 3px rgba(250, 173, 20, 0.3);
-}
-
-@keyframes achievementPop {
-  0% { opacity: 0; transform: scale(0.5); }
-  50% { transform: scale(1.1); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-.achievement-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.achievement-name {
+.honest-body {
   display: block;
   font-size: 11px;
-  font-weight: 600;
-  color: #1a1a2e;
-  text-align: center;
-  margin-bottom: 4px;
+  color: var(--color-text-tertiary, #999);
+  line-height: 1.7;
 }
 
-.achievement-desc {
-  display: block;
-  font-size: 10px;
-  color: #999;
-  text-align: center;
-  margin-bottom: 10px;
-  line-height: 1.4;
-}
-
-.achievement-reward {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border, #e8e8f0);
-}
-
-.achievement-reward text:first-child {
-  font-size: 12px;
-  font-weight: 700;
-  color: #faad14;
-}
-
-.unlock-time {
-  font-size: 10px;
-  color: #999;
-}
-
-.achievement-locked {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border, #e8e8f0);
-  color: #999;
-  font-size: 11px;
-}
-
-/* 底部安全区 */
 .safe-area {
   height: 40px;
 }
@@ -1060,47 +580,18 @@ export default {
     background: var(--color-bg-primary, #1a1a2e);
   }
 
-  .welcome-card {
-    background: linear-gradient(135deg, #3b5bd9 0%, #2d2d4a 100%);
-    box-shadow: 0 4px 20px rgba(74, 108, 247, 0.2);
-  }
-
-  .continue-card,
-  .quick-action,
-  .weakness-item,
-  .recommend-card,
-  .achievement-item {
+  .rings-row,
+  .card {
     background: var(--color-bg-card, #252542);
     border-color: var(--color-border, #3d3d5c);
   }
 
-  .continue-title,
-  .quick-action-label,
-  .recommend-title,
-  .achievement-name,
-  .weakness-name {
-    color: var(--color-text-primary, #e8e8f0);
+  .hero {
+    background: linear-gradient(135deg, #3b5bd9 0%, #2d2d4a 100%);
   }
 
-  .continue-topic,
-  .quick-action-desc,
-  .recommend-desc,
-  .recommend-time,
-  .achievement-locked,
-  .weakness-mastery {
-    color: var(--color-text-tertiary, #888);
-  }
-
-  .recommend-xp {
-    color: #ffc53d;
-  }
-
-  .continue-arrow {
-    color: #555;
-  }
-
-  .goal-reward {
-    color: #e8e8f0;
+  .honest-note {
+    background: var(--color-bg-card, #252542);
   }
 }
 </style>

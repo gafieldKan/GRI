@@ -382,6 +382,30 @@ export async function getClassDiagnosisQuestion(questionId) {
   try { return await api.get('/api/agent/admin/class-diagnosis/question', { params: { questionId } }) } catch (e) { return toError(e) }
 }
 
+// ===== 学生数字孪生（/api/twin/*，人本论：人本体的运行时）=====
+// 孪生 = 身份+状态+世界+经历+记忆，读时装配既成真源；个人数据，强制鉴权、按 users.id 隔离。
+export async function getTwinOverview(subject) {
+  try {
+    return await api.get('/api/twin/me', { params: subject ? { subject } : {} })
+  } catch (e) {
+    return { profile: null, state: null, world: null, events: [], memories: [], generatedAt: null }
+  }
+}
+
+export async function getTwinEvents(limit = 50) {
+  try { return await api.get('/api/twin/me/events', { params: { limit } }) } catch (e) { return [] }
+}
+
+// 更新人物画像（白名单字段落 edu.students；后端自动记一条 profile 经历）。
+export async function updateTwinProfile(patch) {
+  try { return await api.post('/api/twin/me/profile', patch) } catch (e) { return { success: false } }
+}
+
+// 历史经历回填（幂等：仅空时间线时执行）。
+export async function backfillTwin() {
+  try { return await api.post('/api/twin/me/backfill') } catch (e) { return { created: 0, skipped: true } }
+}
+
 export function closeWebSocket(ws) {
   try { if (ws && ws.readyState === WebSocket.OPEN) ws.close() } catch (e) {}
 }
