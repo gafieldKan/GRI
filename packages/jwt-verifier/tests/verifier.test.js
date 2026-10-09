@@ -157,3 +157,50 @@ test('JWKS URL 拉取：动态获取公钥并校验', async () => {
     server.close();
   }
 });
+
+test('JWKS 缓存快路径：同 kid 第二次请求不再拉取 JWKS（回归 F-1）', async () => {
+  // 记录 JWKS 被请求的次数
+  let fetchCount = 0;
+  const { createPublicKey } = await import('node:crypto');
+  const jwk = createPublicKey(publicKey).export({ format: 'jwk' });
+  const jwks = {
+    keys: [{ kty: 'RSA', use: 'sig', alg: 'RS256', kid: ISSUER, ...jwk }],
+  };
+
+  const server = http.createServer((req, res) => {
+    fetchCount++;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify(jwks));
+  });
+  await new Promise((r) => server.listen(0, r));
+  const port = server.address().port;
+
+  try {
+    const requireAuth = createJwtVerifier({
+      issuer: ISSUER,
+      jwksUrl: `http://localhost:${port}/jwks`,
+    });
+
+    // 第一次请求
+    const token1 = makeToken({ sub: 'identity-uuid-5' });
+    const { req: req1, res: res1 } = mockReqRes(token1);
+    let called1 = false;
+    await requireAuth()(req1, res1, () => {
+      called1 = true;
+    });
+    assert.equal(called1, true);
+    assert.equal(fetchCount, 1, '首次请求应拉取 JWKS');
+
+    // 第二次请求（同 kid）→ 应走缓存快路径，不再拉 JWKS
+    const token2 = makeToken({ sub: 'identity-uuid-6' });
+    const { req: req2, res: res2 } = mockReqRes(token2);
+    let called2 = false;
+    await requireAuth()(req2, res2, () => {
+      called2 = true;
+    });
+    assert.equal(called2, true);
+    assert.equal(fetchCount, 1, '同 kid 第二次请求不应再次拉取 JWKS（缓存快路径生效）');
+  } finally {
+    server.close();
+  }
+});

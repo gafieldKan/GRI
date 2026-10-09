@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "node scripts/patch-uni-h5-vue.mjs",
     "dev:api": "npm run start:dev --workspace=services/api",
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:web-ai": "npm run dev:h5 --workspace=apps/web-ai-tutor",
