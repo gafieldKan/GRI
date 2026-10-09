@@ -1,3 +1,5 @@
+> ⚠️ STATUS: NARROW & REWRITE (2026-10-10) —— 前提已不存在（services/ 只有 api+auth-center，无旧后端可下线；前端硬编码=0；CI 已有）。按 card-recon §九 收窄重写后执行。
+
 # T12 任务卡：前端 API base 收敛 `/api` + 旧两后端下线 + CI/CD 容器化
 
 **执行者**：Codex  

@@ -1,3 +1,5 @@
+> ⚠️ STATUS: DOWNGRADE TO VERIFY (2026-10-10) —— organization.controller 已 ~24 端点（members/roles/invitations/audit/tree/search），近乎完整。按 card-recon §八 降级为核验卡，只补真缺口。
+
 # T10 任务卡：`organization` 模块 - 组织/成员/角色/邀请/审计 + Portal 管理台联调
 
 **执行者**：Claude  

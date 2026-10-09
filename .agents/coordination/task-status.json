@@ -3,6 +3,9 @@
   "p2-task-1b": "done_and_committed",
   "p2-task-4": "done_and_committed",
   "p2-task-11": "voided",
+  "p2-task-2": "card_rewritten_ready_for_codex (T2a design + T2b impl)",
+  "p2-task-3": "card_rewritten_pending_T2",
+  "p2-task-9": "voided (overlaps curriculum)",
   "in-flight-backlog": "committed_6_batches",
   "_commits": [
     "08bcb33 T1",
@@ -41,5 +44,23 @@
     "918d005": "chore(agents): 纳入 .agents 协作工作区（.gitignore 反向豁免 .agents/**/*.{md,sh,json}；继续忽略 logs/*.log/*.done/.p2t4）",
     "01d7440": "feat(food): P2-T4 评价/优惠券/商家归属（018 迁移 + service/controller/types/spec + public-routes 白名单）"
   },
-  "_env_issue_2026_10_09": "registry.npmjs.org DNS 投毒（本机 DNS 返回伪造 IP，TLS 自签）——影响所有容器内 npm 拉取。绕过用 registry.npmmirror.com。建议后续排查本机 DNS/上游解析。"
+  "_env_issue_2026_10_09": "registry.npmjs.org DNS 投毒（本机 DNS 返回伪造 IP，TLS 自签）——影响所有容器内 npm 拉取。绕过用 registry.npmmirror.com。建议后续排查本机 DNS/上游解析。",
+  "_env_fix_2026_10_09": "DNS 投毒已根治+持久化：resolvectl/nmcli 指 223.5.5.5+119.29.29.29，DoT opportunistic(223.5.5.5#dns.alidns.com)，已写回 netplan 真源。容器内 npm ping=PONG。",
+  "_card_recon_2026_10_10": {
+    "summary": "剩余卡多写于 2026-10-08 前，本体/孪生/课程大合并后引用路径/端点对不上现实（同 T4/T11 病根）。详见 .agents/coordination/card-recon-2026-10-10.md",
+    "T2": "🔴 真缺口 → 已重写 T2a(设计)+T2b(实现)；旧卡作废",
+    "T3": "🟡 真任务 → 已重写（增量整合 T1 e2e，非从零）",
+    "T5": "🟠 大半已存在（questions/practice/*/analysis 均在）→ 降级核验卡",
+    "T6": "🟠 tutor-agent+session-fsm 已在；缺 teaching-card-fsm/intent-classifier/socratic-templates；引用 k12/teaching.yaml 不存在 → 重写卡",
+    "T7": "🟠 exam-scanner 骨架在；缺 ocr-processor/question-parser/variant-generator；引用 k12/questions.yaml 不存在 → 重写卡",
+    "T8": "🟠 SM-2+错题端点已在；缺 due 队列+stats 聚合 → 降级核验+小增补",
+    "T9": "⚫ 作废：curriculum 已提供 knowledge-graph/knowledge-map/learning-path（重叠+真源分裂）",
+    "T10": "🟢 organization.controller 已 ~24 端点（members/roles/invitations/audit/tree/search）→ 降级核验卡",
+    "T12": "🟠 前提不存在（无旧后端可下线；前端硬编码=0；CI 已有）→ 收窄重写（余 health-check.sh 等）"
+  },
+  "_decision_2026_10_10": "身份模型决策(b)：授权底座修正并入 T2（identity 运营面一律 assertSiteOperator(externalId)；禁止 req.auth.roles）。今日 Wave A=T2+T3。用户手动下达 claude/codex，禁止同时运行多 agent。",
+  "_waveA_cards_2026_10_10": {
+    "claude": ["tasks/p2-task-2a-identity-operator-authz-design.md", "tasks/p2-task-3-e2e-identity-lifecycle-contract.md"],
+    "codex": ["tasks/p2-task-2-identity-operator-role-status-impl.md"]
+  }
 }

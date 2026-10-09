@@ -1,3 +1,5 @@
+> ⚠️ STATUS: NEEDS REWRITE (2026-10-10) —— 参照物 k12/teaching.yaml 不存在；tutor-agent.ts/session-fsm.ts 已存在（勿重建重复 FSM）。需按 .agents/coordination/card-recon-2026-10-10.md §四 重写后执行。
+
 # T6 任务卡：`tuition/agents` - Tutor Agent 教学卡片状态机 + 意图识别 + 苏格拉底模板
 
 **执行者**：Claude  

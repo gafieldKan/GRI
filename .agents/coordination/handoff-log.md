@@ -16,3 +16,9 @@
 2026-10-09T18:00:00+08:00 | 编排 | p2-task-11 卡【作废 VOID】：实测 /api/ontology/stats 早已实现（四段聚合远超原卡设想）且【故意不入白名单】；master-data 模块已退役（无 API 面）；version.json 不存在；目录为扁平 4 个。无可执行剩余工作，保留作废记录卡。
 2026-10-09T18:00:00+08:00 | 归拢 | run-wave1.sh 收窄为仅 T4（T1 已提交 08bcb33；T11 作废）。task-status.json 记 p2-task-4=card_rewritten_ready_for_codex、p2-task-11=voided + 三条裁决。
 2026-10-09T18:00:00+08:00 | 澄清 | 撤回「nest build 不拷 .sql」工具链缺口：nest-cli.json assets[migrate/*.sql] 两服务均已正确配置，真因是 dist 陈旧。无需修工具链卡。
+2026-10-10T07:45:00+08:00 | 核实 | 上阶段收口确认：仓库干净(0改动)、8/8 容器 running、T1/T1b/T4 done_and_committed、T11 voided、在途6批已提交。
+2026-10-10T07:45:00+08:00 | 校正 | 剩余卡(T2/T3/T5/T6/T7/T8/T9/T10/T12)逐卡对代码实测：多数为 10-08 旧快照，本体/孪生/课程大合并后对不上现实（同 T4/T11 病根）。详见 .agents/coordination/card-recon-2026-10-10.md
+2026-10-10T07:45:00+08:00 | 编排 | Wave A 卡片就绪：Claude 设计卡 .agents/claude/tasks/p2-task-2a-identity-operator-authz-design.md；Codex 实现卡 .agents/codex/tasks/p2-task-2-identity-operator-role-status-impl.md；Claude e2e 卡 .agents/claude/tasks/p2-task-3-e2e-identity-lifecycle-contract.md
+2026-10-10T07:45:00+08:00 | 决策 | 身份模型(用户确认 b)：授权底座修正并入 T2。identity 运营面一律 OrganizationService.assertSiteOperator(externalId)（根组织 owner|admin）；禁止 req.auth.roles（恒空）。OutputIdentityModule 需 imports:[OrganizationModule]。
+2026-10-10T07:45:00+08:00 | 作废 | p2-task-9 VOID：curriculum 已提供 knowledge-graph/knowledge-map/learning-path（功能重叠+真源分裂，知识图谱归 curriculum）。旧卡 .agents/codex/tasks/p2-task-9-knowledge-graph.md 标 VOID。
+2026-10-10T07:45:00+08:00 | 降级 | T5/T8/T10 降级核验卡（大半已存在，只补真缺口）；T6/T7 重写卡（修本体引用，无 k12/teaching.yaml、k12/questions.yaml）；T12 收窄重写（无旧后端可下线）。旧卡均加状态横幅。

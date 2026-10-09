@@ -1,3 +1,5 @@
+> ⚠️ STATUS: DOWNGRADE TO VERIFY (2026-10-10) —— SM-2 + 错题端点已存在；仅缺 due 队列 + stats 聚合。按 card-recon §六 降级核验+小增补。
+
 # T8 任务卡：`tuition` - 错题本 SM-2 间隔复习 + 卡片式复习模式
 
 **执行者**：Codex  

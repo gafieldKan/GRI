@@ -1,3 +1,5 @@
+> ⚠️ STATUS: DOWNGRADE TO VERIFY (2026-10-10) —— tuition.controller 已有 questions/practice/*/analysis/stats 等端点。按 card-recon §三 降级核验，只补真缺口（如 progress、路径对齐）。
+
 # T5 任务卡：`tuition` 核心 - 练习中心主链路（题目渲染/答题交互/解析/进度/统计）
 
 **执行者**：Codex  

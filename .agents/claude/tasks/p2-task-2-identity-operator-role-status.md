@@ -1,3 +1,5 @@
+> ⚠️ STATUS: SUPERSEDED (2026-10-10) —— 本卡含致命前提错误（用恒空的 req.auth.roles 判 Operator）。已被 p2-task-2a(设计) + p2-task-2-identity-operator-role-status-impl(实现) 取代。保留供追溯，勿执行。
+
 # T2 任务卡：`identity` 模块 - Operator 角色/状态变更接口 + 单测补齐
 
 **执行者**：Claude  

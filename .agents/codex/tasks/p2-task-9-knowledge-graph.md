@@ -1,3 +1,5 @@
+> ❌ STATUS: VOID (2026-10-10) —— 与 curriculum 的 knowledge-graph/knowledge-map/learning-path 重叠且真源分裂（知识图谱归 curriculum）。作废，勿执行。
+
 # T9 任务卡：`tuition` - 知识图谱 D3/Cytoscape 力导向图 + 掌握度颜色编码
 
 **执行者**：Codex  

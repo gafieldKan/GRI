@@ -1,3 +1,5 @@
+> ⚠️ STATUS: NEEDS REWRITE (2026-10-10) —— 参照物 k12/questions.yaml 不存在；exam-scanner.ts 骨架已存在。需按 card-recon §五 重写（含 OCR 引擎定论）后执行。
+
 # T7 任务卡：`tuition/agents` - ExamScanner OCR→结构化题目→生成变式题链路
 
 **执行者**：Claude  
