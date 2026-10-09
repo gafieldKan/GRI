@@ -11,8 +11,11 @@ export {
   PG_TYPE_MAP,
   resolveObjectLinks,
   uniqueConstraintSQL,
+  indexSQL,
+  onDeleteClause,
 } from './sql.js'
 export { generateTypeScript, fieldToTS, TS_TYPE_MAP } from './typescript.js'
+export { generateTwinDescriptor, buildTwinDescriptor } from './twin.js'
 export {
   loadOntologyFile,
   generateMigrationBody,

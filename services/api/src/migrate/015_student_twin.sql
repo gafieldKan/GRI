@@ -9,8 +9,9 @@
 --   本表只承载「经历」——每次学习行为的前后快照 + 差异，供时间线（行为与记忆）
 --   与状态回放（replay）。结构对齐原型 PERSONA C1 的 events[]（before/after/diffs）。
 --
--- 结构轨说明：本表先以裸 SQL 落位（「先垂直跑通」阶段）；S5 将回收进
---   packages/ontology/ontologies/student-twin.ontology.yaml（本体驱动，codegen 生成）。
+-- 结构轨说明：本表先以裸 SQL 垂直跑通；S5 已回收进
+--   packages/ontology/ontologies/student-twin.ontology.yaml（本体驱动，codegen 生成
+--   016_student_twin_ontology.sql 对齐）。本文件保留为历史迁移（已应用，不再重跑）。
 --
 -- 幂等：全部 IF NOT EXISTS + CREATE INDEX IF NOT EXISTS。
 -- ----------------------------------------------------------------------------

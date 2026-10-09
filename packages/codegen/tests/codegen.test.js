@@ -83,11 +83,12 @@ describe('fieldToColumn 字段→列映射', () => {
 })
 
 describe('generate 编排', () => {
-  it('默认生成 sql + typescript 两轨', () => {
+  it('默认生成 sql + typescript + twin 三轨', () => {
     const out = generate(orderOntology)
-    assert.deepEqual(Object.keys(out).sort(), ['sql', 'typescript'])
+    assert.deepEqual(Object.keys(out).sort(), ['sql', 'twin', 'typescript'])
     assert.ok(out.sql.length > 0)
     assert.ok(out.typescript.length > 0)
+    assert.ok(out.twin.length > 0)
   })
 
   it('可指定单一轨', () => {

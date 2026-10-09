@@ -1,0 +1,125 @@
+# ---------------------------------------------------------------------------
+# 学生数字孪生本体（student-twin）
+#
+# 人本论：孪生是「人本体」的可执行运行时（人的第一视角 → 以人引出万物 → 由万物引出本体）。
+# 本文件是「本体 → 孪生」通用机制的**形式化载体**：S5 把 S0 先垂直手写落位的
+# twin.event 结构回收进本 YAML（真源），由 @gri/codegen 生成迁移与孪生描述符。
+#
+# 设计红线：孪生**不重复存储状态**——身份/状态/世界/记忆一律复用既成真源，
+# 只新增「经历」一张 append-only 表（TwinEvent）。结构变更只改本 YAML。
+# ---------------------------------------------------------------------------
+schemaVersion: 0.5.0
+name: student-twin
+description: 学生数字孪生 —— 人的本体（User）生成的孪生运行时：六面 + 世界 + 行动闭集
+
+objects:
+  # 人本体（引用目标）：孪生所锚定的「人」。此处仅声明引用目标，不生成表
+  # （真实身份真源为 public.users + edu.students，由 identity 门面装配）。
+  - name: User
+    table: public.users
+    abstract: true
+    description: 人本体（身份真源 public.users；本文件只声明孪生锚点，不建表）
+
+  # 经历（事件溯源，append-only）：一条 = 一次有意义的变更的前后快照 + 差异。
+  # 对齐原型 PERSONA C1 的 events[]（before/after/diffs）；供时间线（行为与记忆）
+  # 与状态回放（replay）。NK 根：entity_id 一律 → public.users(id)（每生一孪生）。
+  - name: TwinEvent
+    table: twin.event
+    description: 孪生经历（append-only 事件溯源；前后快照 + 差异）
+    fields:
+      - name: id
+        type: uuid
+        description: 主键
+      - name: kind
+        type: enum
+        required: true
+        values: [system, session, profile, world, action, memory, settings]
+        description: 行为类别（闭集）
+      - name: title
+        type: string
+        required: true
+        description: 一句话标题
+      - name: text
+        type: text
+        description: 正文（可空）
+      - name: source
+        type: string
+        description: 来源（用户操作/回填/AI 教师…）
+      - name: sceneId
+        type: string
+        description: 所在 KnowledgeArea.code（登峰营地；可空）
+      - name: diffs
+        type: json
+        dbDefault: "'[]'::jsonb"
+        description: '[{label,before,after}]'
+      - name: before
+        type: json
+        description: 变更前状态快照（可空）
+      - name: after
+        type: json
+        description: 变更后状态快照（可空）
+      - name: at
+        type: datetime
+        required: true
+        dbDefault: NOW()
+        description: 发生时间（时间线排序键）
+      - name: entityId
+        type: uuid
+        required: true
+        description: 孪生主体（≡ public.users.id / req.auth.externalId）
+    links:
+      - name: belongsTo
+        source: TwinEvent
+        target: User
+        cardinality: many
+        foreignKey: entity_id
+        onDelete: cascade
+        required: true
+        description: 经历属于一个人本体（随人删除而级联）
+    indexes:
+      - columns: [entity_id, 'at DESC']
+        name: idx_twin_event_entity_at
+        description: 时间线主查询（按主体取最近经历）
+
+# ---------------------------------------------------------------------------
+# 孪生声明（通用机制形式化）：人本体 → 孪生的六面 + 世界 + 行动闭集。
+# world 指向另一个本体（k12-curriculum）的 KnowledgeArea —— 跨本体引用。
+# ---------------------------------------------------------------------------
+twins:
+  - name: StudentTwin
+    description: 学生数字孪生（人本体的可执行运行时；一期首个垂直）
+    entity: User
+    world: KnowledgeArea
+    parts:
+      - name: profile
+        source: IdentityService.getProfileByExternalId（public.users + edu.students）
+        description: 身份·稳定属性（姓名/年级/教材/学校/头像）
+      - name: state
+        source: TuitionService.computeStats + ontology.knowledge_area 掌握度聚合
+        description: 状态·可变属性（进度/掌握度/能力雷达/师生关系值）
+      - name: world
+        source: CurriculumService.knowledgeMap（ontology.knowledge_area + area_prerequisite）
+        description: 世界·学科版图（节点=知识域，航线=前置依赖）
+      - name: events
+        object: TwinEvent
+        source: twin.event（本表）
+        description: 经历·行为时间线（append-only）
+      - name: memories
+        source: AgentService.listMemory（agent.memory，每生 AI 教师跨会话记忆）
+        description: 记忆·人记得的事
+      - name: relations
+        source: agent.sessions 教学轮次聚合
+        description: 关系·与 AI 教师的互动值
+    verbs:
+      - verb: lesson
+        title: 上课
+      - verb: practice
+        title: 练习
+      - verb: review
+        title: 复习错题
+      - verb: chat
+        title: 请教 AI 教师
+      - verb: exam
+        title: 测验
+      - verb: rest
+        title: 休息

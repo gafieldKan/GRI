@@ -33,7 +33,7 @@ async function main() {
   const outputs = generate(loaded.ontology, tracks)
   await fs.mkdir(outDir, { recursive: true })
 
-  const ext = { sql: '.sql', typescript: '.ts' }
+  const ext = { sql: '.sql', typescript: '.ts', twin: '.json' }
   for (const [track, content] of Object.entries(outputs)) {
     const file = path.join(outDir, `generated.${ext[track] ?? '.' + track}`)
     await fs.writeFile(file, content, 'utf-8')

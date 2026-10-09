@@ -7,6 +7,7 @@
 
 import { generateSQL } from './sql.js'
 import { generateTypeScript } from './typescript.js'
+import { generateTwinDescriptor } from './twin.js'
 
 /**
  * 可插拔生成器注册表（§7.4 扩展契约）：
@@ -16,6 +17,7 @@ import { generateTypeScript } from './typescript.js'
 export const generators = {
   sql: generateSQL,
   typescript: generateTypeScript,
+  twin: generateTwinDescriptor,
 }
 
 /**

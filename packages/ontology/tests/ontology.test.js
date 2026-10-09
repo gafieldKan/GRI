@@ -120,6 +120,44 @@ describe('validateOntologySemantics 语义校验', () => {
     assert.equal(r.ok, false)
     assert.ok(r.errors.some((e) => /判别值 "catering" 与 Object "CateringOrder" 重复/.test(e.message)))
   })
+
+  it('indexes 引用不存在的列被拦截', () => {
+    const parsed = OntologySchema.parse({
+      schemaVersion: '0.5.0',
+      name: 'x',
+      objects: [{ name: 'A', fields: [{ name: 'a', type: 'string' }], indexes: [{ columns: ['ghost'] }] }],
+    })
+    const r = validateOntologySemantics(parsed)
+    assert.equal(r.ok, false)
+    assert.ok(r.errors.some((e) => /索引列 "ghost"/.test(e.message)))
+  })
+
+  it('indexes 可用 "col DESC" 且命中字段列', () => {
+    const parsed = OntologySchema.parse({
+      schemaVersion: '0.5.0',
+      name: 'x',
+      objects: [{ name: 'A', fields: [{ name: 'at', type: 'datetime' }], indexes: [{ columns: ['at DESC'] }] }],
+    })
+    const r = validateOntologySemantics(parsed)
+    assert.equal(r.ok, true, JSON.stringify(r.errors))
+  })
+
+  it('twins 默认 []（additive，旧本体零影响）', () => {
+    const parsed = OntologySchema.parse(orderOntology)
+    assert.deepEqual(parsed.twins, [])
+  })
+
+  it('twins 部件引用不存在的 Object 被拦截', () => {
+    const parsed = OntologySchema.parse({
+      schemaVersion: '0.5.0',
+      name: 'x',
+      objects: [{ name: 'A', fields: [] }],
+      twins: [{ name: 'T', entity: 'A', parts: [{ name: 'events', object: 'Ghost' }] }],
+    })
+    const r = validateOntologySemantics(parsed)
+    assert.equal(r.ok, false)
+    assert.ok(r.errors.some((e) => /孪生部件 "events"/.test(e.message)))
+  })
 })
 
 describe('loadOntology 一站式校验', () => {

@@ -72,6 +72,8 @@ export const FieldSchema = z.object({
  * - name：关系语义名（如 belongsTo / reportingTo）
  * - cardinality：source 侧一个实例关联 target 多少个实例
  * - foreignKey：落到 source 表上的外键列名（缺省为 `${target}Id`）
+ * - onDelete：外键删除行为（cascade/set null/restrict）。缺省：cardinality
+ *   'one' 沿用历史语义（UNIQUE 外键 → ON DELETE CASCADE），'many' 不级联。
  */
 export const LinkSchema = z.object({
   name: z.string().min(1),
@@ -80,7 +82,23 @@ export const LinkSchema = z.object({
   cardinality: Cardinality.optional().default('many'),
   foreignKey: z.string().optional(),
   required: z.boolean().optional().default(false),
+  onDelete: z.enum(['cascade', 'set null', 'restrict']).optional(),
   description: z.string().optional(),
+})
+
+/**
+ * 索引声明（Object 级，落普通表/单表均可）。
+ * - columns：列名数组；每项可为 "col" 或 "col DESC"（排序方向原样保留，
+ *   列名部分转 snake_case）
+ * - name：索引名（缺省按 `idx_<table>_<cols>` 推导）
+ * - unique：唯一索引
+ * - where：部分索引谓词（原样 SQL 片段，如 `kind = 'action'`）
+ */
+export const IndexSchema = z.object({
+  columns: z.array(z.string().min(1)).min(1),
+  name: z.string().optional(),
+  unique: z.boolean().optional(),
+  where: z.string().optional(),
 })
 
 /**
@@ -182,6 +200,7 @@ const ObjectSchemaBase = z.object({
   fields: z.array(FieldSchema).default([]),
   variantFields: z.array(FieldSchema).optional(),
   uniqueConstraints: z.array(z.array(z.string()).min(1)).optional(),
+  indexes: z.array(IndexSchema).optional(),
   links: z.array(LinkSchema).default([]),
   actions: z.array(ActionSchema).default([]),
   stateMachine: StateMachineSchema.optional(),
@@ -190,7 +209,50 @@ const ObjectSchemaBase = z.object({
 export const ObjectSchema = ObjectSchemaBase
 
 /**
- * 完整本体文档：schema 版本 + Object 集合 + Link 集合 + Interface 集合。
+ * 孪生部件声明：孪生体的一个面（身份/状态/世界/经历/记忆/关系…）。
+ * - name：部件名（profile/state/world/events/memories/relations/settings…）
+ * - source：真源描述（自由文本：服务/表/装配函数），说明「这一面从哪来」
+ * - object：关联的本体 Object（如经历面 → TwinEvent）；须在 objects 中声明
+ */
+export const TwinPartSchema = z.object({
+  name: z.string().min(1),
+  source: z.string().optional(),
+  object: z.string().optional(),
+  description: z.string().optional(),
+})
+
+/**
+ * 孪生动词声明：世界里的行动（闭集）——「行动 → 经历」的挂钩面。
+ */
+export const TwinVerbSchema = z.object({
+  verb: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().optional(),
+})
+
+/**
+ * 孪生声明（顶层层级，与 objects/links/interfaces 并列）。
+ *
+ * 「本体 → 孪生」的通用机制：每一个本体都可以生成对应的数字孪生——
+ *   - entity：所孪生的「人/主本体」Object（人本论：人本体是孪生的锚）
+ *   - world：世界（场景/节点）来源 Object（如 KnowledgeArea）
+ *   - parts：孪生的六面（身份/状态/世界/经历/记忆/…）及各自真源
+ *   - verbs：世界里的行动闭集
+ *
+ * 一期先跑通「学生孪生」垂直（student-twin.ontology.yaml）；本 schema 是
+ * 由 vertical 泛化为通用机制的形式化载体（双锚点 + 孪生锚点防漂移）。
+ */
+export const TwinSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  entity: z.string().min(1),
+  world: z.string().optional(),
+  parts: z.array(TwinPartSchema).default([]),
+  verbs: z.array(TwinVerbSchema).default([]),
+})
+
+/**
+ * 完整本体文档：schema 版本 + Object 集合 + Link 集合 + Interface 集合 + 孪生集合。
  */
 export const OntologySchema = z.object({
   // DSL 版本化（§2.1：向后兼容的关键）
@@ -200,6 +262,8 @@ export const OntologySchema = z.object({
   interfaces: z.array(InterfaceSchema).default([]),
   objects: z.array(ObjectSchema).min(1),
   links: z.array(LinkSchema).default([]),
+  // 孪生声明（可选，additive；「本体 → 孪生」的通用机制载体）
+  twins: z.array(TwinSchema).default([]),
 })
 
 export const validateOntologySchema = (data) => OntologySchema.parse(data)

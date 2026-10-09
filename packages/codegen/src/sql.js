@@ -80,14 +80,51 @@ export function resolveObjectLinks(obj, objByName = new Map()) {
       const fkName = toSnakeCase(l.foreignKey ?? `${l.target}Id`)
       const target = objByName.get(l.target)
       const targetTable = target?.table ?? toSnakeCase(l.target)
+      const unique = l.cardinality === 'one'
       return {
         name: l.name,
         fkName,
         targetTable,
-        unique: l.cardinality === 'one',
+        unique,
+        // 删除行为：显式 onDelete 优先；缺省沿用历史语义（UNIQUE 外键 → 级联）
+        onDelete: l.onDelete ?? (unique ? 'cascade' : null),
         targetName: l.target,
       }
     })
+}
+
+/**
+ * 外键删除行为的 SQL 片段（无则空串）。
+ * @param {'cascade'|'set null'|'restrict'|null|undefined} onDelete
+ */
+export function onDeleteClause(onDelete) {
+  if (onDelete === 'cascade') return ' ON DELETE CASCADE'
+  if (onDelete === 'set null') return ' ON DELETE SET NULL'
+  if (onDelete === 'restrict') return ' ON DELETE RESTRICT'
+  return ''
+}
+
+/**
+ * 生成对象级 indexes 的 CREATE INDEX 语句。
+ * 支持 "col" / "col DESC" 列项（排序方向保留，列名转 snake_case）、唯一索引、
+ * 部分索引谓词与显式索引名（缺省 idx_<table>_<cols>）。
+ * @param {object} obj Object 声明
+ * @param {string} [table] 物理表名（缺省按 name 推导）
+ */
+export function indexSQL(obj, table) {
+  const tbl = table ?? obj.table ?? toSnakeCase(obj.name)
+  return (obj.indexes ?? []).map((idx) => {
+    const cols = idx.columns
+      .map((c) => {
+        const parts = String(c).trim().split(/\s+/)
+        return [toSnakeCase(parts[0]), ...parts.slice(1)].join(' ')
+      })
+      .join(', ')
+    const name = idx.name ?? `idx_${tbl.replace(/\./g, '_')}_${(idx.columns[0] || 'col').split(/\s+/)[0].replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()}`
+    const unique = idx.unique ? 'UNIQUE ' : ''
+    const where = idx.where ? ` WHERE ${idx.where}` : ''
+    return `CREATE ${unique}INDEX IF NOT EXISTS ${name} ON ${tbl} (${cols})${where};`
+  })
 }
 
 /**
@@ -210,8 +247,7 @@ function generatePlainTableSQL(obj, objByName = new Map()) {
   // 外键声明（REFERENCES，含 schema 限定目标表与自引用）
   const fks = linkFks.map(
     (fk) =>
-      `    FOREIGN KEY (${fk.fkName}) REFERENCES ${fk.targetTable}(id)` +
-      (fk.unique ? ' ON DELETE CASCADE' : ''),
+      `    FOREIGN KEY (${fk.fkName}) REFERENCES ${fk.targetTable}(id)` + onDeleteClause(fk.onDelete),
   )
   const lines = [`-- 由 @gri/codegen 生成（普通 Object）`, `CREATE TABLE IF NOT EXISTS ${table} (`]
   if (fks.length) {
@@ -221,6 +257,8 @@ function generatePlainTableSQL(obj, objByName = new Map()) {
     lines.push(cols.filter((c) => c !== '').join(',\n'))
   }
   lines.push(`);`)
+  // 对象级索引（含复合/部分索引）
+  lines.push(...indexSQL(obj, table))
   return lines.join('\n')
 }
 
