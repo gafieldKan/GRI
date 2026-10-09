@@ -21,6 +21,10 @@ export const useSessionStore = defineStore('session', () => {
   const isLoading = ref(false)
   const error = ref(null)
 
+  // camera → chat 跨页带参：chat 是 tabBar 页（switchTab 不带参、onLoad 只触发一次），
+  // 用这枚「待发送题目文本」在页面间传递，chat 会话就绪后消费一次。
+  const pendingPrompt = ref('')
+
   const isActive = computed(() => !!sessionId.value)
 
   async function createSession(studentId, knowledgePointId) {
@@ -90,6 +94,18 @@ export const useSessionStore = defineStore('session', () => {
     error.value = null
   }
 
+  /** 请求 chat 页在下次展示时自动发送的题目文本（camera 识别结果等） */
+  function setPendingPrompt(text) {
+    pendingPrompt.value = text || ''
+  }
+
+  /** 取出并清空待发题目；无则返回 '' */
+  function takePendingPrompt() {
+    const t = pendingPrompt.value
+    pendingPrompt.value = ''
+    return t
+  }
+
   return {
     sessionId,
     currentState,
@@ -102,6 +118,9 @@ export const useSessionStore = defineStore('session', () => {
     createSession,
     sendMessage,
     refreshState,
-    reset
+    reset,
+    pendingPrompt,
+    setPendingPrompt,
+    takePendingPrompt
   }
 })

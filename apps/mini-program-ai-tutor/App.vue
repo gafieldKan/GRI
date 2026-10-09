@@ -4,8 +4,8 @@ import { useUserStore } from './store/user.js'
 
 export default {
   globalData: {
-    // 全局配置 — 小程序经 nginx 网关 /api（统一；旧直连 :3003 已退役）
-    API_BASE_URL: 'http://localhost',
+    // 全局配置 — 后端 origin 由构建期注入（绝对地址；小程序经 nginx 网关 /api）。
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || '',
     // 当前学习会话
     currentSession: null
   },
@@ -35,6 +35,15 @@ export default {
 
 <style>
 /* 智学��眼 小程序全局样式 - 使用统一设计令牌 */
+/* WXSS 不支持 `*` 通配选择器，无法整体引入 web 的 base/reset.css。
+   原 reset 的「全局 border-box」是布局基线（页面里 width:100% + padding/border 依赖它，
+   如 .form-input），此处以显式元素列表复刻，行为等价。 */
+page,
+view, text, image, button, input, textarea, scroll-view, swiper, swiper-item,
+navigator, picker, form, label, cover-view, canvas, video {
+  box-sizing: border-box;
+}
+
 page {
   background-color: var(--color-bg-primary);
   font-family: var(--font-sans);

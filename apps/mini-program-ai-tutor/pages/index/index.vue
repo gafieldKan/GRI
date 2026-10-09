@@ -91,16 +91,17 @@ const stats = reactive({
 
 const backendOnline = ref(false)
 
+// chat/camera/report 均为 tabBar 页：必须用 switchTab（navigateTo 对 tabBar 页非法）
 const goToChat = () => {
-  uni.navigateTo({ url: '/pages/chat/chat' })
+  uni.switchTab({ url: '/pages/chat/chat' })
 }
 
 const goToCamera = () => {
-  uni.navigateTo({ url: '/pages/camera/camera' })
+  uni.switchTab({ url: '/pages/camera/camera' })
 }
 
 const goToReport = () => {
-  uni.navigateTo({ url: '/pages/report/report' })
+  uni.switchTab({ url: '/pages/report/report' })
 }
 
 const loadStats = async () => {

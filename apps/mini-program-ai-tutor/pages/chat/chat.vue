@@ -90,7 +90,7 @@
 
 <script setup>
 import { ref, reactive, computed, nextTick, onMounted } from 'vue'
-import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import { createSession, sendSessionMessage } from '../../api/index.js'
 import { toRichTextNodes } from '../../utils/katex-helper.js'
 import { useSessionStore } from '../../store/session.js'
@@ -127,27 +127,21 @@ onMounted(async () => {
   await initSession()
 })
 
-// camera 等跨页带参：解析 ocrResult（识别结果 JSON）/ text（题目文本）
-// → 会话建好后作为首条用户消息自动送出（onLoad 拿参数，只送一次）。
-let initialMessage = ''
-let initialMessageSent = false
-onLoad((query) => {
-  if (!query) return
-  if (query.ocrResult) {
-    try {
-      const parsed = JSON.parse(decodeURIComponent(query.ocrResult))
-      const qs = (parsed.parsedQuestions || parsed.ocr?.questions || [])
-        .map((q) => q.content)
-        .filter(Boolean)
-      const raw = qs.length ? qs.join('\n') : (parsed.ocr?.rawText || parsed.rawText)
-      if (raw) initialMessage = '请帮我解答这道题：' + raw
-    } catch (e) {
-      console.error('解析 OCR 参数失败:', e)
-    }
-  } else if (query.text) {
-    initialMessage = '请帮我解答这道题：' + decodeURIComponent(query.text)
-  }
+// camera → chat 跨页带参：chat 是 tabBar 页（switchTab 不带参、onLoad 只在首次触发），
+// 故经 session store 传「待解题文本」：首次由 initSession 末尾消费，之后每次 onShow 消费。
+onShow(() => {
+  applyPendingPrompt()
 })
+
+const applyPendingPrompt = async () => {
+  // 首帧 onShow 早于会话创建，跳过；交由 initSession 末尾消费
+  if (!sessionId.value) return
+  const text = useSessionStore().takePendingPrompt()
+  if (!text) return
+  messages.push({ role: 'user', type: 'text', content: text })
+  const reply = await sendSessionMessage(sessionId.value, text)
+  handleServerMessage(reply)
+}
 
 // 初始化会话
 const initSession = async () => {
@@ -161,13 +155,8 @@ const initSession = async () => {
     const greeting = await sendSessionMessage(sessionId.value, '我想学习')
     handleServerMessage(greeting)
 
-    // camera 跨页带参：OCR/题目文本作为首条消息自动送出（只送一次，重复进入不重放）
-    if (initialMessage && !initialMessageSent) {
-      initialMessageSent = true
-      messages.push({ role: 'user', type: 'text', content: initialMessage })
-      const reply = await sendSessionMessage(sessionId.value, initialMessage)
-      handleServerMessage(reply)
-    }
+    // camera 带参：会话建好后消费待发题目（若有）
+    await applyPendingPrompt()
   } catch (error) {
     console.error('Session init failed:', error)
     messages.push({

@@ -65,11 +65,29 @@
 <script setup>
 import { ref } from 'vue'
 import { uploadExamImage } from '../../api/index.js'
+import { useSessionStore } from '../../store/session.js'
 
 const hasPhoto = ref(false)
 const photoPath = ref('')
 const analyzing = ref(false)
 const analyzingPopup = ref(null)
+
+// chat 是 tabBar 页：switchTab 不带参，故经 session store 传「待解题文本」再切 tab
+// （原 navigateTo('/pages/chat/chat?ocrResult=…') 对 tabBar 页非法；且 chat 的 onLoad
+//  参数在 tab 复用后不再触发）。
+const goToChat = (promptText) => {
+  if (promptText) useSessionStore().setPendingPrompt(promptText)
+  uni.switchTab({ url: '/pages/chat/chat' })
+}
+
+// 从上传结果抽取题目文本（口径与 chat 原 onLoad 实现一致）
+const ocrToPrompt = (result) => {
+  const qs = (result.parsedQuestions || result.ocr?.questions || [])
+    .map((q) => q.content)
+    .filter(Boolean)
+  const raw = qs.length ? qs.join('\n') : (result.ocr?.rawText || result.rawText)
+  return raw ? '请帮我解答这道题：' + raw : ''
+}
 
 const setAnalyzing = (val) => {
   analyzing.value = val
@@ -135,13 +153,9 @@ const analyzePhoto = async () => {
     const result = await uploadExamImage(photoPath.value, 'math', '8')
 
     if (result.success && result.parsedQuestions) {
-      uni.navigateTo({
-        url: '/pages/chat/chat?from=camera&ocrResult=' + encodeURIComponent(JSON.stringify(result))
-      })
+      goToChat(ocrToPrompt(result))
     } else {
-      uni.navigateTo({
-        url: '/pages/chat/chat?from=camera&image=' + encodeURIComponent(photoPath.value)
-      })
+      goToChat('')
     }
 
     analyzing.value = false
@@ -155,11 +169,7 @@ const analyzePhoto = async () => {
       icon: 'none',
       duration: 2000
     })
-    setTimeout(() => {
-      uni.navigateTo({
-        url: '/pages/chat/chat?from=camera&image=' + encodeURIComponent(photoPath.value)
-      })
-    }, 2000)
+    setTimeout(() => goToChat(''), 2000)
   }
 }
 </script>

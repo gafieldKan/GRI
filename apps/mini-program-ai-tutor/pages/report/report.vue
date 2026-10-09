@@ -355,7 +355,8 @@ const refresh = async () => {
 }
 
 const goToPractice = () => {
-  uni.navigateTo({ url: '/pages/chat/chat' })
+  // chat 是 tabBar 页：必须 switchTab（navigateTo 会 fail: can not navigateTo a tabbar page）
+  uni.switchTab({ url: '/pages/chat/chat' })
 }
 
 onMounted(() => {

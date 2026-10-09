@@ -11,6 +11,13 @@ export default defineConfig({
   plugins: [
     uni()
   ],
+  // mp-weixin 无「同源」概念，相对 URL 非法 —— 必须把后端 origin 在构建期烘焙成绝对地址。
+  // 与 apps/web-ai-tutor/vite.config.js 同款 define：从 process.env 注入（默认空串 = 降级相对，
+  // 仅 H5 场景有意义）。运行：VITE_API_BASE_URL=<origin> VITE_AUTH_BASE_URL=<origin>/auth uni -p mp-weixin
+  define: {
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || ''),
+    'import.meta.env.VITE_AUTH_BASE_URL': JSON.stringify(process.env.VITE_AUTH_BASE_URL || '')
+  },
   server: {
     port: 5175,
     host: true

@@ -30,15 +30,7 @@
       "minified": true
     },
     "usingComponents": true,
-    "lazyCodeLoading": "requiredComponents",
-    "permission": {
-      "scope.camera": {
-        "desc": "用于拍照搜题"
-      },
-      "scope.writePhotosAlbum": {
-        "desc": "用于保存图片到相册"
-      }
-    }
+    "lazyCodeLoading": "requiredComponents"
   },
   "mp-alipay": {
     "usingComponents": true
