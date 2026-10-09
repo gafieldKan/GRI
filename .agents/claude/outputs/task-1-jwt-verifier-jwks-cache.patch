@@ -1,0 +1,24 @@
+--- a/packages/jwt-verifier/src/index.js
++++ b/packages/jwt-verifier/src/index.js
+@@ -66,13 +66,19 @@
+   const staticPem = opts.publicKey ?? readPemFromEnv();
+   if (staticPem) cache.pem = staticPem;
+ 
+-  /** 惰性解析公钥 PEM（静态优先，否则拉 JWKS 并缓存） */
++  /** 惰性解析公钥 PEM（静态优先；否则拉 JWKS 并按 kid 缓存，命中快路径免拉） */
+   async function resolvePem(header) {
+     if (staticPem) return staticPem;
+ 
++    const targetKid = header?.kid;
++    // 快路径：已有缓存且 kid 一致（或无 kid 但有缓存）→ 直接复用，免一次 JWKS 往返。
++    // 修复点：原实现无条件 fetchJson(jwksUrl)，导致 JWKS 模式下每请求都拉公钥（缓存形同虚设）。
++    if (cache.pem && (!targetKid || targetKid === cache.keyId)) {
++      return cache.pem;
++    }
++
+     const { keys } = await fetchJson(jwksUrl);
+     // 挑 kid 匹配的；未提供 header/token kid 时取第一把
+-    const targetKid = header?.kid;
+     const jwk =
+       keys.find((k) => k.kid === targetKid) ??
+       keys.find((k) => k.kty === 'RSA' && k.use === 'sig') ??

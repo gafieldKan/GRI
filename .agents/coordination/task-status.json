@@ -1,7 +1,40 @@
 {
   "p2-task-1": "done_and_committed",
   "p2-task-1b": "done_and_committed",
+  "p2-task-4": "code_done_verified_green_uncommitted",
+  "p2-task-11": "voided",
   "in-flight-backlog": "committed_6_batches",
-  "_commits": ["08bcb33 T1", "e5e0703 T1b", "b3ac600 ontology/twin", "8fdde79 api curriculum+tuition", "e8adac2 twin-ui", "47426c0 mini-program", "c3a1ec5 infra", "ef6a535 styles+k12+docs"],
-  "_pending": "Wave1 余下 T4/T11 未跑；.agents 协作脚本(.sh)未决定是否入库"
+  "_commits": [
+    "08bcb33 T1",
+    "e5e0703 T1b",
+    "b3ac600 ontology/twin",
+    "8fdde79 api curriculum+tuition",
+    "e8adac2 twin-ui",
+    "47426c0 mini-program",
+    "c3a1ec5 infra",
+    "ef6a535 styles+k12+docs"
+  ],
+  "_card_recon_2026_10_09": {
+    "p2-task-4": "重写：原卡与实况严重脱节（无 restaurants.merchant_id 列 / 无 review+coupon 表 / 错误依赖 JWT roles 授权）。已补 018 迁移三表+merchant_id 列要求、商家=数据归属、运营=assertSiteOperator、build→migrate 纪律、显式列迁移产出物。",
+    "p2-task-11": "作废：/api/ontology/stats 早已实现且不入白名单（有意）；master-data 模块已退役（无 API 面）；version.json 不存在；目录为扁平 4 个。无可执行剩余工作。保留作废记录。"
+  },
+  "_decisions_2026_10_09": [
+    "授权模型真相：JWT roles 恒为空是【有意的架构决策】（agent-admin.controller 注释佐证）。运营判定 = 根组织 assertSiteOperator；商家判定 = 数据归属(merchant_id)。禁止改 auth-center 注入 roles。",
+    "工具链缺口【不需要修复】：nest-cli.json 的 assets[migrate/*.sql] 两服务均正确；真因是 dist 陈旧。纪律改为『改 SQL 后先 npm run build 再 npm run migrate』。",
+    "identity.controller.READ_ANY_ELEVATED_ROLES 依赖 req.auth.roles → 因 roles 恒空当前恒 false（既存缺陷，超本卡范围，不动）。"
+  ],
+  "_pending": "T4 代码已产出+三级复验全绿(未提交/未入镜像)；.agents 协作脚本(.sh)未决定是否入库；identity.controller 的 READ_ANY_ELEVATED_ROLES 既存缺陷待单独评估",
+  "_t4_execution_2026_10_09": {
+    "codex": "done (exit=0, 会话 880 行)",
+    "files": ["services/api/src/auth/public-routes.ts", "services/api/src/modules/food/food.controller.ts", "services/api/src/modules/food/food.service.ts", "services/api/src/modules/food/food.service.spec.ts", "services/api/src/modules/food/food.types.ts", "services/api/src/migrate/018_food_review_coupon_merchant.sql"],
+    "verify": {
+      "tsc_build": "0 error",
+      "eslint": "0 error 0 warning",
+      "unit": "25 suites / 348 tests 全绿 (food 54)",
+      "migration": "018 已落 gri 库并登记 _api_migrations；对象 restaurants.merchant_id/reviews/coupons/coupon_claims/fk_restaurants_merchant/ck_reviews_rating 全部存在；复跑幂等",
+      "e2e": "PASS=60 FAIL=0（修正验收脚本 uuid() bug 后）"
+    },
+    "blocker_found": "验收脚本 .agents/codex/outputs/p2-task-4-verify.sh 的 uuid() 用 tr -d 把 psql 的 'INSERT 0 1' 标签粘进 UUID → 6 项领券用例误报 500。已修为 head -n1 | tr -d。",
+    "image_rebuild": "未完成：runtime 段 npm ci 间歇性报 'Exit handler never called!' / DEPTH_ZERO_SELF_SIGNED_CERT(registry 自签证书) → pg 为空 → 崩溃循环。gri-api 容器已回滚到可用镜像 2e0e4fe3c1e2（pre-T4），latest 未更新。宿主直跑 dist 已完成 e2e 复验。"
+  }
 }

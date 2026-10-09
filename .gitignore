@@ -80,3 +80,17 @@ ssl/
 
 # k12-curriculum 版图审核前草稿（真源为 maps/*.map.json，草稿仅推导过程）
 scripts/k12-curriculum/maps-draft/
+
+# .agents/ 协作工作区 —— 任务卡 / 设计文档 / 交接记录 / 验收脚本纳入版本历史
+# （因全局 *.md 被忽略，这里显式反向豁免其下的 .md/.sh/.json）
+!.agents/**/*.md
+!.agents/**/*.sh
+!.agents/**/*.json
+
+# 运行时噪音（大日志、完成标记、临时构建日志）不入库
+.agents/coordination/logs/
+.agents/coordination/*.log
+.agents/**/.done
+
+# 一次性 scratch 目录
+.p2t4/
