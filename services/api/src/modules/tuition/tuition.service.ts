@@ -63,7 +63,7 @@ export class TuitionService {
 
   // ===================== 题目 =====================
 
-  async getQuestionBank(query: { subject?: string; knowledgePoint?: string; limit?: number }): Promise<Question[]> {
+  async getQuestionBank(query: { subject?: string; knowledgePoint?: string; chapterId?: string; limit?: number }): Promise<Question[]> {
     // subject 在 edu.knowledge_points 而非 edu.questions → JOIN 后在 kp.subject 上过滤。
     let sql = `SELECT q.*, kp.name AS knowledge_point_name FROM edu.questions q
                LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id`;
@@ -72,6 +72,11 @@ export class TuitionService {
     if (query.subject) {
       conds.push(`kp.subject = $${params.length + 1}`);
       params.push(query.subject);
+    }
+    // 章节过滤（练习中心「主题」= 教材章节）：kp.chapter_id 精确命中。
+    if (query.chapterId) {
+      conds.push(`kp.chapter_id = $${params.length + 1}`);
+      params.push(query.chapterId);
     }
     // 空/缺省 knowledgePoint 不解析（避免误关联），只在有值时按 legacy→uuid 解析
     const kpUuid = query.knowledgePoint ? await this.questionService.resolveKnowledgePointId(query.knowledgePoint) : null;
@@ -188,8 +193,15 @@ export class TuitionService {
     return res.rows[0] as LearningPlan;
   }
 
-  async generatePlan(userId: string, params: { planType?: string; analysisReportId?: string }) {
-    return this.plan.generatePlan({ userId, planType: params.planType || 'daily', analysisReport: null });
+  async generatePlan(userId: string, params: { planType?: string; analysisReportId?: string; startDate?: string; endDate?: string; subjects?: string[] }) {
+    return this.plan.generatePlan({
+      userId,
+      planType: params.planType,
+      analysisReport: null,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      subjects: params.subjects,
+    });
   }
 
   async updatePlanProgress(userId: string, planId: string, completedTaskIds: string[]) {
@@ -207,6 +219,45 @@ export class TuitionService {
     return res.rows[0] as PracticeSession;
   }
 
+  /**
+   * 开启一次练习会话：写入真实 practice_sessions 行（mode/subject/topicId(章节)/题面快照），
+   * 返回含 uuid 的行——前端以此 id 作为 sessionId 回传 submit/complete。
+   */
+  async startPracticeSession(
+    userId: string,
+    opts: { mode?: string; subject?: string; topicId?: string; questions?: unknown[] } = {},
+  ): Promise<PracticeSession> {
+    const res = await this.db.query(
+      `INSERT INTO edu.practice_sessions (user_id, mode, subject, topic_id, questions, start_time, status)
+       VALUES ($1, $2, $3, $4, $5::jsonb, NOW(), 'in_progress') RETURNING *`,
+      [
+        userId,
+        opts.mode || 'quick',
+        opts.subject || 'math',
+        opts.topicId || null,
+        opts.questions?.length ? JSON.stringify(opts.questions) : null,
+      ],
+    );
+    return res.rows[0] as PracticeSession;
+  }
+
+  /** 薄弱攻克：学生未解决错题 → 完整题面（含选项/答案/解析），供练习中心「薄弱攻克」模式。 */
+  async getWeaknessQuestions(userId: string, limit = 15) {
+    const n = Math.min(Math.max(Number(limit) || 15, 1), 50);
+    const res = await this.db.query(
+      `SELECT q.id, q.content, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              q.difficulty, q.type, kp.name AS knowledge_point_name
+         FROM edu.wrong_questions wq
+         JOIN edu.questions q ON q.id = wq.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+        WHERE wq.user_id = $1 AND wq.is_resolved = false
+        ORDER BY wq.last_attempt_at DESC NULLS LAST
+        LIMIT $2`,
+      [userId, n],
+    );
+    return res.rows;
+  }
+
   /** 提交练习答案：落 answer_records + SM-2 更新 + 错题入账。 */
   async submitPracticeAnswer(userId: string, body: { questionId: string; answer: string; sessionId?: string; timeSpentMs?: number; isCorrect?: boolean }) {
     if (!body.questionId) throw new NotFoundException('缺少题目');
@@ -217,8 +268,8 @@ export class TuitionService {
 
     await this.db.query(
       `INSERT INTO edu.answer_records (user_id, question_id, session_id, student_answer, is_correct, time_spent_ms)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, body.questionId, body.sessionId ?? null, body.answer, isCorrect, body.timeSpentMs ?? null],
+       VALUES ($1, $2, NULL, $3, $4, $5)`,
+      [userId, body.questionId, body.answer, isCorrect, body.timeSpentMs ?? null],
     );
 
     // SM-2 间隔重复
@@ -332,7 +383,8 @@ export class TuitionService {
 
   async getSpacedRepetitionQueue(userId: string) {
     const res = await this.db.query(
-      `SELECT sq.question_id, sq.interval, sq.ease_factor, sq.repetitions, sq.next_review, q.content, q.answer, q.type, q.options
+      `SELECT sq.question_id, sq.interval, sq.ease_factor, sq.repetitions, sq.next_review,
+              q.content, q.answer, q.type, q.options, COALESCE(q.explanation, q.analysis) AS analysis
        FROM edu.sr_queue sq LEFT JOIN edu.questions q ON q.id = sq.question_id
        WHERE sq.user_id = $1 ORDER BY sq.next_review ASC`,
       [userId],
@@ -410,13 +462,28 @@ export class TuitionService {
     return res.rows;
   }
 
-  /** 完成练习会话。 */
-  async completePracticeSession(userId: string, sessionId: string, data: { score?: number }) {
+  /** 完成练习会话：落答案明细 + 统计 + 用时，标记 completed。 */
+  async completePracticeSession(
+    userId: string,
+    sessionId: string,
+    data: { answers?: unknown[]; stats?: unknown; duration?: number; score?: number },
+  ) {
+    const stats = data.stats ?? (data.score != null ? { score: data.score } : null);
     const res = await this.db.query(
       `UPDATE edu.practice_sessions
-       SET status = 'completed', stats = $3, duration = COALESCE(duration, $4), completed_at = NOW()
+       SET status = 'completed',
+           answers = COALESCE($3::jsonb, answers),
+           stats = COALESCE($4::jsonb, stats),
+           duration = COALESCE($5, duration),
+           completed_at = NOW()
        WHERE id = $1 AND user_id = $2 RETURNING *`,
-      [sessionId, userId, data.score != null ? JSON.stringify({ score: data.score }) : null, null],
+      [
+        sessionId,
+        userId,
+        data.answers?.length ? JSON.stringify(data.answers) : null,
+        stats ? JSON.stringify(stats) : null,
+        data.duration ?? null,
+      ],
     );
     if (res.rows.length === 0) throw new NotFoundException('练习会话不存在或无权访问');
     return res.rows[0];

@@ -82,6 +82,25 @@ export class CurriculumController {
     return this.curriculumService.knowledgeMap(subject, externalId);
   }
 
+  /**
+   * 学习路径（目标驱动）：goalId 的全先修闭包，拓扑序去重（先修在前）。
+   * OptionalAuth：匿名出结构、登录叠加各步骤掌握度。goalId 非法 → 400。
+   */
+  @Get('learning-path')
+  learningPath(@Query('goalId', new ParseUUIDPipe()) goalId: string, @Req() req?: Request) {
+    const externalId = req ? this.auth(req)?.externalId ?? undefined : undefined;
+    return this.curriculumService.learningPath(goalId, externalId);
+  }
+
+  /** 知识点随堂练习（选择题含答案/解析，公开读）。须置于 knowledge-points/:id 之前。 */
+  @Get('knowledge-points/:id/questions')
+  knowledgePointQuestions(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.curriculumService.knowledgePointQuestions(id, limit ? parseInt(limit, 10) : 5);
+  }
+
   @Get('knowledge-points/:id')
   async getKnowledgePoint(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.curriculumService.getKnowledgePoint(id);

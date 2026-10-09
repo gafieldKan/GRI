@@ -20,9 +20,11 @@ export class PlanAgent {
     analysisReport?: any;
     startDate?: string;
     endDate?: string;
+    subjects?: string[];
   }) {
     const userId = params.userId;
-    const planType = params.planType || 'daily';
+    // 仅接受日/周/月三类；非法值（如日历页误传的 'calendar'）一律回落 daily，避免类型错乱。
+    const planType = ['daily', 'weekly', 'monthly'].includes(params.planType ?? '') ? params.planType! : 'daily';
     let report = params.analysisReport;
     if (!report) report = await this._getLatestReport(userId);
 
@@ -31,7 +33,10 @@ export class PlanAgent {
     else if (planType === 'weekly') planData = await this._generateWeeklyPlan(report);
     else planData = await this._generateMonthlyPlan(report);
 
-    const planId = await this._savePlan({ userId, planType, planData, startDate: params.startDate, endDate: params.endDate });
+    const subjects = Array.isArray(params.subjects) ? params.subjects.filter(Boolean) : [];
+    if (subjects.length) planData.subjects = subjects;
+
+    const planId = await this._savePlan({ userId, planType, planData, subjects, startDate: params.startDate, endDate: params.endDate });
     return { success: true, planId, plan: { id: planId, type: planType, ...planData } };
   }
 
@@ -41,11 +46,11 @@ export class PlanAgent {
     const tasks: any[] = [];
 
     if (weakPoints.length > 0) {
-      tasks.push({ id: `task_practice_${Date.now()}`, type: 'practice', title: '薄弱知识点专项练习', description: `针对 ${weakPoints.join(', ')} 进行专项练习`, knowledgePoints: weakPoints, questionCount: 5, estimatedTime: 20, priority: 'high', completed: false });
+      tasks.push({ id: 'd0', type: 'practice', title: '薄弱知识点专项练习', description: `针对 ${weakPoints.join(', ')} 进行专项练习`, knowledgePoints: weakPoints, questionCount: 5, estimatedTime: 20, priority: 'high', completed: false });
     }
-    tasks.push({ id: `task_review_${Date.now()}`, type: 'review', title: '错题本复习', description: '复习之前的错题，确保掌握', estimatedTime: 15, priority: 'medium', completed: false });
+    tasks.push({ id: `d${tasks.length}`, type: 'review', title: '错题本复习', description: '复习之前的错题，确保掌握', estimatedTime: 15, priority: 'medium', completed: false });
     if (suggestions.length > 0) {
-      tasks.push({ id: `task_suggestion_${Date.now()}`, type: 'suggestion', title: '今日学习建议', description: suggestions[0], estimatedTime: 10, priority: 'low', completed: false });
+      tasks.push({ id: `d${tasks.length}`, type: 'suggestion', title: '今日学习建议', description: suggestions[0], estimatedTime: 10, priority: 'low', completed: false });
     }
 
     const practiceQuestions = await this.questionGenerator.generatePracticeSet({
@@ -67,13 +72,15 @@ export class PlanAgent {
     const weeklyTasks = [];
     for (let i = 0; i < 7; i++) {
       const dayPlan: any = { day: days[i], tasks: [] };
+      // 每条任务带稳定 id + completed(false)，供前端勾选并写回 plan_data 持久化。
+      const add = (t: any) => dayPlan.tasks.push({ id: `w${i}-t${dayPlan.tasks.length}`, completed: false, ...t });
       if (i < 5) {
         const kp = weakPoints[i % (weakPoints.length || 1)] || '综合复习';
-        dayPlan.tasks.push({ type: 'practice', title: `${kp} 专项练习`, questionCount: 5, estimatedTime: 25 });
-        dayPlan.tasks.push({ type: 'review', title: '错题复习', estimatedTime: 15 });
+        add({ type: 'practice', title: `${kp} 专项练习`, questionCount: 5, estimatedTime: 25 });
+        add({ type: 'review', title: '错题复习', estimatedTime: 15 });
       }
-      if (i === 5) dayPlan.tasks.push({ type: 'test', title: '本周综合测试', questionCount: 10, estimatedTime: 45 });
-      if (i === 6) dayPlan.tasks.push({ type: 'review', title: '本周错题总复习', estimatedTime: 30 });
+      if (i === 5) add({ type: 'test', title: '本周综合测试', questionCount: 10, estimatedTime: 45 });
+      if (i === 6) add({ type: 'review', title: '本周错题总复习', estimatedTime: 30 });
       weeklyTasks.push(dayPlan);
     }
     return {
@@ -117,36 +124,61 @@ export class PlanAgent {
   }
 
   /** 保存计划（edu.learning_plans，user_id 定位）。 */
-  private async _savePlan(params: { userId: string; planType: string; planData: any; startDate?: string; endDate?: string }): Promise<string> {
-    const { userId, planType, planData, startDate, endDate } = params;
+  private async _savePlan(params: { userId: string; planType: string; planData: any; subjects?: string[]; startDate?: string; endDate?: string }): Promise<string> {
+    const { userId, planType, planData, subjects, startDate, endDate } = params;
     const planPeriod = planType === 'daily' ? startDate : planType === 'weekly' ? startDate?.substring(0, 10) : startDate?.substring(0, 7);
     const totalTasks =
       planData?.tasks?.length ||
       planData?.weeklyTasks?.reduce((sum: number, d: any) => sum + d.tasks.length, 0) ||
       0;
+    const typeLabel = ({ daily: '日', weekly: '周', monthly: '月' } as Record<string, string>)[planType] ?? '';
+    const subjLabel = subjects?.length ? `${subjects.join('、')} ` : '';
+    const title = `${subjLabel}${typeLabel}学习计划`;
     const res = await this.db.query(
       `INSERT INTO edu.learning_plans (user_id, title, plan_type, plan_period, plan_data, progress, total_tasks, start_date, end_date, status)
        VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, 'active')
        RETURNING id`,
-      [userId, `${planType}学习计划`, planType, planPeriod, JSON.stringify(planData), totalTasks, startDate ?? new Date().toISOString(), endDate ?? null],
+      [userId, title, planType, planPeriod, JSON.stringify(planData), totalTasks, startDate ?? new Date().toISOString(), endDate ?? null],
     );
     return res.rows[0]?.id;
   }
 
-  /** 更新计划进度（owner 必须匹配用户，杜绝改他人计划）。 */
+  /**
+   * 更新计划进度：按 completedTaskIds 在 plan_data 中「标记式」写入 completed 并重算 progress，写回 JSONB。
+   * 支持日计划（plan_data.tasks）与周计划（plan_data.weeklyTasks[].tasks）两种结构；owner 由 user_id 收敛。
+   */
   async updateProgress(userId: string, planId: string, completedTaskIds: string[]) {
-    const completedCount = Array.isArray(completedTaskIds) ? completedTaskIds.length : 0;
-    // 同参数双处引用必须各显式同型 cast（pg variable_coerce_param_hook 会因推断冲突拒绝，
-    // 先例见 session-fsm.ts flush 的 $3::varchar）。此处拆 $3::int（写列）与 $4::float（算比例，
-    // 避免 int/int 整除归零）双参数，各单一类型零歧义。
+    const ids = new Set((Array.isArray(completedTaskIds) ? completedTaskIds : []).map((x) => String(x)));
+    const cur = await this.db.query(
+      `SELECT plan_data, total_tasks FROM edu.learning_plans WHERE id = $1 AND user_id = $2`,
+      [planId, userId],
+    );
+    if (cur.rows.length === 0) return { success: false, error: '计划不存在或无权访问' };
+
+    const planData: any = cur.rows[0].plan_data || {};
+    const allTasks: any[] = [];
+    if (Array.isArray(planData.tasks)) allTasks.push(...planData.tasks);
+    if (Array.isArray(planData.weeklyTasks)) {
+      for (const day of planData.weeklyTasks) if (Array.isArray(day.tasks)) allTasks.push(...day.tasks);
+    }
+    for (const t of allTasks) if (t && t.id != null) t.completed = ids.has(String(t.id));
+
+    const completedCount = allTasks.filter((t) => t && t.completed).length;
+    const total = allTasks.length || Number(cur.rows[0].total_tasks) || 0;
+    const progress = total ? Math.round((completedCount / total) * 10000) / 100 : 0;
+    const status = total && completedCount >= total ? 'completed' : 'active';
+
+    // 同参数双处引用须各显式同型 cast（先例见 session-fsm.ts flush 的 $3::varchar）。
     const result = await this.db.query(
       `UPDATE edu.learning_plans
-       SET completed_tasks = $3::int,
-           progress = CASE WHEN total_tasks > 0 THEN ($4::float / total_tasks) * 100 ELSE 0 END,
+       SET plan_data = $3::jsonb,
+           completed_tasks = $4::int,
+           progress = $5::float,
+           status = $6,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND user_id = $2
        RETURNING *`,
-      [planId, userId, completedCount, completedCount],
+      [planId, userId, JSON.stringify(planData), completedCount, progress, status],
     );
     if (result.rows.length === 0) return { success: false, error: '计划不存在或无权访问' };
     return { success: true, plan: result.rows[0] };

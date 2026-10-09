@@ -99,3 +99,29 @@ export interface KnowledgeMapStats {
   coverageRatio: number; // k12 / total（0–1）
   byGrade: Record<string, number>; // G1–G12 → k12 节点数（年级为键）
 }
+
+/** 学习路径步骤（目标知识点的全先修闭包，拓扑序去重后的单个知识点）。 */
+export interface LearningPathStep {
+  id: string;
+  code: string | null;
+  name: string;
+  description: string | null;
+  subject: string | null;
+  gradeLevel: number | null;
+  chapterName: string | null;
+  order: number; // 拓扑序（先修在前，目标在后）
+  depth: number; // 距目标的先修层级（0 = 目标本身）
+  isGoal: boolean;
+  mastery?: number; // 个人掌握度（0–100；仅登录叠加）
+}
+
+/** 学习路径结果：先修闭包 + 目标摘要。 */
+export interface LearningPathResult {
+  goal: {
+    id: string;
+    name: string;
+    subject: string | null;
+    gradeLevel: number | null;
+  } | null;
+  steps: LearningPathStep[];
+}

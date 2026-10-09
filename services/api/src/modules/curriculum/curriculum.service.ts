@@ -10,6 +10,8 @@ import {
   KnowledgeField,
   KnowledgeArea,
   KnowledgeMapStats,
+  LearningPathStep,
+  LearningPathResult,
 } from './curriculum.types';
 
 /**
@@ -331,6 +333,158 @@ export class CurriculumService {
     };
   }
 
+  /**
+   * 学习路径（对齐知序图谱的「目标驱动先修路径」）：目标知识点的**全先修闭包**，
+   * 递归 CTE 求祖先（先修 DAG，含环安全）→ TS 端 Kahn 拓扑排序去重（先修在前、目标在后）。
+   * 匿名出结构；登录（userId）叠加各步骤 mastery_snapshots 掌握度（0–100）。
+   * 独立于 knowledge-graph 的年级作用域：路径常跨年级，故单独端点。
+   */
+  async learningPath(goalId: string, userId?: string): Promise<LearningPathResult> {
+    const goalRes = await this.db.query(
+      `SELECT kp.id, kp.name, kp.subject, kp.grade_level
+         FROM edu.knowledge_points kp
+        WHERE kp.id = $1`,
+      [goalId],
+    );
+    if (goalRes.rows.length === 0) throw new NotFoundException('知识点不存在');
+    const goalRow = goalRes.rows[0];
+
+    // 先修闭包：from_kp 依赖 to_kp（from_kp=学习者，to_kp=先修）；path 数组防环。
+    const closureRes = await this.db.query(
+      `WITH RECURSIVE anc(id, depth, path) AS (
+         SELECT kp.id, 0, ARRAY[kp.id]::uuid[]
+           FROM edu.knowledge_points kp
+          WHERE kp.id = $1
+         UNION ALL
+         SELECT pr.to_kp, a.depth + 1, a.path || pr.to_kp
+           FROM ontology.kp_prerequisite pr
+           JOIN anc a ON pr.from_kp = a.id
+          WHERE a.depth < 50 AND NOT pr.to_kp = ANY(a.path)
+       )
+       SELECT kp.id, kp.code, kp.name, kp.description, kp.subject, kp.grade_level,
+              c.name AS chapter_name, MIN(a.depth) AS depth
+         FROM anc a
+         JOIN edu.knowledge_points kp ON kp.id = a.id
+         LEFT JOIN ontology.textbook_chapter c ON c.id = kp.chapter_id
+        GROUP BY kp.id, kp.code, kp.name, kp.description, kp.subject, kp.grade_level, c.name`,
+      [goalId],
+    );
+    const rows = closureRes.rows as Array<Record<string, any>>;
+    const ids = rows.map((r) => r.id);
+
+    // 闭包内先修边（用于拓扑排序；方向：from_kp 依赖 to_kp）
+    const edgeRes = await this.db.query(
+      `SELECT pr.from_kp, pr.to_kp
+         FROM ontology.kp_prerequisite pr
+        WHERE pr.from_kp = ANY($1::uuid[]) AND pr.to_kp = ANY($1::uuid[])`,
+      [ids],
+    );
+
+    // 个人掌握度叠加（仅登录）
+    const mastery = new Map<string, number>();
+    if (userId) {
+      const msRes = await this.db.query(
+        `SELECT knowledge_point_id, mastery_score
+           FROM edu.mastery_snapshots
+          WHERE user_id = $1 AND knowledge_point_id = ANY($2::uuid[])`,
+        [userId, ids],
+      );
+      for (const r of msRes.rows as Array<Record<string, any>>) {
+        mastery.set(r.knowledge_point_id, Number(r.mastery_score));
+      }
+    }
+
+    const order = this.topoSortPrereqs(rows, edgeRes.rows as Array<Record<string, any>>);
+    const byId = new Map(rows.map((r) => [r.id as string, r]));
+    const steps: LearningPathStep[] = order.map((id, i) => {
+      const r = byId.get(id)!;
+      const step: LearningPathStep = {
+        id: r.id,
+        code: r.code ?? null,
+        name: r.name,
+        description: r.description ?? null,
+        subject: r.subject ?? null,
+        gradeLevel: r.grade_level != null ? Number(r.grade_level) : null,
+        chapterName: r.chapter_name ?? null,
+        order: i,
+        depth: r.depth != null ? Number(r.depth) : 0,
+        isGoal: r.id === goalId,
+      };
+      if (mastery.has(r.id)) step.mastery = mastery.get(r.id);
+      return step;
+    });
+
+    return {
+      goal: {
+        id: goalRow.id,
+        name: goalRow.name,
+        subject: goalRow.subject ?? null,
+        gradeLevel: goalRow.grade_level != null ? Number(goalRow.grade_level) : null,
+      },
+      steps,
+    };
+  }
+
+  /**
+   * Kahn 拓扑排序：先修在前、依赖方在后。indeg = 节点在闭包内的先修数；
+   * ready 队列按 (grade_level, code, id) 确定性排序（稳定输出）；纯环残留按同序追加，绝不丢节点。
+   */
+  private topoSortPrereqs(
+    rows: Array<Record<string, any>>,
+    edges: Array<Record<string, any>>,
+  ): string[] {
+    const byId = new Map(rows.map((r) => [r.id as string, r]));
+    const indeg = new Map<string, number>();
+    const dependents = new Map<string, string[]>();
+    for (const r of rows) {
+      indeg.set(r.id, 0);
+      dependents.set(r.id, []);
+    }
+    for (const e of edges) {
+      if (!byId.has(e.from_kp) || !byId.has(e.to_kp)) continue;
+      // to_kp 是 from_kp 的先修
+      indeg.set(e.from_kp, (indeg.get(e.from_kp) ?? 0) + 1);
+      dependents.get(e.to_kp)!.push(e.from_kp);
+    }
+    const compare = (a: string, b: string) => {
+      const ra = byId.get(a)!;
+      const rb = byId.get(b)!;
+      const ga = ra.grade_level ?? 999;
+      const gb = rb.grade_level ?? 999;
+      if (ga !== gb) return ga - gb;
+      const ca = (ra.code ?? '') as string;
+      const cb = (rb.code ?? '') as string;
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      return a < b ? -1 : 1;
+    };
+    const ready = rows
+      .filter((r) => (indeg.get(r.id) ?? 0) === 0)
+      .map((r) => r.id as string)
+      .sort(compare);
+    const order: string[] = [];
+    const seen = new Set<string>();
+    while (ready.length) {
+      const id = ready.shift()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      order.push(id);
+      for (const dep of dependents.get(id) ?? []) {
+        const d = (indeg.get(dep) ?? 1) - 1;
+        indeg.set(dep, d);
+        if (d === 0) ready.push(dep);
+      }
+      ready.sort(compare);
+    }
+    // 纯环残留：确定性追加，绝不丢节点
+    for (const id of rows.map((r) => r.id as string).sort(compare)) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        order.push(id);
+      }
+    }
+    return order;
+  }
+
   /** 单知识点（含前置依赖与状态）。 */
   async getKnowledgePoint(id: string): Promise<KnowledgePoint> {
     const res = await this.db.query(
@@ -350,6 +504,33 @@ export class CurriculumService {
     );
     if (res.rows.length === 0) throw new NotFoundException('知识点不存在');
     return res.rows[0] as KnowledgePoint;
+  }
+
+  /**
+   * 知识点随堂练习（选择题，含选项/答案/解析）。
+   * 公开读：题库为学习材料，同 /tuition/questions 公开语义；仅出选择题（options>=2）。
+   */
+  async knowledgePointQuestions(id: string, limit = 5) {
+    const n = Math.min(Math.max(Number(limit) || 5, 1), 20);
+    const res = await this.db.query(
+      `SELECT id, content, options, answer, COALESCE(analysis, explanation) AS analysis,
+              difficulty, type
+         FROM edu.questions
+        WHERE knowledge_point_id = $1
+          AND options IS NOT NULL AND jsonb_array_length(options) >= 2
+        ORDER BY difficulty NULLS FIRST, id
+        LIMIT $2`,
+      [id, n],
+    );
+    return res.rows as Array<{
+      id: string;
+      content: string;
+      options: unknown;
+      answer: string;
+      analysis: string | null;
+      difficulty: number | null;
+      type: string | null;
+    }>;
   }
 
   /**

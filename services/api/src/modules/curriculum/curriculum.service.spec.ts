@@ -243,4 +243,166 @@ describe('CurriculumService K12 课程体系门面', () => {
 
     await expect(svc.knowledgeMap('nosuch')).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  // ---- 学习路径（learningPath：先修闭包 + Kahn 拓扑排序去重 + 掌握度叠加） ----
+
+  /** learningPath 的 mock 查询序：goal → closure → edges → [mastery] */
+  function mockPathDb(rows: {
+    goal?: any[];
+    closure?: any[];
+    edges?: any[];
+    mastery?: any[];
+  }) {
+    return jest
+      .fn()
+      .mockResolvedValueOnce({ rows: rows.goal ?? [] })
+      .mockResolvedValueOnce({ rows: rows.closure ?? [] })
+      .mockResolvedValueOnce({ rows: rows.edges ?? [] })
+      .mockResolvedValueOnce({ rows: rows.mastery ?? [] });
+  }
+
+  const goalRow = { id: 'G', name: '二次函数', subject: 'MATH', grade_level: 9 };
+
+  it('learningPath 匿名：先修在前拓扑序、目标在后、无 mastery join', async () => {
+    const query = mockPathDb({
+      goal: [goalRow],
+      closure: [
+        { id: 'G', code: 'g', name: '二次函数', description: null, subject: 'MATH', grade_level: 9, chapter_name: '函数', depth: 0 },
+        { id: 'B', code: 'b', name: '一次函数', description: null, subject: 'MATH', grade_level: 8, chapter_name: '函数', depth: 1 },
+        { id: 'A', code: 'a', name: '平面直角坐标系', description: null, subject: 'MATH', grade_level: 7, chapter_name: '函数', depth: 2 },
+      ],
+      edges: [
+        { from_kp: 'G', to_kp: 'B' }, // G 依赖 B
+        { from_kp: 'B', to_kp: 'A' }, // B 依赖 A
+      ],
+    });
+    const svc = new CurriculumService(mockDb(query));
+
+    const path = await svc.learningPath('G');
+
+    expect(path.steps.map((s) => s.id)).toEqual(['A', 'B', 'G']); // 先修在前
+    const goal = path.steps.find((s) => s.isGoal);
+    expect(goal?.id).toBe('G');
+    expect(goal?.order).toBe(2);
+    expect(path.steps[0].order).toBe(0);
+    // 游客：3 条查询，无 mastery_snapshots
+    expect(query).toHaveBeenCalledTimes(3);
+    const [sqlClosure] = query.mock.calls[1] as [string];
+    expect(sqlClosure).toContain('WITH RECURSIVE');
+    expect(sqlClosure).toContain('ontology.kp_prerequisite');
+    const [sqlEdges] = query.mock.calls[2] as [string];
+    expect(sqlEdges).toContain('ANY($1::uuid[])');
+    expect(path.steps.every((s) => s.mastery === undefined)).toBe(true);
+  });
+
+  it('learningPath 登录：mastery_snapshots 叠加各步骤掌握度（0–100）', async () => {
+    const query = mockPathDb({
+      goal: [goalRow],
+      closure: [
+        { id: 'G', code: 'g', name: '二次函数', description: null, subject: 'MATH', grade_level: 9, chapter_name: '函数', depth: 0 },
+        { id: 'B', code: 'b', name: '一次函数', description: null, subject: 'MATH', grade_level: 8, chapter_name: '函数', depth: 1 },
+      ],
+      edges: [{ from_kp: 'G', to_kp: 'B' }],
+      mastery: [{ knowledge_point_id: 'B', mastery_score: '85' }],
+    });
+    const svc = new CurriculumService(mockDb(query));
+
+    const path = await svc.learningPath('G', 'user-1');
+
+    const [sqlM, paramsM] = query.mock.calls[3] as [string, unknown[]];
+    expect(sqlM).toContain('mastery_snapshots');
+    expect(paramsM[0]).toBe('user-1');
+    expect(path.steps.find((s) => s.id === 'B')?.mastery).toBe(85);
+    expect(path.steps.find((s) => s.id === 'G')?.mastery).toBeUndefined(); // 无数据不硬造
+  });
+
+  it('learningPath 菱形依赖去重：汇点仅出现一次且先修优先', async () => {
+    const query = mockPathDb({
+      goal: [goalRow],
+      closure: [
+        { id: 'G', code: 'g', name: 'G', description: null, subject: 'MATH', grade_level: 9, chapter_name: null, depth: 0 },
+        { id: 'C', code: 'c', name: 'C', description: null, subject: 'MATH', grade_level: 8, chapter_name: null, depth: 1 },
+        { id: 'B', code: 'b', name: 'B', description: null, subject: 'MATH', grade_level: 7, chapter_name: null, depth: 1 },
+        { id: 'A', code: 'a', name: 'A', description: null, subject: 'MATH', grade_level: 7, chapter_name: null, depth: 2 },
+      ],
+      edges: [
+        { from_kp: 'G', to_kp: 'B' },
+        { from_kp: 'G', to_kp: 'C' },
+        { from_kp: 'B', to_kp: 'A' },
+        { from_kp: 'C', to_kp: 'A' },
+      ],
+    });
+    const svc = new CurriculumService(mockDb(query));
+
+    const path = await svc.learningPath('G');
+    const ids = path.steps.map((s) => s.id);
+
+    expect(ids).toHaveLength(4); // 去重：A 只出现一次
+    expect(new Set(ids).size).toBe(4);
+    expect(ids.indexOf('A')).toBeLessThan(ids.indexOf('B'));
+    expect(ids.indexOf('A')).toBeLessThan(ids.indexOf('C'));
+    expect(ids.indexOf('B')).toBeLessThan(ids.indexOf('G'));
+    expect(ids.indexOf('C')).toBeLessThan(ids.indexOf('G'));
+  });
+
+  it('learningPath 环安全：a↔b 互赖不无限递归、每点仅一次', async () => {
+    const query = mockPathDb({
+      goal: [{ id: 'A', name: 'A', subject: 'MATH', grade_level: 7 }],
+      closure: [
+        { id: 'A', code: 'a', name: 'A', description: null, subject: 'MATH', grade_level: 7, chapter_name: null, depth: 0 },
+        { id: 'B', code: 'b', name: 'B', description: null, subject: 'MATH', grade_level: 7, chapter_name: null, depth: 1 },
+      ],
+      edges: [
+        { from_kp: 'A', to_kp: 'B' },
+        { from_kp: 'B', to_kp: 'A' },
+      ],
+    });
+    const svc = new CurriculumService(mockDb(query));
+
+    const path = await svc.learningPath('A');
+
+    expect(path.steps.map((s) => s.id).sort()).toEqual(['A', 'B']); // 残留按确定性序追加，不丢
+    // 闭包 SQL 带环保护
+    const [sqlClosure] = query.mock.calls[1] as [string];
+    expect(sqlClosure).toMatch(/NOT .* = ANY\(a\.path\)/);
+  });
+
+  it('learningPath 目标不存在 → NotFoundException', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+    const svc = new CurriculumService(mockDb(query));
+
+    await expect(svc.learningPath('90000000-0000-0000-0000-0000000000ff')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  // ---- 随堂练习（knowledgePointQuestions：选择题含选项/答案/解析） ----
+
+  it('knowledgePointQuestions 只出选择题、limit 钳制、SQL 锁形', async () => {
+    const query = jest.fn().mockResolvedValue({
+      rows: [
+        { id: 'q1', content: '3,4,5 能否构成直角三角形？', options: ['能', '不能'], answer: 'A', analysis: '勾股定理', difficulty: 1, type: 'multiple-choice' },
+      ],
+    });
+    const svc = new CurriculumService(mockDb(query));
+
+    const qs = await svc.knowledgePointQuestions('kp-1', 50);
+
+    expect(qs).toHaveLength(1);
+    expect(qs[0].answer).toBe('A');
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('edu.questions');
+    expect(sql).toContain('jsonb_array_length(options) >= 2');
+    expect(params[0]).toBe('kp-1');
+    expect(params[1]).toBe(20); // limit 上限钳制
+  });
+
+  it('knowledgePointQuestions 默认 limit=5，非数字回退 5', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+    const svc = new CurriculumService(mockDb(query));
+    await svc.knowledgePointQuestions('kp-1', undefined as unknown as number);
+    const [, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(params[1]).toBe(5);
+  });
 });

@@ -157,4 +157,76 @@ describe('TuitionService（M5 前端面门面回归）', () => {
     expect(r.success).toBe(true);
     expect(updateSRQueue).toHaveBeenCalledWith('alice', 'e0000000-0000-0000-0000-000000000001', 0.95);
   });
+
+  it('getQuestionBank：chapterId 过滤落到 kp.chapter_id（练习中心「主题」= 教材章节）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/LEFT JOIN edu\.knowledge_points kp/, []]]);
+    const svc = makeService(db);
+
+    await svc.getQuestionBank({ subject: 'math', chapterId: 'c0000000-0000-0000-0000-000000000001', limit: 5 });
+
+    const [sql, params] = (db.query as jest.Mock).mock.calls[0];
+    expect(sql).toMatch(/kp\.chapter_id = \$\d+/);
+    expect(params).toContain('c0000000-0000-0000-0000-000000000001');
+  });
+
+  it('startPracticeSession：落 practice_sessions 行（mode/subject/topicId/questions）并回带 uuid', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/INSERT INTO edu\.practice_sessions/, [{ id: 's0000000-0000-0000-0000-000000000001', status: 'in_progress' }]]]);
+    const svc = makeService(db);
+
+    const row = await svc.startPracticeSession('alice', {
+      mode: 'quick', subject: 'math', topicId: 'c0000000-0000-0000-0000-000000000001', questions: [{ id: 'q1' }],
+    });
+
+    const [sql, params] = (db.query as jest.Mock).mock.calls[0];
+    expect(sql).toMatch(/INSERT INTO edu\.practice_sessions/);
+    expect(params[0]).toBe('alice');
+    expect(params[1]).toBe('quick');
+    expect(params[2]).toBe('math');
+    expect(params[3]).toBe('c0000000-0000-0000-0000-000000000001');
+    expect(row.id).toBe('s0000000-0000-0000-0000-000000000001');
+  });
+
+  it('completePracticeSession：落 answers/stats/duration 并标记 completed', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/UPDATE edu\.practice_sessions/, [{ id: 's1', status: 'completed' }]]]);
+    const svc = makeService(db);
+
+    const row = await svc.completePracticeSession('alice', 's1', {
+      answers: [{ questionId: 'q1', isCorrect: true }],
+      stats: { correct: 1, total: 1, accuracy: 100 },
+      duration: 42,
+    });
+
+    const [sql, params] = (db.query as jest.Mock).mock.calls[0];
+    expect(sql).toMatch(/answers = COALESCE\(\$3::jsonb/);
+    expect(sql).toMatch(/stats = COALESCE\(\$4::jsonb/);
+    expect(params[4]).toBe(42);
+    expect(row.status).toBe('completed');
+  });
+
+  it('completePracticeSession：会话不存在 → 404', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/UPDATE edu\.practice_sessions/, []]]);
+    const svc = makeService(db);
+
+    await expect(svc.completePracticeSession('alice', 'nope', { stats: {} }))
+      .rejects
+      .toThrow(NotFoundException);
+  });
+
+  it('getWeaknessQuestions：未解决错题 JOIN 题库出完整题面', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.wrong_questions wq/, [{ id: 'q1', content: '题', options: ['a', 'b'], answer: 'A' }]]]);
+    const svc = makeService(db);
+
+    const rows = await svc.getWeaknessQuestions('alice', 10);
+
+    const [sql, params] = (db.query as jest.Mock).mock.calls[0];
+    expect(sql).toMatch(/JOIN edu\.questions q ON q\.id = wq\.question_id/);
+    expect(sql).toMatch(/wq\.is_resolved = false/);
+    expect(params[0]).toBe('alice');
+    expect(rows).toHaveLength(1);
+  });
 });

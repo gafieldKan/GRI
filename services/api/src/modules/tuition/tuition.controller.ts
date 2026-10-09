@@ -46,7 +46,12 @@ export class TuitionController {
   @Get('questions')
   getQuestionBank(@Req() req: Request, @Body() _?: unknown) {
     const query = (req as any).query || {};
-    return this.tuitionService.getQuestionBank({ subject: query.subject, knowledgePoint: query.knowledgePoint ?? query.knowledge_point, limit: query.limit ? Number(query.limit) : 20 });
+    return this.tuitionService.getQuestionBank({
+      subject: query.subject,
+      knowledgePoint: query.knowledgePoint ?? query.knowledge_point,
+      chapterId: query.chapterId ?? query.chapter_id,
+      limit: query.limit ? Number(query.limit) : 20,
+    });
   }
 
   @Get('questions/:id')
@@ -123,7 +128,7 @@ export class TuitionController {
   }
 
   @Post('plans/generate')
-  generatePlan(@Req() req: Request, @Body() body: { planType?: string }) {
+  generatePlan(@Req() req: Request, @Body() body: { planType?: string; startDate?: string; endDate?: string; subjects?: string[] }) {
     return this.tuitionService.generatePlan(this.userId(req), body);
   }
 
@@ -142,27 +147,27 @@ export class TuitionController {
   async getPlanCalendar(@Req() req: Request, @Param('studentId') studentId: string) {
     const uid = this.assertOwner(req, studentId);
     const plans = await this.tuitionService.getLearningPlans(uid);
-    const events = plans.map((p: any) => ({ date: p.start_date, planId: p.id, title: p.title, progress: p.progress }));
-    return { events, progress: plans.length ? Math.round(plans.reduce((s: number, p: any) => s + (p.progress || 0), 0) / plans.length) : 0 };
+    const events = plans.map((p: any) => ({ date: p.start_date, planId: p.id, title: p.title, progress: p.progress, completed: Number(p.progress || 0) >= 100 }));
+    return { events, progress: plans.length ? Math.round(plans.reduce((s: number, p: any) => s + (Number(p.progress) || 0), 0) / plans.length) : 0 };
   }
 
   // ===================== 练习会话（个人私有） =====================
 
   @Post('practice/session/start')
-  startPractice(@Req() req: Request, @Body() body: { subject?: string }) {
-    return this.tuitionService.startSession(this.userId(req));
+  startPractice(@Req() req: Request, @Body() body: { mode?: string; subject?: string; topicId?: string; questions?: unknown[] }) {
+    return this.tuitionService.startPracticeSession(this.userId(req), body || {});
   }
 
   @Post('practice/session/complete')
-  completePractice(@Req() req: Request, @Body() body: { sessionId?: string; score?: number }) {
+  completePractice(@Req() req: Request, @Body() body: { sessionId?: string; answers?: unknown[]; stats?: unknown; duration?: number; score?: number }) {
     if (!body.sessionId) throw new ForbiddenException('缺少练习会话 ID');
     return this.tuitionService.completePracticeSession(this.userId(req), body.sessionId, body);
   }
 
   @Get('practice/history/:studentId')
-  getPracticeHistory(@Req() req: Request, @Param('studentId') studentId: string) {
+  async getPracticeHistory(@Req() req: Request, @Param('studentId') studentId: string) {
     const uid = this.assertOwner(req, studentId);
-    return this.tuitionService.getPracticeHistory(uid);
+    return { sessions: await this.tuitionService.getPracticeHistory(uid) };
   }
 
   @Get('practice/stats/:studentId')
@@ -175,6 +180,13 @@ export class TuitionController {
   getSrQueue(@Req() req: Request, @Param('studentId') studentId: string) {
     const uid = this.assertOwner(req, studentId);
     return this.tuitionService.getSpacedRepetitionQueue(uid);
+  }
+
+  @Get('practice/weakness/:studentId')
+  async getWeakness(@Req() req: Request, @Param('studentId') studentId: string) {
+    const uid = this.assertOwner(req, studentId);
+    const limit = (req as any).query?.limit ? Number((req as any).query.limit) : 15;
+    return { questions: await this.tuitionService.getWeaknessQuestions(uid, limit) };
   }
 
   @Post('practice/answer')
