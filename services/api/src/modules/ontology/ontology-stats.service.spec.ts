@@ -81,13 +81,32 @@ function fakeEnginePlain() {
   };
 }
 
+function makeDb(overrides: Partial<DatabaseService> = {}): DatabaseService {
+  const query =
+    overrides.query ??
+    jest.fn(async (sql: string) => {
+      if (sql.includes('information_schema.schemata')) {
+        return { rows: [{ count: '7' }] };
+      }
+      if (sql.includes('information_schema.tables')) {
+        return { rows: [{ count: '42' }] };
+      }
+      if (sql.includes('_api_migrations')) {
+        return { rows: [{ count: '16' }] };
+      }
+      return { rows: [] };
+    });
+
+  return { ...overrides, query } as unknown as DatabaseService;
+}
+
 function makeService(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   engine: any,
-  db: Partial<DatabaseService>,
+  db: DatabaseService = makeDb(),
 ) {
   (createEngineMock as jest.Mock).mockReturnValue(engine);
-  return new OntologyStatsService(db as DatabaseService);
+  return new OntologyStatsService(db);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -101,7 +120,7 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
   });
 
   it('每本体：objects/abstract/subclasses 计数 + 判别列提取', async () => {
-    const svc = makeService(fakeEngineSingleTable(), {});
+    const svc = makeService(fakeEngineSingleTable());
     const stats = await svc.stats();
 
     // fs mock 为 2 文件 → 每文件一引擎（default return 同一形态）→ 2 份本体。
@@ -116,6 +135,8 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
     expect(o.discriminatorCount).toBe(2);
     expect(o.interfaces).toEqual(['Confirmable']);
     expect(o.singleTable).toEqual({ baseName: 'Base', baseTable: null, discriminatorColumn: 'kind', subclassCount: 2 });
+    expect(stats.database).toEqual({ schemaCount: 7, tableCount: 42 });
+    expect(stats.migrations.appliedCount).toBe(16);
   });
 
   it('合计聚合：多本体的 objects/links 跨本体累加 + 卡inality 分类', async () => {
@@ -123,7 +144,7 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
     (createEngineMock as jest.Mock).mockImplementation(() => fakeEnginePlain());
     (createEngineMock as jest.Mock).mockImplementationOnce(() => fakeEngineSingleTable());
 
-    const svc = makeService(fakeEnginePlain(), {});
+    const svc = makeService(fakeEnginePlain());
     const stats = await svc.stats();
 
     expect(stats.ontologies).toHaveLength(2);
@@ -138,7 +159,7 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
   });
 
   it('links 卡inality：one → oneToOne 桶；桥表（复合唯一）不误归 oneToOne', async () => {
-    const svc = makeService(fakeEnginePlain(), {});
+    const svc = makeService(fakeEnginePlain());
     const stats = await svc.stats();
     // plain 引擎 links 空 → 桶全 0
     expect(stats.ontologyTotals.links).toEqual({ total: 0, oneToMany: 0, oneToOne: 0 });
@@ -157,7 +178,7 @@ describe('OntologyStatsService 统计门面（引擎输出 → 统计形态）',
   });
 
   it('curated 常量齐备：以人为本/设计模式/OO 四特性/现实映射/开发过程快照', async () => {
-    const svc = makeService(fakeEnginePlain(), {});
+    const svc = makeService(fakeEnginePlain());
     const stats = await svc.stats();
 
     expect(stats.humanCentricPrinciple.title).toBe('以人为本');

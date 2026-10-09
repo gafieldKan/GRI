@@ -53,7 +53,7 @@
               v-model="form.username"
               class="input-field"
               :class="{ 'border-danger': errors.username }"
-              placeholder="请输入用户名（2-30个字符）"
+              placeholder="请输入用户名（3-30个字符）"
               :aria-labelledby="'username'"
               @input="handleValidate('username')"
             />
@@ -257,7 +257,13 @@ export default {
       this.errors.password = validateField(this.form.password, 'password')
       this.errors.confirmPassword = validateField(this.form.confirmPassword, 'confirmPassword', this.form.password)
 
-      if (this.errors.username || this.errors.email || this.errors.password || this.errors.confirmPassword) {
+      if (
+        this.errors.username ||
+        this.errors.email ||
+        this.errors.phone ||
+        this.errors.password ||
+        this.errors.confirmPassword
+      ) {
         return
       }
 
@@ -287,27 +293,21 @@ export default {
           this.serverError = result.message || '注册失败'
         }
       } catch (err) {
-        // Dev fallback
-        if (this.form.email.includes('@') && this.form.password.length >= 4) {
-          this.authStore.setLogin({
-            token: 'dev-reg-' + Date.now(),
-            user: {
-              id: 'dev-reg-001',
-              username: this.form.username.trim(),
-              email: this.form.email.trim(),
-              avatarUrl: 'https://picsum.photos/100/100?random=44',
-              memberLevel: '普通会员'
-            },
-            method: 'email'
-          })
-          this.success = true
-          uni.showToast({ title: '注册成功 (Dev)', icon: 'success' })
-        } else {
-          this.serverError = '注册失败，请确保邮箱和密码格式正确'
-        }
+        this.serverError = this.registerErrorMessage(err)
       } finally {
         this.submitting = false
       }
+    },
+
+    registerErrorMessage(err) {
+      const status = err && err.status
+      const backendMessage = err && err.data && err.data.message
+      if (status === 409) return '该用户名、邮箱或手机号已被注册'
+      if (status === 400) return backendMessage || '请检查注册信息是否符合要求'
+      if (status === 502 || !status || status >= 500) {
+        return '注册服务暂不可用，请稍后重试'
+      }
+      return backendMessage || err?.message || '注册失败，请稍后重试'
     },
 
     goBack() {

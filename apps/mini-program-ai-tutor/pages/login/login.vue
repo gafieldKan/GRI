@@ -12,6 +12,7 @@
           type="text"
           placeholder="请输入邮箱或用户名"
           confirm-type="next"
+          :disabled="loading"
         />
       </view>
 
@@ -23,6 +24,7 @@
           type="password"
           placeholder="请输入密码"
           confirm-type="done"
+          :disabled="loading"
           @confirm="handleLogin"
         />
       </view>
@@ -47,8 +49,11 @@ const loading = ref(false)
 const error = ref(null)
 
 async function handleLogin() {
+  if (loading.value) return
+
   if (!identifier.value.trim() || !password.value) {
     error.value = '请输入账号和密码'
+    uni.showToast({ title: error.value, icon: 'none' })
     return
   }
   loading.value = true
@@ -57,12 +62,20 @@ async function handleLogin() {
     const auth = useAuthStore()
     await auth.login(identifier.value.trim(), password.value)
     useUserStore().setStudent(auth.externalId, auth.user || {})
-    uni.reLaunch({ url: '/pages/index/index' })
+    uni.switchTab({ url: '/pages/index/index' })
   } catch (err) {
-    error.value = err?.message || '登录失败，请检查账号和密码'
+    error.value = loginErrorMessage(err)
+    uni.showToast({ title: error.value, icon: 'none' })
   } finally {
     loading.value = false
   }
+}
+
+function loginErrorMessage(err) {
+  const status = err?.status
+  if (status === 401) return '账号或密码错误'
+  if (!status || status >= 500) return '登录服务暂不可用，请稍后重试'
+  return err?.data?.message || err?.message || '登录失败，请稍后重试'
 }
 </script>
 

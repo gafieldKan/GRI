@@ -12,6 +12,7 @@
           type="text"
           placeholder="请输入邮箱或用户名"
           confirm-type="next"
+          :disabled="loading"
         />
       </view>
 
@@ -23,6 +24,7 @@
           type="password"
           placeholder="请输入密码"
           confirm-type="done"
+          :disabled="loading"
           @confirm="handleLogin"
         />
       </view>
@@ -52,6 +54,8 @@ export default {
   },
   methods: {
     async handleLogin() {
+      if (this.loading) return
+
       if (!this.identifier.trim() || !this.password) {
         this.error = '请输入账号和密码'
         return
@@ -63,12 +67,19 @@ export default {
         await auth.login(this.identifier.trim(), this.password)
         // 解出学生业务主键到 user store
         useUserStore().syncFromAuth()
-        uni.reLaunch({ url: '/pages/index/index' })
+        // 首页是 tabBar 页面：按 uni-app 规约用 switchTab（会改写 tabBar 选中态并清掉非 tabBar 页栈）。
+        uni.switchTab({ url: '/pages/index/index' })
       } catch (err) {
-        this.error = err?.message || '登录失败，请检查账号和密码'
+        this.error = this.loginErrorMessage(err)
       } finally {
         this.loading = false
       }
+    },
+    loginErrorMessage(err) {
+      const status = err?.status
+      if (status === 401) return '账号或密码错误'
+      if (!status || status >= 500) return '登录服务暂不可用，请稍后重试'
+      return err?.data?.message || err?.message || '登录失败，请稍后重试'
     }
   }
 }

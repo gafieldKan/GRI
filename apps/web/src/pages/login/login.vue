@@ -16,16 +16,13 @@
         <text class="auth-title">欢迎回来</text>
         <text class="auth-subtitle">登录您的 GRI 智能平台账号</text>
 
-        <!-- Server error -->
-        <view v-if="serverError" class="error-banner">
-          <text>⚠️</text>
-          <text>{{ serverError }}</text>
-        </view>
-
         <!-- Email Login Form -->
         <EmailLoginForm
           ref="emailForm"
+          :submitting="submitting"
+          :server-error="serverError"
           @submit="handleLogin"
+          @clear-error="serverError = null"
           @forgot-password="goToForgot"
         />
 
@@ -34,6 +31,12 @@
           <view class="divider-line" />
           <text class="divider-text">其他登录方式</text>
           <view class="divider-line" />
+        </view>
+
+        <!-- OAuth / service error -->
+        <view v-if="oauthError" class="error-banner">
+          <text>⚠️</text>
+          <text>{{ oauthError }}</text>
         </view>
 
         <!-- OAuth -->
@@ -81,7 +84,9 @@ export default {
   data() {
     return {
       authStore: null,
-      serverError: null
+      serverError: null,
+      oauthError: null,
+      submitting: false
     }
   },
 
@@ -97,75 +102,53 @@ export default {
 
   methods: {
     async handleLogin(credentials) {
+      if (this.submitting) return
+
       this.serverError = null
-      uni.showLoading({ title: '登录中...' })
+      this.oauthError = null
+      this.submitting = true
       try {
-        const result = await this.authStore.login(credentials.email, credentials.password)
-        uni.hideLoading()
+        const result = await this.authStore.login(credentials.identifier, credentials.password)
         if (result && result.code === 200) {
-          uni.reLaunch({ url: '/pages/index/index' })
+          uni.switchTab({ url: '/pages/index/index' })
         } else {
-          this.serverError = (result && result.message) || '登录失败，请检查邮箱和密码'
+          this.serverError = (result && result.message) || '登录失败，请检查账号和密码'
         }
       } catch (err) {
-        uni.hideLoading()
-        // Dev fallback — backend might not have /api/auth/login yet
-        console.log('[GRI Dev] 后端不可用，使用开发模式登录:', err.message)
-        this._devLogin(credentials.email, credentials.password)
+        this.serverError = this.loginErrorMessage(err)
+      } finally {
+        this.submitting = false
       }
-    },
-
-    _devLogin(email, password) {
-      if (!email.includes('@')) {
-        uni.showToast({ title: '请输入有效的邮箱地址', icon: 'none' })
-        return
-      }
-      if (password.length < 4) {
-        uni.showToast({ title: '开发模式：密码至少4位', icon: 'none' })
-        return
-      }
-      this.authStore.setLogin({
-        token: 'dev-token-' + Date.now(),
-        user: {
-          id: 'u-dev-001',
-          username: email.split('@')[0] || '开发者',
-          email: email,
-          avatarUrl: 'https://picsum.photos/100/100?random=42',
-          memberLevel: 'VIP 会员'
-        },
-        method: 'email'
-      })
-      uni.showToast({ title: '登录成功 (Dev)', icon: 'success', duration: 1000 })
-      setTimeout(() => {
-        uni.reLaunch({ url: '/pages/index/index' })
-      }, 800)
     },
 
     async handleWeChatSuccess({ code }) {
-      this.serverError = null
+      if (this.submitting) return
+
+      this.oauthError = null
+      this.submitting = true
       uni.showLoading({ title: '微信登录中...' })
       try {
         const result = await this.authStore.loginWithWeChat(code)
-        uni.hideLoading()
         if (result && result.code === 200) {
           uni.reLaunch({ url: '/pages/index/index' })
         } else {
-          this.serverError = '微信登录失败，请稍后重试'
+          this.oauthError = '微信登录失败，请稍后重试'
         }
-      } catch (err) {
-        this.authStore.setLogin({
-          token: 'dev-wx-' + Date.now(),
-          user: {
-            id: 'wx-dev-001',
-            username: '微信用户',
-            avatarUrl: 'https://picsum.photos/100/100?random=43',
-            memberLevel: '普通会员'
-          },
-          method: 'wechat'
-        })
-        uni.showToast({ title: '微信登录成功 (Dev)', icon: 'success' })
-        setTimeout(() => { uni.reLaunch({ url: '/pages/index/index' }) }, 800)
+      } catch {
+        this.oauthError = '微信登录暂不可用，请稍后重试'
+      } finally {
+        uni.hideLoading()
+        this.submitting = false
       }
+    },
+
+    loginErrorMessage(err) {
+      const status = err && err.status
+      const backendMessage = err && err.data && err.data.message
+      if (status === 401) return '账号或密码错误'
+      if (status === 400 && backendMessage) return backendMessage
+      if (!status || status >= 500) return '登录服务暂不可用，请稍后重试'
+      return backendMessage || err?.message || '登录失败，请稍后重试'
     },
 
     goToRegister() {

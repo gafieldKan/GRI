@@ -21,6 +21,7 @@ describe('IdentityService', () => {
       // 两次查询：users 一次，students 一次，均以 externalId 为键
       expect(query).toHaveBeenCalledTimes(2);
       expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining('public.users'), ['u1']);
+      expect(query.mock.calls[0][0]).toContain('deleted_at IS NULL');
       expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining('edu.students'), ['u1']);
     });
 
@@ -59,6 +60,7 @@ describe('IdentityService', () => {
       expect(sql).not.toContain('password');
       expect(sql).toContain('name');
       expect(sql).toContain('id = $1'); // externalId 恒为 $1
+      expect(sql).toContain('deleted_at IS NULL');
       // 参数：[$1=userId, ...白名单字段值]
       expect(params).toEqual(['u1', '改名']);
     });
@@ -73,6 +75,7 @@ describe('IdentityService', () => {
       // 只发了一次 SELECT，未发 UPDATE
       expect(query).toHaveBeenCalledTimes(1);
       expect(query.mock.calls[0][0]).toContain('SELECT');
+      expect(query.mock.calls[0][0]).toContain('deleted_at IS NULL');
     });
   });
 
@@ -94,6 +97,7 @@ describe('IdentityService', () => {
       expect(url).toContain('/auth/admin/identities/u1');
       expect(init.method).toBe('DELETE');
       expect((init.headers as Record<string, string>)['x-service-token']).toBeDefined();
+      expect(init.signal).toBeInstanceOf(AbortSignal);
 
       // 2) 软删：SET status='deleted' + deleted_at，绝不 DELETE
       expect(query).toHaveBeenCalledTimes(1);
@@ -113,6 +117,25 @@ describe('IdentityService', () => {
       await expect(svc.deleteProfile('u1')).rejects.toThrow('身份停用失败');
       // 安全优先：身份未停用即中止，绝不动 users
       expect(query).not.toHaveBeenCalled();
+    });
+
+    it('凭证服务网络失败 → 抛 BadGatewayException，且不软删业务库', async () => {
+      jest.spyOn(global, 'fetch' as any).mockRejectedValue(new Error('ECONNRESET'));
+      const query = jest.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.deleteProfile('u1')).rejects.toThrow('身份服务不可达');
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('auth-center 身份不存在（404）→ 幂等继续软删业务档', async () => {
+      jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: false, status: 404 });
+      const query = jest.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.deleteProfile('u1')).resolves.toBeUndefined();
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][0]).toContain('UPDATE public.users');
     });
 
     it('externalId 查无此人（软删影响 0 行）→ NotFoundException', async () => {

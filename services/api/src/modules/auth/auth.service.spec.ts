@@ -45,6 +45,7 @@ describe('AuthService.register（注册编排）', () => {
     expect(body.externalId).toBe('uuid-1');
     expect(body.domain).toBe('core');
     expect(body.password).toBe('password123');
+    expect(init.signal).toBeInstanceOf(AbortSignal);
 
     expect(out.id).toBe('uuid-1');
   });
@@ -73,6 +74,29 @@ describe('AuthService.register（注册编排）', () => {
     jest.spyOn(global, 'fetch' as any).mockRejectedValue(new Error('ECONNREFUSED'));
 
     await expect(svc.register(dto)).rejects.toBeInstanceOf(BadGatewayException);
+    expect(query.mock.calls[1][0]).toContain('DELETE FROM public.users');
+  });
+
+  it('身份面超时 → BadGatewayException 且补偿删除', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: 'uuid-timeout', username: 'alice' }] });
+    jest
+      .spyOn(global, 'fetch' as any)
+      .mockRejectedValue(Object.assign(new Error('The operation was aborted due to timeout'), {
+        name: 'TimeoutError',
+      }));
+
+    await expect(svc.register(dto)).rejects.toBeInstanceOf(BadGatewayException);
+    expect(query.mock.calls[1][0]).toContain('DELETE FROM public.users');
+  });
+
+  it('补偿删除失败不覆盖原始身份错误（仍抛 502）', async () => {
+    query
+      .mockResolvedValueOnce({ rows: [{ id: 'uuid-compensate-fail', username: 'alice' }] })
+      .mockRejectedValueOnce(new Error('delete failed'));
+    jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: false, status: 503 });
+
+    await expect(svc.register(dto)).rejects.toThrow('身份服务创建失败');
+    expect(query).toHaveBeenCalledTimes(2);
     expect(query.mock.calls[1][0]).toContain('DELETE FROM public.users');
   });
 

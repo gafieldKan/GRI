@@ -1,25 +1,26 @@
 <!--
   EmailLoginForm.vue
-  Email + password login form.
+  Account + password login form. 账号统一为 identifier（邮箱 / 用户名），
+  与 AI 辅导 / 组织管理台两模块入口一致（auth-center 通用登录）。
   Uses :value + @input pattern instead of v-model to avoid
   uni-app's event ordering issue where @input fires before v-model updates.
 -->
 <template>
   <view class="login-form">
 
-    <!-- Email field -->
+    <!-- Account field（邮箱 / 用户名） -->
     <view class="form-field">
-      <text class="field-label">邮箱地址</text>
+      <text class="field-label">账号（邮箱 / 用户名）</text>
       <input
         class="field-input"
-        :class="{ 'field-input-error': errors.email, 'field-input-valid': !errors.email && email && isEmailValid }"
-        type="email"
-        :value="email"
-        placeholder="请输入邮箱地址"
-        @input="onEmailInput"
-        @blur="validateEmail"
+        :class="{ 'field-input-error': errors.identifier, 'field-input-valid': !errors.identifier && identifier }"
+        type="text"
+        :value="identifier"
+        placeholder="请输入邮箱或用户名"
+        @input="onIdentifierInput"
+        @blur="validateIdentifier"
       />
-      <text v-if="errors.email" class="field-error">{{ errors.email }}</text>
+      <text v-if="errors.identifier" class="field-error">{{ errors.identifier }}</text>
     </view>
 
     <!-- Password field -->
@@ -76,6 +77,8 @@
     </view>
 
     <!-- Submit button -->
+    <text v-if="serverError" class="form-server-error">{{ serverError }}</text>
+
     <view
       class="submit-btn"
       :class="{ 'submit-btn-disabled': !canSubmit || submitting }"
@@ -88,39 +91,45 @@
 </template>
 
 <script>
-import { getPasswordStrength, isValidEmail } from '../../utils/validators.js'
+import { getPasswordStrength } from '../../utils/validators.js'
 
 export default {
   name: 'EmailLoginForm',
 
-  emits: ['submit', 'forgot-password'],
+  props: {
+    submitting: {
+      type: Boolean,
+      default: false
+    },
+    serverError: {
+      type: String,
+      default: ''
+    }
+  },
+
+  emits: ['submit', 'forgot-password', 'clear-error'],
 
   data() {
     return {
-      email: '',
+      identifier: '',
       password: '',
       showPassword: false,
       rememberMe: false,
       errors: {
-        email: null,
+        identifier: null,
         password: null
-      },
-      serverError: '',
-      submitting: false
+      }
     }
   },
 
   computed: {
-    isEmailValid() {
-      return this.email.trim() && isValidEmail(this.email.trim())
-    },
     pwStrength() {
       return getPasswordStrength(this.password)
     },
     canSubmit() {
-      return this.email.trim().length > 0
+      return this.identifier.trim().length > 0
         && this.password.length >= 8
-        && !this.errors.email
+        && !this.errors.identifier
         && !this.errors.password
         && !this.submitting
     }
@@ -128,14 +137,15 @@ export default {
 
   methods: {
     // ── Input handlers (capture value before v-model sync) ──
-    onEmailInput(e) {
+    onIdentifierInput(e) {
       // uni-app passes event with e.detail.value; also try e.target.value
       const val = (e && e.detail && e.detail.value != null) ? e.detail.value
         : (e && e.target && e.target.value != null) ? e.target.value
         : (typeof e === 'string') ? e : ''
-      this.email = val
+      this.identifier = val
       // Clear error on typing
-      if (this.errors.email) this.errors.email = null
+      if (this.errors.identifier) this.errors.identifier = null
+      if (this.serverError) this.$emit('clear-error')
     },
 
     onPasswordInput(e) {
@@ -145,17 +155,15 @@ export default {
       this.password = val
       // Clear error on typing
       if (this.errors.password) this.errors.password = null
+      if (this.serverError) this.$emit('clear-error')
     },
 
     // ── Validation (on blur) ──
-    validateEmail() {
-      const e = this.email.trim()
-      if (!e) {
-        this.errors.email = '请输入邮箱地址'
-      } else if (!isValidEmail(e)) {
-        this.errors.email = '请输入有效的邮箱地址'
+    validateIdentifier() {
+      if (!this.identifier.trim()) {
+        this.errors.identifier = '请输入邮箱或用户名'
       } else {
-        this.errors.email = null
+        this.errors.identifier = null
       }
     },
 
@@ -170,28 +178,21 @@ export default {
     },
 
     // ── Submit ──
-    async handleSubmit() {
-      this.validateEmail()
+    handleSubmit() {
+      if (this.submitting) return
+
+      this.validateIdentifier()
       this.validatePassword()
 
-      if (this.errors.email || this.errors.password) {
+      if (this.errors.identifier || this.errors.password) {
         return
       }
 
-      this.submitting = true
-      this.serverError = ''
-
-      try {
-        this.$emit('submit', {
-          email: this.email.trim(),
-          password: this.password,
-          rememberMe: this.rememberMe
-        })
-      } catch (err) {
-        this.serverError = err.message || '登录失败，请稍后再试'
-      } finally {
-        this.submitting = false
-      }
+      this.$emit('submit', {
+        identifier: this.identifier.trim(),
+        password: this.password,
+        rememberMe: this.rememberMe
+      })
     }
   }
 }
@@ -367,5 +368,16 @@ export default {
   color: var(--color-text-inverse);
   font-size: 30rpx;
   font-weight: 600;
+}
+
+.form-server-error {
+  display: block;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+  border: 2rpx solid rgba(255, 77, 79, 0.2);
+  border-radius: 12rpx;
+  background: rgba(255, 77, 79, 0.08);
+  color: var(--color-danger);
+  font-size: 24rpx;
 }
 </style>
