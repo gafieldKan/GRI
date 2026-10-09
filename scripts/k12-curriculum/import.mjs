@@ -183,6 +183,15 @@ async function upsertChapter(textbookId, ch, parentId) {
 // 2. staging 审核通过 → knowledge_points / kp_prerequisite / questions
 // ---------------------------------------------------------------------------
 
+// 选项归一化：staging 形态 [{text:"A. …"}] → ["…"]（剥掉行首 A./A、标签，与存量 39 题 string[] 形态一致）。
+// 兼容已为 string[] 的输入；空串/非数组 → []（该题 options 存 NULL）。
+function normalizeOptions(opts) {
+  return (Array.isArray(opts) ? opts : [])
+    .map((o) => (typeof o === 'string' ? o : (o?.text ?? '')))
+    .map((t) => String(t).replace(/^[A-Da-d][.、)．]\s*/, '').trim())
+    .filter((t) => t !== '')
+}
+
 async function upsertStaging(staging) {
   // staging 形态：{ code, chapter, name, description, gradeLevel, subject,
   //   prerequisites?: string[](kp code 列表), examples?: [{content, answer, analysis?, difficulty?}], status }
@@ -229,11 +238,20 @@ async function upsertStaging(staging) {
     // 例题（按 content 锚点幂等；status=published 才带题）
     if (kp.status === 'published') {
       for (const ex of kp.examples ?? []) {
+        const analysis = ex.analysis ?? null
+        const options = normalizeOptions(ex.options)
+        const optionsJson = options.length ? JSON.stringify(options) : null
         await Q(
-          `INSERT INTO edu.questions (knowledge_point_id, content, answer, analysis, difficulty, type)
-           SELECT $1,$2,$3,$4,$5,'multiple-choice'
+          `INSERT INTO edu.questions (knowledge_point_id, content, answer, analysis, explanation, difficulty, type, options)
+           SELECT $1,$2,$3,$4,$4,$5,'multiple-choice',$6::jsonb
            WHERE NOT EXISTS (SELECT 1 FROM edu.questions WHERE knowledge_point_id = $1 AND content = $2)`,
-          [kpId, ex.content, ex.answer, ex.analysis ?? null, ex.difficulty ?? 'medium'],
+          [kpId, ex.content, ex.answer, analysis, ex.difficulty ?? 'medium', optionsJson],
+        )
+        // 回灌：存量行（早前 INSERT 未带 options/explanation）按 content 锚点补齐选项与解析。
+        await Q(
+          `UPDATE edu.questions SET options = COALESCE($3::jsonb, options), explanation = COALESCE($4, explanation)
+             WHERE knowledge_point_id = $1 AND content = $2`,
+          [kpId, ex.content, optionsJson, analysis],
         )
       }
     }

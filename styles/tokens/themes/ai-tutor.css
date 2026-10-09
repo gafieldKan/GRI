@@ -17,4 +17,111 @@
   --color-bg-primary:      #f5f7fa;
   --color-bg-secondary:    #fafafa;
   --color-bg-card:         #FFFFFF;
+
+  /* 数字孪生面（PERSONA 范式）— 鼠尾草绿/青瓷色调，专用于孪生相关页面 */
+  --twin-bg:      #f3f5f2;
+  --twin-paper:   #ffffff;
+  --twin-ink:     #203e3a;
+  --twin-sub:     #74857f;
+  --twin-line:    #e2e9e3;
+  --twin-teal:    #247b68;
+  --twin-teal-dk: #1b6756;
+  --twin-mint:    #e8f4ec;
+  --twin-soft:    #f7f9f6;
+  --twin-accent:  #327f72;
+  --twin-amber:   #b78140;
+  --twin-shadow:  0 6px 24px rgba(41, 73, 59, 0.06);
 }
+
+/* PERSONA 线性图标（全局，供孪生各页 <svg class="twin-ico"><use href="#i-x"/></svg>） */
+.twin-ico {
+  width: 19px;
+  height: 19px;
+  vertical-align: middle;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.twin-ico.sm {
+  width: 15px;
+  height: 15px;
+}
+
+/* ── PERSONA 数字孪生组件原件（孪生六面共用；tw- 前缀避免与业务页类名相撞）── */
+.tw-page {
+  min-height: 100vh;
+  background: var(--twin-bg);
+  color: var(--twin-ink);
+  padding: 16px 0 40px;
+  box-sizing: border-box;
+}
+
+.tw-head { padding: 0 16px 6px; }
+.tw-title { display: block; font-size: 22px; font-weight: 650; letter-spacing: -0.5px; }
+.tw-sub { display: block; font-size: 12px; color: var(--twin-sub); margin-top: 6px; line-height: 1.7; max-width: 560px; }
+
+.tw-panel {
+  margin: 0 16px 16px;
+  background: var(--twin-paper);
+  border: 1px solid var(--twin-line);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--twin-shadow);
+  box-sizing: border-box;
+}
+.tw-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.tw-panel-title { font-size: 15px; font-weight: 650; }
+.tw-panel-sub { display: block; font-size: 11px; color: var(--twin-sub); margin-top: 3px; }
+
+.tw-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 3px 8px; border-radius: 5px;
+  background: #f0f4ef; color: #5e786d; white-space: nowrap;
+}
+.tw-tag.green { background: var(--twin-mint); color: var(--twin-teal); }
+.tw-tag.amber { background: #f7eddd; color: var(--twin-amber); }
+
+.tw-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid var(--twin-line); border-radius: 9px;
+  padding: 10px 14px; background: var(--twin-paper);
+  color: var(--twin-ink); font-size: 13px; font-weight: 550; line-height: 1.4;
+  margin: 0;
+}
+.tw-btn::after { border: none; }
+.tw-btn.primary { background: var(--twin-teal); color: #fff; border-color: var(--twin-teal); }
+.tw-btn.soft { background: var(--twin-mint); border-color: transparent; color: var(--twin-teal); }
+.tw-btn.ghost { background: transparent; border-color: transparent; color: var(--twin-teal); }
+.tw-btn.block { width: 100%; }
+.tw-btn[disabled] { opacity: 0.5; }
+
+.tw-help {
+  margin: 0 16px 16px; padding: 14px 16px;
+  background: var(--twin-soft); border: 1px dashed #cdddc4; border-radius: 12px;
+}
+.tw-help-title { display: block; font-size: 12px; font-weight: 700; color: #5e786d; margin-bottom: 6px; }
+.tw-help-body { display: block; font-size: 11px; color: #8a9a8f; line-height: 1.8; }
+
+.tw-stat-row { display: flex; }
+.tw-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; }
+.tw-stat-v { font-size: 22px; font-weight: 700; color: var(--twin-teal); font-variant-numeric: tabular-nums; }
+.tw-stat-l { font-size: 11px; color: var(--twin-sub); }
+
+.tw-field { margin-top: 14px; }
+.tw-field-label { display: block; font-size: 13px; color: var(--twin-sub); margin-bottom: 6px; }
+.tw-input {
+  width: 100%; height: 44px; line-height: 44px; padding: 0 12px;
+  font-size: 14px; color: var(--twin-ink);
+  background: var(--twin-soft); border: 1px solid var(--twin-line);
+  border-radius: 10px; box-sizing: border-box;
+}
+.tw-input.ph { color: #9caa93; }
+.tw-mono { font-family: monospace; }
+
+.tw-safe { height: 24px; }
+.tw-num { font-variant-numeric: tabular-nums; }
