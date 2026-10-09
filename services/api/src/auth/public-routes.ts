@@ -23,6 +23,8 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   get('GET', /^\/food\/restaurants\/?$/),
   get('GET', /^\/food\/restaurants\/[^/]+\/?$/),
   get('GET', /^\/food\/restaurants\/[^/]+\/dishes\/?$/),
+  get('GET', /^\/food\/restaurants\/[^/]+\/reviews\/?$/),
+  get('GET', /^\/food\/coupons\/?$/),
   // 支付网关通知回调（M5 垂直一）：网关 POST 进来推收单结果。
   // 公开放行 BUT 强签名校验 + 幂等 + 金额锁库 —— 伪造/重放无效（public-routes 只决定鉴权，不抵消服务内验签）。
   get('POST', /^\/food\/payments\/notify\/?$/),

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Req,
   Param,
@@ -10,6 +11,11 @@ import {
 } from '@nestjs/common';
 import { FoodService } from './food.service';
 import { Request } from 'express';
+import {
+  MerchantDishDto,
+  MerchantOrderQuery,
+  MerchantRestaurantDto,
+} from './food.types';
 
 /**
  * 订餐切片（M2 + M5 垂直一补面）。
@@ -39,6 +45,33 @@ export class FoodController {
   @Get('restaurants/:id/dishes')
   getDishes(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.foodService.findDishesByRestaurant(id);
+  }
+
+  @Get('restaurants/:id/reviews')
+  getReviews(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.foodService.getReviews(id);
+  }
+
+  // --- 优惠券（公开列券；领取/我的券强制鉴权） ---
+
+  @Get('coupons')
+  listCoupons() {
+    return this.foodService.listCoupons();
+  }
+
+  @Post('coupons/claim')
+  claimCoupon(
+    @Req() req: Request,
+    @Body() body: { couponId: string; orderId?: string },
+  ) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.claimCoupon(auth.externalId, body);
+  }
+
+  @Get('coupons/my')
+  getMyCoupons(@Req() req: Request) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.getMyCoupons(auth.externalId);
   }
 
   // --- 订单（登录写 / 读；本人或特权） ---
@@ -83,6 +116,82 @@ export class FoodController {
   completeOrder(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
     const auth = (req as any).auth as { externalId: string };
     return this.foodService.completeOrder(auth.externalId, id);
+  }
+
+  @Post('orders/:id/review')
+  createReview(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: { rating: number; content?: string },
+  ) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.createReview(auth.externalId, id, body);
+  }
+
+  // --- 商家后台（数据归属校验；运营可跨商家管理） ---
+
+  @Get('merchant/restaurants')
+  merchantListRestaurants(
+    @Req() req: Request,
+    @Query('status') status?: string,
+    @Query('q') q?: string,
+  ) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.merchantListRestaurants(auth.externalId, { status, q });
+  }
+
+  @Post('merchant/restaurants')
+  merchantCreateRestaurant(@Req() req: Request, @Body() body: MerchantRestaurantDto) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.merchantCreateRestaurant(auth.externalId, body);
+  }
+
+  @Put('merchant/restaurants/:id')
+  merchantUpdateRestaurant(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: Partial<MerchantRestaurantDto>,
+  ) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.merchantUpdateRestaurant(auth.externalId, id, body);
+  }
+
+  @Post('merchant/restaurants/:id/dishes')
+  merchantUpsertDishes(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: { dishes: MerchantDishDto[] },
+  ) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.merchantUpsertDishes(auth.externalId, id, body.dishes);
+  }
+
+  @Get('merchant/orders/stats')
+  merchantOrderStats(@Req() req: Request) {
+    const auth = (req as any).auth as { externalId: string };
+    return this.foodService.merchantOrderStats(auth.externalId);
+  }
+
+  @Get('merchant/orders')
+  merchantListOrders(
+    @Req() req: Request,
+    @Query('status') status?: string,
+    @Query('restaurantId') restaurantId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const auth = (req as any).auth as { externalId: string };
+    const query: MerchantOrderQuery = {
+      status,
+      restaurantId,
+      from,
+      to,
+      limit: limit === undefined ? undefined : Number(limit),
+      offset: offset === undefined ? undefined : Number(offset),
+    };
+    return this.foodService.merchantListOrders(auth.externalId, query);
   }
 
   // --- 支付（发起/退款登录；notify 公开回调白名单） ---
