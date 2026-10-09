@@ -8,9 +8,9 @@
         :key="'r' + ri"
         :points="ring"
         fill="none"
-        stroke="var(--color-border, #e8e8f0)"
+        stroke="var(--twin-line, #e2e9e3)"
         stroke-width="1"
-        opacity="0.7"
+        opacity="0.9"
       />
       <!-- 轴线 -->
       <line
@@ -20,9 +20,9 @@
         :y1="center"
         :x2="axis.x"
         :y2="axis.y"
-        stroke="var(--color-border, #e8e8f0)"
+        stroke="var(--twin-line, #e2e9e3)"
         stroke-width="1"
-        opacity="0.7"
+        opacity="0.9"
       />
       <!-- 能力多边形 -->
       <polygon :points="polygonPoints" :fill="color + '33'" :stroke="color" stroke-width="2" />
@@ -53,7 +53,7 @@ export default {
   props: {
     skills: { type: Array, default: () => [] },
     size: { type: Number, default: 220 },
-    color: { type: String, default: '#4a6cf7' }
+    color: { type: String, default: '#247b68' }
   },
   computed: {
     center() {
@@ -124,7 +124,7 @@ export default {
 
 .radar-empty {
   text-align: center;
-  color: var(--color-text-tertiary, #999);
+  color: var(--twin-sub, #74857f);
   font-size: 13px;
   padding: 32px 0;
 }
@@ -151,12 +151,12 @@ export default {
 
 .legend-name {
   font-size: 12px;
-  color: var(--color-text-secondary, #666);
+  color: var(--twin-sub, #74857f);
 }
 
 .legend-value {
   font-size: 12px;
   font-weight: 700;
-  color: var(--color-text-primary, #1a1a2e);
+  color: var(--twin-ink, #203e3a);
 }
 </style>

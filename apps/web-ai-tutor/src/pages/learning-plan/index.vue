@@ -35,11 +35,8 @@
 
       <!-- 日历视图 -->
       <view v-else-if="planStore.currentPlanType === 'calendar'" class="plan-content">
-        <CalendarView :studentId="studentId" :planType="calendarPlanType" :month="calendarMonth" />
+        <CalendarView :studentId="userStore.studentId" />
       </view>
-
-      <!-- 加载中 -->
-      <LoadingSkeleton v-if="planStore.loading" variant="list" rows="5" />
 
       <!-- 日计划 -->
       <view v-else-if="planStore.currentPlanType === 'daily'" class="plan-content">
@@ -349,7 +346,7 @@
               <text class="option-label">计划类型</text>
               <view class="option-tabs">
                 <Chip
-                  v-for="tab in planTabs"
+                  v-for="tab in generateTabs"
                   :key="tab.key"
                   :label="`${tab.icon} ${tab.label}`"
                   :variant="generateForm.type === tab.key ? 'filled' : 'outlined'"
@@ -409,6 +406,7 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePlanStore } from '@/store/plan'
 import { useUserStore } from '@/store/user'
+import { listSubjects } from '@/api/index.js'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import Chip from '@/components/ui/Chip.vue'
 import StatCard from '@/components/ui/StatCard.vue'
@@ -436,7 +434,7 @@ export default {
       type: 'daily',
       startDate: new Date().toISOString().split('T')[0],
       endDate: '',
-      subjects: ['math']
+      subjects: []
     })
 
     const planTabs = [
@@ -446,14 +444,31 @@ export default {
       { key: 'calendar', label: '日历', icon: '📅' }
     ]
 
-    const subjects = [
-      { id: 'math', name: '数学', icon: '📐' },
-      { id: 'physics', name: '物理', icon: '⚡' },
-      { id: 'chemistry', name: '化学', icon: '🧪' },
-      { id: 'biology', name: '生物', icon: '🧬' },
-      { id: 'english', name: '英语', icon: '📖' },
-      { id: 'chinese', name: '语文', icon: '📝' }
-    ]
+    // 生成弹窗只允许日/周/月（calendar 非可生成类型，避免落库类型错乱）
+    const generateTabs = planTabs.filter(t => t.key !== 'calendar')
+
+    // 学科取自真实数据（DB code 大写 → 小写 id），与练习中心一致
+    const subjects = ref([])
+    const SUBJECT_ICONS = { math: '📐', phys: '⚡', chem: '🧪', bio: '🧬', eng: '📖', chn: '📝' }
+    const loadSubjects = async () => {
+      try {
+        const list = await listSubjects()
+        const arr = Array.isArray(list) ? list : (list?.subjects || [])
+        subjects.value = arr.map(s => {
+          const id = String(s.code || s.id || '').toLowerCase()
+          return { id, name: s.name || id, icon: SUBJECT_ICONS[id] || '📘' }
+        })
+      } catch (e) {
+        subjects.value = [
+          { id: 'math', name: '数学', icon: '📐' },
+          { id: 'phys', name: '物理', icon: '⚡' },
+          { id: 'chem', name: '化学', icon: '🧪' },
+          { id: 'bio', name: '生物', icon: '🧬' },
+          { id: 'eng', name: '英语', icon: '📖' },
+          { id: 'chn', name: '语文', icon: '📝' }
+        ]
+      }
+    }
 
     const getProgress = (type) => {
       if (type === 'daily') return planStore.dailyProgress
@@ -469,11 +484,12 @@ export default {
     }
 
     const showGenerateDialog = () => {
+      const t = planStore.currentPlanType
       generateForm.value = {
-        type: planStore.currentPlanType,
+        type: ['daily', 'weekly', 'monthly'].includes(t) ? t : 'daily',
         startDate: new Date().toISOString().split('T')[0],
         endDate: '',
-        subjects: ['math']
+        subjects: []
       }
       showGenerateModal.value = true
     }
@@ -492,8 +508,12 @@ export default {
         endDate = end.toISOString().split('T')[0]
       }
 
+      const subjectNames = generateForm.value.subjects
+        .map(id => subjects.value.find(s => s.id === id)?.name)
+        .filter(Boolean)
+
       try {
-        await planStore.generatePlan(generateForm.value.type, { startDate, endDate })
+        await planStore.generatePlan(generateForm.value.type, { startDate, endDate, subjects: subjectNames })
         showGenerateModal.value = false
         uni.showToast({ title: '计划生成成功', icon: 'success' })
       } catch (e) {
@@ -512,29 +532,41 @@ export default {
       }
     }
 
-    const toggleTask = (task, planId) => {
-      if (!planId) return
-      planStore.toggleTaskComplete(planId, task.id, !task.completed)
-      // 同步到后端
-      if (planStore.currentPlanType === 'daily') {
-        // 可以调用 planStore.updateProgress
+    // 勾选任务 → 收集“已完成任务 id”集合 → 落库（后端按 id 在 plan_data 标记 completed 并重算进度，写回 JSONB）
+    const toggleTask = async (task, planId) => {
+      if (!planId || !planStore.dailyPlan) return
+      task.completed = !task.completed
+      const ids = (planStore.dailyPlan.plan_data?.tasks || []).filter(t => t.completed).map(t => t.id)
+      try {
+        await planStore.updateProgress(planId, ids)
+      } catch (e) {
+        uni.showToast({ title: '同步失败，请重试', icon: 'none' })
       }
     }
 
-    const toggleWeeklyTask = (day, task) => {
+    const toggleWeeklyTask = async (day, task) => {
+      const plan = planStore.weeklyPlan
+      if (!plan) return
       task.completed = !task.completed
-      // 可以调用后端更新
+      const ids = []
+      for (const d of (plan.plan_data?.weeklyTasks || [])) {
+        for (const t of (d.tasks || [])) if (t.completed) ids.push(t.id)
+      }
+      try {
+        await planStore.updateProgress(plan.id, ids)
+      } catch (e) {
+        uni.showToast({ title: '同步失败，请重试', icon: 'none' })
+      }
     }
 
-    const completeAllDaily = () => {
-      planStore.dailyTasks.forEach(t => {
-        if (!t.completed) {
-          t.completed = true
-        }
-      })
-      if (planStore.dailyPlan?.id) {
-        planStore.dailyPlan.completed_tasks = planStore.dailyTasks.length
-        planStore.dailyPlan.progress = 100
+    const completeAllDaily = async () => {
+      const plan = planStore.dailyPlan
+      if (!plan) return
+      const ids = (plan.plan_data?.tasks || []).map(t => t.id)
+      try {
+        await planStore.updateProgress(plan.id, ids)
+      } catch (e) {
+        uni.showToast({ title: '同步失败，请重试', icon: 'none' })
       }
     }
 
@@ -585,6 +617,7 @@ export default {
     }
 
     onMounted(() => {
+      loadSubjects()
       planStore.loadPlans()
     })
 
@@ -598,6 +631,7 @@ export default {
       showGenerateModal,
       generateForm,
       planTabs,
+      generateTabs,
       subjects,
       getProgress,
       getProgressColor,
@@ -611,6 +645,9 @@ export default {
       activePersonalizedPlans,
       completePersonalizedTask,
       formatTime,
+      formatTotalTime,
+      getPriorityColor,
+      getPriorityLabel,
       formatDate
     }
   }

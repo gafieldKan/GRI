@@ -1,43 +1,60 @@
 <template>
-  <view class="page">
-    <PageHeader title="数据与设置" subtitle="你的孪生档案：可导出、可携带、由你掌控" />
+  <view class="tw-page">
+    <view class="tw-head">
+      <text class="tw-title">数据与设置</text>
+      <text class="tw-sub">你的孪生档案：可导出、可携带、由你掌控——档案只含「你」的部分，世界来自共享本体。</text>
+    </view>
 
     <!-- 档案概览 -->
-    <view class="card">
-      <PageHeader title="孪生档案" subtitle="gri-student-digital-twin · v1" />
-      <view class="stat-row">
-        <view class="stat-item">
-          <text class="stat-value">{{ eventCount }}</text>
-          <text class="stat-label">条经历</text>
+    <view class="tw-panel">
+      <view class="tw-panel-head">
+        <view>
+          <text class="tw-panel-title"><svg class="twin-ico sm"><use href="#i-data" /></svg> 孪生档案</text>
+          <text class="tw-panel-sub">gri-student-digital-twin · v1</text>
         </view>
-        <view class="stat-item">
-          <text class="stat-value">{{ memoryCount }}</text>
-          <text class="stat-label">条记忆</text>
+        <text class="tw-tag green">个人部件</text>
+      </view>
+      <view class="tw-stat-row">
+        <view class="tw-stat">
+          <text class="tw-stat-v">{{ eventCount }}</text>
+          <text class="tw-stat-l">条经历</text>
         </view>
-        <view class="stat-item">
-          <text class="stat-value">{{ profileName }}</text>
-          <text class="stat-label">身份</text>
+        <view class="tw-stat">
+          <text class="tw-stat-v">{{ memoryCount }}</text>
+          <text class="tw-stat-l">条记忆</text>
+        </view>
+        <view class="tw-stat">
+          <text class="tw-stat-v name">{{ profileName }}</text>
+          <text class="tw-stat-l">身份</text>
         </view>
       </view>
-      <text class="hint">
-        档案只含**个人**部件：身份 + 状态 + 经历 + 记忆；世界（知识版图）来自共享本体，不随档案搬运。
-      </text>
+      <text class="hint">档案只含「个人」部件：身份 + 状态 + 经历 + 记忆；世界（知识版图）来自共享本体，不随档案搬运。</text>
     </view>
 
     <!-- 导出 -->
-    <view class="card">
-      <PageHeader title="导出" subtitle="把孪生带走（JSON）" />
+    <view class="tw-panel">
+      <view class="tw-panel-head">
+        <view>
+          <text class="tw-panel-title"><svg class="twin-ico sm"><use href="#i-download" /></svg> 导出</text>
+          <text class="tw-panel-sub">把孪生带走（JSON）</text>
+        </view>
+      </view>
       <text class="hint">导出的档案不含任何密码/令牌等敏感信息（记忆已按隐私键守卫过滤）。</text>
-      <button class="btn primary" :disabled="exporting" @click="onExport">
+      <button class="tw-btn primary block" :disabled="exporting" @click="onExport">
         {{ exporting ? '导出中…' : '导出孪生档案' }}
       </button>
     </view>
 
     <!-- 导入 -->
-    <view class="card">
-      <PageHeader title="导入" subtitle="合并一份档案（追加经历 + 更新身份）" />
+    <view class="tw-panel">
+      <view class="tw-panel-head">
+        <view>
+          <text class="tw-panel-title"><svg class="twin-ico sm"><use href="#i-upload" /></svg> 导入</text>
+          <text class="tw-panel-sub">合并一份档案（追加经历 + 更新身份）</text>
+        </view>
+      </view>
       <text class="hint">
-        导入为**合并**语义：按 时间+类别+标题 去重后追加经历，并按白名单更新人物画像；
+        导入为「合并」语义：按 时间+类别+标题 去重后追加经历，并按白名单更新人物画像；
         当前状态由真实学习记录装配，不会被档案覆盖（诚实口径）。
       </text>
       <textarea
@@ -48,8 +65,8 @@
         auto-height
       />
       <view class="btn-row">
-        <button class="btn ghost" @click="onPickFile">选择文件</button>
-        <button class="btn primary" :disabled="importing || !importText.trim()" @click="onImport">
+        <button class="tw-btn ghost" @click="onPickFile">选择文件</button>
+        <button class="tw-btn primary" :disabled="importing || !importText.trim()" @click="onImport">
           {{ importing ? '导入中…' : '导入档案' }}
         </button>
       </view>
@@ -57,26 +74,31 @@
     </view>
 
     <!-- 设置 -->
-    <view class="card">
-      <PageHeader title="设置" subtitle="本地偏好" />
+    <view class="tw-panel">
+      <view class="tw-panel-head">
+        <view>
+          <text class="tw-panel-title"><svg class="twin-ico sm"><use href="#i-edit" /></svg> 设置</text>
+          <text class="tw-panel-sub">本地偏好</text>
+        </view>
+      </view>
       <view class="switch-row">
         <view class="switch-text">
           <text class="switch-title">自动记录学习行动</text>
           <text class="switch-desc">开启后，练习/上课等行动会自动写入你的经历时间线；关闭则不再自动记录（仅保留手动行动）。</text>
         </view>
-        <switch :checked="twinStore.autoRecord" color="#4a6cf7" @change="onToggleAuto" />
+        <switch :checked="twinStore.autoRecord" color="#247b68" @change="onToggleAuto" />
       </view>
     </view>
 
-    <view class="honest-note">
-      <text class="honest-title">关于数据</text>
-      <text class="honest-body">
+    <view class="tw-help">
+      <text class="tw-help-title">关于数据</text>
+      <text class="tw-help-body">
         孪生镜像的是一个真实的人——档案里每一条都来自你自己的学习记录或你填写的资料。
         导出即复制，导入即合并，二者都不改变真源；你可以随时把档案带走。
       </text>
     </view>
 
-    <view class="safe-area" />
+    <view class="tw-safe" />
   </view>
 </template>
 
@@ -84,7 +106,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useTwinStore } from '@/store/twin'
 import { useKnowledgeStore } from '@/store/knowledge'
-import PageHeader from '@/components/ui/PageHeader.vue'
 
 const twinStore = useTwinStore()
 const knowledgeStore = useKnowledgeStore()
@@ -190,88 +211,20 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page {
-  min-height: 100vh;
-  background: var(--color-bg-primary, #f7f8fa);
-  padding-bottom: 40px;
-}
-
-.card {
-  margin: 16px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 4px 16px 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--color-border, #e8e8f0);
-}
-
-.stat-row {
-  display: flex;
-  justify-content: space-around;
-  padding: 8px 0 4px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #4a6cf7;
-}
-
-.stat-label {
-  font-size: 11px;
-  color: var(--color-text-tertiary, #999);
-}
+.tw-stat-v.name { font-size: 16px; }
 
 .hint {
   display: block;
   font-size: 12px;
-  color: var(--color-text-tertiary, #999);
-  line-height: 1.6;
+  color: var(--twin-sub);
+  line-height: 1.7;
   margin: 8px 0;
 }
 
-.btn {
-  margin-top: 8px;
-  border-radius: 10px;
-  font-size: 14px;
-  line-height: 2.6;
-  border: none;
-}
+.tw-btn.block { margin-top: 8px; }
 
-.btn::after {
-  border: none;
-}
-
-.btn.primary {
-  color: #fff;
-  background: #4a6cf7;
-}
-
-.btn.primary[disabled] {
-  opacity: 0.5;
-}
-
-.btn.ghost {
-  color: #4a6cf7;
-  background: rgba(74, 108, 247, 0.1);
-}
-
-.btn-row {
-  display: flex;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.btn-row .btn {
-  flex: 1;
-}
+.btn-row { display: flex; gap: 12px; margin-top: 8px; }
+.btn-row .tw-btn { flex: 1; }
 
 .import-box {
   width: 100%;
@@ -280,68 +233,16 @@ onMounted(async () => {
   margin-top: 6px;
   padding: 10px 12px;
   font-size: 12px;
-  color: var(--color-text-secondary, #666);
-  background: var(--color-bg-secondary, #f7f8fc);
-  border: 1px solid var(--color-border, #e8e8f0);
+  color: var(--twin-ink);
+  background: var(--twin-soft);
+  border: 1px solid var(--twin-line);
   border-radius: 10px;
 }
 
-.hidden-input {
-  display: none;
-}
+.hidden-input { display: none; }
 
-.switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.switch-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.switch-title {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary, #1a1a2e);
-}
-
-.switch-desc {
-  display: block;
-  font-size: 11px;
-  color: var(--color-text-tertiary, #999);
-  line-height: 1.6;
-  margin-top: 4px;
-}
-
-.honest-note {
-  margin: 8px 16px 16px;
-  padding: 14px 16px;
-  background: var(--color-bg-secondary, #f0f2f7);
-  border-radius: 12px;
-  border: 1px dashed var(--color-border, #dcdfe8);
-}
-
-.honest-title {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-secondary, #666);
-  margin-bottom: 6px;
-}
-
-.honest-body {
-  display: block;
-  font-size: 11px;
-  color: var(--color-text-tertiary, #999);
-  line-height: 1.7;
-}
-
-.safe-area {
-  height: 24px;
-}
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.switch-text { flex: 1; min-width: 0; }
+.switch-title { display: block; font-size: 14px; font-weight: 600; color: var(--twin-ink); }
+.switch-desc { display: block; font-size: 11px; color: var(--twin-sub); line-height: 1.7; margin-top: 4px; }
 </style>

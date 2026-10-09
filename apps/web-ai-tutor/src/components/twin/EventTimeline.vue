@@ -25,13 +25,13 @@
 
 <script>
 const KIND_COLORS = {
-  system: '#999',
-  session: '#4a6cf7',
-  profile: '#722ed1',
-  world: '#52c41a',
-  action: '#faad14',
-  memory: '#eb2f96',
-  settings: '#8c8c8c'
+  system: '#9caa93',
+  session: '#327f72',
+  profile: '#247b68',
+  world: '#7ba466',
+  action: '#b78140',
+  memory: '#5e9c86',
+  settings: '#9caa93'
 }
 
 export default {
@@ -41,7 +41,7 @@ export default {
   },
   methods: {
     kindColor(k) {
-      return KIND_COLORS[k] || '#4a6cf7'
+      return KIND_COLORS[k] || '#247b68'
     },
     relTime(iso) {
       if (!iso) return ''
@@ -79,7 +79,7 @@ export default {
 
 .tl-empty-text {
   font-size: 13px;
-  color: var(--color-text-tertiary, #999);
+  color: var(--twin-sub, #74857f);
   text-align: center;
 }
 
@@ -97,7 +97,7 @@ export default {
   top: 14px;
   bottom: 0;
   width: 1px;
-  background: var(--color-border, #e8e8f0);
+  background: var(--twin-line, #e2e9e3);
 }
 
 .tl-dot {
@@ -124,19 +124,19 @@ export default {
 .tl-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-primary, #1a1a2e);
+  color: var(--twin-ink, #203e3a);
 }
 
 .tl-time {
   font-size: 11px;
-  color: var(--color-text-tertiary, #999);
+  color: var(--twin-sub, #74857f);
   flex-shrink: 0;
 }
 
 .tl-text {
   display: block;
   font-size: 12px;
-  color: var(--color-text-secondary, #666);
+  color: var(--twin-sub, #74857f);
   margin-top: 3px;
   line-height: 1.5;
 }
@@ -148,13 +148,13 @@ export default {
 .tl-diff {
   display: block;
   font-size: 11px;
-  color: #4a6cf7;
+  color: var(--twin-teal, #247b68);
 }
 
 .tl-source {
   display: block;
   font-size: 10px;
-  color: var(--color-text-tertiary, #aaa);
+  color: #9caa93;
   margin-top: 4px;
 }
 </style>

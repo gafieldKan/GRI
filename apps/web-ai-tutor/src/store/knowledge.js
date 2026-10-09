@@ -5,7 +5,15 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getKnowledgePoints, getKnowledgeGraph, getKnowledgeMap, listSubjects, listGrades } from '@/api/index.js'
+import { getKnowledgePoints, getKnowledgeGraph, getKnowledgeMap, getLearningPath, listSubjects, listGrades } from '@/api/index.js'
+
+// 后端 mastery 为 0–100（edu.mastery_snapshots.mastery_score），客户端 masteryMap 统一为 0–1。
+// 归一化入口：>1 视为百分数 /100；否则按 0–1 直接钳制。null/NaN → 0。
+export function normalizeMastery(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return Math.max(0, Math.min(1, n > 1 ? n / 100 : n))
+}
 
 // 前端图标/配色兜底（展示维度；学科清单真源是 /api/curriculum/subjects → ontology.subject）
 const SUBJECTS = {
@@ -36,6 +44,16 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 学习路径推荐
   const learningPath = ref([])
   const nextRecommended = ref(null)
+
+  // 个人学习记录（本机持久化；对齐知序：收藏 / 笔记 / 足迹）
+  const bookmarks = ref([])   // 知识点 id 列表（收藏）
+  const notes = ref({})       // { [pointId]: string }
+  const visits = ref([])      // [{ id, name, subject, at }] 最近在前，上限 20
+
+  // 目标驱动学习路径（后端先修闭包）
+  const pathGoalId = ref(null)
+  const pathSteps = ref([])
+  const pathLoading = ref(false)
 
   // ─── Getters ───
   // 学科展示信息：真源清单优先，图标/配色前端兜底（新学科不丢展示）
@@ -110,6 +128,58 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     knowledgePoints.value.find(p => p.id === selectedPointId.value)
   )
 
+  // 当前学科（已加载年级）掌握度统计：以 knowledgePoints 为分母（只用现有数据）
+  const subjectMasteryStats = computed(() => {
+    const pts = knowledgePoints.value
+    const total = pts.length
+    let mastered = 0, learning = 0, weak = 0
+    let sum = 0
+    for (const p of pts) {
+      const m = masteryMap.value[p.id] || 0
+      sum += m
+      if (m >= 0.8) mastered++
+      else if (m >= 0.5) learning++
+      else if (m > 0) weak++
+    }
+    return {
+      total,
+      mastered,
+      learning,
+      weak,
+      unstarted: total - mastered - learning - weak,
+      coverage: total ? Math.round(((mastered + learning + weak) / total) * 100) : 0,
+      avg: total ? Math.round((sum / total) * 100) : 0
+    }
+  })
+
+  // 掌握度状态词（0–1 → 已掌握/学习中/薄弱/未开始）
+  function statusOf(pointId) {
+    const m = masteryMap.value[pointId] || 0
+    if (m >= 0.8) return 'mastered'
+    if (m >= 0.5) return 'learning'
+    if (m > 0) return 'weak'
+    return 'unstarted'
+  }
+
+  // 同章关联（派生：同一 chapterId 的其他知识点）——现有数据里无人工「关联/应用」边
+  function siblingsOf(pointId) {
+    const pt = knowledgePoints.value.find(p => p.id === pointId)
+    const chapterId = pt?.chapter_id || pt?.chapterId
+    if (!chapterId) return []
+    return knowledgePoints.value.filter(p => p.id !== pointId && (p.chapter_id || p.chapterId) === chapterId)
+  }
+
+  // 收藏列表（解析为知识点对象；找不到的静默跳过）
+  const bookmarkList = computed(() =>
+    bookmarks.value
+      .map(id => knowledgePoints.value.find(p => p.id === id) || visits.value.find(v => v.id === id))
+      .filter(Boolean)
+  )
+
+  function isBookmarked(pointId) {
+    return bookmarks.value.includes(pointId)
+  }
+
   // ─── Actions ───
 
   // 学段/年级/学科清单（三级联动数据源；游客可见目录端点）
@@ -130,10 +200,10 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     try {
       const data = await getKnowledgePoints({ subject, gradeLevel })
       knowledgePoints.value = data || []
-      // 初始化 masteryMap
+      // 初始化 masteryMap（后端知识点列表不含 mastery 列，通常为 0；保证键存在）
       data?.forEach(p => {
         if (!(p.id in masteryMap.value)) {
-          masteryMap.value[p.id] = p.mastery || 0
+          masteryMap.value[p.id] = normalizeMastery(p.mastery)
         }
       })
     } catch (e) {
@@ -154,6 +224,10 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
           nodes: data.nodes || [],
           edges: data.edges || []
         }
+        // 掌握度播种（后端节点 mastery 为 0–100 → 归一 0–1）；这是本页掌握度的唯一真源
+        graphData.value.nodes.forEach(n => {
+          if (n.mastery != null) masteryMap.value[n.id] = normalizeMastery(n.mastery)
+        })
         // 同步 knowledgeTree
         knowledgeTree.value = buildTree(data.nodes, data.edges)
       }
@@ -282,6 +356,59 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     calculateLearningPath()
   }
 
+  // ── 个人学习记录（本机持久化） ──
+  function recordVisit(node) {
+    if (!node?.id) return
+    const entry = { id: node.id, name: node.name || '', subject: node.subject || currentSubject.value, at: Date.now() }
+    visits.value = [entry, ...visits.value.filter(v => v.id !== node.id)].slice(0, 20)
+  }
+
+  function toggleBookmark(node) {
+    if (!node?.id) return false
+    if (bookmarks.value.includes(node.id)) {
+      bookmarks.value = bookmarks.value.filter(id => id !== node.id)
+      return false
+    }
+    bookmarks.value = [node.id, ...bookmarks.value]
+    return true
+  }
+
+  function setNote(pointId, text) {
+    if (!pointId) return
+    const t = (text || '').trim()
+    if (t) notes.value = { ...notes.value, [pointId]: t }
+    else {
+      const next = { ...notes.value }
+      delete next[pointId]
+      notes.value = next
+    }
+  }
+
+  function getNote(pointId) {
+    return notes.value[pointId] || ''
+  }
+
+  // ── 目标驱动学习路径（后端先修闭包） ──
+  async function loadLearningPath(goalId) {
+    if (!goalId) return
+    pathGoalId.value = goalId
+    pathLoading.value = true
+    try {
+      const data = await getLearningPath(goalId)
+      pathSteps.value = data?.steps || []
+    } catch (e) {
+      error.value = e.message
+      pathSteps.value = []
+    } finally {
+      pathLoading.value = false
+    }
+  }
+
+  function clearLearningPath() {
+    pathGoalId.value = null
+    pathSteps.value = []
+  }
+
   function reset() {
     currentSubject.value = 'math'
     currentGrade.value = 7
@@ -294,8 +421,18 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     selectedPointId.value = null
     learningPath.value = []
     nextRecommended.value = null
+    visitingClear()
     loading.value = false
     error.value = null
+  }
+
+  function visitingClear() {
+    bookmarks.value = []
+    notes.value = {}
+    visits.value = []
+    pathGoalId.value = null
+    pathSteps.value = []
+    pathLoading.value = false
   }
 
   return {
@@ -315,6 +452,12 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     error,
     learningPath,
     nextRecommended,
+    bookmarks,
+    notes,
+    visits,
+    pathGoalId,
+    pathSteps,
+    pathLoading,
 
     // Getters
     subjectInfo,
@@ -323,9 +466,14 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     gradesOfStage,
     pointsByTopic,
     masteryStats,
+    subjectMasteryStats,
     weakPoints,
     getMastery,
     selectedPoint,
+    statusOf,
+    siblingsOf,
+    bookmarkList,
+    isBookmarked,
 
     // Actions
     loadCatalog,
@@ -342,6 +490,12 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     getPrerequisites,
     getDependents,
     syncMasteryFromReport,
+    recordVisit,
+    toggleBookmark,
+    setNote,
+    getNote,
+    loadLearningPath,
+    clearLearningPath,
     reset
   }
 })
@@ -369,7 +523,8 @@ useKnowledgeStore.persist = {
     'currentSubject', 'currentGrade',
     'masteryMap', 'learningPath', 'nextRecommended',
     'knowledgePoints', 'graphData', 'knowledgeTree',
-    'selectedPointId', 'loading', 'error'
+    'selectedPointId', 'loading', 'error',
+    'bookmarks', 'notes', 'visits', 'pathGoalId'
   ]
 }
 

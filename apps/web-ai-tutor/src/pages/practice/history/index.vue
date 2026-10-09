@@ -278,7 +278,8 @@
                 <text class="detail-label">正确率</text>
                 <text class="detail-value" :class="{ good: (detailSession?.stats?.accuracy || 0) >= 80, ok: (detailSession?.stats?.accuracy || 0) >= 60, bad: (detailSession?.stats?.accuracy || 0) < 60 }">
                   {{ detailSession?.stats?.accuracy || 0 }}%
-              </text>
+                </text>
+              </view>
             </view>
           </view>
 
@@ -374,7 +375,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onShow, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePracticeStore } from '@/store/practice'
 import { useUserStore } from '@/store/user'
@@ -424,11 +425,11 @@ export default {
 
     const subjects = [
       { id: 'math', name: '数学', icon: '📐', color: '#4a6cf7' },
-      { id: 'physics', name: '物理', icon: '⚡', color: '#faad14' },
-      { id: 'chemistry', name: '化学', icon: '🧪', color: '#ff4d4f' },
-      { id: 'biology', name: '生物', icon: '🧬', color: '#52c41a' },
-      { id: 'english', name: '英语', icon: '📖', color: '#722ed1' },
-      { id: 'chinese', name: '语文', icon: '📝', color: '#eb2f96' }
+      { id: 'phys', name: '物理', icon: '⚡', color: '#faad14' },
+      { id: 'chem', name: '化学', icon: '🧪', color: '#ff4d4f' },
+      { id: 'bio', name: '生物', icon: '🧬', color: '#52c41a' },
+      { id: 'eng', name: '英语', icon: '📖', color: '#722ed1' },
+      { id: 'chn', name: '语文', icon: '📝', color: '#eb2f96' }
     ]
 
     const modeColors = {
@@ -458,11 +459,11 @@ export default {
     const filteredSessions = computed(() => {
       let result = practiceStore.history
 
-      // Tab 筛选
+      // Tab 筛选（以 practice_sessions.status 为准）
       if (currentTab.value === 'completed') {
-        result = result.filter(s => s.stats && s.stats.accuracy !== undefined)
+        result = result.filter(s => s.status === 'completed')
       } else if (currentTab.value === 'incomplete') {
-        result = result.filter(s => !s.stats || s.stats.accuracy === undefined)
+        result = result.filter(s => s.status && s.status !== 'completed')
       }
 
       // 模式筛选
@@ -613,7 +614,7 @@ export default {
     }
 
     const getSubjectName = (subject) => {
-      const names = { math: '数学', physics: '物理', chemistry: '化学', biology: '生物', english: '英语', chinese: '语文' }
+      const names = { math: '数学', phys: '物理', chem: '化学', bio: '生物', eng: '英语', chn: '语文' }
       return names[subject] || subject
     }
 

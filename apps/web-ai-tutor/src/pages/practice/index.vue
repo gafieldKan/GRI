@@ -364,6 +364,7 @@ import { ref, computed, onMounted, nextTick, h } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePracticeStore } from '@/store/practice'
 import { useUserStore } from '@/store/user'
+import { listSubjects, getKnowledgePoints } from '@/api/index.js'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import Chip from '@/components/ui/Chip.vue'
 import StatCard from '@/components/ui/StatCard.vue'
@@ -405,27 +406,46 @@ export default {
       weakness: { name: '薄弱攻克', desc: '针对错题薄弱点专项训练', icon: '💪', questions: 15 }
     }
 
-    // 学科清单（K12 全学科 code 与后端对齐：math/phys/chem/bio/eng/chn；真源 /api/curriculum/subjects）
-    const subjects = [
+    // 学科清单：真源 /api/curriculum/subjects（DB code 为大写 MATH/PHYS/…，前端用小写 code 与题库对齐）
+    const SUBJECT_ICONS = { math: '📐', phys: '⚡', chem: '🧪', bio: '🧬', eng: '📖', chn: '📝' }
+    const subjects = ref([
       { id: 'math', name: '数学', icon: '📐' },
       { id: 'phys', name: '物理', icon: '⚡' },
       { id: 'chem', name: '化学', icon: '🧪' },
       { id: 'bio', name: '生物', icon: '🧬' },
       { id: 'eng', name: '英语', icon: '📖' },
       { id: 'chn', name: '语文', icon: '📝' }
-    ]
+    ])
 
-    const topics = [
-      { id: 'pythagorean', name: '勾股定理', subject: 'math' },
-      { id: 'quadratic', name: '二次函数', subject: 'math' },
-      { id: 'trigonometry', name: '三角函数', subject: 'math' },
-      { id: 'linear_equation', name: '一元一次方程', subject: 'math' },
-      { id: 'newton', name: '牛顿定律', subject: 'phys' },
-      { id: 'periodic', name: '元素周期表', subject: 'chem' },
-      { id: 'cell_biology', name: '细胞结构', subject: 'bio' },
-      { id: 'grammar_basic', name: '基础语法', subject: 'eng' },
-      { id: 'composition', name: '作文写作', subject: 'chn' }
-    ]
+    // 主题 = 教材章节（由知识点 chapter_id 去重；后端按 chapterId 过滤题库）
+    const topics = ref([])
+
+    const loadSubjects = async () => {
+      try {
+        const list = await listSubjects()
+        if (Array.isArray(list) && list.length) {
+          subjects.value = list.map(s => {
+            const code = String(s.code || '').toLowerCase()
+            return { id: code, name: s.name, icon: SUBJECT_ICONS[code] || '📘' }
+          })
+        }
+      } catch (e) { /* 保持默认静态清单 */ }
+    }
+
+    const loadTopics = async (subjectId) => {
+      try {
+        const kps = await getKnowledgePoints({ subject: subjectId })
+        const seen = new Map()
+        for (const kp of (kps || [])) {
+          if (kp.chapter_id && !seen.has(kp.chapter_id)) {
+            seen.set(kp.chapter_id, { id: kp.chapter_id, name: kp.chapter_name || '未命名章节' })
+          }
+        }
+        topics.value = Array.from(seen.values())
+      } catch (e) {
+        topics.value = []
+      }
+    }
 
     const modeColors = {
       quick: '#4a6cf7',
@@ -478,19 +498,18 @@ export default {
     const selectMode = (mode) => {
       practiceStore.setMode(mode)
       showComplete.value = false
-      // 重新加载题库预览
-      practiceStore.loadQuestionBank()
+      // 题库预览（薄弱/复习模式走各自数据源，不用题库）
+      if (mode !== 'weakness' && mode !== 'review') practiceStore.loadQuestionBank()
     }
 
     const selectSubject = (subjectId) => {
-      practiceStore.setSubject(subjectId)
-      // 重新加载题库预览
+      practiceStore.setSubject(subjectId) // 同时清空已选主题
+      loadTopics(subjectId)
       practiceStore.loadQuestionBank()
     }
 
     const selectTopic = (topicId) => {
       practiceStore.setTopic(topicId)
-      // 重新加载题库预览
       practiceStore.loadQuestionBank()
     }
 
@@ -503,6 +522,13 @@ export default {
       touchModeKey.value = null
     }
 
+    const emptyHints = {
+      weakness: '暂无错题，先去练习几道吧',
+      review: '暂无待复习内容',
+      topic: '该章节暂无题目，换个主题试试',
+      default: '暂无可用题目，换个学科试试'
+    }
+
     const startPractice = async () => {
       showComplete.value = false
       selectedOption.value = null
@@ -510,8 +536,11 @@ export default {
       showAnswer.value = false
 
       try {
-        await practiceStore.loadQuestionBank()
         await practiceStore.startSession(practiceStore.currentMode)
+        if (!practiceStore.currentSession?.questions?.length) {
+          practiceStore.resetSession()
+          uni.showToast({ title: emptyHints[practiceStore.currentMode] || emptyHints.default, icon: 'none' })
+        }
       } catch (e) {
         uni.showToast({ title: '加载题目失败', icon: 'none' })
       }
@@ -533,13 +562,13 @@ export default {
       if (!showAnswer.value) {
         // 提交答案
         let answer
-        if (practiceStore.currentQuestion.type === 'choice' || practiceStore.currentQuestion.type === 'multiple') {
+        if (practiceStore.currentQuestion.type === 'choice') {
           if (selectedOption.value === null) {
             uni.showToast({ title: '请选择答案', icon: 'none' })
             return
           }
           answer = selectedOption.value
-          correctOptionIndex.value = findCorrectOptionIndex(practiceStore.currentQuestion)
+          correctOptionIndex.value = practiceStore.currentQuestion.answerIndex
         } else {
           answer = fillAnswer.value.trim()
         }
@@ -556,11 +585,6 @@ export default {
         } else {
           userStore.addXP(2, '练习答题')
         }
-
-        // 添加到错题本
-        if (!isCorrect.value) {
-          // 这里可以同步到 wrongQuestions store
-        }
       } else {
         // 下一题或完成
         if (currentQuestionIndex.value >= totalQuestions.value - 1) {
@@ -572,14 +596,6 @@ export default {
           fillAnswer.value = ''
         }
       }
-    }
-
-    const findCorrectOptionIndex = (question) => {
-      if (!question.options || !question.answer) return -1
-      if (Array.isArray(question.answer)) {
-        return question.options.findIndex(opt => question.answer.includes(opt))
-      }
-      return question.options.findIndex(opt => opt === question.answer)
     }
 
     const prevQuestion = () => {
@@ -683,9 +699,12 @@ export default {
     const completeTitle = computed(() => sessionStats.value.accuracy >= 80 ? '太棒了！' : sessionStats.value.accuracy >= 60 ? '不错哦' : '继续加油')
     const completeSubtitle = computed(() => `正确率 ${sessionStats.value.accuracy}% · ${sessionStats.value.correct}/${sessionStats.value.total}`)
 
-    onMounted(() => {
+    onMounted(async () => {
+      await loadSubjects()
+      loadTopics(practiceStore.currentSubject)
       practiceStore.loadQuestionBank()
       practiceStore.loadSRQueue()
+      practiceStore.loadHistory()
     })
 
     onShow(() => {

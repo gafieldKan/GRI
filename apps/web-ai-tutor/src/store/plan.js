@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getPlans, generatePlan, getPlanCalendar, getParentReport, completePlanTask } from '@/api/index.js'
+import { getPlans, generatePlan, getPlanCalendar, getParentReport, completePlanTask, updatePlanProgress } from '@/api/index.js'
 import { useUserStore } from './user.js'
 
 // 学生业务主键统一从 user store 解出（登录态），不再硬编码 student_001
@@ -23,9 +23,9 @@ export const usePlanStore = defineStore('plan', () => {
 
   // ─── Getters ───
   const currentPlanData = computed(() => currentPlan.value?.plan || null)
-  const dailyPlan = computed(() => plans.value.find(p => p.plan_type === 'daily') || null)
-  const weeklyPlan = computed(() => plans.value.find(p => p.plan_type === 'weekly') || null)
-  const monthlyPlan = computed(() => plans.value.find(p => p.plan_type === 'monthly') || null)
+  const dailyPlan = computed(() => plans.value.find(p => p.plan_type === 'daily' && p.status !== 'archived') || null)
+  const weeklyPlan = computed(() => plans.value.find(p => p.plan_type === 'weekly' && p.status !== 'archived') || null)
+  const monthlyPlan = computed(() => plans.value.find(p => p.plan_type === 'monthly' && p.status !== 'archived') || null)
 
   // 个性化学习计划（agent plan.generate 生成，plan_type='personalized'）
   const personalizedPlans = computed(() => plans.value.filter(p => p.plan_type === 'personalized'))
@@ -47,17 +47,17 @@ export const usePlanStore = defineStore('plan', () => {
 
   const dailyProgress = computed(() => {
     if (!dailyPlan.value) return 0
-    return dailyPlan.value.progress || 0
+    return Number(dailyPlan.value.progress) || 0
   })
 
   const weeklyProgress = computed(() => {
     if (!weeklyPlan.value) return 0
-    return weeklyPlan.value.progress || 0
+    return Number(weeklyPlan.value.progress) || 0
   })
 
   const monthlyProgress = computed(() => {
     if (!monthlyPlan.value) return 0
-    return monthlyPlan.value.progress || 0
+    return Number(monthlyPlan.value.progress) || 0
   })
 
   // 日历事件缓存
@@ -81,7 +81,8 @@ export const usePlanStore = defineStore('plan', () => {
     error.value = null
     try {
       const data = await getPlans(studentId)
-      plans.value = data?.plans || []
+      // 后端 /api/tuition/plans 直接返回数组（getLearningPlans → res.rows）；兼容 {plans:[…]} 形态。
+      plans.value = Array.isArray(data) ? data : (data?.plans || [])
     } catch (e) {
       error.value = e.message
       console.error('[PlanStore] Load plans failed:', e)
@@ -94,7 +95,7 @@ export const usePlanStore = defineStore('plan', () => {
     calendarLoading.value = true
     calendarError.value = null
     try {
-      const data = await getPlanCalendar(studentId, planType, { month })
+      const data = await getPlanCalendar(studentId, planType, month)
       if (data?.events) {
         calendarEvents.value = {}
         data.events.forEach(event => {
@@ -120,7 +121,8 @@ export const usePlanStore = defineStore('plan', () => {
         studentId: currentStudentId(),
         planType,
         startDate: options.startDate || new Date().toISOString().split('T')[0],
-        endDate: options.endDate
+        endDate: options.endDate,
+        subjects: options.subjects
       })
       if (data.success) {
         // 重新加载计划列表
@@ -138,14 +140,14 @@ export const usePlanStore = defineStore('plan', () => {
 
   async function updateProgress(planId, completedTaskIds) {
     try {
-      // 这里可以调用后端 API 更新进度
-      // 暂时本地更新
-      const plan = plans.value.find(p => p.id === planId)
-      if (plan) {
-        plan.completed_tasks = completedTaskIds.length
-        plan.progress = (completedTaskIds.length / (plan.total_tasks || 1)) * 100
+      // 真实落库：后端按 id 在 plan_data 标记 completed 并重算 progress，返回更新后的整行。
+      const res = await updatePlanProgress(planId, completedTaskIds)
+      if (res && res.success && res.plan) {
+        const idx = plans.value.findIndex(p => p.id === planId)
+        if (idx >= 0) plans.value[idx] = { ...res.plan }
+        if (currentPlan.value?.id === planId && idx >= 0) currentPlan.value = plans.value[idx]
       }
-      return { success: true }
+      return res
     } catch (e) {
       console.error('[PlanStore] Update progress failed:', e)
       return { success: false }

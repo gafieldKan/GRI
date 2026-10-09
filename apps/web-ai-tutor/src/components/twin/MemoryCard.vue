@@ -63,7 +63,8 @@ export default {
 <style scoped>
 .memory-card {
   padding: 12px 14px;
-  background: var(--color-bg-secondary, #f7f8fc);
+  background: var(--twin-soft, #f7f9f6);
+  border: 1px solid var(--twin-line, #e2e9e3);
   border-radius: 12px;
   margin-bottom: 10px;
 }
@@ -78,7 +79,7 @@ export default {
 .mc-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-secondary, #666);
+  color: var(--twin-sub, #74857f);
 }
 
 .mc-strength {
@@ -90,27 +91,27 @@ export default {
 .mc-strength-bar {
   width: 48px;
   height: 4px;
-  background: var(--color-border, #e0e3ea);
+  background: var(--twin-line, #e2e9e3);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .mc-strength-fill {
   height: 100%;
-  background: #eb2f96;
+  background: var(--twin-teal, #247b68);
   border-radius: 4px;
 }
 
 .mc-strength-num {
   font-size: 11px;
-  color: var(--color-text-tertiary, #999);
+  color: #9caa93;
 }
 
 .mc-value {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-primary, #1a1a2e);
+  color: var(--twin-ink, #203e3a);
   margin-top: 6px;
   word-break: break-all;
 }
@@ -118,7 +119,7 @@ export default {
 .mc-time {
   display: block;
   font-size: 11px;
-  color: var(--color-text-tertiary, #aaa);
+  color: #9caa93;
   margin-top: 4px;
 }
 </style>

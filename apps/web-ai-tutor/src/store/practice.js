@@ -5,13 +5,51 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getQuestionBank, submitPracticeAnswer, getSpacedRepetitionQueue, startPracticeSession, completePracticeSession, getPracticeHistory } from '@/api/index.js'
+import { getQuestionBank, submitPracticeAnswer, getSpacedRepetitionQueue, getWeaknessQuestions, startPracticeSession, completePracticeSession, getPracticeHistory } from '@/api/index.js'
 import { useUserStore } from './user.js'
 import { useTwinStore } from './twin.js'
 
 // 学生业务主键统一从 user store 解出
 function currentStudentId() {
   return useUserStore().studentId
+}
+
+/**
+ * 题面归一化：抹平后端/历史数据形态差异。
+ *  - 题型：multiple-choice → choice（种子题 type='multiple-choice'，UI 用 'choice'）
+ *  - 选项：['x'] 或 [{text:'A. x'}] → ['x']（兼容两种历史形态）
+ *  - 答案：字母 'C' → 下标 answerIndex（A=0,B=1…）；否则按选项文本兜底匹配
+ *  - 解析：explanation 优先，回退 analysis（库内两列并存）
+ */
+export function normalizeQuestion(raw) {
+  if (!raw) return null
+  const options = (Array.isArray(raw.options) ? raw.options : [])
+    .map((o) => (typeof o === 'string' ? o : (o?.text ?? '')))
+    .filter((t) => t !== '')
+
+  let type = raw.type || 'choice'
+  if (type === 'multiple-choice' || type === 'choice') type = 'choice'
+  else if (type === 'fill' || type === 'fill-blank') type = 'fill'
+  else if (type === 'short-answer' || type === 'short' || type === 'essay') type = 'short'
+
+  const rawAnswer = raw.answer == null ? '' : String(raw.answer)
+  let answerIndex = -1
+  if (options.length) {
+    const letter = rawAnswer.trim()
+    if (/^[A-Za-z]$/.test(letter)) answerIndex = letter.toUpperCase().charCodeAt(0) - 65
+    if (answerIndex < 0 || answerIndex >= options.length) {
+      answerIndex = options.findIndex((o) => o === rawAnswer || o.includes(rawAnswer) || rawAnswer.includes(o))
+    }
+  }
+
+  return {
+    ...raw,
+    type,
+    options,
+    answer: rawAnswer,
+    answerIndex,
+    explanation: raw.explanation || raw.analysis || ''
+  }
 }
 
 // 练习模式
@@ -43,6 +81,9 @@ export const usePracticeStore = defineStore('practice', () => {
 
   // 练习历史
   const history = ref([])
+
+  // 薄弱攻克池（未解决错题 → 完整题面）
+  const weaknessPool = ref([])
 
   // ─── Getters ───
   const modeInfo = computed(() => PRACTICE_MODES[currentMode.value])
@@ -85,11 +126,13 @@ export const usePracticeStore = defineStore('practice', () => {
     try {
       const data = await getQuestionBank({
         subject: currentSubject.value,
-        topicId: currentTopicId.value,
+        // 主题=教材章节：章节 uuid 作为 chapterId 过滤；未选主题则不出该条件
+        chapterId: currentTopicId.value || undefined,
+        limit: 50,
         ...params
       })
-      questionBank.value = data || []
-      return data
+      questionBank.value = (data || []).map(normalizeQuestion)
+      return questionBank.value
     } catch (e) {
       error.value = e.message
       console.error('[Practice] Load question bank failed:', e)
@@ -99,13 +142,30 @@ export const usePracticeStore = defineStore('practice', () => {
     }
   }
 
+  /** 薄弱攻克池：未解决错题 → 完整题面（含选项/答案/解析）。 */
+  async function loadWeaknessPool(params = {}) {
+    try {
+      const data = await getWeaknessQuestions(currentStudentId(), params.limit || 30)
+      const list = Array.isArray(data) ? data : (data?.questions || [])
+      weaknessPool.value = list.map(normalizeQuestion)
+    } catch (e) {
+      console.warn('[Practice] Load weakness pool failed:', e)
+      weaknessPool.value = []
+    }
+    return weaknessPool.value
+  }
+
   async function startSession(mode, options = {}) {
     currentMode.value = mode
     if (options.subject) currentSubject.value = options.subject
-    if (options.topicId) currentTopicId.value = options.topicId
+    if (Object.prototype.hasOwnProperty.call(options, 'topicId')) currentTopicId.value = options.topicId
 
-    // 确保题库已加载
-    if (!questionBank.value.length) {
+    // 按模式准备题目来源：薄弱=错题池，复习=SM-2 队列，其余=题库（后端已按 学科+章节 过滤）
+    if (mode === 'weakness') {
+      await loadWeaknessPool()
+    } else if (mode === 'review') {
+      if (!srQueue.value.length) await loadSRQueue()
+    } else if (!questionBank.value.length) {
       await loadQuestionBank()
     }
 
@@ -118,7 +178,7 @@ export const usePracticeStore = defineStore('practice', () => {
     }
 
     currentSession.value = {
-      id: 'session_' + Date.now(),
+      id: 'session_' + Date.now(), // 后端同步成功后覆盖为真实 practice_sessions uuid
       mode,
       subject: currentSubject.value,
       topicId: currentTopicId.value,
@@ -130,15 +190,15 @@ export const usePracticeStore = defineStore('practice', () => {
     sessionStartTime.value = Date.now()
     sessionTimeLimit.value = modeInfo.value.timed ? (options.timeLimit || 30 * 60) : 0
 
-    // 后端记录会话开始
+    // 后端建真实 practice_sessions 行，回带 uuid —— 后续 submit/complete 以它为 sessionId
     try {
-      await startPracticeSession({
-        studentId: currentStudentId(),
+      const res = await startPracticeSession({
         mode,
         subject: currentSubject.value,
-        topicId: currentTopicId.value,
+        topicId: currentTopicId.value || undefined,
         questions: questions.map(q => ({ id: q.id, content: q.content, type: q.type, answer: q.answer, options: q.options, difficulty: q.difficulty }))
       })
+      if (res?.id) currentSession.value.id = res.id
     } catch (e) {
       console.warn('[Practice] Start session backend sync failed:', e)
     }
@@ -147,26 +207,26 @@ export const usePracticeStore = defineStore('practice', () => {
   }
 
   function selectQuestionsForMode(mode, count) {
-    const pool = questionBank.value.filter(q => {
-      if (currentSubject.value && q.subject !== currentSubject.value) return false
-      if (currentTopicId.value && q.topicId !== currentTopicId.value) return false
-      return true
-    })
-
     const limit = count || PRACTICE_MODES[mode]?.questions || 10
+    let picked
 
-    switch (mode) {
-      case 'topic':
-      case 'weakness':
-        return pool.slice(0, limit)
-      case 'mock':
-        // 混合各难度
-        return pool.slice(0, limit)
-      case 'review':
-        return srQueue.value.slice(0, limit).map(item => item.question)
-      default:
-        return pool.slice(0, limit)
+    // 薄弱攻克：未解决错题（完整题面）
+    if (mode === 'weakness') {
+      picked = weaknessPool.value.slice(0, limit)
+    } else if (mode === 'review') {
+      // 间隔复习：到期的 SM-2 卡片（无到期则退化为全队列）
+      const now = Date.now()
+      const due = srQueue.value.filter(item => item.nextReview <= now)
+      const src = due.length ? due : srQueue.value
+      picked = src.slice(0, limit).map(item => item.question).filter(Boolean)
+    } else {
+      picked = questionBank.value
+        .filter(q => !(currentSubject.value && q.subject && q.subject !== currentSubject.value))
+        .slice(0, limit)
     }
+
+    // 统一归一化（幂等）——即便题库被直接注入（测试）也保证题型/选项/答案下标正确
+    return picked.map(normalizeQuestion).filter(Boolean)
   }
 
   function shuffleArray(array) {
@@ -195,14 +255,15 @@ export const usePracticeStore = defineStore('practice', () => {
 
     sessionAnswers.value.push(answerRecord)
 
-    // 同步到后端
+    // 同步到后端（后端信任前端判定；answer 落可读文本，选择题存选项文本而非下标）
     try {
+      const answerText = typeof answer === 'number' ? (question.options?.[answer] ?? String(answer)) : answer
       await submitPracticeAnswer({
         sessionId: currentSession.value.id,
         questionId: question.id,
-        answer,
+        answer: answerText,
         isCorrect,
-        timeSpent
+        timeSpentMs: timeSpent > 0 ? Math.round(timeSpent * 1000) : undefined
       })
       // 行动挂钩：答完一题即一次「经历」（孪生时间线生长；不阻塞主流程）
       try {
@@ -221,11 +282,15 @@ export const usePracticeStore = defineStore('practice', () => {
   }
 
   function checkAnswer(question, answer) {
-    if (question.type === 'choice' || question.type === 'multiple') {
-      if (Array.isArray(answer) && Array.isArray(question.answer)) {
-        return answer.sort().join(',') === question.answer.sort().join(',')
+    if (question.type === 'choice') {
+      // 前端以选项「下标」作答；归一化后 answerIndex 由字母答案推导而来
+      if (typeof answer === 'number') return answer === question.answerIndex
+      const norm = String(answer ?? '').trim().toUpperCase()
+      if (question.answerIndex >= 0) {
+        if (/^[A-Z]$/.test(norm)) return norm.charCodeAt(0) - 65 === question.answerIndex
+        return answer === question.options?.[question.answerIndex]
       }
-      return answer === question.answer
+      return norm === String(question.answer).trim().toUpperCase()
     }
     // 填空/简答 - 模糊匹配或关键词
     if (question.type === 'fill' || question.type === 'short') {
@@ -288,11 +353,10 @@ export const usePracticeStore = defineStore('practice', () => {
     // 更新间隔重复队列
     updateSRQueue(result)
 
-    // 后端保存会话完成
+    // 后端保存会话完成（sessionId=后端 start 回带的 practice_sessions uuid）
     try {
       await completePracticeSession({
         sessionId: currentSession.value.id,
-        studentId: currentStudentId(),
         answers: sessionAnswers.value.map(a => ({
           questionId: a.questionId,
           question: a.question,
@@ -366,7 +430,23 @@ export const usePracticeStore = defineStore('practice', () => {
     srLoading.value = true
     try {
       const data = await getSpacedRepetitionQueue(currentStudentId())
-      srQueue.value = data || []
+      const rows = Array.isArray(data) ? data : []
+      // 后端蛇形 → 前端驼峰；题面经归一化（含选项/解析）
+      srQueue.value = rows.map(r => ({
+        questionId: r.question_id,
+        interval: r.interval ?? 0,
+        easeFactor: r.ease_factor ?? 2.5,
+        repetitions: r.repetitions ?? 0,
+        nextReview: r.next_review ? new Date(r.next_review).getTime() : 0,
+        question: normalizeQuestion({
+          id: r.question_id,
+          content: r.content,
+          answer: r.answer,
+          type: r.type,
+          options: r.options,
+          explanation: r.analysis
+        })
+      })).filter(item => item.question && item.question.content)
     } catch (e) {
       console.error('[Practice] Load SR queue failed:', e)
       srQueue.value = []
@@ -391,9 +471,30 @@ export const usePracticeStore = defineStore('practice', () => {
   async function loadHistory() {
     try {
       const data = await getPracticeHistory(currentStudentId(), { limit: 100 })
-      if (data?.sessions) {
-        history.value = data.sessions
-      }
+      const sessions = Array.isArray(data) ? data : (data?.sessions || [])
+      // 后端 practice_sessions 行（蛇形）→ UI 形态；stats/answers 为 JSONB（pg 已解析为对象/数组）
+      history.value = sessions.map(s => {
+        const stats = s.stats || {}
+        const answers = Array.isArray(s.answers) ? s.answers : []
+        const correct = stats.correct ?? answers.filter(a => a.isCorrect).length
+        return {
+          id: s.id,
+          mode: s.mode,
+          subject: s.subject,
+          topicId: s.topic_id ?? null,
+          questions: Array.isArray(s.questions) ? s.questions : [],
+          answers,
+          duration: s.duration ?? 0,
+          status: s.status,
+          completedAt: s.completed_at || s.start_time,
+          stats: {
+            correct,
+            total: stats.total ?? answers.length,
+            accuracy: stats.accuracy ?? 0,
+            earnedXP: correct * 10
+          }
+        }
+      })
     } catch (e) {
       console.error('[Practice] Load history failed:', e)
     }
@@ -432,6 +533,7 @@ export const usePracticeStore = defineStore('practice', () => {
     sessionTimeLimit.value = 0
     srQueue.value = []
     history.value = []
+    weaknessPool.value = []
     loading.value = false
     error.value = null
   }
@@ -452,6 +554,7 @@ export const usePracticeStore = defineStore('practice', () => {
     srQueue,
     srLoading,
     history,
+    weaknessPool,
 
     // Getters
     modeInfo,
@@ -465,6 +568,7 @@ export const usePracticeStore = defineStore('practice', () => {
 
     // Actions
     loadQuestionBank,
+    loadWeaknessPool,
     startSession,
     submitAnswer,
     nextQuestion,

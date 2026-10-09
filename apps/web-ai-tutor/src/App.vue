@@ -1,5 +1,6 @@
 <template>
   <view>
+    <TwinIcons />
     <router-view />
   </view>
 </template>
@@ -7,8 +8,10 @@
 <script>
 import { useAuthStore } from '@gri/auth-client'
 import { useUserStore } from './store/user.js'
+import TwinIcons from './components/twin/TwinIcons.vue'
 
 export default {
+  components: { TwinIcons },
   globalData: {
     // 全局配置（M5 收敛：统一经 nginx 网关 /api；旧直连 :3003 已退役）
     API_BASE_URL: import.meta.env.VITE_API_BASE_URL || '',

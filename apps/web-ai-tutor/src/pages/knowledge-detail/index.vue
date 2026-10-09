@@ -39,10 +39,10 @@
           />
         </view>
 
-        <!-- 知识点定义 -->
-        <view class="detail-section" v-if="knowledgePoint.definition">
+        <!-- 知识点定义（后端真实字段为 description；definition 为历史字段兜底） -->
+        <view class="detail-section" v-if="definitionText">
           <text class="section-title">📖 知识点定义</text>
-          <rich-text :nodes="knowledgePoint.definition" class="section-content" />
+          <rich-text :nodes="definitionText" class="section-content" />
         </view>
 
         <!-- 核心公式 -->
@@ -150,8 +150,11 @@ export default {
       }
     }
 
-    const subjectColor = computed(() => {
-      const colors = {
+    const definitionText = computed(
+      () => knowledgePoint.value?.definition || knowledgePoint.value?.description || ''
+    )
+
+    const subjectColor = computed(() => {      const colors = {
         math: '#4a6cf7',
         physics: '#faad14',
         chemistry: '#ff4d4f',
@@ -237,6 +240,7 @@ export default {
       knowledgeStore,
       practiceStore,
       knowledgePoint,
+      definitionText,
       subjectColor,
       getSubjectName,
       getMasteryColor,

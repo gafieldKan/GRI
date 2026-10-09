@@ -87,6 +87,28 @@ export async function getKnowledgeMap(subject) {
   }
 }
 
+// 学习路径（目标驱动）：goalId 的全先修闭包，拓扑序去重（先修在前）；登录叠加各步骤掌握度。
+// 404（目标不存在）会被响应拦截器转成 {nodes:[],edges:[]}，故此处统一规整为 steps 形态。
+export async function getLearningPath(goalId) {
+  const FALLBACK = { goal: null, steps: [] }
+  try {
+    const data = await api.get('/api/curriculum/learning-path', { params: { goalId } })
+    if (data && Array.isArray(data.steps)) return data
+    return FALLBACK
+  } catch (e) {
+    return FALLBACK
+  }
+}
+
+// 知识点随堂练习（选择题含选项/答案/解析，公开读）。
+export async function getKpQuestions(kpId, limit = 5) {
+  try {
+    return await api.get(`/api/curriculum/knowledge-points/${kpId}/questions`, { params: { limit } })
+  } catch (e) {
+    return []
+  }
+}
+
 const TOPIC_KNOWLEDGE_MAP = {
   'math_pythagorean': 'math_pythagorean',
   'math_quadratic': 'math_quadratic',
@@ -209,6 +231,13 @@ export async function submitPracticeAnswer(data) {
 
 export async function getSpacedRepetitionQueue(studentId) {
   try { return await api.get(`/api/tuition/practice/sr-queue/${studentId}`) } catch (e) { return [] }
+}
+
+// 薄弱攻克：未解决错题 → 完整题面（含选项/答案/解析）。
+export async function getWeaknessQuestions(studentId, limit = 15) {
+  try {
+    return await api.get(`/api/tuition/practice/weakness/${studentId}`, { params: { limit } })
+  } catch (e) { return { questions: [] } }
 }
 
 // 新增：练习历史相关
