@@ -49,10 +49,22 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   get('GET', /^\/curriculum\/chapters\/?$/),
   get('GET', /^\/curriculum\/knowledge-points\/?$/),
   get('GET', /^\/curriculum\/knowledge-points\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/),
+  // 知识点随堂练习（选择题含答案/解析）——公开学习材料，同 /tuition/questions 语义。
+  get('GET', /^\/curriculum\/knowledge-points\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/questions\/?$/),
   get('GET', /^\/curriculum\/knowledge-graph\/?$/),
   // 学科知识版图（0.4.0 版图层）：登峰视图数据——游客可看山体结构，
   // 登录后叠加个人掌握度（OptionalAuth 语义，同 knowledge-graph）。
   get('GET', /^\/curriculum\/knowledge-map\/?$/),
+  // 学习路径（目标驱动先修闭包）：游客可看先修结构，登录叠加各步骤掌握度（OptionalAuth 语义）。
+  get('GET', /^\/curriculum\/learning-path\/?$/),
+  // Auth 代理端点（M1）：登录/注册/刷新/登出/当前用户/JWKS —— 必须公开，否则无法完成首次登录流程。
+  // 这些端点仅作透传到 auth-center，不包含业务逻辑，安全由 auth-center 负责。
+  get('POST', /^\/auth\/login\/?$/),
+  get('POST', /^\/auth\/register\/?$/),
+  get('POST', /^\/auth\/refresh\/?$/),
+  get('POST', /^\/auth\/logout\/?$/),
+  get('GET', /^\/auth\/me\/?$/),
+  get('GET', /^\/auth\/jwks\/?$/),
   // 数据大屏统计（M5 dashboard 子切片）：只读聚合分析端点 —— 已从游客白名单移除，改强制鉴权，
   // 防游客看聚合运营数据（portal 组织/运营台加固）。登录用户经 /api/identity 鉴权后仍可访问。
 ];

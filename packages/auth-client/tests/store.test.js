@@ -34,8 +34,9 @@ function makeMockFetch() {
     if (path === '/me') {
       return { id: 'identity-1', domain: 'food', username: 'alice', email: 'alice@example.com', externalId: 'users-123', status: 'active' };
     }
-    if (path === '/register') {
-      return { id: 'identity-2', domain: 'food', username: 'bob', email: 'bob@example.com', externalId: 'users-456', status: 'active' };
+    if (path === '/api/auth/register') {
+      // 统一注册入口（services/api 编排）：返回 public.users 行
+      return { id: 'users-456', username: 'bob', email: 'bob@example.com', role: 'consumer', status: 'active' };
     }
     throw new Error(`unexpected ${method} ${url}`);
   };

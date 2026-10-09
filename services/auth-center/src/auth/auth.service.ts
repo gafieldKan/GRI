@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
@@ -33,6 +34,11 @@ export class AuthService {
 
     if (!identity) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // 已停用/注销身份不得登录（注销 = 先停凭证，安全优先）
+    if (identity.status !== 'active') {
+      throw new UnauthorizedException('账户不可用');
     }
 
     // 无密码身份（AI 学生）不能走密码登录
@@ -91,6 +97,9 @@ export class AuthService {
     if (!identity) {
       throw new UnauthorizedException('Identity not found');
     }
+    if (identity.status !== 'active') {
+      throw new UnauthorizedException('账户不可用');
+    }
 
     const newRefresh = await this.refreshTokens.rotate(
       refreshToken,
@@ -123,6 +132,43 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * 改密（需登录）。身份**从 token 解析**（meFromBearer），不接受外部传 identityId —— 防越权。
+   * 校验旧密 → bcrypt 重哈希 → 更新 → 吊销全部 refresh token（改密即全端下线）。
+   */
+  async changePassword(
+    bearer: string,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const identity = await this.meFromBearer(bearer);
+    if (!identity) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+    if (identity.status !== 'active') {
+      throw new UnauthorizedException('账户不可用');
+    }
+    if (!identity.passwordHash) {
+      throw new BadRequestException('该账户无密码');
+    }
+    if (newPassword === oldPassword) {
+      throw new BadRequestException('新密码不能与旧密码相同');
+    }
+
+    // 与 login 一致：兼容明文惰性升级
+    const ok = identity.passwordHash.startsWith('$2')
+      ? await bcrypt.compare(oldPassword, identity.passwordHash)
+      : oldPassword === identity.passwordHash;
+    if (!ok) {
+      throw new BadRequestException('旧密码错误');
+    }
+
+    const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.users.updatePasswordHash(identity.id, hash);
+    await this.refreshTokens.revokeAllForIdentity(identity.id);
+    return { message: 'Password updated' };
   }
 
   private async issueTokens(

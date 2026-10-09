@@ -1,4 +1,6 @@
-export type Domain = 'food' | 'tutor';
+// 'core' = 域无关的统一主体身份（平台级自注册），订餐/学情为其 identity_links 链接；
+// 'food' | 'tutor' 保留为历史/特定域身份的描述值。
+export type Domain = 'food' | 'tutor' | 'core';
 
 /**
  * 统一主体身份（对应 identities 表）。

@@ -50,6 +50,11 @@ export class RefreshTokensService {
     return newToken;
   }
 
+  /** 吊销某身份的全部 refresh token（改密/注销时全端下线） */
+  async revokeAllForIdentity(identityId: string): Promise<void> {
+    await this.db.query('DELETE FROM refresh_tokens WHERE identity_id = $1', [identityId]);
+  }
+
   private hash(token: string): string {
     return createHash('sha256').update(token).digest('hex');
   }

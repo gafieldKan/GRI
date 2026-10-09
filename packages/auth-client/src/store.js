@@ -15,6 +15,7 @@ const STORAGE_KEY = 'gri-auth-token';
  *
  * @param {object} [opts]
  * @param {string} [opts.authBase='/auth'] auth-center 端点前缀（nginx /auth/ 或直连 http://localhost:3004/auth）
+ * @param {string} [opts.apiBase=''] 业务后端前缀，仅注册编排入口用（nginx /api/ 或直连 http://localhost:3008）
  * @param {object} [opts.storage] 注入存储实现（默认 uni.*；测试注入内存）
  * @param {function} [opts.fetchImpl] 注入请求实现（测试注入 mock）
  * @returns {function} useAuthStore()
@@ -22,6 +23,7 @@ const STORAGE_KEY = 'gri-auth-token';
 export function createAuthStore(opts = {}) {
   const endpoints = createEndpoints({
     authBase: opts.authBase ?? '/auth',
+    apiBase: opts.apiBase ?? '',
     fetchImpl: opts.fetchImpl,
   });
   const storage = createStorage(opts.storage);

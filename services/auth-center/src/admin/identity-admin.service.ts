@@ -1,6 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { timingSafeEqual } from 'crypto';
+import * as bcrypt from 'bcryptjs';
 import { DatabaseService } from '../database/database.service';
+import { CreateIdentityDto } from '../auth/dto/auth.dto';
 
 /**
  * 身份目录管理（服务间内部面）。不对外开放浏览器访问：
@@ -56,5 +58,50 @@ export class IdentityAdminService {
       [businessId, businessId],
     );
     return rows.length ? rows[0] : null;
+  }
+
+  /**
+   * 创建身份（服务间写面）—— 注册编排第二步。
+   * external_id 由业务后端注入（= public.users.id，唯一映射点）；本面永不接受空值。
+   * bcrypt(12) 哈希密码；username/email/phone 命中既有 → 409（幂等门禁）。
+   * 返回脱敏身份（不含 password_hash）。
+   */
+  async createIdentity(dto: CreateIdentityDto): Promise<Record<string, unknown>> {
+    const email = dto.email ? dto.email.toLowerCase() : null;
+    const dup = await this.db.query(
+      `SELECT id FROM identities
+         WHERE ($1::text IS NOT NULL AND username = $1)
+            OR ($2::text IS NOT NULL AND email = $2)
+            OR ($3::text IS NOT NULL AND phone = $3)
+         LIMIT 1`,
+      [dto.username ?? null, email, dto.phone ?? null],
+    );
+    if (dup.rows.length) throw new ConflictException('账户已存在');
+
+    const hash = await bcrypt.hash(dto.password, 12);
+    const { rows } = await this.db.query(
+      `INSERT INTO identities (domain, username, email, phone, password_hash, name, external_id, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'active')
+       RETURNING id, domain, username, email, phone, name, external_id, status, created_at`,
+      [dto.domain, dto.username ?? null, email, dto.phone ?? null, hash, dto.name ?? null, dto.externalId],
+    );
+    return rows[0];
+  }
+
+  /**
+   * 停用身份（服务间写面）—— 注销编排第一步（安全优先）。
+   * 按 external_id 定位（= public.users.id），置 status='disabled' 并吊销其全部 refresh token。
+   * 幂等：不存在/已停用也不报错。
+   */
+  async disableIdentityByExternalId(externalId: string): Promise<void> {
+    await this.db.query(
+      `UPDATE identities SET status = 'disabled', updated_at = NOW() WHERE external_id = $1`,
+      [externalId],
+    );
+    await this.db.query(
+      `DELETE FROM refresh_tokens
+         WHERE identity_id IN (SELECT id FROM identities WHERE external_id = $1)`,
+      [externalId],
+    );
   }
 }

@@ -4,7 +4,7 @@
  * 阶段 C 收口：认证从旧后端 opaque-token（/api/auth/*）切换到 auth-center（/auth/*）。
  * 契约（阶段 B 已交付）：
  *  - POST /auth/login     入参 {identifier, password} → {accessToken, refreshToken, expiresIn, user}
- *  - POST /auth/register  入参 {username, email, password, name?} → identity（无 token）
+ *  - POST /api/auth/register  入参 {username, email, password, name?} → public.users 行（无 token，经 services/api 编排）
  *  - POST /auth/refresh   入参 {refreshToken} → {accessToken, refreshToken, expiresIn}
  *  - POST /auth/logout    入参 {refreshToken} → {message}
  *  - GET  /auth/me        Bearer → identity
@@ -15,6 +15,9 @@
  * 基线：生产/统一网关经 nginx /auth/ 转发（阶段 A）；直连 auth-center:3004 仅纯本地兜底。
  */
 const AUTH_BASE = import.meta.env.VITE_AUTH_BASE_URL || '/auth'
+// 注册已收归单一后端编排入口（services/api 建 public.users → 服务间建 auth-center 身份）。
+// 其余认证动作仍直连 auth-center（/auth/*）。
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 /** 统一包装：把 auth-center 响应规约为 { code, data, message } */
 async function request(path, { method = 'GET', body, token } = {}) {
@@ -69,19 +72,28 @@ export async function login({ email, password }) {
  */
 export async function register(data) {
   try {
-    await request('/register', {
+    // 统一注册入口：POST /api/auth/register（services/api 编排，非直连 auth-center）
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
       method: 'POST',
-      body: {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         username: data.username.trim(),
         email: data.email.trim(),
         password: data.password,
         name: data.name ?? undefined
-      }
+      })
     })
-    // 注册成功不自动登录（auth-center 契约），返回码沿用页面判断的 201 语义
+    const json = await res.json().catch(() => null)
+    if (!res.ok) {
+      const err = new Error(json?.message || `HTTP ${res.status}`)
+      err.status = res.status
+      err.data = json
+      throw err
+    }
+    // 注册成功不自动登录（服务端契约），返回码沿用页面判断的 201 语义
     return { code: 201, data: null }
   } catch (err) {
-    console.warn('[GRI Dev] authAPI register:', err.message || 'auth-center offline')
+    console.warn('[GRI Dev] authAPI register:', err.message || 'api offline')
     throw err
   }
 }

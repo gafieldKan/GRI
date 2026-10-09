@@ -1,0 +1,7 @@
+{
+  "p2-task-1a-design": "done",
+  "p2-task-1-impl": "done",
+  "p2-task-1-verify": "verified_pass",
+  "_verify": "api tsc 0 error | auth-center tsc 0 error | api 25 suites/307 tests | auth-center 3 suites/22 tests | e2e PASS=20 FAIL=0 | migration 017 applied | backfill external_id NULL=0",
+  "_note": "实现由 Claude 代做（超出设计角色），Codex 未介入实现。待独立验证卡（Codex）。"
+}

@@ -46,5 +46,24 @@ export function createStorage(impl) {
     };
   }
 
+  // H5 回退：uni-app H5 构建里 `window.uni` 只挂最小 API，setStorageSync/getStorageSync
+  // 并不存在（detectUni 为假），若直接落到内存 Map，刷新页面即丢登录态。H5 平台的
+  // uni.* 同步存储本身就是 localStorage 之上的一层，故此处直接以 localStorage 兜底，
+  // 保证「刷新仍在登录态」；值以 JSON 序列化，与 uni.* 行为一致。
+  if (typeof globalThis.localStorage !== 'undefined') {
+    return {
+      set: (k, v) => globalThis.localStorage.setItem(k, JSON.stringify(v)),
+      get: (k) => {
+        try {
+          const raw = globalThis.localStorage.getItem(k);
+          return raw === null ? null : JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      },
+      remove: (k) => globalThis.localStorage.removeItem(k),
+    };
+  }
+
   return createMemoryStore();
 }

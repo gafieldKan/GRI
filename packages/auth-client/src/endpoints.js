@@ -4,20 +4,23 @@
  * 默认指向 nginx 统一入口（阶段 A 已把 /auth/ 转发到 auth-center:3004）。
  * 三前端可显式注入 authBase（如直连 http://localhost:3004/auth 便于本地调试）。
  *
+ * 注册已收归单一后端编排入口（services/api），故单独用 apiBase（默认 '' → 同源 /api）。
+ * 其余认证动作仍走 authBase。
+ *
  * 契约（阶段 B 已交付）：
  *  - POST /auth/login     入参 {identifier, password} → {accessToken, refreshToken, expiresIn, user}
- *  - POST /auth/register  入参 {username, email, password, name?} → identity（无 token）
+ *  - POST /api/auth/register  入参 {username, email, password, name?} → public.users 行（无 token，经 services/api 编排）
  *  - POST /auth/refresh   入参 {refreshToken} → {accessToken, refreshToken, expiresIn}
  *  - POST /auth/logout    入参 {refreshToken} → {message}
  *  - GET  /auth/me        Bearer → identity
  */
 
-export function createEndpoints({ authBase = '/auth', fetchImpl } = {}) {
+export function createEndpoints({ authBase = '/auth', apiBase = '', fetchImpl } = {}) {
   // uniapp 下默认使用 uni.request；测试环境用注入的 fetchImpl 或全局 fetch
   const http = fetchImpl ?? defaultHttp();
 
-  async function post(path, body, { authToken } = {}) {
-    return http(`${authBase}${path}`, {
+  async function post(path, body, { authToken, base = authBase } = {}) {
+    return http(`${base}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,7 +43,8 @@ export function createEndpoints({ authBase = '/auth', fetchImpl } = {}) {
     },
 
     async register({ username, email, password, name }) {
-      return post('/register', { username, email, password, name });
+      // 统一注册入口：services/api 编排（建 public.users → 服务间建身份）
+      return post('/api/auth/register', { username, email, password, name }, { base: apiBase });
     },
 
     async refresh(refreshToken) {

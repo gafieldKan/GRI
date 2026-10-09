@@ -75,4 +75,52 @@ describe('IdentityService', () => {
       expect(query.mock.calls[0][0]).toContain('SELECT');
     });
   });
+
+  describe('deleteProfile（先停用凭证，再软删档案）', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('先停用 auth-center 凭证，再软删 public.users（不硬删）', async () => {
+      const fetchMock = jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: true, status: 200 });
+      const query = jest.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.deleteProfile('u1')).resolves.toBeUndefined();
+
+      // 1) 服务间停用身份（DELETE /auth/admin/identities/:externalId）
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/auth/admin/identities/u1');
+      expect(init.method).toBe('DELETE');
+      expect((init.headers as Record<string, string>)['x-service-token']).toBeDefined();
+
+      // 2) 软删：SET status='deleted' + deleted_at，绝不 DELETE
+      expect(query).toHaveBeenCalledTimes(1);
+      const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('UPDATE public.users');
+      expect(sql).toContain("status = 'deleted'");
+      expect(sql).toContain('deleted_at = NOW()');
+      expect(sql).not.toContain('DELETE');
+      expect(params).toEqual(['u1']);
+    });
+
+    it('凭证停用失败（5xx）→ 抛 BadGatewayException，且不软删业务库', async () => {
+      jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: false, status: 502 });
+      const query = jest.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.deleteProfile('u1')).rejects.toThrow('身份停用失败');
+      // 安全优先：身份未停用即中止，绝不动 users
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('externalId 查无此人（软删影响 0 行）→ NotFoundException', async () => {
+      jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: true, status: 200 });
+      const query = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.deleteProfile('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
 });

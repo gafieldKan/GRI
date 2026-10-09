@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { IdentityAdminService } from './identity-admin.service';
 import { DatabaseService } from '../database/database.service';
 
@@ -73,6 +73,58 @@ describe('IdentityAdminService', () => {
     it('未命中 → null', async () => {
       const out = await svc.byBusinessId('00000000-0000-0000-0000-000000000000');
       expect(out).toBeNull();
+    });
+  });
+
+  describe('createIdentity（服务间写面，注册编排第二步）', () => {
+    const dto: any = {
+      domain: 'core',
+      username: 'alice',
+      email: 'Alice@Example.com',
+      phone: null,
+      password: 'password123',
+      name: '爱丽丝',
+      externalId: '11111111-1111-1111-1111-111111111111',
+    };
+
+    it('命中既有 username/email → ConflictException（幂等门禁，不写库）', async () => {
+      query.mockResolvedValueOnce({ rows: [{ id: 'exists' }] });
+      await expect(svc.createIdentity(dto)).rejects.toBeInstanceOf(ConflictException);
+      // 仅发了去重 SELECT，未发 INSERT
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][0]).toContain('SELECT id FROM identities');
+    });
+
+    it('创建成功：email 小写化、注入 external_id、返回脱敏行（无 password_hash）', async () => {
+      query
+        .mockResolvedValueOnce({ rows: [] }) // 去重空
+        .mockResolvedValueOnce({
+          rows: [{ id: 'i-1', username: 'alice', email: 'alice@example.com', external_id: dto.externalId, status: 'active' }],
+        });
+      const out = await svc.createIdentity(dto);
+      const [insSql, insParams] = query.mock.calls[1] as [string, unknown[]];
+      expect(insSql).toContain('INSERT INTO identities');
+      expect(insSql).toContain("'active'");
+      // RETURNING 子句不含 password_hash（脱敏）
+      expect(insSql.split('RETURNING')[1]).not.toContain('password_hash');
+      // $2=username, $3=email（已小写）, $7=externalId
+      expect(insParams[1]).toBe('alice');
+      expect(insParams[2]).toBe('alice@example.com');
+      expect(insParams[6]).toBe(dto.externalId);
+      // 密码落库前经 bcrypt 哈希（非明文）
+      expect(String(insParams[4])).not.toBe('password123');
+      expect(out.external_id).toBe(dto.externalId);
+    });
+  });
+
+  describe('disableIdentityByExternalId（注销编排第一步，安全优先）', () => {
+    it('按 external_id 置 disabled 并吊销其全部 refresh token', async () => {
+      await svc.disableIdentityByExternalId('11111111-1111-1111-1111-111111111111');
+      expect(query).toHaveBeenCalledTimes(2);
+      expect(query.mock.calls[0][0]).toContain("status = 'disabled'");
+      expect(query.mock.calls[0][0]).toContain('WHERE external_id = $1');
+      expect(query.mock.calls[1][0]).toContain('DELETE FROM refresh_tokens');
+      expect(query.mock.calls[1][1]).toEqual(['11111111-1111-1111-1111-111111111111']);
     });
   });
 });

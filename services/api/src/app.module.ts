@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { FoodModule } from './modules/food/food.module';
 import { TuitionModule } from './modules/tuition/tuition.module';
 import { OrganizationModule } from './modules/organization/organization.module';
@@ -18,6 +19,6 @@ import { TwinModule } from './modules/twin/twin.module';
  * import 同源缓存（scripts/k12-curriculum/import.mjs 读写），不再有 API 面。
  */
 @Module({
-  imports: [DatabaseModule, HealthModule, IdentityModule, FoodModule, TuitionModule, OrganizationModule, OntologyModule, CurriculumModule, DashboardModule, AgentModule, TwinModule],
+  imports: [DatabaseModule, HealthModule, IdentityModule, AuthModule, FoodModule, TuitionModule, OrganizationModule, OntologyModule, CurriculumModule, DashboardModule, AgentModule, TwinModule],
 })
 export class AppModule {}

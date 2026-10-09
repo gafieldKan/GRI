@@ -40,6 +40,26 @@ describe('public-routes 公开读白名单', () => {
     });
   });
 
+  describe('K12 课程体系公开目录（curriculum / OptionalAuth 读）', () => {
+    it('目录端点游客可读，含 knowledge-graph / knowledge-map / learning-path', () => {
+      expect(isPublicRoute('GET', '/curriculum/subjects')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/knowledge-points')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/knowledge-graph')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/knowledge-map')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/learning-path')).toBe(true);
+    });
+
+    it('学习路径非 GET 不放行，未定义路径保持保守', () => {
+      expect(isPublicRoute('POST', '/curriculum/learning-path')).toBe(false);
+      expect(isPublicRoute('GET', '/curriculum/learning-path/extra')).toBe(false);
+    });
+
+    it('知识点随堂练习题公开读（含答案/解析，学习材料）', () => {
+      expect(isPublicRoute('GET', '/curriculum/knowledge-points/10000000-0000-0000-0000-000000000001/questions')).toBe(true);
+      expect(isPublicRoute('POST', '/curriculum/knowledge-points/10000000-0000-0000-0000-000000000001/questions')).toBe(false);
+    });
+  });
+
   describe('组织公开目录（M4）', () => {
     const ORG_ID = '10000000-0000-0000-0000-000000000001';
 
@@ -83,6 +103,12 @@ describe('public-routes 公开读白名单', () => {
   });
 
   describe('受保护端点一律不放行', () => {
+    it('注册公开；改密与注销必须登录', () => {
+      expect(isPublicRoute('POST', '/auth/register')).toBe(true);
+      expect(isPublicRoute('PUT', '/auth/password')).toBe(false);
+      expect(isPublicRoute('DELETE', '/identity/me')).toBe(false);
+    });
+
     it('个人数据 / 写操作 / 未上榜路径都被强制鉴权', () => {
       expect(isPublicRoute('GET', '/identity/me')).toBe(false);
       expect(isPublicRoute('PUT', '/identity/me')).toBe(false);

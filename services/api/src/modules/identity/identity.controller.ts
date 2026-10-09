@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Delete,
   Body,
   Req,
   Param,
@@ -36,7 +37,7 @@ export class IdentityController {
    * 契约：从 req.auth.externalId 定位 public.users.id，读回本人才档案。
    */
   @Get('me')
-  getMe(@Req() req: Request) {
+  async getMe(@Req() req: Request) {
     const externalId = this.auth(req).externalId;
     if (!externalId) throw new ForbiddenException('缺少外部身份标识');
     return this.identityService.getProfileByExternalId(externalId);
@@ -47,7 +48,7 @@ export class IdentityController {
    * 路径：GET /api/identity/:id
    */
   @Get(':id')
-  getById(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
+  async getById(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
     const a = this.auth(req);
     const ownExternalId = a.externalId;
     if (id !== ownExternalId && !(a.roles ?? []).some((r) => READ_ANY_ELEVATED_ROLES.has(r))) {
@@ -61,9 +62,20 @@ export class IdentityController {
    * 路径：PUT /api/identity/me
    */
   @Put('me')
-  updateMe(@Req() req: Request, @Body() data: Partial<User>) {
+  async updateMe(@Req() req: Request, @Body() data: Partial<User>) {
     const externalId = this.auth(req).externalId;
     if (!externalId) throw new ForbiddenException('缺少外部身份标识');
     return this.identityService.updateProfile(externalId, data);
+  }
+
+  /**
+   * 注销本人（停用凭证 + 软删档案）。防 IDOR：externalId 仅取自 req.auth，只能删自己。
+   * 路径：DELETE /api/identity/me
+   */
+  @Delete('me')
+  async deleteMe(@Req() req: Request): Promise<void> {
+    const externalId = this.auth(req).externalId;
+    if (!externalId) throw new ForbiddenException('缺少外部身份标识');
+    await this.identityService.deleteProfile(externalId);
   }
 }

@@ -11,7 +11,9 @@ describe('IdentityAdminController', () => {
   const authorize = jest.fn();
   const lookup = jest.fn();
   const byBusinessId = jest.fn();
-  const svc: unknown = { authorize, lookup, byBusinessId };
+  const createIdentity = jest.fn();
+  const disableIdentityByExternalId = jest.fn();
+  const svc: unknown = { authorize, lookup, byBusinessId, createIdentity, disableIdentityByExternalId };
   const ctrl = new IdentityAdminController(svc as IdentityAdminService);
   const withToken = { headers: { 'x-service-token': 'secret' } } as unknown as Request;
 
@@ -20,6 +22,8 @@ describe('IdentityAdminController', () => {
     authorize.mockReset();
     lookup.mockReset();
     byBusinessId.mockReset();
+    createIdentity.mockReset();
+    disableIdentityByExternalId.mockReset();
   });
 
   it('lookup → 返回已 await 的 identities 数组（而非 Promise→{}）', async () => {
@@ -46,5 +50,31 @@ describe('IdentityAdminController', () => {
     const res = await ctrl.byId(withToken, 'b');
     expect(typeof res.identity).toBe('object');
     expect(res.identity).toEqual({ id: 'b', username: 'bob' });
+  });
+
+  it('create → 授权后返回已 await 的脱敏身份', async () => {
+    createIdentity.mockResolvedValueOnce({ id: 'i-1', external_id: 'uuid-1' });
+    const dto = { domain: 'core', username: 'alice', password: 'password123', externalId: 'uuid-1' };
+    const res = await ctrl.create(withToken, dto as any);
+    expect(authorize).toHaveBeenCalledWith('secret');
+    expect(typeof res.identity).toBe('object');
+    expect(res.identity).toEqual({ id: 'i-1', external_id: 'uuid-1' });
+  });
+
+  it('create 缺 service token → 401（不建身份）', async () => {
+    authorize.mockImplementationOnce(() => {
+      throw new UnauthorizedException();
+    });
+    await expect(ctrl.create({ headers: {} } as unknown as Request, {} as any)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(createIdentity).not.toHaveBeenCalled();
+  });
+
+  it('disable → 授权后停用并返回 success', async () => {
+    const res = await ctrl.disable(withToken, 'uuid-1');
+    expect(authorize).toHaveBeenCalledWith('secret');
+    expect(disableIdentityByExternalId).toHaveBeenCalledWith('uuid-1');
+    expect(res.success).toBe(true);
   });
 });
