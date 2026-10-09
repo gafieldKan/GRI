@@ -1,9 +1,7 @@
 {
-  "p2-task-1a-design": "done",
-  "p2-task-1-impl": "done",
-  "p2-task-1-verify": "verified_pass",
-  "p2-task-1b-quality-ui": "verified_pass",
-  "_commits": "08bcb33 (T1)",
-  "_verify_t1b": "api tsc 0err | ac tsc 0err | api eslint 0e0w | api 25/311 | ac 4/28 | e2e PASS=*** FAIL=0 | 002 索引已应用",
-  "_open": "T1b 代码未提交；运维提示：新增迁移后须先 npm run build 再 npm run migrate（dist 不随 src 自动同步）"
+  "p2-task-1": "done_and_committed",
+  "p2-task-1b": "done_and_committed",
+  "in-flight-backlog": "committed_6_batches",
+  "_commits": ["08bcb33 T1", "e5e0703 T1b", "b3ac600 ontology/twin", "8fdde79 api curriculum+tuition", "e8adac2 twin-ui", "47426c0 mini-program", "c3a1ec5 infra", "ef6a535 styles+k12+docs"],
+  "_pending": "Wave1 余下 T4/T11 未跑；.agents 协作脚本(.sh)未决定是否入库"
 }
