@@ -1,7 +1,7 @@
 {
   "p2-task-1": "done_and_committed",
   "p2-task-1b": "done_and_committed",
-  "p2-task-4": "code_done_verified_green_uncommitted",
+  "p2-task-4": "done_and_committed",
   "p2-task-11": "voided",
   "in-flight-backlog": "committed_6_batches",
   "_commits": [
@@ -35,6 +35,11 @@
       "e2e": "PASS=60 FAIL=0（修正验收脚本 uuid() bug 后）"
     },
     "blocker_found": "验收脚本 .agents/codex/outputs/p2-task-4-verify.sh 的 uuid() 用 tr -d 把 psql 的 'INSERT 0 1' 标签粘进 UUID → 6 项领券用例误报 500。已修为 head -n1 | tr -d。",
-    "image_rebuild": "未完成：runtime 段 npm ci 间歇性报 'Exit handler never called!' / DEPTH_ZERO_SELF_SIGNED_CERT(registry 自签证书) → pg 为空 → 崩溃循环。gri-api 容器已回滚到可用镜像 2e0e4fe3c1e2（pre-T4），latest 未更新。宿主直跑 dist 已完成 e2e 复验。"
-  }
+    "image_rebuild": "已完成。根因：registry.npmjs.org 被 DNS 投毒（IPv6 2406:cb42:0:2018::2 自签 O=systemd-flushd / IPv4 103.73.220.77 证书不匹配）。绕过：构建时临时向 Dockerfile 两个 stage 注入 ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com（构建后已还原，仓库零残留）。新镜像 f7bf81ab7f06，容器 running/health ok/新路由 4/018 迁移在容器内自举 skip=已应用。容器版 e2e PASS=60 FAIL=0。"
+  },
+  "_commits_2026_10_09": {
+    "918d005": "chore(agents): 纳入 .agents 协作工作区（.gitignore 反向豁免 .agents/**/*.{md,sh,json}；继续忽略 logs/*.log/*.done/.p2t4）",
+    "01d7440": "feat(food): P2-T4 评价/优惠券/商家归属（018 迁移 + service/controller/types/spec + public-routes 白名单）"
+  },
+  "_env_issue_2026_10_09": "registry.npmjs.org DNS 投毒（本机 DNS 返回伪造 IP，TLS 自签）——影响所有容器内 npm 拉取。绕过用 registry.npmmirror.com。建议后续排查本机 DNS/上游解析。"
 }
