@@ -1,102 +1,80 @@
-> ⚠️ STATUS: NEEDS REWRITE (2026-10-10) —— 参照物 k12/teaching.yaml 不存在；tutor-agent.ts/session-fsm.ts 已存在（勿重建重复 FSM）。需按 .agents/coordination/card-recon-2026-10-10.md §四 重写后执行。
+> ✅ STATUS: REWRITTEN (2026-10-10) —— 依据 .agents/coordination/card-recon-2026-10-10.md §四 重写。原卡参照物 `k12/teaching.yaml` 不存在；`tutor-agent.ts`/`session-fsm.ts`/`tutor-session-agent.ts`/`llm.service.ts` 均已存在（勿重建）。真实缺口 = 3 个文件：`teaching-card-fsm.ts` / `intent-classifier.ts` / `socratic-templates.ts`。
+> 执行者：Claude ｜ 依赖：无（既有 tuition 基座已就绪）｜ 预估：1 天
 
-# T6 任务卡：`tuition/agents` - Tutor Agent 教学卡片状态机 + 意图识别 + 苏格拉底模板
-
-**执行者**：Claude  
-**依赖**：T5 完成（练习中心主链路就绪）  
-**产出目录**：`services/api/src/modules/tuition/agents/`  
-**预估**：1.5 天
-
----
+# T6 任务卡（重写）：`tuition/agents` —— 教学卡片状态机 + 意图识别 + 苏格拉底模板
 
 ## 📋 任务目标
 
-实现 **AI 互动辅导** 核心 Agent，支撑前端「AI 互动辅导」Tab：
+在**既有 tuition agent 基座之上**增量补齐 AI 互动辅导的三块缺失，支撑前端「AI 互动辅导」Tab：
 
-1. **教学卡片状态机**：`Question → Hint → Scaffold → Solution → Reflection` 五态流转，每态有入口/出口 Guard
-2. **意图识别**：分类用户输入 → `ASK_HINT`、`ASK_SOLUTION`、`ATTEMPT_ANSWER`、`ASK_CLARIFICATION`、`OFF_TOPIC`、`GIVE_UP`
-3. **苏格拉底式模板库**：按学科/题型/难度预置引导话术，支持变量插值（知识点、学生水平、历史错误）
+1. **教学卡片状态机** `teaching-card-fsm.ts`：`Question → Hint → Scaffold → Solution → Reflection` 五态流转，转移表 + Guard（Hint 上限、Scaffold 前置）。
+2. **意图识别** `intent-classifier.ts`：把学生输入分类为 `ASK_HINT | ASK_SOLUTION | ATTEMPT_ANSWER | ASK_CLARIFICATION | OFF_TOPIC | GIVE_UP | NEXT_QUESTION`，返回 `{ intent, confidence }`；规则优先、LLM 兜底。
+3. **苏格拉底模板库** `socratic-templates.ts`：按 `{subject, type, difficulty, stage}` 键的模板 `Map`，支持变量插值（`{knowledgePoint}`/`{studentLevel}`/`{attemptCount}`）。
 
----
+## ⛔ 硬约束（先钉死，违反即失败）
+
+| # | 约束 | 依据 |
+|---|------|------|
+| N1 | **不得重建** FSM 基础设施。既有 `session-fsm.ts`（427 行，`SessionFsm`+`SessionFsmService`）是**会话阶段**状态机（welcome/diagnosis/teaching/quizzing/done），**新文件 `teaching-card-fsm.ts` 是「卡片态」状态机（Question/Hint/Scaffold/Solution/Reflection），二者不同域、可组合**。卡片态**内嵌**于阶段状态机之内，勿改动既有 `session-fsm.ts` 的既有导出签名。 | recon §四 |
+| N2 | **不得**引用 `packages/ontology/ontologies/k12/teaching.yaml`（**不存在**）。本体真源仅 4 个扁平文件：`k12-curriculum.ontology.yaml` / `student-twin.ontology.yaml` / `orders.ontology.yaml` / `database-orders.ontology.yaml`。 | 实测 |
+| N3 | 卡片态/转移/模板**用代码常量定义**（对齐既有 `session-fsm.ts` 先例——其 phase 逻辑亦在代码中）。**不新建 YAML、不走 codegen**（卡片态是运行时行为，非持久化结构，不触发结构变更红线）。若确需本体化，另立 YAML→codegen 卡。 | 本体驱动红线澄清 |
+| N4 | **无 DB 迁移**。会话上下文沿用既有 `edu.sessions.session_data`（JSONB）持久化（见 `session-fsm.ts:9,138,370,419`）；**不新增** `edu.tutor_sessions`/`teaching_templates` 表。 | 实测 |
+| N5 | 使用既有 `LlmService`（552 行）能力：`chatCompletion` / `chatCompletionMultimodal` / `analyzeUserMessage`；**不得**新增 LLM SDK 依赖。无 key 时（`isRealKey()===false`）必须回退 Mock（与既有 `exam-scanner.ts` 同范式）。 | 实测 |
+| N6 | `tuition.module.ts` 已 provide `SessionFsmService`/`TutorAgent`/`ExamScannerAgent`/`PlanAgent`。新增 3 个类若需注入，**在此 module 注册**（providers），不新建 module。 | 实测 |
 
 ## 📥 必读上下文（按顺序）
 
 | 文件 | 用途 |
 |------|------|
-| `services/api/src/modules/tuition/agents/tutor-agent.ts` | 现有骨架（若有）或新建，状态机核心 |
-| `services/api/src/modules/tuition/agents/session-fsm.ts` | 现有 FSM 基础设施（State、Transition、Guard） |
-| `services/api/src/modules/tuition/agents/tutor-session-agent.spec.ts` | 现有测试风格参考 |
-| `services/api/src/modules/tuition/tuition.types.ts` | 需补 `TeachingCard`、`Intent`、`SocraticTemplate` 类型 |
-| `packages/ontology/ontologies/k12/teaching.yaml` | 教学卡片本体 DSL（状态、转移、动作、模板引用） |
-| `docs/WEB_AI_TUTOR_COMPLETION_PLAN.md` | 前端交互契约：卡片渲染、WebSocket 推流、历史记录 |
-
----
+| `services/api/src/modules/tuition/agents/session-fsm.ts` | **既有**会话阶段状态机（`SessionFsm`/`SessionFsmService`）。学其 FSM 范式与 `edu.sessions` 持久化，勿改签名 |
+| `services/api/src/modules/tuition/agents/tutor-agent.ts` | **既有** `TutorAgent`（`analyzeExam`/`_checkAnswer`） |
+| `services/api/src/modules/tuition/agents/tutor-session-agent.ts` | **既有** `TutorSessionAgent.decide(session, userMessage)`（LLM+Tool 路由） |
+| `services/api/src/modules/tuition/agents/llm.service.ts` | **既有** LLM 封装（`isRealKey`/`chatCompletion`/`analyzeUserMessage`/`validateAnswer`） |
+| `services/api/src/modules/tuition/agents/session-fsm.spec.ts`、`tutor-session-agent.spec.ts` | **既有**测试风格参考 |
+| `services/api/src/modules/tuition/tuition.types.ts` | 需补 `TeachingCardStage`/`Intent`/`SocraticContext` 类型（纯接口，无装饰器——api 侧无 class-validator） |
+| `packages/ontology/ontologies/k12-curriculum.ontology.yaml` | 本体真源（含 `stateMachine` 范式、知识点结构）。**只读参考**，本卡不改它 |
 
 ## 📦 产出物清单
 
-| 文件 | 动作 |
-|------|------|
-| `services/api/src/modules/tuition/agents/tutor-agent.ts` | 核心类：`handleUserInput(sessionId, input)` → `{ nextCard, intent, socraticPrompt }` |
-| `services/api/src/modules/tuition/agents/teaching-card-fsm.ts` | 状态机定义：5 态、转移表、Guard（如：Hint 最多 2 次、Scaffold 需尝试过答案） |
-| `services/api/src/modules/tuition/agents/intent-classifier.ts` | 意图分类器（规则+关键词+可选 LLM 兜底），返回 `Intent` + `confidence` |
-| `services/api/src/modules/tuition/agents/socratic-templates.ts` | 模板库：`Map<TemplateKey, TemplateFn>`，Key = `{subject, type, difficulty, stage}` |
-| `services/api/src/modules/tuition/agents/tutor-agent.spec.ts` | 20+ 单测：状态机全路径覆盖、意图分类准确率、模板渲染、边界（超限、异常输入） |
-| `.agents/claude/outputs/p2-task-6-file-list.md` | 本任务新增/修改文件清单 |
-| `.agents/claude/outputs/p2-task-6-verify.sh` | 自动化验收脚本（见下） |
+| 文件 | 动作 | 要点 |
+|------|------|------|
+| `services/api/src/modules/tuition/agents/teaching-card-fsm.ts` | **新增** | `TeachingCardFsm` 类：5 态转移表 + Guard（`hint_count ≤ 2` 超限强制 `Scaffold`；进 `Scaffold` 需尝试过答案；`Solution` 可由 `ASK_SOLUTION` 直达）。非法转移抛 `IllegalCardTransitionError`。导出 `TeachingCardStage` |
+| `services/api/src/modules/tuition/agents/intent-classifier.ts` | **新增** | `IntentClassifier.classify(input, ctx) → { intent, confidence }`：关键词/规则表为主，命中 confidence < 0.6 时调 `LlmService.analyzeUserMessage` 兜底；`OFF_TOPIC`/`GIVE_UP` 有明确触发词表 |
+| `services/api/src/modules/tuition/agents/socratic-templates.ts` | **新增** | `SocraticTemplates`：`Map<TemplateKey, TemplateFn>`，`TemplateKey = {subject, type, difficulty, stage}`；`render(key, ctx)` 做变量插值（`{knowledgePoint}`/`{studentLevel}`/`{attemptCount}`），缺失变量明确报错 |
+| `services/api/src/modules/tuition/tuition.types.ts` | 修改 | 补 `TeachingCardStage`、`Intent`、`SocraticContext`、`TeachingCardUpdate` 纯接口 |
+| `services/api/src/modules/tuition/tuition.module.ts` | 修改 | 注册新增 providers（如 `IntentClassifier`/`TeachingCardFsm`/`SocraticTemplates`） |
+| `services/api/src/modules/tuition/agents/teaching-card-fsm.spec.ts` | **新增** | ≥ 8 单测：全路径覆盖、Guard、超限强制、非法转移抛错、边界 |
+| `services/api/src/modules/tuition/agents/intent-classifier.spec.ts` | **新增** | ≥ 12 单测：6 意图各 2 例 + 兜底 + 空/异常输入 |
+| `services/api/src/modules/tuition/agents/socratic-templates.spec.ts` | **新增** | ≥ 6 单测：插值正确、缺失变量报错、键覆盖 |
+| `.agents/claude/outputs/p2-task-6-file-list.md` | **新增** | 新增/修改文件清单 |
+| `.agents/claude/outputs/p2-task-6-verify.sh` | **新增** | 自动化验收脚本（见下） |
 
----
+> **总计单测 ≥ 26**（既有 tuition 测试基线之上净增）。
 
 ## ✅ 验收标准（硬性）
 
-1. **TypeScript 编译通过**：`npm run build` 0 error
-2. **单测全绿**：`npm run test -- src/modules/tuition/agents/tutor-agent.spec.ts` 全部通过（目标 ≥ 20 tests）
-3. **端到端验证脚本通过**：运行 `bash .agents/claude/outputs/p2-task-6-verify.sh` 输出 `全绿：PASS=X FAIL=0`
-4. **状态机合规**：
-   - 初态 `Question`，终态 `Reflection`/`Solution`
-   - 非法转移抛 `IllegalStateTransitionError`
-   - `Hint` 计数器持久化（会话级），超限强制进 `Scaffold`
-5. **意图识别**：
-   - 规则覆盖 ≥ 90% 常见输入（测试用例 ≥ 30 条）
-   - `OFF_TOPIC`/`GIVE_UP` 有明确触发词
-6. **苏格拉底模板**：
-   - 至少覆盖：数学单选/多选/填空/解答题 × 3 难度 × 5 阶段 = 60 个模板槽位
-   - 变量插值正确：`{knowledgePoint}`、`{studentLevel}`、`{attemptCount}`
+1. **TypeScript 编译**：`cd services/api && npx tsc --noEmit` → 0 error。
+2. **单测全绿**：`npx jest src/modules/tuition/agents` 全部通过（新增 ≥ 26 例）。
+3. **既有回归不破**：`npx jest` 全量通过（基线 26 suites / 388 tests → 只增不减）。
+4. **e2e**：`bash .agents/claude/outputs/p2-task-6-verify.sh` → `PASS=x FAIL=0 VERIFY_EXIT=0`。
+5. **状态机合规**：初态 `Question`；非法转移抛 `IllegalCardTransitionError`；Hint 超 2 次强制进 `Scaffold`。
+6. **意图识别**：规则覆盖 ≥ 30 条样本；`OFF_TOPIC`/`GIVE_UP` 有明确触发词。
+7. **模板**：至少覆盖 `{单选/多选/填空/解答} × {easy/medium/hard} × {hint/scaffold/solution}` 槽位；插值无遗漏。
 
----
-
-## 🧪 验收脚本 `task-6-verify.sh` 规范
+## 🧪 验收脚本 `.agents/claude/outputs/p2-task-6-verify.sh` 规范
 
 ```bash
 #!/usr/bin/env bash
-# T6 自动化验收：Tutor Agent 状态机/意图/模板
+# T6 验收：教学卡片 FSM / 意图识别 / 苏格拉底模板（无 LLM key 时走 Mock）
 set -uo pipefail
-API_BASE="${API_BASE:-http://localhost:3008/api}"
-
-# 1. 创建辅导会话 → sessionId
-# 2. 获取初始卡片 → 态 Question，含题目渲染数据
-# 3. 用户输入「不会」 → 意图 ASK_HINT → 卡片态 Hint，返回苏格拉底提示
-# 4. 再次「不会」 → Hint 计数+1，仍返回 Hint（不同模板）
-# 5. 第三次「不会」 → 强制进 Scaffold，返回脚手架拆解
-# 6. 用户尝试作答 → 意图 ATTEMPT_ANSWER → 判分 → 正确进 Reflection，错误进 Scaffold
-# 7. 用户输入「直接给答案」 → 意图 ASK_SOLUTION → 卡片态 Solution，返回标准解析
-# 8. 用户输入「下一题」→ 意图 NEXT_QUESTION → 新会话或下一题
-# 9. 意图识别批量测试：喂入 30 条样本，校验分类准确率
-# 10. 模板渲染：遍历 60 槽位，校验变量插值无遗漏
+# 计数 PASS/FAIL，末尾输出 PASS=n FAIL=m VERIFY_EXIT=0|1
+# 1. 纯逻辑段（不需要服务）：直接 node -e 或间接经 jest —— 校验 5 态转移表、Guard、非法转移抛错
+# 2. 意图分类：喂 ≥ 30 条样本，断言命中预期意图，准确率 ≥ 90%
+# 3. 模板渲染：遍历槽位，断言变量插值替换完整、缺失变量抛错
+# 4. 不依赖外部服务时以 jest 覆盖为主；若 tuition 端点在运行，可加一轮活体冒烟
 ```
 
----
-
-## 🔐 关键实现细节
-
-| 点 | 要求 |
-|----|------|
-| 状态持久化 | `edu.tutor_sessions(id, student_id, current_state, hint_count, scaffold_count, context_jsonb, updated_at)` |
-| WebSocket 推流 | 状态变更时通过 WS 推送 `TeachingCardUpdate` 事件（复用 `gateway` 模块） |
-| 模板存储 | `teaching_templates` 表（或 YAML 文件加载），支持热更 |
-| LLM 兜底 | 意图识别规则命中 < 0.6 时，调用 `LLMService.classifyIntent()`（T5 已有接口） |
-| 可观测性 | 每次状态转移记录 `edu.teaching_card_logs(session_id, from_state, to_state, intent, user_input, timestamp)` |
-
----
+> 说明：本卡核心是**纯领域逻辑**（状态机/分类器/模板），验收以单测为主；`verify.sh` 复用 jest 输出并补归类断言，避免为造 e2e 而引入假端点。
 
 ## 📝 任务卡存放路径
 

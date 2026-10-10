@@ -37,3 +37,5 @@
 2026-10-10T16:27:25+08:00 | 核查 | 源码锚实测：A 锚 auth.service.ts:198(buildPayload: sub=identity.id / external_id=identity.externalId / roles:[])；B 锚 jwt-verifier/src/index.js:134,154(externalId: payload.external_id ?? payload.sub ?? null)。反例锚 E1-E4 防退化为 identity.id。
 2026-10-10T16:27:25+08:00 | 状态 | T3 未提交（4 新增文件在工作树）。Wave A(T2+T3) 全绿。
 2026-10-10T16:46:17+08:00 | 收口 | Wave A 收官：T2(696cc24)+T3(0a8671e) 均 done_and_committed。身份域 T1→T1b→T2→T3 闭环，e2e PASS=*** FAIL=0。task-status.json 已同步。
+2026-10-10T17:10:38+08:00 | 重写 | p2-task-6 卡【REWRITTEN】：原卡参照物 k12/teaching.yaml 不存在；tutor-agent/session-fsm/tutor-session-agent/llm.service 均已存在（勿重建）。真实缺口=3 文件(teaching-card-fsm/intent-classifier/socratic-templates)。硬约束 N1 卡片态内嵌既有阶段FSM不冲突/N2 禁引不存在YAML/N3 代码常量不走codegen/N4 无迁移(复用 edu.sessions.session_data)/N5 复用既有 LlmService/N6 仅改 tuition.module。
+2026-10-10T17:10:38+08:00 | 重写 | p2-task-7 卡【REWRITTEN】：原卡参照物 k12/questions.yaml 不存在；exam-scanner.ts 骨架已存在(含 Mock OCR 回退+LLM 解析)。真实缺口=3 文件(ocr-processor/question-parser/variant-generator)。OCR 选型定论=默认多模态LLM(复用 chatCompletionMultimodal)，不引入 PaddleOCR/Tesseract 原生依赖；无迁移(纯计算，不建 edu.exam_scans)；变式须经 parser 反向自校验；离线确定性 Mock。
