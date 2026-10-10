@@ -1,34 +1,52 @@
 import {
   Controller,
   Get,
+  Patch,
   Put,
   Delete,
   Body,
   Req,
   Param,
+  Query,
   ParseUUIDPipe,
   ForbiddenException,
 } from '@nestjs/common';
 import { IdentityService } from './identity.service';
 import { Request } from 'express';
-import { User } from './identity.types';
+import { ChangeRoleDto, ChangeStatusDto, ListUsersQuery, User } from './identity.types';
+import { OrganizationService } from '../organization/organization.service';
 
 /** req.auth 载荷的精简断言（与 @gri/jwt-verifier VerifierAuth 对齐） */
 interface ReqAuth {
   sub: string;
   externalId: string | null;
-  roles: string[];
 }
-
-/** 有权按 id 读他人档案的角色（M4 权限收敛前的临时粗粒度门槛） */
-const READ_ANY_ELEVATED_ROLES = new Set(['operator', 'merchant']);
 
 @Controller('identity')
 export class IdentityController {
-  constructor(private readonly identityService: IdentityService) {}
+  constructor(
+    private readonly identityService: IdentityService,
+    private readonly org: OrganizationService,
+  ) {}
 
   private auth(req: Request): ReqAuth {
     return req.auth as ReqAuth;
+  }
+
+  private externalId(req: Request): string {
+    const id = this.auth(req).externalId;
+    if (!id) throw new ForbiddenException('缺少外部身份标识');
+    return id;
+  }
+
+  private async requireOperator(req: Request): Promise<string> {
+    const actorId = this.externalId(req);
+    await this.org.assertSiteOperator(actorId);
+    return actorId;
+  }
+
+  private isSameIdentity(left: string, right: string): boolean {
+    return left.toLowerCase() === right.toLowerCase();
   }
 
   /**
@@ -38,22 +56,28 @@ export class IdentityController {
    */
   @Get('me')
   async getMe(@Req() req: Request) {
-    const externalId = this.auth(req).externalId;
-    if (!externalId) throw new ForbiddenException('缺少外部身份标识');
+    const externalId = this.externalId(req);
     return this.identityService.getProfileByExternalId(externalId);
   }
 
   /**
-   * 按 id 读档案。防 IDOR：默认只允许读自己；读他人需 operator/merchant 角色。
+   * 运营用户列表。
+   * 路径：GET /api/identity
+   */
+  @Get()
+  async list(@Req() req: Request, @Query() query: ListUsersQuery) {
+    await this.requireOperator(req);
+    return this.identityService.listUsers(query);
+  }
+
+  /**
+   * 按 id 读档案。防 IDOR：本人恒允许；读他人必须由根组织运营身份放行。
    * 路径：GET /api/identity/:id
    */
   @Get(':id')
   async getById(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
-    const a = this.auth(req);
-    const ownExternalId = a.externalId;
-    if (id !== ownExternalId && !(a.roles ?? []).some((r) => READ_ANY_ELEVATED_ROLES.has(r))) {
-      throw new ForbiddenException('无权读取他人档案');
-    }
+    const actorId = this.externalId(req);
+    if (!this.isSameIdentity(id, actorId)) await this.org.assertSiteOperator(actorId);
     return this.identityService.getProfileByExternalId(id);
   }
 
@@ -63,9 +87,37 @@ export class IdentityController {
    */
   @Put('me')
   async updateMe(@Req() req: Request, @Body() data: Partial<User>) {
-    const externalId = this.auth(req).externalId;
-    if (!externalId) throw new ForbiddenException('缺少外部身份标识');
+    const externalId = this.externalId(req);
     return this.identityService.updateProfile(externalId, data);
+  }
+
+  /** 运营变更他人角色。actor 仅取 req.auth.externalId，body/query 不参与授权。 */
+  @Patch(':id/role')
+  async updateRole(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: ChangeRoleDto,
+    @Query() _query?: unknown,
+  ) {
+    const actorId = await this.requireOperator(req);
+    if (this.isSameIdentity(id, actorId)) {
+      throw new ForbiddenException('不得变更自己的角色或状态');
+    }
+    return this.identityService.updateRole(id, dto?.role);
+  }
+
+  /** 运营变更他人状态。actor 仅取 req.auth.externalId，body/query 不参与授权。 */
+  @Patch(':id/status')
+  async updateStatus(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: ChangeStatusDto,
+  ) {
+    const actorId = await this.requireOperator(req);
+    if (this.isSameIdentity(id, actorId)) {
+      throw new ForbiddenException('不得变更自己的角色或状态');
+    }
+    return this.identityService.updateStatus(id, dto?.status);
   }
 
   /**
@@ -74,8 +126,7 @@ export class IdentityController {
    */
   @Delete('me')
   async deleteMe(@Req() req: Request): Promise<void> {
-    const externalId = this.auth(req).externalId;
-    if (!externalId) throw new ForbiddenException('缺少外部身份标识');
+    const externalId = this.externalId(req);
     await this.identityService.deleteProfile(externalId);
   }
 }

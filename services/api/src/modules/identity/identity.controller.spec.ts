@@ -1,6 +1,7 @@
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Request } from 'express';
+import { OrganizationService } from '../organization/organization.service';
 import { IdentityController } from './identity.controller';
 import { IdentityService } from './identity.service';
 import { User } from './identity.types';
@@ -8,21 +9,29 @@ import { User } from './identity.types';
 describe('IdentityController', () => {
   let controller: IdentityController;
   let service: jest.Mocked<IdentityService>;
+  let org: jest.Mocked<OrganizationService>;
 
-  const mockReq = (auth: Partial<{ sub: string; externalId: string; roles: string[] }>): Request => ({
-    auth,
-  } as Request);
+  const mockReq = (auth: Record<string, unknown>): Request => ({ auth } as unknown as Request);
 
   beforeEach(async () => {
     service = {
       getProfileByExternalId: jest.fn(),
       updateProfile: jest.fn(),
       deleteProfile: jest.fn(),
+      listUsers: jest.fn(),
+      updateRole: jest.fn(),
+      updateStatus: jest.fn(),
+    } as any;
+    org = {
+      assertSiteOperator: jest.fn().mockResolvedValue(undefined),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [IdentityController],
-      providers: [{ provide: IdentityService, useValue: service }],
+      providers: [
+        { provide: IdentityService, useValue: service },
+        { provide: OrganizationService, useValue: org },
+      ],
     }).compile();
 
     controller = module.get(IdentityController);
@@ -50,68 +59,180 @@ describe('IdentityController', () => {
   });
 
   describe('getById', () => {
-    it('读自己档案 → 成功', async () => {
+    it('C8 读自己 → 成功且不调用运营授权', async () => {
       service.getProfileByExternalId.mockResolvedValue({
         user: { id: 'u1', username: 'testuser', role: 'student' } as User,
       });
 
-      const result = await controller.getById(mockReq({ externalId: 'u1', roles: [] }), 'u1');
+      const result = await controller.getById(mockReq({ externalId: 'u1' }), 'u1');
 
       expect(result.user.id).toBe('u1');
+      expect(org.assertSiteOperator).not.toHaveBeenCalled();
+      expect(service.getProfileByExternalId).toHaveBeenCalledWith('u1');
     });
 
-    it('读他人档案无特权角色 → ForbiddenException', async () => {
-      service.getProfileByExternalId.mockResolvedValue({ user: { id: 'u2', username: 'u2', role: 'student' } as User });
+    it('C6 读他人且非运营 → ForbiddenException，不读档案', async () => {
+      org.assertSiteOperator.mockRejectedValue(new ForbiddenException());
 
       await expect(
-        controller.getById(mockReq({ externalId: 'u1', roles: ['consumer'] }), 'u2'),
+        controller.getById(mockReq({ externalId: 'actor', roles: ['operator'] }), 'target'),
       ).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(org.assertSiteOperator).toHaveBeenCalledWith('actor');
+      expect(service.getProfileByExternalId).not.toHaveBeenCalled();
     });
 
-    it('读他人档案有 operator 角色 → 成功', async () => {
-      service.getProfileByExternalId.mockResolvedValue({ user: { id: 'u2', username: 'u2', role: 'student' } as User });
+    it('C7 读他人且运营 → 成功', async () => {
+      service.getProfileByExternalId.mockResolvedValue({
+        user: { id: 'u2', username: 'u2', role: 'student' } as User,
+      });
 
-      const result = await controller.getById(
-        mockReq({ externalId: 'u1', roles: ['operator'] }),
-        'u2',
-      );
+      const result = await controller.getById(mockReq({ externalId: 'actor' }), 'u2');
 
       expect(result.user.id).toBe('u2');
+      expect(org.assertSiteOperator).toHaveBeenCalledWith('actor');
+      expect(service.getProfileByExternalId).toHaveBeenCalledWith('u2');
     });
 
     it('用户不存在 → NotFoundException', async () => {
       service.getProfileByExternalId.mockRejectedValue(new NotFoundException());
 
       await expect(
-        controller.getById(mockReq({ externalId: 'u1', roles: ['operator'] }), 'u999'),
+        controller.getById(mockReq({ externalId: 'actor' }), 'missing'),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('list', () => {
+    it('C1 非运营 → ForbiddenException，不查列表', async () => {
+      org.assertSiteOperator.mockRejectedValue(new ForbiddenException());
+
+      await expect(controller.list(mockReq({ externalId: 'actor' }), {})).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+
+      expect(org.assertSiteOperator).toHaveBeenCalledWith('actor');
+      expect(service.listUsers).not.toHaveBeenCalled();
+    });
+
+    it('C2 运营 → 原样委托分页 query', async () => {
+      const query = { page: 2, pageSize: 10, role: 'student' as const, q: 'ali' };
+      const result = { items: [], total: 0, page: 2, pageSize: 10 };
+      service.listUsers.mockResolvedValue(result);
+
+      await expect(controller.list(mockReq({ externalId: 'actor' }), query)).resolves.toEqual(
+        result,
+      );
+
+      expect(org.assertSiteOperator).toHaveBeenCalledWith('actor');
+      expect(service.listUsers).toHaveBeenCalledWith(query);
+    });
+
+    it('C3 externalId 缺失 → ForbiddenException，短路 org/service', async () => {
+      await expect(controller.list(mockReq({}), {})).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(org.assertSiteOperator).not.toHaveBeenCalled();
+      expect(service.listUsers).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateRole', () => {
+    it('C4 运营改自己 → ForbiddenException，不改库', async () => {
+      await expect(
+        controller.updateRole(mockReq({ externalId: 'actor' }), 'actor', { role: 'merchant' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(org.assertSiteOperator).toHaveBeenCalledWith('actor');
+      expect(service.updateRole).not.toHaveBeenCalled();
+    });
+
+    it('C4 UUID 大小写不同仍识别为本人并拒绝', async () => {
+      await expect(
+        controller.updateRole(mockReq({ externalId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' }), 'AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA', {
+          role: 'merchant',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(service.updateRole).not.toHaveBeenCalled();
+    });
+
+    it('B3 运营改他人 → 委托服务', async () => {
+      service.updateRole.mockResolvedValue({
+        id: 'target',
+        username: 'target',
+        role: 'merchant',
+      } as User);
+
+      const result = await controller.updateRole(
+        mockReq({ externalId: 'actor' }),
+        'target',
+        { role: 'merchant' },
+      );
+
+      expect(result.role).toBe('merchant');
+      expect(service.updateRole).toHaveBeenCalledWith('target', 'merchant');
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('C5 运营改自己状态 → ForbiddenException，不改库', async () => {
+      await expect(
+        controller.updateStatus(mockReq({ externalId: 'actor' }), 'actor', { status: 'suspended' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(org.assertSiteOperator).toHaveBeenCalledWith('actor');
+      expect(service.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('运营改他人状态 → 委托服务', async () => {
+      service.updateStatus.mockResolvedValue({
+        id: 'target',
+        username: 'target',
+        role: 'consumer',
+        status: 'suspended',
+      } as User);
+
+      const result = await controller.updateStatus(
+        mockReq({ externalId: 'actor' }),
+        'target',
+        { status: 'suspended' },
+      );
+
+      expect(result.status).toBe('suspended');
+      expect(service.updateStatus).toHaveBeenCalledWith('target', 'suspended');
     });
   });
 
   describe('updateMe', () => {
     it('更新白名单字段 → 返回更新后档案', async () => {
-      service.updateProfile.mockResolvedValue({ id: 'u1', username: 'testuser', name: '新名', role: 'student' } as User);
+      service.updateProfile.mockResolvedValue({
+        id: 'u1',
+        username: 'testuser',
+        name: '新名',
+        role: 'student',
+      } as User);
 
-      const result = await controller.updateMe(
-        mockReq({ externalId: 'u1' }),
-        { name: '新名' },
-      );
+      const result = await controller.updateMe(mockReq({ externalId: 'u1' }), { name: '新名' });
 
       expect(result.name).toBe('新名');
       expect(service.updateProfile).toHaveBeenCalledWith('u1', { name: '新名' });
     });
 
     it('尝试更新受保护字段 role → Controller 透传给 Service，Service 层白名单过滤', async () => {
-      service.updateProfile.mockResolvedValue({ id: 'u1', username: 'testuser', role: 'student', name: '新名' } as User);
+      service.updateProfile.mockResolvedValue({
+        id: 'u1',
+        username: 'testuser',
+        role: 'student',
+        name: '新名',
+      } as User);
 
       const result = await controller.updateMe(
         mockReq({ externalId: 'u1' }),
         { role: 'merchant', name: '新名' } as any,
       );
 
-      // Controller 透传原始 DTO 给 Service（含 role），Service 内部白名单过滤（已在 service.spec.ts 覆盖）
       expect(service.updateProfile).toHaveBeenCalledWith('u1', { role: 'merchant', name: '新名' });
-      expect(result.role).toBe('student'); // Service 过滤后 role 未变
+      expect(result.role).toBe('student');
     });
 
     it('externalId 缺失 → ForbiddenException', async () => {
@@ -125,8 +246,9 @@ describe('IdentityController', () => {
     it('仅使用 req.auth.externalId 删除本人档案，防止 IDOR', async () => {
       service.deleteProfile.mockResolvedValue(undefined);
 
-      await expect(controller.deleteMe(mockReq({ externalId: 'u1', sub: 'identity-1' }))).resolves
-        .toBeUndefined();
+      await expect(
+        controller.deleteMe(mockReq({ externalId: 'u1', sub: 'identity-1' })),
+      ).resolves.toBeUndefined();
 
       expect(service.deleteProfile).toHaveBeenCalledWith('u1');
       expect(service.deleteProfile).not.toHaveBeenCalledWith('identity-1');
@@ -138,5 +260,20 @@ describe('IdentityController', () => {
       );
       expect(service.deleteProfile).not.toHaveBeenCalled();
     });
+  });
+
+  it('C9 actor 只取 req.auth.externalId，body/query 伪造值无效', async () => {
+    service.updateRole.mockResolvedValue({ id: 'target', role: 'student' } as User);
+
+    await controller.updateRole(
+      mockReq({ externalId: 'actor-real' }),
+      'target',
+      { role: 'student', actorId: 'actor-fake', externalId: 'actor-fake' } as any,
+      { actorId: 'actor-fake', externalId: 'actor-fake' } as any,
+    );
+
+    expect(org.assertSiteOperator).toHaveBeenCalledWith('actor-real');
+    expect(org.assertSiteOperator).not.toHaveBeenCalledWith('actor-fake');
+    expect(service.updateRole).toHaveBeenCalledWith('target', 'student');
   });
 });

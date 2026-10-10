@@ -26,6 +26,14 @@ export class IdentityAdminController {
     return { success: true };
   }
 
+  /** 启用身份（suspended → active 恢复闭环）：按 external_id 定位，置 active。 */
+  @Post('identities/:externalId/enable')
+  async enable(@Req() req: Request, @Param('externalId') externalId: string) {
+    this.svc.authorize(req.headers['x-service-token'] as string | undefined);
+    await this.svc.enableIdentityByExternalId(externalId);
+    return { success: true };
+  }
+
   @Get('identities/lookup')
   async lookup(
     @Req() req: Request,

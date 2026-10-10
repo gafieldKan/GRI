@@ -22,3 +22,12 @@
 2026-10-10T07:45:00+08:00 | 决策 | 身份模型(用户确认 b)：授权底座修正并入 T2。identity 运营面一律 OrganizationService.assertSiteOperator(externalId)（根组织 owner|admin）；禁止 req.auth.roles（恒空）。OutputIdentityModule 需 imports:[OrganizationModule]。
 2026-10-10T07:45:00+08:00 | 作废 | p2-task-9 VOID：curriculum 已提供 knowledge-graph/knowledge-map/learning-path（功能重叠+真源分裂，知识图谱归 curriculum）。旧卡 .agents/codex/tasks/p2-task-9-knowledge-graph.md 标 VOID。
 2026-10-10T07:45:00+08:00 | 降级 | T5/T8/T10 降级核验卡（大半已存在，只补真缺口）；T6/T7 重写卡（修本体引用，无 k12/teaching.yaml、k12/questions.yaml）；T12 收窄重写（无旧后端可下线）。旧卡均加状态横幅。
+2026-10-10T08:26:03+08:00 | 交付 | p2-task-2a(Claude 设计) 完成：.agents/claude/outputs/p2-task-2-identity-operator-authz-design.md(27KB) + p2-task-2-contract.md + p2-task-2-risk-rollback.md。逐条决策、无待定、含 GoF 自证(Facade/Strategy/Template Method/Proxy)。
+2026-10-10T08:26:03+08:00 | 复验 | p2-task-2a 独立复验【通过】。承重事实实测对账：F6(role 无库侧CHECK)✅、F7(ck_users_status)✅、F8(auth.service.ts:40/100/150 三处 status!=='active')✅、F9(auth-center 无 enable 端点，零命中)✅、F10(api 无 class-validator)✅、死代码面仅 identity.controller.ts:24,54 无外溢✅。
+2026-10-10T08:26:03+08:00 | 裁决 | T2 §10 两项待确认已裁决，均采纳设计默认：①suspended 停 auth-center 凭证(否则空操作，F8 佐证)+包含 enable 闭环；②新增迁移 019_identity_role_check.sql(ck_users_role 库侧第二道门，现值仅 consumer/student 零回填风险)。
+2026-10-10T08:26:03+08:00 | 提示 | 实现卡需显式列出 auth-center 两文件(identity-admin.service.ts+controller.ts 新增 enable)，否则 D5 恢复断言跑不通。
+2026-10-10T08:26:03+08:00 | 交接 | 设计已复制至 .agents/codex/context/(md5 一致 4a01b6ad...)。放行 p2-task-2b(Codex 实现)。
+2026-10-10T14:10:43+08:00 | 交付 | p2-task-2b(Codex 实现) 完成：11 文件（api 6 + auth-center 4 + 019 迁移 1；public-routes 未改）。产出 p2-task-2-file-list.md + p2-task-2-verify.sh。
+2026-10-10T14:10:43+08:00 | 验收 | p2-task-2b 独立复验【通过】(非自述)：api tsc 0err / api eslint 0e0w / api 25suites·370tests 全绿 / auth-center tsc 0err / ac 4suites·31tests 全绿 / 019 迁移已落库(ck_users_role 存在) / T2 e2e PASS=88 FAIL=0 VERIFY_EXIT=0 / T1 回归 PASS=20 FAIL=0。
+2026-10-10T14:10:43+08:00 | 核查 | 红线源码级核验全绿：①READ_ANY_ELEVATED_ROLES 零残留 ②identity.controller 无 roles 引用 ③授权门唯一走 assertSiteOperator(externalId) ④public-routes.ts 未改(git 无差异) ⑤三新端点齐(Get() / Patch :id/role / Patch :id/status) ⑥auth-center enable 端点存在 ⑦路由顺序 me(57) 先于 :id(77) ⑧isSameIdentity 大小写无关防 self-protection 绕过 ⑨auth.service.ts 未改(roles:[] 恒空架构决策保持)。
+2026-10-10T14:10:43+08:00 | 状态 | 代码未提交（11 文件在工作树）。待用户裁决：先提交 T2 还是先跑 T3。

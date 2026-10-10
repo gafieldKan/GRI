@@ -104,4 +104,15 @@ export class IdentityAdminService {
       [externalId],
     );
   }
+
+  /**
+   * 启用身份（服务间写面）—— suspended → active 的恢复闭环。
+   * 幂等：不存在/已启用也不报错；不恢复已吊销的 refresh token。
+   */
+  async enableIdentityByExternalId(externalId: string): Promise<void> {
+    await this.db.query(
+      `UPDATE identities SET status = 'active', updated_at = NOW() WHERE external_id = $1`,
+      [externalId],
+    );
+  }
 }

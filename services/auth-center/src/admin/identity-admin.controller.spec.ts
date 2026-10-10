@@ -13,7 +13,15 @@ describe('IdentityAdminController', () => {
   const byBusinessId = jest.fn();
   const createIdentity = jest.fn();
   const disableIdentityByExternalId = jest.fn();
-  const svc: unknown = { authorize, lookup, byBusinessId, createIdentity, disableIdentityByExternalId };
+  const enableIdentityByExternalId = jest.fn();
+  const svc: unknown = {
+    authorize,
+    lookup,
+    byBusinessId,
+    createIdentity,
+    disableIdentityByExternalId,
+    enableIdentityByExternalId,
+  };
   const ctrl = new IdentityAdminController(svc as IdentityAdminService);
   const withToken = { headers: { 'x-service-token': 'secret' } } as unknown as Request;
 
@@ -24,6 +32,7 @@ describe('IdentityAdminController', () => {
     byBusinessId.mockReset();
     createIdentity.mockReset();
     disableIdentityByExternalId.mockReset();
+    enableIdentityByExternalId.mockReset();
   });
 
   it('lookup → 返回已 await 的 identities 数组（而非 Promise→{}）', async () => {
@@ -76,5 +85,22 @@ describe('IdentityAdminController', () => {
     expect(authorize).toHaveBeenCalledWith('secret');
     expect(disableIdentityByExternalId).toHaveBeenCalledWith('uuid-1');
     expect(res.success).toBe(true);
+  });
+
+  it('enable → 授权后启用并返回 success', async () => {
+    const res = await ctrl.enable(withToken, 'uuid-1');
+    expect(authorize).toHaveBeenCalledWith('secret');
+    expect(enableIdentityByExternalId).toHaveBeenCalledWith('uuid-1');
+    expect(res.success).toBe(true);
+  });
+
+  it('enable 缺 service token → 401（不启用身份）', async () => {
+    authorize.mockImplementationOnce(() => {
+      throw new UnauthorizedException();
+    });
+    await expect(
+      ctrl.enable({ headers: {} } as unknown as Request, 'uuid-1'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(enableIdentityByExternalId).not.toHaveBeenCalled();
   });
 });

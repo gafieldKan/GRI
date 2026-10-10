@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { IdentityService } from './identity.service';
 import { DatabaseService } from '../../database/database.service';
 
@@ -144,6 +144,208 @@ describe('IdentityService', () => {
       const svc = new IdentityService(mockDb(query));
 
       await expect(svc.deleteProfile('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('updateRole（运营角色变更）', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it('S1 合法 role → 预检后更新并返回新行', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'u1' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'u1', role: 'merchant', status: 'active' }] });
+      const svc = new IdentityService(mockDb(query));
+
+      const out = await svc.updateRole('u1', 'merchant');
+
+      expect(out.role).toBe('merchant');
+      expect(query).toHaveBeenCalledTimes(2);
+      expect(query.mock.calls[0][0]).toContain('SELECT id FROM public.users');
+      expect(query.mock.calls[0][0]).toContain('deleted_at IS NULL');
+      expect(query.mock.calls[1][0]).toContain('UPDATE public.users SET role = $2');
+      expect(query.mock.calls[1][0]).toContain('RETURNING *');
+      expect(query.mock.calls[1][1]).toEqual(['u1', 'merchant']);
+    });
+
+    it('S2 非法 role → 400，短库前不发 SQL', async () => {
+      const query = jest.fn();
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.updateRole('u1', 'superadmin' as any)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('S3 目标不存在或已删 → 404，短路 UPDATE', async () => {
+      const query = jest.fn().mockResolvedValueOnce({ rows: [] });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.updateRole('deleted-user', 'consumer')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][0]).toContain('deleted_at IS NULL');
+    });
+  });
+
+  describe('updateStatus（运营状态变更 + auth-center 联动）', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it('S4 deleted → 先停凭证，再软删业务档', async () => {
+      const fetchMock = jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: true, status: 200 });
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'u1' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'u1', status: 'deleted', deleted_at: new Date() }] });
+      const svc = new IdentityService(mockDb(query));
+
+      const out = await svc.updateStatus('u1', 'deleted');
+
+      expect(out.status).toBe('deleted');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe('DELETE');
+      expect(query).toHaveBeenCalledTimes(2);
+      expect(query.mock.calls[1][0]).toContain('status = $2');
+      expect(query.mock.calls[1][0]).toContain('deleted_at = NOW()');
+      expect(query.mock.calls[1][1]).toEqual(['u1', 'deleted']);
+    });
+
+    it('S5 auth-center 停用失败 → 502，且业务库不改', async () => {
+      jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: false, status: 502 });
+      const query = jest.fn().mockResolvedValueOnce({ rows: [{ id: 'u1' }] });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.updateStatus('u1', 'deleted')).rejects.toBeInstanceOf(BadGatewayException);
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][0]).toContain('SELECT id FROM public.users');
+    });
+
+    it('S6 suspended → 停凭证并置 suspended，不写 deleted_at', async () => {
+      const fetchMock = jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: true, status: 200 });
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'u1' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'u1', status: 'suspended', deleted_at: null }] });
+      const svc = new IdentityService(mockDb(query));
+
+      const out = await svc.updateStatus('u1', 'suspended');
+
+      expect(out.status).toBe('suspended');
+      expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe('DELETE');
+      expect(query).toHaveBeenCalledTimes(2);
+      expect(query.mock.calls[1][0]).not.toContain('deleted_at = NOW()');
+      expect(query.mock.calls[1][1]).toEqual(['u1', 'suspended']);
+    });
+
+    it('S7 active（恢复）→ 调 auth-center enable 后置 active', async () => {
+      const fetchMock = jest.spyOn(global, 'fetch' as any).mockResolvedValue({ ok: true, status: 200 });
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'u1' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'u1', status: 'active' }] });
+      const svc = new IdentityService(mockDb(query));
+
+      const out = await svc.updateStatus('u1', 'active');
+
+      expect(out.status).toBe('active');
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/auth/admin/identities/u1/enable');
+      expect(init.method).toBe('POST');
+      expect(query.mock.calls[1][1]).toEqual(['u1', 'active']);
+    });
+
+    it('S8 非法 status → 400，短信任副作用', async () => {
+      const fetchMock = jest.spyOn(global, 'fetch' as any);
+      const query = jest.fn();
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.updateStatus('u1', 'banned' as any)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listUsers（分页、筛选、默认排除 deleted）', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it('S9 pageSize=101 → 400，不发查询', async () => {
+      const query = jest.fn();
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.listUsers({ pageSize: 101 })).rejects.toBeInstanceOf(BadRequestException);
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('S10 缺省分页 → page=1,pageSize=20,LIMIT $1 OFFSET $2', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.listUsers({})).resolves.toEqual({
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      });
+
+      expect(query).toHaveBeenCalledTimes(2);
+      const [selectSql, selectParams] = query.mock.calls[1] as [string, unknown[]];
+      expect(selectSql).toContain('LIMIT $1 OFFSET $2');
+      expect(selectParams).toEqual([20, 0]);
+    });
+
+    it('S11 role 筛选参数化', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: 1 }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'u1', role: 'student' }] });
+      const svc = new IdentityService(mockDb(query));
+
+      const out = await svc.listUsers({ role: 'student' });
+
+      expect(out.items).toHaveLength(1);
+      expect(query.mock.calls[1][0]).toContain('role = $1');
+      expect(query.mock.calls[1][1]).toContain('student');
+    });
+
+    it('S12 缺省排除 deleted；显式 status=deleted 时包含软删行', async () => {
+      const defaultQuery = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+      await new IdentityService(mockDb(defaultQuery)).listUsers({});
+      expect(defaultQuery.mock.calls[0][0]).toContain('deleted_at IS NULL');
+      expect(defaultQuery.mock.calls[1][0]).toContain('deleted_at IS NULL');
+
+      const deletedQuery = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: 1 }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'u1', status: 'deleted' }] });
+      await new IdentityService(mockDb(deletedQuery)).listUsers({ status: 'deleted' });
+      expect(deletedQuery.mock.calls[0][0]).not.toContain('deleted_at IS NULL');
+      expect(deletedQuery.mock.calls[1][0]).not.toContain('deleted_at IS NULL');
+      expect(deletedQuery.mock.calls[1][1]).toContain('deleted');
+    });
+
+    it('S13 空结果 → 200 语义对象，不抛错', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+      const svc = new IdentityService(mockDb(query));
+
+      await expect(svc.listUsers({ q: '_____nomatch' })).resolves.toEqual({
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      });
     });
   });
 });

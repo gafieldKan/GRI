@@ -127,4 +127,17 @@ describe('IdentityAdminService', () => {
       expect(query.mock.calls[1][1]).toEqual(['11111111-1111-1111-1111-111111111111']);
     });
   });
+
+  describe('enableIdentityByExternalId（状态恢复闭环）', () => {
+    it('按 external_id 置 active，幂等且不重建 refresh token', async () => {
+      const externalId = '11111111-1111-1111-1111-111111111111';
+
+      await svc.enableIdentityByExternalId(externalId);
+
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][0]).toContain("status = 'active'");
+      expect(query.mock.calls[0][0]).toContain('WHERE external_id = $1');
+      expect(query.mock.calls[0][1]).toEqual([externalId]);
+    });
+  });
 });
