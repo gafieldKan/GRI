@@ -36,3 +36,4 @@
 2026-10-10T16:27:25+08:00 | 设计说明 | T3 采用 orchestrator 增量整合(T1 20 + T2 88 复用 + 新 §T3 29 段=137)，非重写；跨包契约(ESM vs CJS jest)用【源码漂移锚】--表达式一旦改写即红。
 2026-10-10T16:27:25+08:00 | 核查 | 源码锚实测：A 锚 auth.service.ts:198(buildPayload: sub=identity.id / external_id=identity.externalId / roles:[])；B 锚 jwt-verifier/src/index.js:134,154(externalId: payload.external_id ?? payload.sub ?? null)。反例锚 E1-E4 防退化为 identity.id。
 2026-10-10T16:27:25+08:00 | 状态 | T3 未提交（4 新增文件在工作树）。Wave A(T2+T3) 全绿。
+2026-10-10T16:46:17+08:00 | 收口 | Wave A 收官：T2(696cc24)+T3(0a8671e) 均 done_and_committed。身份域 T1→T1b→T2→T3 闭环，e2e PASS=*** FAIL=0。task-status.json 已同步。

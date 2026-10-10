@@ -3,8 +3,8 @@
   "p2-task-1b": "done_and_committed",
   "p2-task-4": "done_and_committed",
   "p2-task-11": "voided",
-  "p2-task-2": "card_rewritten_ready_for_codex (T2a design + T2b impl)",
-  "p2-task-3": "card_rewritten_pending_T2",
+  "p2-task-2": "done_and_committed (696cc24 T2b; T2a design verified)",
+  "p2-task-3": "done_and_committed (0a8671e)",
   "p2-task-9": "voided (overlaps curriculum)",
   "in-flight-backlog": "committed_6_batches",
   "_commits": [
@@ -20,6 +20,12 @@
   "_card_recon_2026_10_09": {
     "p2-task-4": "重写：原卡与实况严重脱节（无 restaurants.merchant_id 列 / 无 review+coupon 表 / 错误依赖 JWT roles 授权）。已补 018 迁移三表+merchant_id 列要求、商家=数据归属、运营=assertSiteOperator、build→migrate 纪律、显式列迁移产出物。",
     "p2-task-11": "作废：/api/ontology/stats 早已实现且不入白名单（有意）；master-data 模块已退役（无 API 面）；version.json 不存在；目录为扁平 4 个。无可执行剩余工作。保留作废记录。"
+  },
+  "_waveA_closeout_2026_10_10": {
+    "T2": "696cc24 feat(identity): 运营管理面（role/status/list + assertSiteOperator 授权底座 + 019 ck_users_role）。独立复验通过：api 25suites·370tests / ac 4suites·31tests / tsc 0err / lint 0e0w / 019 落库 / e2e PASS=88 FAIL=0 / T1 回归 PASS=20。",
+    "T3": "0a8671e test(identity): 全生命周期 e2e 契约 + external_id≡users.id 契约 spec。独立复验通过：契约 spec 1suite·18tests / api 26suites·388tests / tsc 0err / e2e PASS=137 FAIL=0 连跑两次幂等。未改生产代码。",
+    "waveA_total_commits": 2,
+    "identity_domain_closure": "T1→T1b→T2→T3 身份域闭环，端到端 PASS=137 FAIL=0"
   },
   "_decisions_2026_10_09": [
     "授权模型真相：JWT roles 恒为空是【有意的架构决策】（agent-admin.controller 注释佐证）。运营判定 = 根组织 assertSiteOperator；商家判定 = 数据归属(merchant_id)。禁止改 auth-center 注入 roles。",
