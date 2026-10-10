@@ -39,3 +39,7 @@
 2026-10-10T16:46:17+08:00 | 收口 | Wave A 收官：T2(696cc24)+T3(0a8671e) 均 done_and_committed。身份域 T1→T1b→T2→T3 闭环，e2e PASS=*** FAIL=0。task-status.json 已同步。
 2026-10-10T17:10:38+08:00 | 重写 | p2-task-6 卡【REWRITTEN】：原卡参照物 k12/teaching.yaml 不存在；tutor-agent/session-fsm/tutor-session-agent/llm.service 均已存在（勿重建）。真实缺口=3 文件(teaching-card-fsm/intent-classifier/socratic-templates)。硬约束 N1 卡片态内嵌既有阶段FSM不冲突/N2 禁引不存在YAML/N3 代码常量不走codegen/N4 无迁移(复用 edu.sessions.session_data)/N5 复用既有 LlmService/N6 仅改 tuition.module。
 2026-10-10T17:10:38+08:00 | 重写 | p2-task-7 卡【REWRITTEN】：原卡参照物 k12/questions.yaml 不存在；exam-scanner.ts 骨架已存在(含 Mock OCR 回退+LLM 解析)。真实缺口=3 文件(ocr-processor/question-parser/variant-generator)。OCR 选型定论=默认多模态LLM(复用 chatCompletionMultimodal)，不引入 PaddleOCR/Tesseract 原生依赖；无迁移(纯计算，不建 edu.exam_scans)；变式须经 parser 反向自校验；离线确定性 Mock。
+2026-10-10T18:16:33+08:00 | 交付 | p2-task-6(Claude 实现) 完成：新增 3 类(teaching-card-fsm/intent-classifier/socratic-templates) + 3 spec + tuition.types/module 改 + file-list + verify.sh。
+2026-10-10T18:16:33+08:00 | 验收 | p2-task-6 独立复验【通过】(非自述)：tsc 0err / tuition/agents 8suites·87tests 全绿 / api 全量 29suites·431tests 全绿(基线26/388 只增不减) / verify.sh PASS=*** FAIL=0。
+2026-10-10T18:16:33+08:00 | 核查 | 硬约束源码级核验全绿：N1 session-fsm.ts 0 diff(未改既有导出) / N2 零 ontology import(未引不存在YAML) / N3 代码常量无 YAML/codegen / N4 无新迁移 / N5 复用 LlmService 无key回退Mock / N6 仅改 tuition.module.ts 注册3 provider。
+2026-10-10T18:16:33+08:00 | 提交 | p2-task-6 已提交 07a3745（10 文件 +1222）。权限外未接线到 TuitionController（属后续前端集成卡）。

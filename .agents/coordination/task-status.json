@@ -35,7 +35,14 @@
   "_pending": "T4 代码已产出+三级复验全绿(未提交/未入镜像)；.agents 协作脚本(.sh)未决定是否入库；identity.controller 的 READ_ANY_ELEVATED_ROLES 既存缺陷待单独评估",
   "_t4_execution_2026_10_09": {
     "codex": "done (exit=0, 会话 880 行)",
-    "files": ["services/api/src/auth/public-routes.ts", "services/api/src/modules/food/food.controller.ts", "services/api/src/modules/food/food.service.ts", "services/api/src/modules/food/food.service.spec.ts", "services/api/src/modules/food/food.types.ts", "services/api/src/migrate/018_food_review_coupon_merchant.sql"],
+    "files": [
+      "services/api/src/auth/public-routes.ts",
+      "services/api/src/modules/food/food.controller.ts",
+      "services/api/src/modules/food/food.service.ts",
+      "services/api/src/modules/food/food.service.spec.ts",
+      "services/api/src/modules/food/food.types.ts",
+      "services/api/src/migrate/018_food_review_coupon_merchant.sql"
+    ],
     "verify": {
       "tsc_build": "0 error",
       "eslint": "0 error 0 warning",
@@ -66,7 +73,16 @@
   },
   "_decision_2026_10_10": "身份模型决策(b)：授权底座修正并入 T2（identity 运营面一律 assertSiteOperator(externalId)；禁止 req.auth.roles）。今日 Wave A=T2+T3。用户手动下达 claude/codex，禁止同时运行多 agent。",
   "_waveA_cards_2026_10_10": {
-    "claude": ["tasks/p2-task-2a-identity-operator-authz-design.md", "tasks/p2-task-3-e2e-identity-lifecycle-contract.md"],
-    "codex": ["tasks/p2-task-2-identity-operator-role-status-impl.md"]
+    "claude": [
+      "tasks/p2-task-2a-identity-operator-authz-design.md",
+      "tasks/p2-task-3-e2e-identity-lifecycle-contract.md"
+    ],
+    "codex": [
+      "tasks/p2-task-2-identity-operator-role-status-impl.md"
+    ]
+  },
+  "p2-task-6": "done_and_committed (07a3745)",
+  "_waveB_2026_10_10": {
+    "T6": "done_and_committed (07a3745): 教学卡片FSM+意图识别+苏格拉底模板（增量补齐，未改 session-fsm，无迁移）"
   }
 }
