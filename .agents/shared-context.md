@@ -1,6 +1,7 @@
 # GRI 项目共享上下文（供 Claude & Codex 共用）
 
-> 更新时间：2026-10-07 | 版本：v1.0
+> 更新时间：2026-10-10 | 版本：v1.1
+> ⚠️ **全员必读**。v1.1 已按实测校正 v1.0 的过时项（旧双后端、三库、迁移版本、JWT 主体语义）。**凡本文件与任务卡/`.agents/coordination/card-recon-2026-10-10.md` 冲突，以后两者为准。**
 
 ---
 
@@ -15,13 +16,13 @@
 
 ## 🏗️ 当前架构状态（重写收敛阶段）
 
-| 组件 | 现状 | 目标 |
+| 组件 | 现状（2026-10-10 实测） | 目标 |
 |------|------|------|
-| 业务后端 | 双后端冻结只读（`services/backend` + `services/ai-tutor-backend`） | 单一 `services/api` (NestJS) |
-| 数据库 | `gri_db` + `smartlens` + `gri_auth` 三库 | 单库 `gri` 多 schema + 独立 `gri_auth` |
-| 身份域 | 两套不兼容模型 | `auth-center` 统一签发 RS256 JWT |
-| 前端 | 3端 uni-app 已收敛 | 保持，仅 API 基址收敛 `/api` |
-| 本体底座 | 四件套就绪 | 持续扩展学科版图 |
+| 业务后端 | ✅ **单一 `services/api` (NestJS) 已建成运行**（旧 `services/backend` + `ai-tutor-backend` **已退役、仓库中不存在**） | 持续完善 M1–M5 模块 |
+| 数据库 | `gri`（多 schema：public/edu/food/tenant…）+ 独立 `gri_auth`（**两库**，非三库） | 保持 |
+| 身份域 | ✅ `auth-center` 统一签发 RS256 JWT；`external_id ≡ public.users.id` 单点映射 | 保持 |
+| 前端 | 3端 uni-app + portal 已收敛，API 基址 `/api` | 保持 |
+| 本体底座 | 四件套就绪（真源：`packages/ontology/ontologies/*.ontology.yaml`） | 持续扩展学科版图 |
 
 ---
 
@@ -35,18 +36,18 @@
 │   ├── mini-program-ai-tutor/  # AI 辅导微信小程序
 │   └── portal/                 # 组织管理台 H5 (5176)
 ├── services/
-│   ├── api/                    # 🆕 单后端目标位置（待建设 M0-M5）
-│   ├── auth-center/            # ✅ NestJS 签发中心（已就绪，需接入后端）
-│   └── [backend/ ai-tutor-backend/]  # 🔒 冻结只读
+│   ├── api/                    # ✅ 单后端（NestJS，已建成）
+│   └── auth-center/            # ✅ NestJS 统一 JWT 签发中心（RS256，身份域基石）
 ├── packages/
 │   ├── ontology/               # 本体 DSL 契约 + ontologies/*.yaml 真源
 │   ├── ontology-engine/        # OO 引擎（extends/abstract/discriminator/stateMachine）
 │   ├── codegen/                # generateSQL (混合模式) + generateTypeScript
 │   ├── agent-core/             # AI 教师底座（16工具+状态机）
 │   ├── auth-client/            # 前端统一认证客户端
-│   └── jwt-verifier/           # JWT 公钥校验（两后端共用）
-├── services/api (待建)          # 单后端模块：identity/food/tuition/organization/ontology/auth/infra
+│   └── jwt-verifier/           # JWT 公钥校验（services/api 使用）
 └── docs/                       # 单一事实源文档
+
+> 单后端模块：`services/api/src/modules/{identity,food,tuition,organization,ontology}` + `src/auth`（统一鉴权）
 ```
 
 ---
@@ -90,7 +91,7 @@
 | UI 组件 | Vant 4 (移动端) | 待选型确认 |
 | 数学公式 | KaTeX | 同构渲染 |
 | 图谱可视化 | D3.js / Cytoscape.js | 待选型确认 |
-| 间隔重复 | SM-2 算法 | 前端本地 + 后端同步 |
+| 间隔重复 | SM-2 算法 | 前端本地 + 后端同步（SR 参数落 `edu.sr_queue`） |
 
 ---
 
@@ -99,10 +100,13 @@
 ```
 auth-center (3004) ── RS256 私钥签发 ──► JWKS 公开端点
        │
-       ├─► services/api (3002) ── @gri/jwt-verifier 校验 ──► requireAuth Guard
-       ├─► services/backend (冻结)   ── 需接入公钥校验中间件
-       └─► services/ai-tutor-backend (冻结) ── 需接入公钥校验中间件
+       └─► services/api (3002) ── @gri/jwt-verifier 校验 ──► 全局 requireAuth
+                └─ /api 一处挂接 requireAuth + `src/auth/public-routes.ts` 公开读白名单（**唯一授权决策点**）
+
+nginx 统一网关 (80/443) 反代：/auth→auth-center、/api→services/api、/→三前端+portal
 ```
+
+> ⚠️ **业务主体 = `req.auth.externalId`（= `public.users.id`），不是 `sub`。** `sub` = `identities.id`（身份域内部主键）。业务实体一律据 `externalId` 定位；`roles` 恒为 `[]`（架构决策），运营/组织内授权走 `assertSiteOperator` / `assertRole`，**严禁读 `req.auth.roles` 做判定**。
 
 **JWT Claims 结构**：
 ```json
@@ -177,7 +181,7 @@ docker compose build api  # 单服务
 
 # 数据库迁移（api 服务内）
 cd services/api
-npm run migrate           # 幂等应用 001-016
+npm run migrate           # 幂等应用 001-019（截至 2026-10-10）
 npm run migrate:status    # 查看已应用迁移
 # ⚠️ 新增迁移后必须「先 build 再 migrate」：迁移 SQL 经 nest-cli assets 拷到 dist/migrate/，
 #    runner 读的是 dist；未 build 则新 .sql 不在 dist、runner 永不执行。
