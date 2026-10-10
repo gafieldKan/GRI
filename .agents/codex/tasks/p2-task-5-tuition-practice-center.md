@@ -1,103 +1,112 @@
-> ⚠️ STATUS: DOWNGRADE TO VERIFY (2026-10-10) —— tuition.controller 已有 questions/practice/*/analysis/stats 等端点。按 card-recon §三 降级核验，只补真缺口（如 progress、路径对齐）。
+> ✅ STATUS: REWRITTEN (2026-10-10) —— 依据 `.agents/coordination/card-recon-2026-10-10.md §三` 重写。原卡引用 `k12/questions.yaml` **不存在**；5 个目标端点中 4 个**已存在**（`questions` / `questions/:id` / `practice/session/start|complete` / `practice/stats/:studentId` / `practice/answer`）。**真实缺口 = 会话级 progress/analysis 缺口 + `/practice/answer` 不落 session_id**。
+> 执行者：Codex ｜ 依赖：无（tuition 基座已就绪）｜ 预估：0.5 天
 
-# T5 任务卡：`tuition` 核心 - 练习中心主链路（题目渲染/答题交互/解析/进度/统计）
+# T5 任务卡：`tuition` 练习中心 —— 会话级进度/分析闭环（增量补齐）
 
-**执行者**：Codex  
-**依赖**：M1 完成（identity 契约就绪）  
-**产出目录**：`services/api/src/modules/tuition/`  
-**预估**：1.5 天
-
----
-
-## 📋 任务目标
-
-补全 `tuition` 模块**练习中心**主链路，使学情切片达到**生产可用**：
-
-1. **题目渲染**：`GET /api/tuition/questions/:id` → 返回结构化题目（stem、options、type、difficulty、knowledgePointIds、latex、media）
-2. **答题提交**：`POST /api/tuition/practice/sessions/:id/answers` → 单题/批量提交，返回即时判分 + 解析
-3. **解析展示**：`GET /api/tuition/practice/sessions/:id/analysis` → 逐题解析、知识点掌握度、用时分布
-4. **练习进度**：`GET /api/tuition/practice/sessions/:id/progress` → 已答/总数、正确率、剩余时间、当前题索引
-5. **练习统计**：`GET /api/tuition/practice/stats/:externalId` → 历史正确率、弱点知识点、推荐复习题、连续天数
+**执行者**：Codex
+**依赖**：无（`tuition` 模块 + `edu.practice_sessions` / `edu.answer_records` 均已就绪）
+**产出目录**：`services/api/src/modules/tuition/`
+**预估**：0.5 天
 
 ---
 
-## 📥 必读上下文（按顺序）
+## 🎯 本卡定位（必须先读，防重蹈覆辙）
+
+原卡把 T5 写成「从零建设练习中心主链路」，**但主链路 80% 已在仓库中**。实测对照：
+
+| 原卡要求 | 现实 | 判定 |
+|---|---|---|
+| `GET /questions/:id` 题目渲染 | ✅ 已有（`tuition.controller.ts:57` → `getQuestionDetail`） | **勿重建** |
+| `POST /practice/sessions/:id/answers` 答题提交 | 🟡 语义已有，形为 `POST /practice/answer`（`:192`） | **勿新建，改其行为** |
+| `GET /practice/sessions/:id/analysis` 逐题解析 | 🟡 `POST /analysis/analyze` + `GET /analysis/report/:examId` 已有 | **补会话级视图** |
+| `GET /practice/sessions/:id/progress` 进度 | ❌ **真缺口** | **本卡核心** |
+| `GET /practice/stats/:externalId` 统计 | 🟡 已有 `GET /practice/stats/:studentId`（`:173`，`assertOwner` 已把 `:studentId` 当 externalId 校验） | **勿重建，补字段** |
+
+**本卡只做 3 件真缺口**：
+1. **`POST /practice/answer` 落 `session_id`**（当前硬编码 `NULL`，会话级进度/分析**无数据源**——这是根因）。
+2. **新增 `GET /practice/sessions/:id/progress`**（已答/总数、正确率、当前题索引）。
+3. **新增 `GET /practice/sessions/:id/analysis`**（会话级逐题解析 + 知识点掌握度聚合）。
+
+---
+
+## 🔴 硬约束（违反即失败）
+
+| # | 约束 |
+|---|---|
+| **N1** | **禁引 `packages/ontology/ontologies/k12/questions.yaml`（不存在）**。题目真源 = `edu.questions` 表 + `packages/ontology/ontologies/k12-curriculum.ontology.yaml`（只读参考，本卡不改本体）。 |
+| **N2** | **不新建 module**；全部改在既有 `tuition.controller.ts` / `tuition.service.ts` / `tuition.types.ts`。 |
+| **N3** | **题面多态沿用现有表结构**：`edu.questions.type`（`multiple-choice`/`fill`/…）+ `options jsonb` + `content_latex`/`answer_latex`。**不得**引入 `single_choice`/`fill_blank` 等新判别列或新表。 |
+| **N4** | **无 DB 迁移**（`edu.practice_sessions.questions`/`answers`/`stats` 均已是 jsonb，够用）。仅当发现列缺失且**必要**时才可新增迁移，且必须 `npm run build` 后再 `npm run migrate`。 |
+| **N5** | **身份契约**：一律 `req.auth.externalId`（`:studentId` 参数由 `assertOwner` 校验等价于 externalId）。**禁止**硬编码 `student_001`。 |
+| **N6** | **越权 403**：会话/统计属个人私有，跨用户访问经 `assertOwner` 返回 403。 |
+
+---
+
+## 📥 必读上下文（按序）
 
 | 文件 | 用途 |
-|------|------|
-| `services/api/src/modules/tuition/tuition.controller.ts` | 现有端点风格、鉴权模式、`req.auth.externalId` 用法 |
-| `services/api/src/modules/tuition/tuition.service.ts` | 现有 `getPracticeStats`、`createSession` 等实现参考 |
-| `services/api/src/modules/tuition/tuition.types.ts` | 现有类型，需补 `Question`、`PracticeSession`、`AnswerSubmitDto`、`AnalysisResult`、`ProgressDto`、`StatsDto` |
-| `services/api/src/modules/tuition/tuition.service.spec.ts` | 现有测试风格参考 |
-| `services/api/src/modules/tuition/agents/` | Agent 核心（后续 T6/T7 对接），先了解接口契约 |
-| `packages/ontology/ontologies/k12/questions.yaml` | 题目本体 DSL 结构（判别列、extra JSONB、多态选项） |
+|---|---|
+| `services/api/src/modules/tuition/tuition.controller.ts` | 现有端点风格、`userId(req)`/`assertOwner` 用法、练习段 `:150-200` |
+| `services/api/src/modules/tuition/tuition.service.ts` | `startPracticeSession`(`:226`)、`submitPracticeAnswer`(`:262`)、`completePracticeSession`(`:466`)、`computeStats`(`:358`) |
+| `services/api/src/modules/tuition/tuition.types.ts` | 现有 `PracticeSession` / `Question`；本卡补 DTO |
+| `services/api/src/modules/tuition/tuition.service.spec.ts` | 现有测试风格 |
+| `.agents/coordination/card-recon-2026-10-10.md §三` | 降级判定依据 |
+| （真源参考）`packages/ontology/ontologies/k12-curriculum.ontology.yaml` | 知识点/题型本体口径 |
+
+**表结构实测（承重事实，勿臆测）**：
+- `edu.practice_sessions(id, user_id, start_time, end_time, score, status['in_progress'|...], mode, subject, topic_id, questions jsonb, answers jsonb, stats jsonb, duration, completed_at, legacy_id)`
+- `edu.answer_records(user_id, question_id, session_id, student_answer, is_correct, time_spent_ms, ...)`
+- `edu.questions(id, knowledge_point_id, content, options jsonb, answer, analysis, difficulty, type, content_latex, answer_latex, explanation, variant_of, legacy_id)`
 
 ---
 
 ## 📦 产出物清单
 
 | 文件 | 动作 |
-|------|------|
-| `services/api/src/modules/tuition/tuition.controller.ts` | 新增 5 个端点（含参数校验、异常映射） |
-| `services/api/src/modules/tuition/tuition.service.ts` | 新增 `getQuestion`、`submitAnswers`、`getAnalysis`、`getProgress`、`getStats` |
-| `services/api/src/modules/tuition/tuition.types.ts` | 补全上述 6 个 DTO/返回类型 |
-| `services/api/src/modules/tuition/tuition.service.spec.ts` | 新增 15+ 单测：题目渲染（多态类型）、答题判分（单选/多选/填空/主观）、进度计算、统计聚合 |
-| `.agents/codex/outputs/p2-task-5-file-list.md` | 本任务新增/修改文件清单 |
-| `.agents/codex/outputs/p2-task-5-verify.sh` | 自动化验收脚本（见下） |
+|---|---|
+| `tuition.service.ts` | ① `submitPracticeAnswer` **落真实 `session_id`**（替换硬编码 `NULL`，并校验会话归属）② 新增 `getSessionProgress(userId, sessionId)` ③ 新增 `getSessionAnalysis(userId, sessionId)` |
+| `tuition.controller.ts` | 新增 `GET /practice/sessions/:sessionId/progress`、`GET /practice/sessions/:sessionId/analysis`（均经 `assertOwner` + 会话归属校验） |
+| `tuition.types.ts` | 补 `SessionProgressDto` / `SessionAnalysisDto` / `AnswerSubmitDto`（纯接口，无装饰器） |
+| `tuition.service.spec.ts` | 新增 ≥ 12 单测 |
+| `.agents/codex/outputs/p2-task-5-file-list.md` | 新增/修改清单 |
+| `.agents/codex/outputs/p2-task-5-verify.sh` | 自动化验收脚本 |
 
 ---
 
 ## ✅ 验收标准（硬性）
 
-1. **TypeScript 编译通过**：`npm run build` 0 error
-2. **单测全绿**：`npm run test -- src/modules/tuition/tuition.service.spec.ts` 全部通过（目标 ≥ 30 tests）
-3. **端到端验证脚本通过**：运行 `bash .agents/codex/outputs/p2-task-5-verify.sh` 输出 `全绿：PASS=X FAIL=0`
-4. **题目多态渲染**：
-   - `single_choice`：返回 `options[]`、单选判分
-   - `multiple_choice`：返回 `options[]`、多选判分（全对给分）
-   - `fill_blank`：返回 `blanks[]`、不区分大小写/空格判分
-   - `essay`：返回 `rubric`、不自动判分（标记需人工/AI 批改）
-5. **进度/统计实时性**：提交答案后 `GET /progress`、`GET /analysis` 立即反映最新状态
-6. **externalId 契约**：所有端点按 `req.auth.externalId` 隔离数据，越权 403
+1. `npx tsc --noEmit` → 0 error。
+2. `npx jest src/modules/tuition` 全绿；新增 ≥ 12 测试。
+3. `npx jest`（全量）**不回归** —— 执行前基线 **32 suites / 466 tests**。
+4. `bash .agents/codex/outputs/p2-task-5-verify.sh` → `FAIL=0`。
+5. **会话进度**：`practice/session/start` 建会话 → `practice/answer`（带 `sessionId`）答 3 题 → `GET .../progress` 返回 `{answered:3, total:N, correctRate, currentIndex:3}`。
+6. **会话分析**：`GET .../analysis` 返回逐题解析 + 按 `knowledge_point_id` 聚合的正确率。
+7. **session_id 真落库**：查 `edu.answer_records` 该记录的 `session_id` 非 NULL。
+8. **越权 403**：A 用户 token 访问 B 的 session progress/analysis → 403；无效 sessionId → 404。
 
 ---
 
-## 🧪 验收脚本 `task-5-verify.sh` 规范
+## 🧪 验收脚本 `p2-task-5-verify.sh` 规范
 
 ```bash
 #!/usr/bin/env bash
-# T5 自动化验收：练习中心主链路
+# T5 自动化验收：会话级进度/分析闭环
 set -uo pipefail
 API_BASE="${API_BASE:-http://localhost:3008/api}"
-
-# 1. 创建练习会话（指定知识点/题型/数量） → sessionId
-# 2. GET /questions/{q1} → 渲染单选题，含 options/latex
-# 3. POST /practice/sessions/{id}/answers {questionId: q1, answer: "A"} → 200, {correct: true, explanation: "..."}
-# 4. 连续答 5 题（混合题型）
-# 5. GET /practice/sessions/{id}/progress → {answered: 5, total: 10, correctRate: 0.8, currentIndex: 5}
-# 6. GET /practice/sessions/{id}/analysis → 逐题解析、知识点掌握度对象
-# 7. GET /practice/stats/{externalId} → 历史正确率、弱点 KP 列表、推荐复习题 IDs
-# 8. 越权：用 A token 访问 B 的 session → 403
-# 9. 无效题目 ID → 404
-# 10. 会话已结束/超时 → 400/410
+# 前置：TEST_IDENTIFIER=testuser / TEST_PASSWORD=test1234 登录取 token
+# 1. POST /practice/session/start → sessionId
+# 2. POST /practice/answer {questionId,answer,sessionId} ×3
+# 3. GET  /practice/sessions/{id}/progress  → answered=3, currentIndex≈3, correctRate∈[0,1]
+# 4. GET  /practice/sessions/{id}/analysis  → 逐题解析数组 + KP 聚合对象
+# 5. psql 校验 answer_records.session_id NOT NULL = sessionId
+# 6. 越权：另一 token 访问 → 403
+# 7. 无效 sessionId → 404
+echo "全绿：PASS=$PASS FAIL=$FAIL"
 ```
 
 ---
 
-## 🔐 关键实现细节
-
-| 点 | 要求 |
-|----|------|
-| 题目本体映射 | `questions.yaml` → `edu.questions` 表，`type` 判别列、`extra` JSONB 存选项/空白/评分规则 |
-| 会话状态机 | `created → in_progress → completed/expired/abandoned`，状态流转受控 |
-| 答题记录 | `edu.practice_answers(session_id, question_id, user_answer, is_correct, time_ms, submitted_at)` |
-| 统计聚合 | `getStats` 读 `edu.practice_sessions` + `edu.practice_answers` 聚合，缓存 5min（Redis） |
-| 知识点关联 | `question.knowledge_point_ids[]` → `edu.knowledge_points`，统计时按 KP 聚合正确率 |
-| 事务边界 | `submitAnswers` 批量写入答案 + 更新会话进度，单事务 |
-
----
-
-## 📝 任务卡存放路径
+## 📝 任务卡路径
 
 ```
 .agents/codex/tasks/p2-task-5-tuition-practice-center.md
