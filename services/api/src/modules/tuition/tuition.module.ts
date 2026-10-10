@@ -11,6 +11,9 @@ import { TutorAgent } from './agents/tutor-agent';
 import { QuestionGeneratorAgent } from './agents/question-generator';
 import { PlanAgent } from './agents/plan-agent';
 import { SpacedRepetitionService } from './agents/spaced-repetition.service';
+import { TeachingCardFsm } from './agents/teaching-card-fsm';
+import { IntentClassifier } from './agents/intent-classifier';
+import { SocraticTemplates } from './agents/socratic-templates';
 
 @Module({
   controllers: [TuitionController],
@@ -30,6 +33,10 @@ import { SpacedRepetitionService } from './agents/spaced-repetition.service';
     TutorAgent,
     QuestionGeneratorAgent,
     PlanAgent,
+    // 教学卡片域（P2-T6）：卡片态状态机 / 意图识别 / 苏格拉底模板
+    TeachingCardFsm,
+    IntentClassifier,
+    SocraticTemplates,
   ],
   exports: [TuitionService, AiAgentService, LlmService],
 })
