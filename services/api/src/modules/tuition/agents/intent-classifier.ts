@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { LlmService } from './llm.service';
+// LlmService 必须值导入（emitDecoratorMetadata 依赖运行期引用）；`import type` 会使 Nest 无法注入。
+import { LlmService } from './llm.service';
 import type { Intent } from '../tuition.types';
 
 export type { Intent };

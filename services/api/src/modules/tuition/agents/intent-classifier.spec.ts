@@ -1,6 +1,8 @@
 import { IntentClassifier } from './intent-classifier';
 import type { Intent } from './intent-classifier';
 import type { LlmService } from './llm.service';
+// 值引入 llm.service 会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同 llm.service.spec）
+jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
 
 /**
  * 意图识别单测（P2-T6）。

@@ -1,3 +1,19 @@
+/**
+ * 题型词汇（ExamScanner→QuestionParser→VariantGenerator 链路统一）。
+ *   - single_choice / multiple_choice：单选 / 多选（有选项）
+ *   - fill_blank：填空（有空位，blanks[] 计数）
+ *   - solution：解答（无选项、无空位，需推导）
+ * 保留旧词汇（multiple-choice/short-answer/essay）以兼容既有 `Question` 消费方。
+ */
+export type QuestionType =
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'fill_blank'
+  | 'solution'
+  | 'multiple-choice'
+  | 'short-answer'
+  | 'essay';
+
 export interface Question {
   id: string;
   content: string;
@@ -6,7 +22,7 @@ export interface Question {
   analysis?: string;
   knowledge_point_id?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
-  type?: 'multiple-choice' | 'short-answer' | 'essay';
+  type?: QuestionType;
 }
 
 export interface PracticeSession {
@@ -72,4 +88,91 @@ export interface TeachingCardUpdate {
   message?: string;
   hintCount?: number;
   attemptCount?: number;
+}
+
+// ---------------------------------------------------------------------------
+// 拍照解题域（P2-T7）：OCR 适配层 / 结构化解析 / 变式生成 的共享纯类型。
+// 真源：`edu.questions` / `edu.knowledge_points` 表 + `k12-curriculum.ontology.yaml`
+//（禁引不存在的 k12/questions.yaml）。均纯接口，无装饰器。
+// ---------------------------------------------------------------------------
+
+/** OCR 块（版面切分的最小单元）。 */
+export interface OcrBlock {
+  /** text=正文；formula=公式；image=图；table=表。 */
+  type: 'text' | 'formula' | 'image' | 'table';
+  text?: string;
+  /** 公式块的 LaTeX 表示。 */
+  latex?: string;
+  confidence?: number;
+}
+
+/** OCR 适配层统一输出（多引擎同形）。 */
+export interface OcrResult {
+  /** 全文本（结构化解析的输入）。 */
+  text: string;
+  /** 全文中的 LaTeX 公式片段（顺序拼接）。 */
+  latex: string;
+  /** 版面块序列。 */
+  blocks: OcrBlock[];
+  /** 产出该结果的引擎名（mock / multimodal-llm / passthrough）。 */
+  engine?: string;
+}
+
+/** 试卷识别请求（`ExamScannerAgent.scanExam` 入参，向后兼容原签名）。 */
+export interface ExamScanRequest {
+  imageDataUrl: string;
+  subject?: string;
+  gradeLevel?: string;
+  rawText?: string;
+}
+
+/** 试卷识别结果（`ExamScannerAgent.scanExam` 出参；`ocr.rawText`/`parsedQuestions` 为既有契约）。 */
+export interface ExamScanResult {
+  success: boolean;
+  error?: string;
+  /** `rawText`/`questions` 为既有消费方（ai-agent.service）所依赖字段，保留。 */
+  ocr: OcrResult & { rawText: string; questions: unknown[] };
+  parsedQuestions: ParsedQuestion[];
+  /** 可选：基于首题的变式（增量字段，不破坏既有契约）。 */
+  variants?: ParsedQuestion[];
+  metadata?: { subject: string; gradeLevel: string; timestamp: string };
+}
+
+/** 填空空位。 */
+export interface BlankSpec {
+  index: number;
+  placeholder?: string;
+}
+
+/** 结构化解析产物（实现 `Question` 契约，题型/空位/KP 为必填强约束）。 */
+export interface ParsedQuestion extends Question {
+  type: QuestionType;
+  options: string[];
+  blanks: BlankSpec[];
+  knowledgePoint: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  subject?: string;
+}
+
+/** 变式生成的种子题。 */
+export interface QuestionSeed {
+  id?: string;
+  type: QuestionType;
+  content: string;
+  options?: string[];
+  answer?: string;
+  knowledgePoint?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  blanks?: BlankSpec[];
+  subject?: string;
+}
+
+/** 变式生成选项。 */
+export interface VariantGenerationOptions {
+  /** 目标变式数（默认 3）。 */
+  count?: number;
+  /** numeric=数值 ±20% 非零替换；swap=已知/未知互换；auto=交替。 */
+  strategy?: 'numeric' | 'swap' | 'auto';
+  subject?: string;
+  gradeLevel?: string;
 }
