@@ -45,3 +45,7 @@
 2026-10-10T18:16:33+08:00 | 提交 | p2-task-6 已提交 07a3745（10 文件 +1222）。权限外未接线到 TuitionController（属后续前端集成卡）。
 2026-10-10T18:21:16+08:00 | 裁决 | 挂起项1【.agents/ 豁免口径】—— 确认现状即正确，无需改动。实测：.gitignore 已反向豁免 !.agents/**/*.{md,sh,json}；已跟踪 49 md + 10 sh + 1 json + 1 js + 1 patch + 1 gitkeep；.log/.done 误跟踪=0；logs/ 仍正确 ignore。口径：任务卡/设计文档/交接记录/验收脚本入库，运行时噪音(logs/*.log/*.done)不入库。
 2026-10-10T18:21:16+08:00 | 裁决 | 挂起项2【T11 处置】—— 确认归档 VOID。实测作废依据仍成立：①/api/ontology/stats 端点存在(ontology.controller.ts:45-47，OntologyStatsService) ②无 master-data 模块(已退役) ③version.json 不存在。task-status.json p2-task-11=voided，卡头已标【已作废/VOID】。保留作废记录，不执行。
+2026-10-10T21:08:02+08:00 | 完成 | P2-T7 done_and_committed (26b2d37)。tuition/agents OCR适配层+结构化解析+变式生成（13 files, +1466/-102）。独立复验：tsc 0err / agents 11suites·122tests / 全量 32suites·466tests（基线29/431，+3/+35）/ verify.sh PASS=30 FAIL=0。硬约束 N1-N6 源码级全绿。
+2026-10-10T21:08:02+08:00 | 缺陷 | 【T6 latent】intent-classifier.ts（07a3745）用 import type{LlmService} 注入依赖 → Nest emitDecoratorMetadata 运行期需值引用，import type 被擦除致启动 DI 解析失败（Nest can't resolve dependencies）。因 T6 未被容器装载（dist 旧）未暴露。由 T7 一并修复（值导入 + 4 spec 补 jest.mock('@gri/agent-core')）。教训：@Injectable 构造参数禁 import type。
+2026-10-10T21:08:02+08:00 | 待办 | 【题型词汇归一】question-parser 产出规范化题型(single_choice/fill_blank/solution)，vs 既有 tutor-agent._checkAnswer/byType 键(choice/fill/solution)。未崩溃(有守卫)但分桶统计不计数+填空容差失效。需另立小卡：接线时归一(ai-agent.service 落库前 或 tutor-agent 加4别名映射)。
+2026-10-10T21:08:02+08:00 | 待办 | 【build 冒烟】T6/T7 未接线、容器 dist 未含 → 接线卡须 npm run build + 启动冒烟，验证 DI 在真实启动路径不崩。

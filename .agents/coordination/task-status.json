@@ -82,10 +82,19 @@
   },
   "p2-task-6": "done_and_committed (07a3745)",
   "_waveB_2026_10_10": {
-    "T6": "done_and_committed (07a3745): 教学卡片FSM+意图识别+苏格拉底模板（增量补齐，未改 session-fsm，无迁移）"
+    "T6": "done_and_committed (07a3745): 教学卡片FSM+意图识别+苏格拉底模板（增量补齐，未改 session-fsm，无迁移）",
+    "T7": "done_and_committed (26b2d37): OCR适配层(ocr-processor)+结构化解析(question-parser)+变式生成(variant-generator)，exam-scanner降编排层签名向后兼容，无迁移。复验 32suites/466tests 全绿。附带修复T6的import type DI潜伏缺陷。"
   },
   "_pending_resolved_2026_10_10": {
     "dot_agents_gitignore": "confirmed_as_is: !.agents/**/*.{md,sh,json} 已正确；.log/.done 不入库",
     "p2_task_11": "confirmed_voided: /api/ontology/stats 已实现; master-data 退役; version.json 不存在"
+  },
+  "p2-task-7": "done_and_committed (26b2d37)",
+  "_latent_fixes_2026_10_10": {
+    "T6_import_type_DI": "intent-classifier.ts import type{LlmService}→值导入；T7修复。@Injectable构造参数禁用import type。"
+  },
+  "_open_followups_2026_10_10": {
+    "question_type_vocab_normalize": "question-parser规范化题型(single_choice/fill_blank/solution) vs tutor-agent键(choice/fill/solution)。需另立小卡在接线时归一。",
+    "build_smoke_after_wiring": "T6/T7未接线(dist旧)，接线卡须 build+启动冒烟验证DI。"
   }
 }
