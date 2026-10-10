@@ -31,3 +31,8 @@
 2026-10-10T14:10:43+08:00 | 验收 | p2-task-2b 独立复验【通过】(非自述)：api tsc 0err / api eslint 0e0w / api 25suites·370tests 全绿 / auth-center tsc 0err / ac 4suites·31tests 全绿 / 019 迁移已落库(ck_users_role 存在) / T2 e2e PASS=88 FAIL=0 VERIFY_EXIT=0 / T1 回归 PASS=20 FAIL=0。
 2026-10-10T14:10:43+08:00 | 核查 | 红线源码级核验全绿：①READ_ANY_ELEVATED_ROLES 零残留 ②identity.controller 无 roles 引用 ③授权门唯一走 assertSiteOperator(externalId) ④public-routes.ts 未改(git 无差异) ⑤三新端点齐(Get() / Patch :id/role / Patch :id/status) ⑥auth-center enable 端点存在 ⑦路由顺序 me(57) 先于 :id(77) ⑧isSameIdentity 大小写无关防 self-protection 绕过 ⑨auth.service.ts 未改(roles:[] 恒空架构决策保持)。
 2026-10-10T14:10:43+08:00 | 状态 | 代码未提交（11 文件在工作树）。待用户裁决：先提交 T2 还是先跑 T3。
+2026-10-10T16:27:25+08:00 | 交付 | p2-task-3(Claude e2e 契约) 完成：4 新增文件（p2-task-3-e2e-identity-lifecycle.sh 11.5KB / p2-task-3-verify.sh 入口 / identity.contract.spec.ts 12.3KB / p2-task-3-file-list.md）。未改任何生产代码（git 核实）。
+2026-10-10T16:27:25+08:00 | 验收 | p2-task-3 独立复验【通过】(非自述)：契约 spec 1suite·18tests 全绿 / api 全量 26suites·388tests 全绿(基线370+18) / api tsc 0err / T3 统一 e2e PASS=137 FAIL=0 VERIFY_EXIT=0 且【连跑两次幂等一致】。
+2026-10-10T16:27:25+08:00 | 设计说明 | T3 采用 orchestrator 增量整合(T1 20 + T2 88 复用 + 新 §T3 29 段=137)，非重写；跨包契约(ESM vs CJS jest)用【源码漂移锚】--表达式一旦改写即红。
+2026-10-10T16:27:25+08:00 | 核查 | 源码锚实测：A 锚 auth.service.ts:198(buildPayload: sub=identity.id / external_id=identity.externalId / roles:[])；B 锚 jwt-verifier/src/index.js:134,154(externalId: payload.external_id ?? payload.sub ?? null)。反例锚 E1-E4 防退化为 identity.id。
+2026-10-10T16:27:25+08:00 | 状态 | T3 未提交（4 新增文件在工作树）。Wave A(T2+T3) 全绿。
