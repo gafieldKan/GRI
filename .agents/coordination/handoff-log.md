@@ -43,3 +43,5 @@
 2026-10-10T18:16:33+08:00 | 验收 | p2-task-6 独立复验【通过】(非自述)：tsc 0err / tuition/agents 8suites·87tests 全绿 / api 全量 29suites·431tests 全绿(基线26/388 只增不减) / verify.sh PASS=*** FAIL=0。
 2026-10-10T18:16:33+08:00 | 核查 | 硬约束源码级核验全绿：N1 session-fsm.ts 0 diff(未改既有导出) / N2 零 ontology import(未引不存在YAML) / N3 代码常量无 YAML/codegen / N4 无新迁移 / N5 复用 LlmService 无key回退Mock / N6 仅改 tuition.module.ts 注册3 provider。
 2026-10-10T18:16:33+08:00 | 提交 | p2-task-6 已提交 07a3745（10 文件 +1222）。权限外未接线到 TuitionController（属后续前端集成卡）。
+2026-10-10T18:21:16+08:00 | 裁决 | 挂起项1【.agents/ 豁免口径】—— 确认现状即正确，无需改动。实测：.gitignore 已反向豁免 !.agents/**/*.{md,sh,json}；已跟踪 49 md + 10 sh + 1 json + 1 js + 1 patch + 1 gitkeep；.log/.done 误跟踪=0；logs/ 仍正确 ignore。口径：任务卡/设计文档/交接记录/验收脚本入库，运行时噪音(logs/*.log/*.done)不入库。
+2026-10-10T18:21:16+08:00 | 裁决 | 挂起项2【T11 处置】—— 确认归档 VOID。实测作废依据仍成立：①/api/ontology/stats 端点存在(ontology.controller.ts:45-47，OntologyStatsService) ②无 master-data 模块(已退役) ③version.json 不存在。task-status.json p2-task-11=voided，卡头已标【已作废/VOID】。保留作废记录，不执行。

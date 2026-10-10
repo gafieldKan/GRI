@@ -32,7 +32,6 @@
     "工具链缺口【不需要修复】：nest-cli.json 的 assets[migrate/*.sql] 两服务均正确；真因是 dist 陈旧。纪律改为『改 SQL 后先 npm run build 再 npm run migrate』。",
     "identity.controller.READ_ANY_ELEVATED_ROLES 依赖 req.auth.roles → 因 roles 恒空当前恒 false（既存缺陷，超本卡范围，不动）。"
   ],
-  "_pending": "T4 代码已产出+三级复验全绿(未提交/未入镜像)；.agents 协作脚本(.sh)未决定是否入库；identity.controller 的 READ_ANY_ELEVATED_ROLES 既存缺陷待单独评估",
   "_t4_execution_2026_10_09": {
     "codex": "done (exit=0, 会话 880 行)",
     "files": [
@@ -84,5 +83,9 @@
   "p2-task-6": "done_and_committed (07a3745)",
   "_waveB_2026_10_10": {
     "T6": "done_and_committed (07a3745): 教学卡片FSM+意图识别+苏格拉底模板（增量补齐，未改 session-fsm，无迁移）"
+  },
+  "_pending_resolved_2026_10_10": {
+    "dot_agents_gitignore": "confirmed_as_is: !.agents/**/*.{md,sh,json} 已正确；.log/.done 不入库",
+    "p2_task_11": "confirmed_voided: /api/ontology/stats 已实现; master-data 退役; version.json 不存在"
   }
 }
