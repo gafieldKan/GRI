@@ -100,6 +100,16 @@
   "_card_rewrite_2026_10_10": {
     "T5": "rewritten: 收窄为会话级 progress/analysis 闭环 + practice/answer 落 session_id（原卡4/5端点已存在）",
     "T8": "rewritten: 收窄为 due 队列(sr_queue) + stats + 单题详情（原卡SM-2已存在、表结构描述全错）",
-    "T12": "rewritten(收窄): scripts/health-check.sh + CI 加固（原卡前提已不存在：无旧后端可下线、前端硬编码=0、CI已有）"
+    "T12": "rewritten(收窄): scripts/health-check.sh + CI 加固（原卡前提已不存在：无旧后端可下线、前端硬编码=0、CI已有）",
+    "T10": "rewritten: 收窄为 ①GET :id/invitations 补鉴权门禁(安全缺口) ②getAudit 分页/筛选（原卡引不存在portal路径、用req.auth.roles恒空、表结构全错）"
+  },
+  "_dispatch_2026_10_10": {
+    "order": [
+      "Codex←T5",
+      "Codex←T8",
+      "Codex←T12",
+      "Claude←T10"
+    ],
+    "note": "用户手动下达；串行铁律（同一时刻一个 agent）；命令 = bash .agents/coordination/run-task.sh <agent> <card>"
   }
 }
