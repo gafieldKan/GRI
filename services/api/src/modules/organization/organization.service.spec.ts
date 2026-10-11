@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { DatabaseService } from '../../database/database.service';
 
@@ -41,6 +41,39 @@ function makeDb(
     return { rows: [] };
   });
   return { query, getPool: jest.fn(() => pool) } as unknown as DatabaseService;
+}
+
+/**
+ * 记录型假库（T10 审计/邀请专用）：捕获每条 SQL + bind 参数，便于断言「筛选走参数化」。
+ * 分发优先级：public.users → organizations → members.role → COUNT(*) → audit → invitations。
+ */
+function makeRecordingDb(
+  membership: Record<string, Record<string, string>>,
+  rows: { auditRows?: unknown[]; auditTotal?: number; invitationRows?: unknown[] } = {},
+): { db: DatabaseService; calls: { sql: string; params?: unknown[] }[] } {
+  const calls: { sql: string; params?: unknown[] }[] = [];
+  const query = jest.fn(async (sql: string, params?: unknown[]) => {
+    calls.push({ sql, params });
+    if (/FROM public\.users/.test(sql)) return { rows: [{ id: 'u' }] };
+    if (/FROM tenant\.organizations/.test(sql)) {
+      return { rows: params?.[0] ? [{ id: params[0], level: 1, parent_path: '/' }] : [] };
+    }
+    if (/SELECT role FROM tenant\.organization_members/.test(sql)) {
+      const role = membership[params?.[0] as string]?.[params?.[1] as string];
+      return { rows: role ? [{ role }] : [] };
+    }
+    if (/COUNT\(\*\)/.test(sql)) return { rows: [{ total: rows.auditTotal ?? 0 }] };
+    if (/FROM tenant\.organization_audit_logs/.test(sql)) return { rows: rows.auditRows ?? [] };
+    if (/FROM tenant\.organization_invitations/.test(sql)) return { rows: rows.invitationRows ?? [] };
+    return { rows: [] };
+  });
+  const pool = { connect: jest.fn(() => ({ query: jest.fn(async () => ({ rows: [] })), release: jest.fn() })) };
+  return { db: { query, getPool: jest.fn(() => pool) } as unknown as DatabaseService, calls };
+}
+
+/** 取「审计/邀请」分页查询（带 LIMIT/OFFSET 的那条）的 bind 参数。 */
+function pageParamsOf(calls: { sql: string; params?: unknown[] }[]): unknown[] | undefined {
+  return calls.find((c) => /LIMIT \$/.test(c.sql))?.params;
 }
 
 describe('OrganizationService 组织级权限（M4：升级 operator/merchant 为真实角色模型）', () => {
@@ -184,11 +217,23 @@ describe('OrganizationService 组织级权限（M4：升级 operator/merchant �
   });
 
   describe('getAudit（审计日志读取，owner/admin 门禁）', () => {
-    it('admin 读审计 → 返回 rows（关联演员名）', async () => {
+    it('admin 读审计 → 返回分页对象（rows/total/limit/offset）', async () => {
       const db = makeDb({ [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } });
       const svc = new OrganizationService(db);
-      const rows = await svc.getAudit(ACTOR_ADMIN, ORG_ID, 20);
-      expect(rows).toEqual([]);
+      const page = await svc.getAudit(ACTOR_ADMIN, ORG_ID, { limit: 20 });
+      expect(page.rows).toEqual([]);
+      expect(page.limit).toBe(20);
+      expect(page.offset).toBe(0);
+      expect(page.total).toBe(0);
+    });
+
+    it('缺省 limit → 回落 50（保持改造前默认语义）', async () => {
+      const { db, calls } = makeRecordingDb({ [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } });
+      const svc = new OrganizationService(db);
+      const page = await svc.getAudit(ACTOR_ADMIN, ORG_ID);
+      expect(page.limit).toBe(50);
+      const pageQuery = calls.find((c) => /LIMIT \$/.test(c.sql));
+      expect(pageQuery?.params?.slice(-2)).toEqual([50, 0]);
     });
 
     it('仅 member（无管理权）读审计 → Forbidden', async () => {
@@ -230,6 +275,172 @@ describe('OrganizationService 组织级权限（M4：升级 operator/merchant �
       expect(rows.find((r) => r.id === 'rem1')?.email).toBe('newbie@x.com');
 
       (globalThis as { fetch?: unknown }).fetch = undefined;
+    });
+  });
+
+  describe('listInvitations（T10 门禁：堵「任意登录用户枚举他组织邀请」缺口）', () => {
+    const INV = { id: 'i1', organization_id: ORG_ID, email: 'x@y.com', status: 'pending' };
+
+    it('owner 读邀请清单 → 通过并返回列表', async () => {
+      const { db } = makeRecordingDb(
+        { [ORG_ID]: { [ACTOR_OWNER]: 'owner' } },
+        { invitationRows: [INV] },
+      );
+      const svc = new OrganizationService(db);
+      await expect(svc.listInvitations(ACTOR_OWNER, ORG_ID)).resolves.toEqual([INV]);
+    });
+
+    it('admin 读邀请清单 → 通过', async () => {
+      const { db } = makeRecordingDb({ [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } }, { invitationRows: [INV] });
+      const svc = new OrganizationService(db);
+      await expect(svc.listInvitations(ACTOR_ADMIN, ORG_ID)).resolves.toEqual([INV]);
+    });
+
+    it('非成员（组织外登录用户）→ Forbidden，且不执行邀请查询 ← 修复前为 200 裸数据', async () => {
+      const { db, calls } = makeRecordingDb({ [ORG_ID]: {} });
+      const svc = new OrganizationService(db);
+      await expect(svc.listInvitations(TARGET, ORG_ID)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(calls.some((c) => /FROM tenant\.organization_invitations/.test(c.sql))).toBe(false);
+    });
+
+    it('本组织普通 member（无管理权）→ Forbidden', async () => {
+      const { db, calls } = makeRecordingDb({ [ORG_ID]: { [ACTOR_MEMBER]: 'member' } });
+      const svc = new OrganizationService(db);
+      await expect(svc.listInvitations(ACTOR_MEMBER, ORG_ID)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(calls.some((c) => /FROM tenant\.organization_invitations/.test(c.sql))).toBe(false);
+    });
+
+    it('status 筛选 → 走 bind 参数（SQL 文本不含筛选值）', async () => {
+      const { db, calls } = makeRecordingDb(
+        { [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } },
+        { invitationRows: [INV] },
+      );
+      const svc = new OrganizationService(db);
+      await svc.listInvitations(ACTOR_ADMIN, ORG_ID, { status: 'pending' });
+      const q = calls.find((c) => /FROM tenant\.organization_invitations/.test(c.sql));
+      expect(q?.sql).toContain('status = $2');
+      expect(q?.sql).not.toContain('pending');
+      expect(q?.params).toEqual([ORG_ID, 'pending']);
+    });
+
+    it('limit/offset → 绑定为 LIMIT/OFFSET 参数', async () => {
+      const { db, calls } = makeRecordingDb({ [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } });
+      const svc = new OrganizationService(db);
+      await svc.listInvitations(ACTOR_ADMIN, ORG_ID, { limit: 10, offset: 20 });
+      expect(pageParamsOf(calls)).toEqual([ORG_ID, 10, 20]);
+    });
+
+    it('缺省 limit → 无 LIMIT 子句（保持旧「返回全部」行为，Portal 零改动）', async () => {
+      const { db, calls } = makeRecordingDb({ [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } });
+      const svc = new OrganizationService(db);
+      await svc.listInvitations(ACTOR_ADMIN, ORG_ID);
+      const q = calls.find((c) => /FROM tenant\.organization_invitations/.test(c.sql));
+      expect(q?.sql).not.toMatch(/LIMIT/);
+      expect(q?.params).toEqual([ORG_ID]);
+    });
+  });
+
+  describe('getAudit 分页/筛选（T10：offset 分页 + action/entity_type/actor_id/时间范围）', () => {
+    const AUDIT_ROW = {
+      id: 'a1', action: 'member.add', entity_type: 'member', entity_id: null,
+      actor_id: ACTOR_ADMIN, actor_name: '管理员', changes: {}, created_at: '2026-10-01T00:00:00Z',
+    };
+    const mk = (total = 12) =>
+      makeRecordingDb({ [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } }, { auditRows: [AUDIT_ROW], auditTotal: total });
+
+    it('第二页：limit=10&offset=10 → LIMIT/OFFSET 绑定 10/10，返回 total', async () => {
+      const { db, calls } = mk();
+      const svc = new OrganizationService(db);
+      const page = await svc.getAudit(ACTOR_ADMIN, ORG_ID, { limit: 10, offset: 10 });
+      expect(pageParamsOf(calls)).toEqual([ORG_ID, 10, 10]);
+      expect(page).toEqual({ rows: [AUDIT_ROW], total: 12, limit: 10, offset: 10 });
+    });
+
+    it('action 筛选 → a.action = $2 参数化（值不进 SQL 文本）', async () => {
+      const { db, calls } = mk();
+      const svc = new OrganizationService(db);
+      await svc.getAudit(ACTOR_ADMIN, ORG_ID, { action: 'member.add' });
+      const q = calls.find((c) => /FROM tenant\.organization_audit_logs/.test(c.sql));
+      expect(q?.sql).toContain('a.action = $2');
+      expect(q?.sql).not.toContain('member.add');
+      expect(pageParamsOf(calls)).toEqual([ORG_ID, 'member.add', 50, 0]);
+    });
+
+    it('entityType + actorId 联合筛选 → 条件按序绑定 $2/$3', async () => {
+      const { db, calls } = mk();
+      const svc = new OrganizationService(db);
+      await svc.getAudit(ACTOR_ADMIN, ORG_ID, { entityType: 'member', actorId: ACTOR_ADMIN });
+      const q = calls.find((c) => /FROM tenant\.organization_audit_logs/.test(c.sql));
+      expect(q?.sql).toContain('a.entity_type = $2');
+      expect(q?.sql).toContain('a.actor_id = $3');
+      expect(pageParamsOf(calls)).toEqual([ORG_ID, 'member', ACTOR_ADMIN, 50, 0]);
+    });
+
+    it('from/to 时间范围 → created_at >= / <= 参数化，且归一为 ISO', async () => {
+      const { db, calls } = mk();
+      const svc = new OrganizationService(db);
+      await svc.getAudit(ACTOR_ADMIN, ORG_ID, { from: '2026-01-01T00:00:00Z', to: '2026-02-01T00:00:00Z' });
+      const q = calls.find((c) => /FROM tenant\.organization_audit_logs/.test(c.sql));
+      expect(q?.sql).toContain('a.created_at >= $2');
+      expect(q?.sql).toContain('a.created_at <= $3');
+      expect(pageParamsOf(calls)).toEqual([
+        ORG_ID, '2026-01-01T00:00:00.000Z', '2026-02-01T00:00:00.000Z', 50, 0,
+      ]);
+    });
+
+    it('筛选条件同样作用于 COUNT（total 与当前页同口径）', async () => {
+      const { db, calls } = mk(3);
+      const svc = new OrganizationService(db);
+      const page = await svc.getAudit(ACTOR_ADMIN, ORG_ID, { action: 'member.add' });
+      const countQ = calls.find((c) => /COUNT\(\*\)/.test(c.sql));
+      expect(countQ?.sql).toContain('a.action = $2');
+      expect(countQ?.params).toEqual([ORG_ID, 'member.add']);
+      expect(page.total).toBe(3);
+    });
+
+    it('游标越界钳制：limit=5000 → 200，offset=-5 → 0', async () => {
+      const { db, calls } = mk();
+      const svc = new OrganizationService(db);
+      const page = await svc.getAudit(ACTOR_ADMIN, ORG_ID, { limit: 5000, offset: -5 });
+      expect(pageParamsOf(calls)).toEqual([ORG_ID, 200, 0]);
+      expect(page.limit).toBe(200);
+      expect(page.offset).toBe(0);
+    });
+
+    it('注入尝试：动作值含引号仍走 bind 参数，SQL 文本零拼接', async () => {
+      const { db, calls } = mk();
+      const svc = new OrganizationService(db);
+      const payload = `member.add' OR '1'='1`;
+      await svc.getAudit(ACTOR_ADMIN, ORG_ID, { action: payload });
+      const q = calls.find((c) => /FROM tenant\.organization_audit_logs/.test(c.sql));
+      expect(q?.sql).not.toContain("OR '1'='1");
+      expect(q?.params).toContain(payload);
+    });
+
+    it('非法 actorId（非 UUID）→ BadRequest（不把坏值丢给 PG 崩 500）', async () => {
+      const { db, calls } = mk();
+      const svc = new OrganizationService(db);
+      await expect(svc.getAudit(ACTOR_ADMIN, ORG_ID, { actorId: 'not-a-uuid' })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(calls.some((c) => /FROM tenant\.organization_audit_logs/.test(c.sql))).toBe(false);
+    });
+
+    it('非法 from（坏时间）→ BadRequest', async () => {
+      const { db } = mk();
+      const svc = new OrganizationService(db);
+      await expect(svc.getAudit(ACTOR_ADMIN, ORG_ID, { from: '昨天' })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('越权边界：非成员传再合法筛选也先被排外 → Forbidden（门禁在查询之前）', async () => {
+      const { db, calls } = makeRecordingDb({ [ORG_ID]: {} });
+      const svc = new OrganizationService(db);
+      await expect(
+        svc.getAudit(TARGET, ORG_ID, { action: 'member.add', limit: 1 }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(calls.some((c) => /COUNT\(\*\)|organization_audit_logs/.test(c.sql))).toBe(false);
     });
   });
 });

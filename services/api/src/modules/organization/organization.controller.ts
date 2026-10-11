@@ -199,9 +199,23 @@ export class OrganizationController {
 
   // --- 邀请 ---
 
+  /**
+   * 邀请清单（owner/admin 门禁，见 service.listInvitations）。
+   * 可选 ?status= 筛选；?limit=&offset= 分页（缺省保持「返回全部」旧行为）。
+   */
   @Get(':id/invitations')
-  invitations(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
-    return this.organizationService.listInvitations(id);
+  invitations(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.organizationService.listInvitations(this.externalId(req), id, {
+      status: status || undefined,
+      limit: intQuery(limit),
+      offset: intQuery(offset),
+    });
   }
 
   @Post(':id/invitations')
@@ -227,10 +241,39 @@ export class OrganizationController {
     return this.organizationService.acceptInvitation(token, this.externalId(req));
   }
 
-  /** 审计日志（只读）：owner/admin 门禁（service 内 assertRole）。 */
+  /**
+   * 审计日志（只读）：owner/admin 门禁（service 内 assertRole）。
+   * 分页 ?limit=&offset=；筛选 ?action=&entityType=&actorId=&from=&to=（全部 bind 参数）。
+   * 响应保留旧字段 rows（Portal 消费不变），增量给出 total/limit/offset。
+   */
   @Get(':id/audit')
-  async audit(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string, @Query('limit') limit?: string) {
-    const rows = await this.organizationService.getAudit(this.externalId(req), id, limit ? parseInt(limit, 10) : 50);
-    return { success: true, rows, limit: rows.length };
+  async audit(
+    @Req() req: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('action') action?: string,
+    @Query('entityType') entityType?: string,
+    @Query('actorId') actorId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const page = await this.organizationService.getAudit(this.externalId(req), id, {
+      limit: intQuery(limit),
+      offset: intQuery(offset),
+      action: action || undefined,
+      entityType: entityType || undefined,
+      actorId: actorId || undefined,
+      from: from || undefined,
+      to: to || undefined,
+    });
+    return { success: true, ...page };
   }
+}
+
+/** 查询串整数解析：缺省/非法 → undefined（service 侧再统一钳制）。 */
+function intQuery(raw?: string): number | undefined {
+  if (raw === undefined || raw.trim() === '') return undefined;
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) ? undefined : n;
 }

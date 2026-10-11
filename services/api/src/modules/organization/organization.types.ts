@@ -71,6 +71,44 @@ export interface Membership {
   title: string | null;
 }
 
+/** 邀请清单查询：状态筛选 + offset 分页（缺省时保持「全量」旧行为）。 */
+export interface InvitationListQuery {
+  status?: string; // pending|accepted|rejected|expired|cancelled
+  limit?: number; // 1..200，缺省不限
+  offset?: number; // ≥0，缺省 0
+}
+
+/** 审计日志读模型（含关联演员名 actor_name）。 */
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  actor_id: string;
+  actor_name: string | null;
+  changes: unknown;
+  created_at: string;
+}
+
+/** 审计日志查询：offset 分页 + 精确筛选（筛选项一律走 bind 参数）。 */
+export interface AuditQuery {
+  limit?: number; // 1..200，缺省 50
+  offset?: number; // ≥0，缺省 0
+  action?: string; // 精确匹配 a.action
+  entityType?: string; // 精确匹配 a.entity_type
+  actorId?: string; // UUID，精确匹配 a.actor_id
+  from?: string; // ISO 8601，created_at ≥ from
+  to?: string; // ISO 8601，created_at ≤ to
+}
+
+/** 审计日志分页结果（rows 为当前页；total 为过滤后总条数）。 */
+export interface AuditPage {
+  rows: AuditLogEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 /** 组织类型（目录浏览有效值）。 */
 export const ORG_TYPES = ['school', 'university', 'institute', 'company', 'other'] as const;
 

@@ -13,8 +13,19 @@ import {
   OrganizationRole,
   OrganizationInvitation,
   OrganizationNode,
+  InvitationListQuery,
+  AuditQuery,
+  AuditPage,
+  AuditLogEntry,
   INVITATION_TTL_DAYS,
 } from './organization.types';
+
+/** 审计日志默认页大小（保持改造前 limit=50 的默认语义）。 */
+const AUDIT_DEFAULT_LIMIT = 50;
+/** 分页 offset 上限（防超大 offset 拖库；PG OFFSET 取 bigint）。 */
+const MAX_PAGE_OFFSET = 1_000_000;
+/** UUID 形态（过滤参数用；PG uuid 列遇非 UUID 文本会 22P02 崩 500，故前置校验）。 */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * M4 organization 切片：把 identity 里临时的 operator/merchant 粗判据，
@@ -493,12 +504,39 @@ export class OrganizationService {
   // 邀请
   // -------------------------------------------------------------------------
 
-  async listInvitations(organizationId: string): Promise<OrganizationInvitation[]> {
+  /**
+   * 邀请清单：**owner/admin 门禁**（防任意登录用户枚举他组织邀请）；
+   * 支持 status 筛选 + offset 分页（值全部 bind 参数）。
+   * 缺省（无 limit）保持「返回全部」的旧行为，Portal 无需改动。
+   */
+  async listInvitations(
+    actorId: string,
+    organizationId: string,
+    query: InvitationListQuery = {},
+  ): Promise<OrganizationInvitation[]> {
     await this.fetchOrg(organizationId);
-    const res = await this.db.query(
-      `SELECT * FROM tenant.organization_invitations WHERE organization_id = $1 ORDER BY created_at DESC`,
-      [organizationId],
-    );
+    await this.assertRole(actorId, organizationId, { ownerOnly: false });
+
+    const conds = ['organization_id = $1'];
+    const params: unknown[] = [organizationId];
+    if (query.status) {
+      params.push(query.status);
+      conds.push(`status = $${params.length}`);
+    }
+
+    let sql =
+      `SELECT * FROM tenant.organization_invitations` +
+      ` WHERE ${conds.join(' AND ')}` +
+      ` ORDER BY created_at DESC, id DESC`;
+
+    if (query.limit !== undefined) {
+      const limit = this.clampInt(query.limit, 1, 200, 200);
+      const offset = this.clampInt(query.offset, 0, MAX_PAGE_OFFSET, 0);
+      params.push(limit, offset);
+      sql += ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
+    }
+
+    const res = await this.db.query(sql, params);
     return res.rows as OrganizationInvitation[];
   }
 
@@ -626,43 +664,60 @@ export class OrganizationService {
     return merged.slice(0, Math.min(Math.max(limit, 1), 50));
   }
 
-  /** 读某组织的审计日志（关联演员名）。owner/admin 门禁。 */
-  async getAudit(
-    actorId: string,
-    orgId: string,
-    limit = 50,
-  ): Promise<{
-    id: string;
-    action: string;
-    entity_type: string;
-    entity_id: string | null;
-    actor_id: string;
-    actor_name: string | null;
-    changes: unknown;
-    created_at: string;
-  }[]> {
+  /**
+   * 读某组织的审计日志（关联演员名）。owner/admin 门禁。
+   * 分页：limit + offset；筛选：action / entityType / actorId / from / to。
+   * 全部筛选值走 bind 参数（$n），SQL 文本零拼接 —— 无注入面；非法 UUID/日期 fail-fast 400。
+   */
+  async getAudit(actorId: string, orgId: string, query: AuditQuery = {}): Promise<AuditPage> {
     await this.fetchOrg(orgId);
     await this.assertRole(actorId, orgId, { ownerOnly: false });
-    const params = [orgId, Math.min(Math.max(limit, 1), 200)];
+
+    const limit = this.clampInt(query.limit, 1, 200, AUDIT_DEFAULT_LIMIT);
+    const offset = this.clampInt(query.offset, 0, MAX_PAGE_OFFSET, 0);
+
+    const conds = ['a.organization_id = $1'];
+    const params: unknown[] = [orgId];
+    if (query.action) {
+      params.push(query.action);
+      conds.push(`a.action = $${params.length}`);
+    }
+    if (query.entityType) {
+      params.push(query.entityType);
+      conds.push(`a.entity_type = $${params.length}`);
+    }
+    if (query.actorId) {
+      params.push(this.requireUuid(query.actorId, 'actorId'));
+      conds.push(`a.actor_id = $${params.length}`);
+    }
+    if (query.from) {
+      params.push(this.requireDate(query.from, 'from'));
+      conds.push(`a.created_at >= $${params.length}`);
+    }
+    if (query.to) {
+      params.push(this.requireDate(query.to, 'to'));
+      conds.push(`a.created_at <= $${params.length}`);
+    }
+    const where = conds.join(' AND ');
+
+    // 过滤后总条数（供前端算页数）；与分页查询共用同一 WHERE/params 前缀。
+    const countRes = await this.db.query(
+      `SELECT COUNT(*)::int AS total FROM tenant.organization_audit_logs a WHERE ${where}`,
+      params,
+    );
+    const total = Number(countRes.rows[0]?.total ?? 0);
+
+    const pageParams = [...params, limit, offset];
     const res = await this.db.query(
       `SELECT a.id, a.action, a.entity_type, a.entity_id, a.actor_id, u.name AS actor_name, a.changes, a.created_at
          FROM tenant.organization_audit_logs a
          LEFT JOIN public.users u ON u.id = a.actor_id
-        WHERE a.organization_id = $1
-        ORDER BY a.created_at DESC
-        LIMIT $2`,
-      params,
+        WHERE ${where}
+        ORDER BY a.created_at DESC, a.id DESC
+        LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`,
+      pageParams,
     );
-    return res.rows as {
-      id: string;
-      action: string;
-      entity_type: string;
-      entity_id: string | null;
-      actor_id: string;
-      actor_name: string | null;
-      changes: unknown;
-      created_at: string;
-    }[];
+    return { rows: res.rows as AuditLogEntry[], total, limit, offset };
   }
 
   // -------------------------------------------------------------------------
@@ -673,6 +728,26 @@ export class OrganizationService {
     const res = await this.db.query('SELECT * FROM tenant.organizations WHERE id = $1', [id]);
     if (res.rows.length === 0) throw new NotFoundException('Organization not found');
     return res.rows[0] as Organization;
+  }
+
+  /** 整数钳制：非法/缺省回落 fallback，否则夹到 [min,max]。 */
+  private clampInt(raw: number | undefined, min: number, max: number, fallback: number): number {
+    const n = typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : NaN;
+    if (Number.isNaN(n)) return fallback;
+    return Math.min(Math.max(n, min), max);
+  }
+
+  /** 过滤参数：UUID 形态校验，fail-fast 400（否则 PG uuid 列报 22P02 → 500）。 */
+  private requireUuid(value: string, field: string): string {
+    if (!UUID_RE.test(value)) throw new BadRequestException(`${field} 必须是合法 UUID`);
+    return value;
+  }
+
+  /** 过滤参数：时间校验并归一为 ISO（否则 PG timestamptz 解析失败 → 500）。 */
+  private requireDate(value: string, field: string): string {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) throw new BadRequestException(`${field} 必须是合法时间（ISO 8601）`);
+    return d.toISOString();
   }
 
   /**

@@ -139,11 +139,11 @@
   },
   "_verification_2026_10_11": {
     "T5": "done_verified（独立复验 E2E 全绿）",
-    "next_queue": [
-      "Claude←T10"
-    ],
+    "next_queue": [],
     "T8": "done_verified（独立复验 E2E 全绿，3018 实例）",
-    "T12": "done_verified（独立复验全绿）"
+    "T12": "done_verified（独立复验全绿）",
+    "T10": "done_verified（独立复验全绿）",
+    "all_dispatched_done": true
   },
   "p2-task-8": {
     "status": "done_verified",
@@ -197,5 +197,33 @@
       "independent": true
     },
     "notes": "lint 门禁移除经实测合理（auth-center 无 eslint 配置，root lint exit 2）。/api/health 401 属契约事实，降 WARN。"
+  },
+  "p2-task-10": {
+    "status": "done_verified",
+    "agent": "claude",
+    "commit": null,
+    "summary": "organization 邀请清单鉴权门禁（堵任意登录用户枚举他组织邀请）+ 审计日志 offset 分页/5 维筛选/同口径 total（参数化，零迁移）",
+    "files": [
+      "services/api/src/modules/organization/organization.service.ts",
+      "services/api/src/modules/organization/organization.controller.ts",
+      "services/api/src/modules/organization/organization.types.ts",
+      "services/api/src/modules/organization/organization.service.spec.ts",
+      "services/api/src/modules/organization/organization.controller.spec.ts"
+    ],
+    "deliverables": [
+      ".agents/claude/outputs/p2-task-10-file-list.md",
+      ".agents/claude/outputs/p2-task-10-verify.sh"
+    ],
+    "verification": {
+      "tsc": "0 error",
+      "module_tests": "2/49",
+      "full_tests": "32/517",
+      "verify_sh": "PASS=46 FAIL=0",
+      "e2e_live": true,
+      "independent": true,
+      "real_tests": 26,
+      "no_skip": true
+    },
+    "notes": "邀请门禁策略取 owner/admin（卡内一致）。未决项留待产品确认：是否允许组织内普通 member 看邀请进度；审计导出未做（另立小卡）。"
   }
 }
