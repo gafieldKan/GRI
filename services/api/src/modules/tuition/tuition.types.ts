@@ -241,3 +241,112 @@ export interface SessionAnalysisDto {
   items: SessionAnalysisItem[];
   knowledgePoints: KnowledgePointMastery[];
 }
+// ---------------------------------------------------------------------------
+// 错题本复习域（P2-T8）：due 到期卡片流 / 单题详情 / 统计聚合 的共享纯类型。
+// 真源 = edu.sr_queue（SM-2 参数，N3）+ edu.wrong_questions（错误元数据，N1）；
+// edu.wrong_questions 无 SR 列、无 next_review_at —— 到期判断一律走 sr_queue.next_review。
+// 错误类型沿用库内既有中文值（N6）。均纯接口，无装饰器。
+// ---------------------------------------------------------------------------
+
+/** SM-2 调度参数（仅存 edu.sr_queue；无 SR 记录时为 null/默认值）。 */
+export interface SrParams {
+  interval: number;
+  easeFactor: number;
+  repetitions: number;
+  nextReview: Date | null;
+  lastReviewed: Date | null;
+}
+
+/** 到期复习卡片（数据源 = edu.sr_queue.next_review ≤ now，join edu.questions；按 next_review 升序）。 */
+export interface DueWrongQuestionDto {
+  /** edu.wrong_questions.id（无错题行时为 null）；复习入口 = POST /wrong-questions/:id/review。 */
+  id: string | null;
+  /** edu.sr_queue.question_id ≡ edu.questions.id（卡片主键，恒存在）。 */
+  questionId: string;
+  content: string | null;
+  type: QuestionType | null;
+  options: string[] | null;
+  answer: string | null;
+  analysis: string | null;
+  subject: string | null;
+  /** 优先错题表 knowledge_point，缺失回退 edu.knowledge_points.name。 */
+  knowledgePoint: string | null;
+  /** 错误类型（库内既有中文值，如 '计算错误'/'判读错误'）。 */
+  errorType: string | null;
+  wrongCount: number;
+  difficulty: number | null;
+  lastAttemptAt: Date | null;
+  sr: SrParams;
+  /** 逾期天数（now - next_review，向下取整，最小 0）。 */
+  overdueDays: number;
+}
+
+/** 单条错题详情（含 SR 参数）。:id = edu.wrong_questions.id。 */
+export interface WrongQuestionDetailDto {
+  id: string;
+  questionId: string | null;
+  content: string | null;
+  questionText: string | null;
+  type: QuestionType | null;
+  questionType: string | null;
+  options: string[] | null;
+  answer: string | null;
+  analysis: string | null;
+  subject: string | null;
+  knowledgePoint: string | null;
+  studentAnswer: string | null;
+  correctAnswer: string | null;
+  /** 错误类型（库内既有中文值，N6）。 */
+  errorType: string | null;
+  difficulty: number | null;
+  masteryLevel: string | null;
+  reviewed: boolean;
+  mastered: boolean;
+  isResolved: boolean;
+  reviewCount: number;
+  wrongCount: number;
+  lastAttemptAt: Date | null;
+  lastReviewedAt: Date | null;
+  sr: SrParams;
+}
+
+/** 掌握度分档（未复习 / 复习中 / 已掌握）。 */
+export interface MasteryBucket {
+  key: 'unreviewed' | 'reviewing' | 'mastered';
+  label: string;
+  count: number;
+}
+
+/** 高频错误知识点（按 knowledge_point 聚合，wrong_count 降序）。 */
+export interface ErrorKnowledgePointStat {
+  knowledgePoint: string | null;
+  /** 该 KP 下累计错误次数。 */
+  wrongCount: number;
+  /** 该 KP 下错题条数。 */
+  questionCount: number;
+}
+
+/** 复习进度（错题表口径 + sr_queue 调度口径）。 */
+export interface WrongQuestionReviewProgress {
+  total: number;
+  reviewed: number;
+  unreviewed: number;
+  mastered: number;
+  resolved: number;
+  unresolved: number;
+  /** 复习率 = reviewed / total，0..1（total=0 时为 0）。 */
+  reviewedRate: number;
+  /** 已进入 sr_queue 的卡片数。 */
+  scheduledCount: number;
+  /** sr_queue.next_review ≤ now 的到期卡片数。 */
+  dueCount: number;
+}
+
+/** 错题统计聚合（掌握度分布 + 高频错误 KP + 复习进度）。 */
+export interface WrongQuestionStatsDto {
+  studentId: string;
+  total: number;
+  masteryBuckets: MasteryBucket[];
+  topErrorKnowledgePoints: ErrorKnowledgePointStat[];
+  reviewProgress: WrongQuestionReviewProgress;
+}

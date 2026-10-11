@@ -1,5 +1,7 @@
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TuitionService } from './tuition.service';
+import { TuitionController } from './tuition.controller';
+import { SpacedRepetitionService } from './agents/spaced-repetition.service';
 import { DatabaseService } from '../../database/database.service';
 
 // @gri/agent-core 是 ESM，jest 不解析；本 spec 不注入 db → router 为 null，给最小桩即可。
@@ -28,7 +30,7 @@ function mockQueries(db: DatabaseService, rules: Array<[RegExp, unknown[]]>) {
   });
 }
 
-function makeService(db: DatabaseService, opts?: { resolveKp?: (id: string) => Promise<string | null>; wrongOwned?: boolean }) {
+function makeService(db: DatabaseService, opts?: { resolveKp?: (id: string) => Promise<string | null>; wrongOwned?: boolean; sr?: unknown }) {
   const questionService = {
     resolveKnowledgePointId: opts?.resolveKp ?? (async () => null),
     getDiagnosisQuestions: async () => [],
@@ -41,7 +43,7 @@ function makeService(db: DatabaseService, opts?: { resolveKp?: (id: string) => P
     questionService as any,
     { generateQuestions: jest.fn() } as any,
     { generatePlan: jest.fn(), updateProgress: jest.fn() } as any,
-    { updateSRQueue: jest.fn() } as any,
+    (opts?.sr ?? { updateSRQueue: jest.fn() }) as any,
     { decide: async () => null } as any, // TutorSessionAgent 默认降级（走 FSM fallback）
   );
   return svc;
@@ -386,5 +388,247 @@ describe('TuitionService（M5 前端面门面回归）', () => {
     const svc = makeService(db);
 
     await expect(svc.getSessionAnalysis('alice', SESSION)).rejects.toThrow(NotFoundException);
+  });
+
+  // ===================== P2-T8：错题本 due 队列 + 复习闭环 + 统计 =====================
+  const WQ_ID = 'c0000000-0000-0000-0000-000000000001';
+  const QID = 'e0000000-0000-0000-0000-000000000009';
+  const minsAgo = (m: number) => new Date(Date.now() - m * 60000);
+
+  it('getDueWrongQuestions：仅取 sr_queue.next_review ≤ now，按 next_review 升序（非 wrong_questions 表）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/FROM edu\.sr_queue sq/, [
+        {
+          question_id: QID, last_reviewed: minsAgo(60), interval: 0, ease_factor: 2.18, repetitions: 0,
+          next_review: minsAgo(30), content: 'x+y=?', type: 'single_choice', options: ['A', 'B'], answer: 'A',
+          analysis: '解析', wrong_question_id: WQ_ID, error_type: '计算错误', wrong_count: 2, subject: 'math',
+          wrong_difficulty: 0.5, last_attempt_at: minsAgo(90), knowledge_point: '一元一次方程',
+        },
+      ]],
+    ]);
+    const svc = makeService(db);
+
+    const rows = await svc.getDueWrongQuestions('alice');
+
+    const sql = (db.query as jest.Mock).mock.calls[0][0] as string;
+    expect(sql).toMatch(/FROM edu\.sr_queue sq/);
+    expect(sql).toMatch(/sq\.user_id = \$1/);
+    expect(sql).toMatch(/sq\.next_review <= NOW\(\)/);
+    expect(sql).toMatch(/ORDER BY sq\.next_review ASC/);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: WQ_ID, questionId: QID, errorType: '计算错误', wrongCount: 2, knowledgePoint: '一元一次方程', subject: 'math',
+    });
+    expect(rows[0].sr.easeFactor).toBe(2.18);
+    expect(rows[0].sr.nextReview).toBeInstanceOf(Date);
+    expect(rows[0].overdueDays).toBe(0);
+  });
+
+  it('getDueWrongQuestions：无 SR 记录 → 空数组，不报错', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.sr_queue sq/, []]]);
+    const svc = makeService(db);
+
+    await expect(svc.getDueWrongQuestions('alice')).resolves.toEqual([]);
+  });
+
+  it('getDueWrongQuestions：limit 收敛到 [1,100]，缺省 20', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.sr_queue sq/, []]]);
+    const svc = makeService(db);
+
+    await svc.getDueWrongQuestions('alice');
+    await svc.getDueWrongQuestions('alice', 999);
+    await svc.getDueWrongQuestions('alice', 0);
+
+    const limits = (db.query as jest.Mock).mock.calls.map((c) => c[1][1]);
+    expect(limits).toEqual([20, 100, 20]);
+  });
+
+  it('getDueWrongQuestions：sr_queue 有行但无错题行 → id=null，错误元数据缺省', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.sr_queue sq/, [{ question_id: QID, next_review: minsAgo(1), content: 'c', answer: 'A' }]]]);
+    const svc = makeService(db);
+
+    const rows = await svc.getDueWrongQuestions('alice');
+
+    expect(rows[0].id).toBeNull();
+    expect(rows[0].errorType).toBeNull();
+    expect(rows[0].wrongCount).toBe(0);
+    expect(rows[0].sr.easeFactor).toBe(2.5);
+  });
+
+  it('getDueWrongQuestions：逾期卡片 overdueDays 按天向下取整', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.sr_queue sq/, [{ question_id: QID, next_review: new Date(Date.now() - 3.5 * 86400000) }]]]);
+    const svc = makeService(db);
+
+    const rows = await svc.getDueWrongQuestions('alice');
+
+    expect(rows[0].overdueDays).toBe(3);
+  });
+
+  it('getWrongQuestionStats：掌握度分布 + 高频错误 KP + 复习进度聚合', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/SELECT COUNT\(\*\)::int AS total/, [{ total: 10, unreviewed: 6, reviewing: 3, mastered: 1, reviewed: 4, resolved: 2, unresolved: 8 }]],
+      [/COALESCE\(wq\.knowledge_point, kp\.name\) AS knowledge_point/, [
+        { knowledge_point: '一元一次方程', wrong_count: 7, question_count: 3 },
+        { knowledge_point: '勾股定理', wrong_count: 2, question_count: 1 },
+        { knowledge_point: null, wrong_count: 1, question_count: 1 },
+      ]],
+      [/FROM edu\.sr_queue WHERE user_id = \$1/, [{ scheduled: 5, due: 4 }]],
+    ]);
+    const svc = makeService(db);
+
+    const s = await svc.getWrongQuestionStats('alice');
+
+    expect(s.studentId).toBe('alice');
+    expect(s.total).toBe(10);
+    expect(s.masteryBuckets).toEqual([
+      { key: 'unreviewed', label: '未复习', count: 6 },
+      { key: 'reviewing', label: '复习中', count: 3 },
+      { key: 'mastered', label: '已掌握', count: 1 },
+    ]);
+    expect(s.topErrorKnowledgePoints[0]).toEqual({ knowledgePoint: '一元一次方程', wrongCount: 7, questionCount: 3 });
+    expect(s.topErrorKnowledgePoints).toHaveLength(3);
+    expect(s.reviewProgress).toEqual({
+      total: 10, reviewed: 4, unreviewed: 6, mastered: 1, resolved: 2, unresolved: 8,
+      reviewedRate: 0.4, scheduledCount: 5, dueCount: 4,
+    });
+  });
+
+  it('getWrongQuestionStats：空库 → 零值且 reviewedRate=0（无除零）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/SELECT COUNT\(\*\)::int AS total/, [{ total: 0, unreviewed: 0, reviewing: 0, mastered: 0, reviewed: 0, resolved: 0, unresolved: 0 }]],
+      [/COALESCE\(wq\.knowledge_point, kp\.name\) AS knowledge_point/, []],
+      [/FROM edu\.sr_queue WHERE user_id = \$1/, [{ scheduled: 0, due: 0 }]],
+    ]);
+    const svc = makeService(db);
+
+    const s = await svc.getWrongQuestionStats('alice');
+
+    expect(s.reviewProgress.reviewedRate).toBe(0);
+    expect(s.topErrorKnowledgePoints).toEqual([]);
+    expect(s.masteryBuckets.every((b) => b.count === 0)).toBe(true);
+  });
+
+  it('getWrongQuestionStats：按 knowledge_point 聚合并按错误次数降序（Top 5）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/COALESCE\(wq\.knowledge_point, kp\.name\) AS knowledge_point/, []]]);
+    const svc = makeService(db);
+
+    await svc.getWrongQuestionStats('alice');
+
+    const call = (db.query as jest.Mock).mock.calls.find((c) => /COALESCE\(wq\.knowledge_point/.test(c[0]));
+    const sql = call[0] as string;
+    expect(sql).toMatch(/GROUP BY COALESCE\(wq\.knowledge_point, kp\.name\)/);
+    expect(sql).toMatch(/ORDER BY wrong_count DESC/);
+    expect(sql).toMatch(/LIMIT 5/);
+    expect(call[1][0]).toBe('alice');
+  });
+
+  it('getWrongQuestionById：返回单条详情含 SR 参数', async () => {
+    const db = makeDb(jest.fn());
+    const next = new Date(Date.now() + 86400000);
+    mockQueries(db, [
+      [/FROM edu\.wrong_questions wq/, [{
+        id: WQ_ID, user_id: 'alice', question_id: QID, wrong_count: 3, last_attempt_at: minsAgo(120),
+        is_resolved: false, question_text: null, question_type: null, subject: 'math',
+        student_answer: 'B', correct_answer: 'A', error_type: '计算错误', difficulty: 0.5,
+        mastery_level: 'mastered', reviewed: true, mastered: true, review_count: 1,
+        last_reviewed_at: minsAgo(10), knowledge_point: '一元一次方程',
+        content: 'x+1=2', type: 'single_choice', options: ['A', 'B'], answer: 'A', analysis: '解析',
+        interval: 1, ease_factor: 2.6, repetitions: 1, next_review: next, last_reviewed: minsAgo(10),
+      }]],
+    ]);
+    const svc = makeService(db);
+
+    const d = await svc.getWrongQuestionById('alice', WQ_ID);
+
+    expect(d).toMatchObject({ id: WQ_ID, questionId: QID, errorType: '计算错误', wrongCount: 3, mastered: true, knowledgePoint: '一元一次方程' });
+    expect(d.sr).toMatchObject({ interval: 1, easeFactor: 2.6, repetitions: 1 });
+    expect(d.sr.nextReview).toEqual(next);
+  });
+
+  it('getWrongQuestionById：不存在 → 404', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.wrong_questions wq/, []]]);
+    const svc = makeService(db);
+
+    await expect(svc.getWrongQuestionById('alice', WQ_ID)).rejects.toThrow(NotFoundException);
+  });
+
+  it('getWrongQuestionById：他人错题 → 403（先取行再校验归属）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.wrong_questions wq/, [{ id: WQ_ID, user_id: 'bob', question_id: QID }]]]);
+    const svc = makeService(db);
+
+    await expect(svc.getWrongQuestionById('alice', WQ_ID)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('getWrongQuestionById：无 sr_queue 行 → SR 参数缺省不炸', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.wrong_questions wq/, [{ id: WQ_ID, user_id: 'alice', question_id: QID, wrong_count: 1 }]]]);
+    const svc = makeService(db);
+
+    const d = await svc.getWrongQuestionById('alice', WQ_ID);
+
+    expect(d.sr).toEqual({ interval: 0, easeFactor: 2.5, repetitions: 0, nextReview: null, lastReviewed: null });
+  });
+
+  it('复习闭环：reviewWrongQuestion(0.9) 复用 SpacedRepetitionService → interval=1、EF=2.6、next_review≈+1d', async () => {
+    const db = makeDb(jest.fn());
+    const sr = new SpacedRepetitionService(db);
+    mockQueries(db, [
+      [/FROM edu\.wrong_questions WHERE id = \$1 AND user_id = \$2/, [{ question_id: QID }]],
+      [/UPDATE edu\.wrong_questions/, []],
+      [/SELECT ease_factor, repetitions, interval FROM edu\.sr_queue/, []],
+      [/INSERT INTO edu\.sr_queue/, []],
+    ]);
+    const svc = makeService(db, { sr });
+    const before = Date.now();
+
+    const r = await svc.reviewWrongQuestion('alice', WQ_ID, 0.9);
+
+    expect(r).toEqual({ success: true });
+    const upsert = (db.query as jest.Mock).mock.calls.find((c) => /INSERT INTO edu\.sr_queue/.test(c[0]));
+    const [uid, qid, interval, ef, reps, nextReview] = upsert[1];
+    expect(uid).toBe('alice');
+    expect(qid).toBe(QID);
+    expect(interval).toBe(1);
+    expect(ef).toBeCloseTo(2.6, 5);
+    expect(reps).toBe(1);
+    // 推后到 +1d → 在 due 的 `next_review <= NOW()` 条件下不再出现
+    expect(nextReview.getTime()).toBeGreaterThanOrEqual(before + 86400000 - 5000);
+    expect(nextReview.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('复习闭环：reviewWrongQuestion(0.2) → SM-2 重置 interval=0、next_review≈now（立即再到期）', async () => {
+    const db = makeDb(jest.fn());
+    const sr = new SpacedRepetitionService(db);
+    mockQueries(db, [
+      [/FROM edu\.wrong_questions WHERE id = \$1 AND user_id = \$2/, [{ question_id: QID }]],
+      [/UPDATE edu\.wrong_questions/, []],
+      [/SELECT ease_factor, repetitions, interval FROM edu\.sr_queue/, [{ ease_factor: 2.5, repetitions: 5, interval: 100 }]],
+      [/INSERT INTO edu\.sr_queue/, []],
+    ]);
+    const svc = makeService(db, { sr });
+
+    await svc.reviewWrongQuestion('alice', WQ_ID, 0.2);
+
+    const upsert = (db.query as jest.Mock).mock.calls.find((c) => /INSERT INTO edu\.sr_queue/.test(c[0]));
+    expect(upsert[1][2]).toBe(0); // interval 重置
+    expect(upsert[1][4]).toBe(0); // repetitions 重置
+    expect(Math.abs((upsert[1][5] as Date).getTime() - Date.now())).toBeLessThan(5000);
+  });
+
+  it('路由顺序：wrong-questions/due、stats/:studentId 声明在 :id 之前（防被 :id 吞）', () => {
+    const names = Object.getOwnPropertyNames(TuitionController.prototype);
+    expect(names.indexOf('getDueWrongQuestions')).toBeGreaterThan(-1);
+    expect(names.indexOf('getDueWrongQuestions')).toBeLessThan(names.indexOf('getWrongQuestionDetail'));
+    expect(names.indexOf('getWrongQuestionStats')).toBeLessThan(names.indexOf('getWrongQuestionDetail'));
   });
 });

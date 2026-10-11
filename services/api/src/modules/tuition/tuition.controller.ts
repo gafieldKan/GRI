@@ -96,6 +96,29 @@ export class TuitionController {
     return { wrongQuestions: rows };
   }
 
+  /**
+   * 到期复习卡片流（个人私有）：数据源 = edu.sr_queue.next_review ≤ now，按 next_review 升序。
+   * ⚠️ 路由顺序：due / stats 必须在 :id 之前声明，否则会被 :id 吞（本组顺序即契约）。
+   */
+  @Get('wrong-questions/due')
+  getDueWrongQuestions(@Req() req: Request) {
+    const limit = (req as any).query?.limit ? Number((req as any).query.limit) : 20;
+    return this.tuitionService.getDueWrongQuestions(this.userId(req), limit);
+  }
+
+  /** 错题统计（个人私有）：掌握度分布 + 高频错误 KP + 复习进度（:studentId 经 assertOwner）。 */
+  @Get('wrong-questions/stats/:studentId')
+  getWrongQuestionStats(@Req() req: Request, @Param('studentId') studentId: string) {
+    const uid = this.assertOwner(req, studentId);
+    return this.tuitionService.getWrongQuestionStats(uid);
+  }
+
+  /** 单条错题详情（含 SR 参数）：:id = wrong_questions.id；他人 → 403，不存在/畸形 → 404/400。 */
+  @Get('wrong-questions/:id')
+  getWrongQuestionDetail(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.tuitionService.getWrongQuestionById(this.userId(req), id);
+  }
+
   @Put('wrong-questions/:id/resolve')
   async resolveQuestion(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
     await this.tuitionService.markQuestionResolved(this.userId(req), id);

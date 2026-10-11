@@ -140,9 +140,36 @@
   "_verification_2026_10_11": {
     "T5": "done_verified（独立复验 E2E 全绿）",
     "next_queue": [
-      "Codex←T8",
       "Codex←T12",
       "Claude←T10"
-    ]
+    ],
+    "T8": "done_verified（独立复验 E2E 全绿，3018 实例）"
+  },
+  "p2-task-8": {
+    "status": "done_verified",
+    "agent": "codex",
+    "commit": null,
+    "summary": "错题本 due 队列（源自 sr_queue.next_review）+ stats 聚合 + 单题详情（含 SR 参数）",
+    "files": [
+      "tuition.service.ts",
+      "tuition.controller.ts",
+      "tuition.types.ts",
+      "tuition.service.spec.ts"
+    ],
+    "deliverables": [
+      ".agents/codex/outputs/p2-task-8-file-list.md",
+      ".agents/codex/outputs/p2-task-8-verify.sh"
+    ],
+    "verification": {
+      "tsc": "0 err",
+      "tuition": "12 suites/161 tests",
+      "full": "32 suites/493 tests",
+      "verify_sh": "PASS=*** FAIL=0 SKIP=0 (独立：3018 实例)",
+      "independent": true
+    },
+    "notes": "3008 容器旧镜像 → 新路由 404；复验用自起 3018 实例。无新迁移（N4 合规）。"
+  },
+  "_open_followups_2026_10_11": {
+    "gri_api_container_stale": "3008 gri-api 镜像旧（不含 T5/T8 新路由）；需在合适窗口重建部署（docker compose build api && up -d api）"
   }
 }

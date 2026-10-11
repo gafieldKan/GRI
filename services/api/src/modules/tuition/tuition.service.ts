@@ -10,6 +10,9 @@ import {
   SessionAnalysisDto,
   SessionAnalysisItem,
   KnowledgePointMastery,
+  DueWrongQuestionDto,
+  WrongQuestionDetailDto,
+  WrongQuestionStatsDto,
 } from './tuition.types';
 import { AiAgentService } from './agents/ai-agent.service';
 import { SessionFsmService, SessionFsm } from './agents/session-fsm';
@@ -177,6 +180,182 @@ export class TuitionService {
       await this.sr.updateSRQueue(userId, questionId, mastery);
     }
     return { success: true };
+  }
+
+  /**
+   * 到期复习卡片流（P2-T8 ①）。
+   * 数据源铁律：edu.sr_queue.next_review ≤ now（升序）——edu.wrong_questions 无 next_review_at，
+   * 只借其补错误元数据（error_type/wrong_count/knowledge_point）。无 SR 记录 → 空数组，不报错。
+   */
+  async getDueWrongQuestions(userId: string, limit = 20): Promise<DueWrongQuestionDto[]> {
+    const n = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    const res = await this.db.query(
+      `SELECT sq.question_id, sq.last_reviewed, sq.interval, sq.ease_factor, sq.repetitions, sq.next_review,
+              q.content, q.type, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              wq.id AS wrong_question_id, wq.error_type, wq.wrong_count, wq.subject,
+              wq.difficulty AS wrong_difficulty, wq.last_attempt_at,
+              COALESCE(wq.knowledge_point, kp.name) AS knowledge_point
+         FROM edu.sr_queue sq
+         JOIN edu.questions q ON q.id = sq.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+         LEFT JOIN edu.wrong_questions wq ON wq.user_id = sq.user_id AND wq.question_id = sq.question_id
+        WHERE sq.user_id = $1 AND sq.next_review IS NOT NULL AND sq.next_review <= NOW()
+        ORDER BY sq.next_review ASC
+        LIMIT $2`,
+      [userId, n],
+    );
+    const now = Date.now();
+    return res.rows.map((r: any) => {
+      const nextReview = r.next_review ? new Date(r.next_review) : null;
+      return {
+        id: r.wrong_question_id ?? null,
+        questionId: r.question_id,
+        content: r.content ?? null,
+        type: r.type ?? null,
+        options: r.options ?? null,
+        answer: r.answer ?? null,
+        analysis: r.analysis ?? null,
+        subject: r.subject ?? null,
+        knowledgePoint: r.knowledge_point ?? null,
+        errorType: r.error_type ?? null,
+        wrongCount: r.wrong_count ?? 0,
+        difficulty: r.wrong_difficulty ?? null,
+        lastAttemptAt: r.last_attempt_at ? new Date(r.last_attempt_at) : null,
+        sr: {
+          interval: r.interval ?? 0,
+          easeFactor: r.ease_factor ?? 2.5,
+          repetitions: r.repetitions ?? 0,
+          nextReview,
+          lastReviewed: r.last_reviewed ? new Date(r.last_reviewed) : null,
+        },
+        overdueDays: nextReview ? Math.max(0, Math.floor((now - nextReview.getTime()) / 86400000)) : 0,
+      };
+    });
+  }
+
+  /**
+   * 单条错题详情（P2-T8 ③），含 SR 参数。:id = edu.wrong_questions.id。
+   * 所有权：先按 id 取行，不存在 → 404；属他人 → 403（与 loadOwnedSession 同语义）。
+   */
+  async getWrongQuestionById(userId: string, id: string): Promise<WrongQuestionDetailDto> {
+    const res = await this.db.query(
+      `SELECT wq.id, wq.user_id, wq.question_id, wq.wrong_count, wq.last_attempt_at, wq.is_resolved,
+              wq.question_text, wq.question_type, wq.subject, wq.student_answer, wq.correct_answer,
+              wq.error_type, wq.difficulty, wq.mastery_level, wq.reviewed, wq.mastered, wq.review_count,
+              wq.last_reviewed_at, COALESCE(wq.knowledge_point, kp.name) AS knowledge_point,
+              q.content, q.type, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              sq.interval, sq.ease_factor, sq.repetitions, sq.next_review, sq.last_reviewed
+         FROM edu.wrong_questions wq
+         LEFT JOIN edu.questions q ON q.id = wq.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+         LEFT JOIN edu.sr_queue sq ON sq.user_id = wq.user_id AND sq.question_id = wq.question_id
+        WHERE wq.id = $1`,
+      [id],
+    );
+    if (res.rows.length === 0) throw new NotFoundException('错题不存在或无权访问');
+    const r: any = res.rows[0];
+    if (r.user_id !== userId) throw new ForbiddenException('无权访问他人错题');
+    return {
+      id: r.id,
+      questionId: r.question_id ?? null,
+      content: r.content ?? null,
+      questionText: r.question_text ?? null,
+      type: r.type ?? null,
+      questionType: r.question_type ?? null,
+      options: r.options ?? null,
+      answer: r.answer ?? null,
+      analysis: r.analysis ?? null,
+      subject: r.subject ?? null,
+      knowledgePoint: r.knowledge_point ?? null,
+      studentAnswer: r.student_answer ?? null,
+      correctAnswer: r.correct_answer ?? null,
+      errorType: r.error_type ?? null,
+      difficulty: r.difficulty ?? null,
+      masteryLevel: r.mastery_level ?? null,
+      reviewed: r.reviewed ?? false,
+      mastered: r.mastered ?? false,
+      isResolved: r.is_resolved ?? false,
+      reviewCount: r.review_count ?? 0,
+      wrongCount: r.wrong_count ?? 0,
+      lastAttemptAt: r.last_attempt_at ? new Date(r.last_attempt_at) : null,
+      lastReviewedAt: r.last_reviewed_at ? new Date(r.last_reviewed_at) : null,
+      sr: {
+        interval: r.interval ?? 0,
+        easeFactor: r.ease_factor ?? 2.5,
+        repetitions: r.repetitions ?? 0,
+        nextReview: r.next_review ? new Date(r.next_review) : null,
+        lastReviewed: r.last_reviewed ? new Date(r.last_reviewed) : null,
+      },
+    };
+  }
+
+  /**
+   * 错题统计聚合（P2-T8 ②）：掌握度分布 + 高频错误 KP + 复习进度。
+   * KP 维度：优先错题表 knowledge_point 文本，缺失回退 edu.knowledge_points.name（练习链路错题行 KP 多为空）。
+   * 错误类型沿用库内中文值（N6），不做英文枚举映射。
+   */
+  async getWrongQuestionStats(userId: string): Promise<WrongQuestionStatsDto> {
+    const [agg, kps, sr] = await Promise.all([
+      this.db.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE reviewed = false)::int AS unreviewed,
+                COUNT(*) FILTER (WHERE reviewed = true AND mastered = false)::int AS reviewing,
+                COUNT(*) FILTER (WHERE mastered = true)::int AS mastered,
+                COUNT(*) FILTER (WHERE reviewed = true)::int AS reviewed,
+                COUNT(*) FILTER (WHERE is_resolved = true)::int AS resolved,
+                COUNT(*) FILTER (WHERE is_resolved = false)::int AS unresolved
+           FROM edu.wrong_questions WHERE user_id = $1`,
+        [userId],
+      ),
+      this.db.query(
+        `SELECT COALESCE(wq.knowledge_point, kp.name) AS knowledge_point,
+                SUM(wq.wrong_count)::int AS wrong_count,
+                COUNT(*)::int AS question_count
+           FROM edu.wrong_questions wq
+           LEFT JOIN edu.questions q ON q.id = wq.question_id
+           LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+          WHERE wq.user_id = $1
+          GROUP BY COALESCE(wq.knowledge_point, kp.name)
+          ORDER BY wrong_count DESC, question_count DESC
+          LIMIT 5`,
+        [userId],
+      ),
+      this.db.query(
+        `SELECT COUNT(*)::int AS scheduled,
+                COUNT(*) FILTER (WHERE next_review IS NOT NULL AND next_review <= NOW())::int AS due
+           FROM edu.sr_queue WHERE user_id = $1`,
+        [userId],
+      ),
+    ]);
+    const a = agg.rows[0] ?? {};
+    const s = sr.rows[0] ?? {};
+    const total = a.total ?? 0;
+    const reviewed = a.reviewed ?? 0;
+    return {
+      studentId: userId,
+      total,
+      masteryBuckets: [
+        { key: 'unreviewed', label: '未复习', count: a.unreviewed ?? 0 },
+        { key: 'reviewing', label: '复习中', count: a.reviewing ?? 0 },
+        { key: 'mastered', label: '已掌握', count: a.mastered ?? 0 },
+      ],
+      topErrorKnowledgePoints: kps.rows.map((r: any) => ({
+        knowledgePoint: r.knowledge_point ?? null,
+        wrongCount: r.wrong_count ?? 0,
+        questionCount: r.question_count ?? 0,
+      })),
+      reviewProgress: {
+        total,
+        reviewed,
+        unreviewed: total - reviewed,
+        mastered: a.mastered ?? 0,
+        resolved: a.resolved ?? 0,
+        unresolved: a.unresolved ?? 0,
+        reviewedRate: total ? Number((reviewed / total).toFixed(4)) : 0,
+        scheduledCount: s.scheduled ?? 0,
+        dueCount: s.due ?? 0,
+      },
+    };
   }
 
   // ===================== 学习计划 =====================
