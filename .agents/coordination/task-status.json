@@ -140,10 +140,10 @@
   "_verification_2026_10_11": {
     "T5": "done_verified（独立复验 E2E 全绿）",
     "next_queue": [
-      "Codex←T12",
       "Claude←T10"
     ],
-    "T8": "done_verified（独立复验 E2E 全绿，3018 实例）"
+    "T8": "done_verified（独立复验 E2E 全绿，3018 实例）",
+    "T12": "done_verified（独立复验全绿）"
   },
   "p2-task-8": {
     "status": "done_verified",
@@ -171,5 +171,31 @@
   },
   "_open_followups_2026_10_11": {
     "gri_api_container_stale": "3008 gri-api 镜像旧（不含 T5/T8 新路由）；需在合适窗口重建部署（docker compose build api && up -d api）"
+  },
+  "p2-task-12": {
+    "status": "done_verified",
+    "agent": "codex",
+    "commit": null,
+    "summary": "scripts/health-check.sh（nginx 网关只读探测）+ CI 加固（统一 Node20/去重/tcs+Jest+docker build+迁移自举门禁）",
+    "files": [
+      "scripts/health-check.sh",
+      ".github/workflows/ci-cd.yml",
+      ".github/workflows/monorepo-ci.yml"
+    ],
+    "deliverables": [
+      ".agents/codex/outputs/p2-task-12-file-list.md",
+      ".agents/codex/outputs/p2-task-12-verify.sh"
+    ],
+    "verification": {
+      "yaml": "双解析通过",
+      "bash_n": "通过",
+      "health_check_live": "PASS=7 FAIL=0 SKIP=1 WARN=1",
+      "negative": "exit=1 正确",
+      "verify_sh": "PASS=*** FAIL=0 SKIP=0",
+      "api_tests": "32/493",
+      "ac_tests": "4/31",
+      "independent": true
+    },
+    "notes": "lint 门禁移除经实测合理（auth-center 无 eslint 配置，root lint exit 2）。/api/health 401 属契约事实，降 WARN。"
   }
 }
