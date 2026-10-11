@@ -87,6 +87,11 @@ scripts/k12-curriculum/maps-draft/
 !.agents/**/*.sh
 !.agents/**/*.json
 
+# reference-data 骨架数据（联合国区域划分 / ISIC 行业分类）。抽取产物 checked-in，
+# 保证 import.mjs 可脱离外部源文件重现；真源抽取见 scripts/reference-data/extract.mjs
+!scripts/reference-data/data/
+!scripts/reference-data/data/**
+
 # 运行时噪音（大日志、完成标记、临时构建日志）不入库
 .agents/coordination/logs/
 .agents/coordination/*.log
