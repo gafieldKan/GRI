@@ -225,5 +225,12 @@
       "no_skip": true
     },
     "notes": "邀请门禁策略取 owner/admin（卡内一致）。未决项留待产品确认：是否允许组织内普通 member 看邀请进度；审计导出未做（另立小卡）。"
+  },
+  "_decision_2026_10_11": {
+    "three_followups_verdict": "均不立卡（no new cards）",
+    "①invitation_gate": "维持 owner/admin。createInvitation(:550)+cancelInvitation(:614) 本就 assertRole(ownerOnly:false)；读路径同档=内部一致。放开为 member 会致「能看不能操作」新不一致。",
+    "②api_health": "非契约。main.ts:14 setGlobalPrefix('api',{exclude:['health']})→仅 /health 为路由；nginx 仅映射 /health；无消费者。health-check.sh 已正确降 WARN。",
+    "③audit_export": "零需求（无消费者/无 UI）。YAGNI，删范围而非另立卡。",
+    "basis": "逐项 grep 实证，非凭印象"
   }
 }
