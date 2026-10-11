@@ -1,0 +1,83 @@
+# UN 区域划分本体 —— 「地理」主轴唯一结构真源
+#
+# 数据真源：scripts/reference-data/data/un-regions.json
+#   （源自《联合国区域划分地图_逐层展开_V1.0.html》内嵌 atlas-data，UN M49 / Natural Earth / DataV.GeoAtlas）
+# 生成方式：@gri/codegen → services/api/src/migrate/021_un_regions.sql（结构轨）
+# 数据轨：scripts/reference-data/import.mjs 幂等灌库（结构轨/数据轨分离，照 k12-curriculum 惯例）
+#
+# 层级（自引用树，单一 parent 链；节点计数实测）：
+#   world(1) → region(5) → subregion(17) → intermediate(7) → country(248)
+#           → province(34) → admin1(4484) → city(333) → district(2870)   合计 7999
+#
+# 锚点决策（实测）：源数字 id 全局唯一（100000–9999999）→ 作 nodeId 唯一锚点；
+#   code 存在 60 组重复（全在 admin1 层，源数据瑕疵）→ 仅建索引，不作唯一键。
+schemaVersion: 0.1.0
+name: un-regions
+description: 联合国 M49 区域 + 中国行政区划（world→region→subregion→country→province→city→district 自引用树，地理主轴）
+
+objects:
+  - name: Region
+    table: ontology.region
+    description: 行政区节点（全球国家 + 中国省/市/区，自引用树）
+    fields:
+      - name: nodeId
+        type: string
+        required: true
+        unique: true
+        description: 源稳定 id（数字字符串化），唯一锚点（幂等灌库键）
+      - name: code
+        type: string
+        index: true
+        description: 官方编码（UN M49 / 行政区划码；存在重复，仅索引）
+      - name: name
+        type: string
+        required: true
+        description: 展示名（中文）
+      - name: short
+        type: string
+        description: 简称
+      - name: english
+        type: string
+        description: 英文名
+      - name: level
+        type: enum
+        required: true
+        values: [world, region, subregion, intermediate, country, province, admin1, city, district]
+        description: 层级（对应 UN M49 层级 + 中国行政区划层级）
+      - name: iso2
+        type: string
+        description: ISO 3166-1 alpha-2（国家）
+      - name: iso3
+        type: string
+        description: ISO 3166-1 alpha-3（国家）
+      - name: center
+        type: json
+        description: 中心点经纬度 [lng, lat]
+      - name: adminType
+        type: string
+        description: 行政类型（源 adminType）
+      - name: alias
+        type: string
+        description: 别名
+      - name: note
+        type: text
+        description: 备注
+      - name: source
+        type: string
+        description: 数据来源标记（UN M49 / DataV.GeoAtlas）
+      - name: sortOrder
+        type: integer
+        description: 同层排序
+      - name: status
+        type: string
+        dbDefault: "'active'"
+        description: 'active | archived'
+    indexes:
+      - columns: [level]
+        name: idx_region_level
+    links:
+      - name: parentRegion
+        source: Region
+        target: Region
+        cardinality: many
+        foreignKey: parentId      # 自引用树（一个父区有多个子区；many:1，非 1:1）

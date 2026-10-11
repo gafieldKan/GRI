@@ -1,0 +1,78 @@
+# ISIC Rev.5 行业分类本体 —— 「行业」主轴唯一结构真源
+#
+# 数据真源：scripts/reference-data/data/isic-rev5.json
+#   （源自《联合国行业分类_ISIC_Rev5_逐层展开_V1.0.html》内嵌 industry-data，UN Statistics Division）
+# 生成方式：@gri/codegen → services/api/src/migrate/022_isic_rev5.sql（结构轨）
+# 数据轨：scripts/reference-data/import.mjs 幂等灌库（结构轨/数据轨分离，照 k12-curriculum 惯例）
+#
+# 层级（自引用树；节点计数实测）：
+#   root(1) → system(1) → section(22 门类) → division(87 大类) → group(258 中类) → class(463 小类)   合计 832
+#
+# 锚点：code 全局唯一（实测 0 重复）→ 作唯一灌库键。
+schemaVersion: 0.1.0
+name: isic-rev5
+description: 联合国国际标准产业分类 ISIC Rev.5（门类→大类→中类→小类自引用树，行业主轴）
+
+objects:
+  - name: Industry
+    table: ontology.industry
+    description: 行业分类节点（ISIC Rev.5 六层自引用树）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: ISIC 编码（A / 01 / 011 …；唯一锚点）
+      - name: name
+        type: string
+        required: true
+        description: 中文名
+      - name: short
+        type: string
+        description: 简称
+      - name: en
+        type: string
+        description: 官方英文名
+      - name: level
+        type: enum
+        required: true
+        values: [root, system, section, division, group, class]
+        description: 层级（门类 section / 大类 division / 中类 group / 小类 class）
+      - name: section
+        type: string
+        index: true
+        description: 所属门类编码（顶层归组，便于按门类检索）
+      - name: intro
+        type: text
+        description: 范围导语
+      - name: includes
+        type: text
+        description: 包含内容
+      - name: also
+        type: text
+        description: 还包括
+      - name: excludes
+        type: text
+        description: 不包含内容
+      - name: refs
+        type: json
+        description: 交叉引用编码数组
+      - name: updated
+        type: boolean
+        description: 是否 2026 范围说明修订项
+      - name: sortOrder
+        type: integer
+        description: 同层排序
+      - name: status
+        type: string
+        dbDefault: "'active'"
+        description: 'active | archived'
+    indexes:
+      - columns: [level]
+        name: idx_industry_level
+    links:
+      - name: parentIndustry
+        source: Industry
+        target: Industry
+        cardinality: many
+        foreignKey: parentId      # 自引用树（一个父类有多个子类；many:1，非 1:1）
