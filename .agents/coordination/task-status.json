@@ -111,5 +111,38 @@
       "Claude←T10"
     ],
     "note": "用户手动下达；串行铁律（同一时刻一个 agent）；命令 = bash .agents/coordination/run-task.sh <agent> <card>"
+  },
+  "p2-task-5": {
+    "status": "done_verified",
+    "agent": "codex",
+    "commit": null,
+    "summary": "会话级 progress/analysis 闭环 + practice/answer 落真实 session_id（根因：原硬编码 NULL）",
+    "files": [
+      "tuition.service.ts",
+      "tuition.controller.ts",
+      "tuition.types.ts",
+      "tuition.service.spec.ts",
+      "migrate/020_answer_records_session_fk.sql"
+    ],
+    "deliverables": [
+      ".agents/codex/outputs/p2-task-5-file-list.md",
+      ".agents/codex/outputs/p2-task-5-verify.sh"
+    ],
+    "verification": {
+      "tsc": "0 err",
+      "tuition": "12 suites/146 tests",
+      "full": "32 suites/478 tests",
+      "verify_sh": "PASS=32 FAIL=0 SKIP=0",
+      "independent": true
+    },
+    "n4_exception": "迁移 020 FK 重定向（已核验安全：迁移前 with_sid=0；agent.service 写 NULL 不冲突）"
+  },
+  "_verification_2026_10_11": {
+    "T5": "done_verified（独立复验 E2E 全绿）",
+    "next_queue": [
+      "Codex←T8",
+      "Codex←T12",
+      "Claude←T10"
+    ]
   }
 }

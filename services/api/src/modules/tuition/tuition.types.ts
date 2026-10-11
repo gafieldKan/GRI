@@ -176,3 +176,68 @@ export interface VariantGenerationOptions {
   subject?: string;
   gradeLevel?: string;
 }
+// ---------------------------------------------------------------------------
+// 练习会话域（P2-T5）：会话级进度/分析闭环的共享纯类型（无装饰器）。
+// 真源 = edu.answer_records(session_id) + edu.practice_sessions(.questions jsonb)。
+// ---------------------------------------------------------------------------
+
+/** POST /practice/answer 入参：`sessionId` 落真实 practice_sessions.id（缺省则向后兼容存 NULL）。 */
+export interface AnswerSubmitDto {
+  questionId: string;
+  answer: string;
+  sessionId?: string;
+  timeSpentMs?: number;
+  isCorrect?: boolean;
+  studentId?: string;
+}
+
+/** 会话进度：已答/总数/正确率/当前题索引。 */
+export interface SessionProgressDto {
+  sessionId: string;
+  answered: number;
+  total: number;
+  correctCount: number;
+  /** 正确率，0..1。 */
+  correctRate: number;
+  /** 下一题索引（= 已答题数）。 */
+  currentIndex: number;
+  status: 'in_progress' | 'completed';
+}
+
+/** 会话逐题解析项（题面多态沿用 edu.questions.type/options/content_latex/answer_latex）。 */
+export interface SessionAnalysisItem {
+  questionId: string;
+  content: string | null;
+  type: QuestionType | null;
+  options: string[] | null;
+  studentAnswer: string | null;
+  correctAnswer: string | null;
+  isCorrect: boolean | null;
+  analysis: string | null;
+  contentLatex: string | null;
+  answerLatex: string | null;
+  difficulty: string | null;
+  knowledgePointId: string | null;
+  knowledgePointName: string | null;
+  timeSpentMs: number | null;
+}
+
+/** 知识点掌握度聚合（按 knowledge_point_id）。 */
+export interface KnowledgePointMastery {
+  knowledgePointId: string | null;
+  knowledgePointName: string | null;
+  answered: number;
+  correct: number;
+  /** 正确率，0..1。 */
+  correctRate: number;
+}
+
+/** 会话分析：逐题解析数组 + 按 knowledge_point_id 聚合的正确率。 */
+export interface SessionAnalysisDto {
+  sessionId: string;
+  answered: number;
+  correctCount: number;
+  correctRate: number;
+  items: SessionAnalysisItem[];
+  knowledgePoints: KnowledgePointMastery[];
+}

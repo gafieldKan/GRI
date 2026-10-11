@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TuitionService } from './tuition.service';
+import { AnswerSubmitDto } from './tuition.types';
 import { Request } from 'express';
 
 /**
@@ -190,9 +191,21 @@ export class TuitionController {
   }
 
   @Post('practice/answer')
-  submitAnswer(@Req() req: Request, @Body() body: { questionId: string; answer: string; sessionId?: string; timeSpentMs?: number; isCorrect?: boolean; studentId?: string }) {
+  submitAnswer(@Req() req: Request, @Body() body: AnswerSubmitDto) {
     this.assertOwner(req, body.studentId);
     return this.tuitionService.submitPracticeAnswer(this.userId(req), body);
+  }
+
+  /** 会话进度（个人私有）：:sessionId 经服务级归属校验（他人 403 / 无效 404）。 */
+  @Get('practice/sessions/:sessionId/progress')
+  getSessionProgress(@Req() req: Request, @Param('sessionId') sessionId: string) {
+    return this.tuitionService.getSessionProgress(this.userId(req), sessionId);
+  }
+
+  /** 会话级逐题解析 + 知识点掌握度聚合（个人私有）。 */
+  @Get('practice/sessions/:sessionId/analysis')
+  getSessionAnalysis(@Req() req: Request, @Param('sessionId') sessionId: string) {
+    return this.tuitionService.getSessionAnalysis(this.userId(req), sessionId);
   }
 
   // ===================== 试卷识别与学情分析（个人私有） =====================

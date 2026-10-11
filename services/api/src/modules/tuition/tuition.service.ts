@@ -5,6 +5,11 @@ import {
   PracticeSession,
   WrongQuestion,
   LearningPlan,
+  AnswerSubmitDto,
+  SessionProgressDto,
+  SessionAnalysisDto,
+  SessionAnalysisItem,
+  KnowledgePointMastery,
 } from './tuition.types';
 import { AiAgentService } from './agents/ai-agent.service';
 import { SessionFsmService, SessionFsm } from './agents/session-fsm';
@@ -60,6 +65,9 @@ export class TuitionService {
     private readonly sr: SpacedRepetitionService,
     private readonly tutorSessionAgent: TutorSessionAgent,
   ) {}
+
+  /** UUID 格式校验：malformed sessionId 直接 404，避免 PG uuid 解析抛错变 500。 */
+  private static readonly UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   // ===================== 题目 =====================
 
@@ -258,9 +266,23 @@ export class TuitionService {
     return res.rows;
   }
 
-  /** 提交练习答案：落 answer_records + SM-2 更新 + 错题入账。 */
-  async submitPracticeAnswer(userId: string, body: { questionId: string; answer: string; sessionId?: string; timeSpentMs?: number; isCorrect?: boolean }) {
+  /**
+   * 会话归属校验（真源 userId，防 IDOR）：非 UUID/不存在 → 404；属他人 → 403。
+   * 返回 practice_sessions 行供进度/分析复用。
+   */
+  private async loadOwnedSession(userId: string, sessionId: string): Promise<any> {
+    if (!TuitionService.UUID_RE.test(sessionId)) throw new NotFoundException('练习会话不存在');
+    const res = await this.db.query(`SELECT * FROM edu.practice_sessions WHERE id = $1`, [sessionId]);
+    if (res.rows.length === 0) throw new NotFoundException('练习会话不存在');
+    if (res.rows[0].user_id !== userId) throw new ForbiddenException('无权访问他人练习会话');
+    return res.rows[0];
+  }
+
+  /** 提交练习答案：落 answer_records（含真实 session_id）+ SM-2 更新 + 错题入账。 */
+  async submitPracticeAnswer(userId: string, body: AnswerSubmitDto) {
     if (!body.questionId) throw new NotFoundException('缺少题目');
+    // 带 sessionId 时必须归属本主（会话级进度/分析的数据源，杜绝跨用户串写）。
+    if (body.sessionId) await this.loadOwnedSession(userId, body.sessionId);
     const q = await this.getQuestionDetail(body.questionId);
     // 用校验器统一判定
     const verdict = await this.llmValidatePlaceholder(q, body.answer);
@@ -268,8 +290,8 @@ export class TuitionService {
 
     await this.db.query(
       `INSERT INTO edu.answer_records (user_id, question_id, session_id, student_answer, is_correct, time_spent_ms)
-       VALUES ($1, $2, NULL, $3, $4, $5)`,
-      [userId, body.questionId, body.answer, isCorrect, body.timeSpentMs ?? null],
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, body.questionId, body.sessionId ?? null, body.answer, isCorrect, body.timeSpentMs ?? null],
     );
 
     // SM-2 间隔重复
@@ -289,6 +311,89 @@ export class TuitionService {
       [randomUUID(), userId, body.questionId, body.answer, q.answer, diffNum],
     );
     return { success: true, correct: false };
+  }
+
+  /** 会话进度：已答/总数/正确率/当前题索引。 */
+  async getSessionProgress(userId: string, sessionId: string): Promise<SessionProgressDto> {
+    const session = await this.loadOwnedSession(userId, sessionId);
+    const agg = await this.db.query(
+      `SELECT COUNT(*)::int AS answered,
+              COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END), 0)::int AS correct
+         FROM edu.answer_records WHERE session_id = $1 AND user_id = $2`,
+      [sessionId, userId],
+    );
+    const answered = Number(agg.rows[0]?.answered ?? 0);
+    const correctCount = Number(agg.rows[0]?.correct ?? 0);
+    // total 优先取会话题面快照长度；无快照时回退为已答数（不臆造分母）。
+    const planned = Array.isArray(session.questions) ? session.questions.length : 0;
+    const total = planned > 0 ? planned : answered;
+    return {
+      sessionId,
+      answered,
+      total,
+      correctCount,
+      correctRate: answered ? correctCount / answered : 0,
+      currentIndex: answered,
+      status: session.status,
+    };
+  }
+
+  /** 会话分析：逐题解析数组 + 按 knowledge_point_id 聚合的正确率。 */
+  async getSessionAnalysis(userId: string, sessionId: string): Promise<SessionAnalysisDto> {
+    await this.loadOwnedSession(userId, sessionId);
+    const res = await this.db.query(
+      `SELECT ar.question_id, ar.student_answer, ar.is_correct, ar.time_spent_ms,
+              q.content, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              q.type, q.options, q.content_latex, q.answer_latex, q.difficulty,
+              q.knowledge_point_id, kp.name AS knowledge_point_name
+         FROM edu.answer_records ar
+         LEFT JOIN edu.questions q ON q.id = ar.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+        WHERE ar.session_id = $1 AND ar.user_id = $2
+        ORDER BY ar.created_at ASC`,
+      [sessionId, userId],
+    );
+    const items: SessionAnalysisItem[] = (res.rows as any[]).map((r) => ({
+      questionId: r.question_id,
+      content: r.content ?? null,
+      type: r.type ?? null,
+      options: Array.isArray(r.options) ? r.options : null,
+      studentAnswer: r.student_answer ?? null,
+      correctAnswer: r.answer ?? null,
+      isCorrect: r.is_correct ?? null,
+      analysis: r.analysis ?? null,
+      contentLatex: r.content_latex ?? null,
+      answerLatex: r.answer_latex ?? null,
+      difficulty: r.difficulty != null ? String(r.difficulty) : null,
+      knowledgePointId: r.knowledge_point_id ?? null,
+      knowledgePointName: r.knowledge_point_name ?? null,
+      timeSpentMs: r.time_spent_ms ?? null,
+    }));
+    const kpMap = new Map<string, KnowledgePointMastery>();
+    for (const it of items) {
+      const key = it.knowledgePointId ?? '__unknown__';
+      const cur = kpMap.get(key) ?? {
+        knowledgePointId: it.knowledgePointId,
+        knowledgePointName: it.knowledgePointName,
+        answered: 0,
+        correct: 0,
+        correctRate: 0,
+      };
+      cur.answered += 1;
+      if (it.isCorrect) cur.correct += 1;
+      cur.correctRate = cur.answered ? cur.correct / cur.answered : 0;
+      kpMap.set(key, cur);
+    }
+    const answered = items.length;
+    const correctCount = items.filter((i) => i.isCorrect).length;
+    return {
+      sessionId,
+      answered,
+      correctCount,
+      correctRate: answered ? correctCount / answered : 0,
+      items,
+      knowledgePoints: [...kpMap.values()],
+    };
   }
 
   private async llmValidatePlaceholder(q: any, answer: string) {

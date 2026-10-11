@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TuitionService } from './tuition.service';
 import { DatabaseService } from '../../database/database.service';
 
@@ -228,5 +228,163 @@ describe('TuitionService（M5 前端面门面回归）', () => {
     expect(sql).toMatch(/wq\.is_resolved = false/);
     expect(params[0]).toBe('alice');
     expect(rows).toHaveLength(1);
+  });
+  // ===================== P2-T5：会话级进度/分析闭环 =====================
+  const SESSION = 'a0000000-0000-0000-0000-000000000001';
+  const QUESTION = 'e0000000-0000-0000-0000-000000000001';
+  const ownSession = (questions: unknown = [{ id: QUESTION }]) => [{ id: SESSION, user_id: 'alice', status: 'in_progress', questions }];
+  const q1 = { id: QUESTION, answer: 'A', type: 'single_choice', difficulty: 'medium' };
+
+  it('submitPracticeAnswer：带 sessionId → answer_records 落真实 session_id（非 NULL）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/FROM edu\.practice_sessions WHERE id = \$1/, ownSession()],
+      [/FROM edu\.questions WHERE id = \$1/, [q1]],
+      [/INSERT INTO edu\.answer_records/, []],
+    ]);
+    const svc = makeService(db);
+
+    const r = await svc.submitPracticeAnswer('alice', { questionId: QUESTION, answer: 'A', sessionId: SESSION });
+
+    const insert = (db.query as jest.Mock).mock.calls.find((c) => /INSERT INTO edu\.answer_records/.test(c[0]));
+    expect(insert[1][2]).toBe(SESSION);
+    expect(insert[1][2]).not.toBeNull();
+    expect(r.correct).toBe(true);
+  });
+
+  it('submitPracticeAnswer：缺省 sessionId → session_id 存 NULL（向后兼容旧调用方）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/FROM edu\.questions WHERE id = \$1/, [q1]],
+      [/INSERT INTO edu\.answer_records/, []],
+    ]);
+    const svc = makeService(db);
+
+    await svc.submitPracticeAnswer('alice', { questionId: QUESTION, answer: 'A' });
+
+    const insert = (db.query as jest.Mock).mock.calls.find((c) => /INSERT INTO edu\.answer_records/.test(c[0]));
+    expect(insert[1][2]).toBeNull();
+    const touchedSession = (db.query as jest.Mock).mock.calls.some((c) => /edu\.practice_sessions/.test(c[0]));
+    expect(touchedSession).toBe(false);
+  });
+
+  it('submitPracticeAnswer：sessionId 属他人 → 403 且不写记录（防跨用户串写）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.practice_sessions WHERE id = \$1/, [{ id: SESSION, user_id: 'bob' }]]]);
+    const svc = makeService(db);
+
+    await expect(svc.submitPracticeAnswer('alice', { questionId: QUESTION, answer: 'A', sessionId: SESSION }))
+      .rejects.toThrow(ForbiddenException);
+    expect((db.query as jest.Mock).mock.calls.some((c) => /INSERT INTO edu\.answer_records/.test(c[0]))).toBe(false);
+  });
+
+  it('submitPracticeAnswer：sessionId 不存在（有效 UUID）→ 404', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.practice_sessions WHERE id = \$1/, []]]);
+    const svc = makeService(db);
+
+    await expect(svc.submitPracticeAnswer('alice', { questionId: QUESTION, answer: 'A', sessionId: SESSION }))
+      .rejects.toThrow(NotFoundException);
+  });
+
+  it('submitPracticeAnswer：malformed sessionId → 404 且根本不查库', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, []);
+    const svc = makeService(db);
+
+    await expect(svc.submitPracticeAnswer('alice', { questionId: QUESTION, answer: 'A', sessionId: 'not-a-uuid' }))
+      .rejects.toThrow(NotFoundException);
+    expect(db.query).not.toHaveBeenCalled();
+  });
+
+  it('getSessionProgress：返回 answered/total/correctCount/correctRate/currentIndex', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/FROM edu\.practice_sessions WHERE id = \$1/, ownSession([{ id: 'x1' }, { id: 'x2' }, { id: 'x3' }])],
+      [/FROM edu\.answer_records WHERE session_id = \$1 AND user_id = \$2/, [{ answered: 3, correct: 2 }]],
+    ]);
+    const svc = makeService(db);
+
+    const p = await svc.getSessionProgress('alice', SESSION);
+
+    expect(p).toEqual({
+      sessionId: SESSION, answered: 3, total: 3, correctCount: 2,
+      correctRate: 2 / 3, currentIndex: 3, status: 'in_progress',
+    });
+  });
+
+  it('getSessionProgress：无题面快照时 total 回退为已答数；correctRate∈[0,1]', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/FROM edu\.practice_sessions WHERE id = \$1/, ownSession(null)],
+      [/FROM edu\.answer_records WHERE session_id = \$1 AND user_id = \$2/, [{ answered: 2, correct: 0 }]],
+    ]);
+    const svc = makeService(db);
+
+    const p = await svc.getSessionProgress('alice', SESSION);
+
+    expect(p.total).toBe(2);
+    expect(p.correctRate).toBe(0);
+    expect(p.correctRate).toBeGreaterThanOrEqual(0);
+    expect(p.correctRate).toBeLessThanOrEqual(1);
+  });
+
+  it('getSessionProgress：他人会话 → 403', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.practice_sessions WHERE id = \$1/, [{ id: SESSION, user_id: 'bob' }]]]);
+    const svc = makeService(db);
+
+    await expect(svc.getSessionProgress('alice', SESSION)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('getSessionProgress：无效 sessionId → 404（不触发聚合查询）', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.practice_sessions WHERE id = \$1/, []]]);
+    const svc = makeService(db);
+
+    await expect(svc.getSessionProgress('alice', SESSION)).rejects.toThrow(NotFoundException);
+  });
+
+  it('getSessionAnalysis：逐题解析 + 按 knowledge_point_id 聚合正确率', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [
+      [/FROM edu\.practice_sessions WHERE id = \$1/, ownSession()],
+      [/FROM edu\.answer_records ar/, [
+        { question_id: 'q1', student_answer: 'A', is_correct: true, time_spent_ms: 1000, content: 'c1', answer: 'A', analysis: 'a1', type: 'single_choice', options: ['A', 'B'], content_latex: null, answer_latex: null, difficulty: 0.5, knowledge_point_id: 'kp1', knowledge_point_name: '勾股定理' },
+        { question_id: 'q2', student_answer: 'C', is_correct: false, time_spent_ms: 2000, content: 'c2', answer: 'B', analysis: 'a2', type: 'single_choice', options: ['A', 'B'], content_latex: null, answer_latex: null, difficulty: 0.3, knowledge_point_id: 'kp1', knowledge_point_name: '勾股定理' },
+        { question_id: 'q3', student_answer: 'D', is_correct: true, time_spent_ms: 1500, content: 'c3', answer: 'D', analysis: 'a3', type: null, options: null, content_latex: 'x^2', answer_latex: 'y', difficulty: 0.8, knowledge_point_id: null, knowledge_point_name: null },
+      ]],
+    ]);
+    const svc = makeService(db);
+
+    const a = await svc.getSessionAnalysis('alice', SESSION);
+
+    expect(a.answered).toBe(3);
+    expect(a.correctCount).toBe(2);
+    expect(a.correctRate).toBeCloseTo(2 / 3, 5);
+    expect(a.items).toHaveLength(3);
+    expect(a.items[0]).toMatchObject({ questionId: 'q1', analysis: 'a1', correctAnswer: 'A', isCorrect: true });
+    expect(a.items[2]).toMatchObject({ contentLatex: 'x^2', answerLatex: 'y', knowledgePointId: null });
+    const kp1m = a.knowledgePoints.find((k) => k.knowledgePointId === 'kp1');
+    expect(kp1m).toMatchObject({ knowledgePointName: '勾股定理', answered: 2, correct: 1, correctRate: 0.5 });
+    const unknown = a.knowledgePoints.find((k) => k.knowledgePointId === null);
+    expect(unknown).toMatchObject({ answered: 1, correct: 1, correctRate: 1 });
+  });
+
+  it('getSessionAnalysis：他人会话 → 403 且不聚合答题明细', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.practice_sessions WHERE id = \$1/, [{ id: SESSION, user_id: 'bob' }]]]);
+    const svc = makeService(db);
+
+    await expect(svc.getSessionAnalysis('alice', SESSION)).rejects.toThrow(ForbiddenException);
+    expect((db.query as jest.Mock).mock.calls.some((c) => /FROM edu\.answer_records ar/.test(c[0]))).toBe(false);
+  });
+
+  it('getSessionAnalysis：无效 sessionId → 404', async () => {
+    const db = makeDb(jest.fn());
+    mockQueries(db, [[/FROM edu\.practice_sessions WHERE id = \$1/, []]]);
+    const svc = makeService(db);
+
+    await expect(svc.getSessionAnalysis('alice', SESSION)).rejects.toThrow(NotFoundException);
   });
 });
