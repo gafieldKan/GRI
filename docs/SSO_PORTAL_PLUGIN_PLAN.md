@@ -165,8 +165,8 @@ POST /api/ontology/dimensions/apply { "planId" }
 | **S2** | `p3-s2-app-module-registry` | Codex | 本体 `AppModule` → 迁移 023 + 种子（把 9 模块注册）+ `GET /api/modules`（按角色返回可用）| S1 | 登录不同角色，`/api/modules` 返回不同集合 |
 | **S3** | `p3-s3-user-plugin-optin` | Codex | `UserModule` 选用（enable/disable）+ 工作台勾选 UI + 列表按选用过滤 | S2 | 用户勾选/取消插件，刷新后工作台随之变化 |
 | **S4** | `p3-s4-dimension-binding` | Codex | `module_region`/`module_industry` + 门户「区域×行业」选择器 + `?region=&industry=` 过滤 | S3 | 选定区域/行业，插件列表按上下文过滤 |
-| **S5** | `p3-s5-dimension-admin-crud` | Codex | 维度 CRUD API（region/industry）+ operator 维护页 + `dimension_change_log` | S2 | operator 在维护页增/改/移节点，DB 与审计同步 |
-| **S6** | `p3-s6-dimension-ai-command` | Codex | `command`（NLP→提案）+ `apply`（事务+审计）+ 提案预览 UI | S5 | 输入自然语言命令→预览 diff→确认→库生效且有审计 |
+| **S5** | `p3-s5-dimension-admin-crud` | **Claude** | 维度 CRUD API（region/industry）+ operator 维护页 + `dimension_change_log` | S2 | operator 在维护页增/改/移节点，DB 与审计同步 |
+| **S6** | `p3-s6-dimension-ai-command` | **Claude** | `command`（NLP→提案）+ `apply`（事务+审计）+ 提案预览 UI | S5 | 输入自然语言命令→预览 diff→确认→库生效且有审计（`source=ai_command`） |
 
 **我（总负责人）先做**：`docs/REQUIREMENTS_TRACE.md`（把本方案需求点 → 卡 → 验收 → 你能点的入口，串成一条线）。
 

@@ -1,8 +1,8 @@
-# P3-S2 ~ S6 下达提示词（逐段复制给 Codex）
+# P3-S2 ~ S4 下达提示词（**Codex**）
 
-> 用途：用户手动下达。**串行铁律**：一次下达一个，S2→S3→S4→S5→S6。
-> ⚠️ S3–S6 的承重事实会随后续卡落地而变化——**下达前请让我复核一遍**（避免"旧卡病"）。
-> 卡片全文在 `.agents/codex/tasks/p3-sN-*.md`；本文件是「可粘贴提示词」形态。
+> 执行者：**Codex**（后端注册表链 S2→S3→S4）。串行，一次一个。
+> ⚠️ 下达前请让我复核承重事实（避免"旧卡病"）。
+> 卡片全文：`.agents/codex/tasks/p3-sN-*.md`。
 
 ---
 
@@ -49,8 +49,7 @@ N5 本卡只做目录；用户"选用"状态不在本卡（S3）。
 - verify.sh FAIL=0
 - 纪律：不 commit、不 checkout；凭据零泄漏。
 
-■ 明确不做
-用户选用(S3)/维度挂接(S4)/微前端。
+■ 明确不做：用户选用(S3)/维度挂接(S4)/微前端。
 ```
 
 ---
@@ -91,7 +90,7 @@ N4 迁移编号 024；先 build 再 migrate。
 
 ---
 
-## 【P3-S4】双维度挂接 module_region / module_industry
+## 【P3-S4】双维度挂接（模块声明区域/行业作用域）
 
 ```text
 【任务】P3-S4：双维度挂接（模块可选声明区域/行业作用域）
@@ -128,77 +127,4 @@ N5 未挂接的模块在任意维度下仍可见（默认全可见）。
 - 纪律：不 commit、不 checkout；凭据零泄漏。
 
 ■ 明确不做：维度写维护(S5)/微前端。
-```
-
----
-
-## 【P3-S5】维度维护（operator CRUD + 审计）
-
-```text
-【任务】P3-S5：维度维护（operator CRUD + 审计）
-
-工作树 /home/ubantu/GRI，分支 feat/stage-c-unified-auth-shell。
-任务卡：.agents/codex/tasks/p3-s5-dimension-admin-crud.md —— 先读它。
-
-■ 必读上下文
-1. .agents/codex/tasks/p3-s5-dimension-admin-crud.md（本卡全文）
-2. services/api/src/migrate/{021_un_regions,022_isic_rev5}.sql（维度表结构）
-3. services/api/src/modules/organization/*（assertSiteOperator 门禁 + 审计表样式）
-4. apps/portal/src/pages/console/*（operator 页面样式）
-
-■ 硬约束（违反即失败）
-N1 写操作走 assertSiteOperator（根组织 owner|admin）；禁 req.auth.roles。
-N2 完整性：移动节点防环（不能移到自己后代下）；level 与父子关系一致校验。
-N3 变更一律入 ontology.dimension_change_log（dimension/target_node_id/op/before/after/actor_id/source/created_at）。
-N4 本体驱动：DimensionChangeLog 对象 → codegen → 迁移 026。
-N5 只改运行时库；不自动回写 data/*.json（真源同步为开放项）。
-
-■ 产出
-- services/api/src/migrate/026_dimension_change_log.sql
-- GET/POST/PATCH/DELETE /api/regions · /api/industries（写门禁）
-- operator 维度维护页（portal）
-- outputs + p3-s5-verify.sh
-
-■ 自检
-- operator 增/改名/移动节点→DB 生效+审计一条；非 operator→403；把 A 移到 A 的后代→400；全量 jest 不回归；verify FAIL=0
-- 纪律：不 commit、不 checkout；凭据零泄漏。
-
-■ 明确不做：AI 命令(S6)/微前端。
-```
-
----
-
-## 【P3-S6】维度 AI 命令（NLP → 提案 → 确认 → 应用）
-
-```text
-【任务】P3-S6：维度 AI 命令（自然语言 → 提案 → 确认 → 应用）
-
-工作树 /home/ubantu/GRI，分支 feat/stage-c-unified-auth-shell。
-任务卡：.agents/codex/tasks/p3-s6-dimension-ai-command.md —— 先读它。
-
-■ 必读上下文
-1. .agents/codex/tasks/p3-s6-dimension-ai-command.md（本卡全文）
-2. P3-S5 产出（维度 CRUD + 校验 + 审计）
-3. packages/agent-core/*（LLM/AI 能力）
-4. docs/ai-tutor/NVIDIA_API_CONFIG.md（LLM 通道）
-
-■ 硬约束（违反即失败）
-N1 不直接改库：command 只产出提案（不落库）；apply 才落库。
-N2 复用 @gri/agent-core + LLM；解析失败/歧义 → 拒绝并提示（不猜、不臆造）。
-N3 apply 须事务 + 复用 S5 校验（防环/层级）+ 审计（source=ai_command）。
-N4 operator 门禁（assertSiteOperator）。
-N5 提案 planId 一次性 + TTL（防重放/过期应用）。
-
-■ 产出
-- POST /api/ontology/dimensions/command {text} → {planId, preview[]}
-- POST /api/ontology/dimensions/apply {planId}
-- GET /api/ontology/dimensions/changes（审计流水）
-- 门户提案预览 UI（diff 展示 + 确认）
-- outputs + p3-s6-verify.sh
-
-■ 自检
-- 输入"把行业 011 移到门类 B"→预览 diff 正确→确认→库生效+审计 source=ai_command；歧义/非法命令→拒绝提示（不落库）；非 operator→403；全量 jest 不回归；verify FAIL=0
-- 纪律：不 commit、不 checkout；凭据零泄漏。
-
-■ 明确不做：微前端。
 ```

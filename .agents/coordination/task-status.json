@@ -292,5 +292,39 @@
       "mini-program": "微信端，非 web SSO，单列复核"
     },
     "commit": null
+  },
+  "p3-s2": {
+    "agent": "codex",
+    "status": "pending"
+  },
+  "p3-s3": {
+    "agent": "codex",
+    "status": "pending"
+  },
+  "p3-s4": {
+    "agent": "codex",
+    "status": "pending"
+  },
+  "p3-s5": {
+    "agent": "claude",
+    "status": "pending"
+  },
+  "p3-s6": {
+    "agent": "claude",
+    "status": "pending"
+  },
+  "_assignment_2026_10_12": {
+    "split": {
+      "codex": [
+        "p3-s2",
+        "p3-s3",
+        "p3-s4"
+      ],
+      "claude": [
+        "p3-s5",
+        "p3-s6"
+      ],
+      "rule": "按优点分工（ORCHESTRATION §角色定位）"
+    }
   }
 }
