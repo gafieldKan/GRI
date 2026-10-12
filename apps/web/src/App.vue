@@ -6,12 +6,15 @@
 
 <script>
 import { useAuthStore } from './store/auth.js'
+import { SHARED_AUTH_KEY, redirectToPortal } from './store/session.js'
 
 export default {
   onLaunch: function () {
     console.log('App Launch')
     // Initialize auth state from persisted storage
     this._checkAuth()
+    // SSO：portal 登出/登录会改写共享键，跨标签同步会话（登出即回 portal 登录）。
+    this._listenSharedSession()
   },
   onShow: function () {
     console.log('App Show')
@@ -20,10 +23,27 @@ export default {
     console.log('App Hide')
   },
   methods: {
+    _listenSharedSession() {
+      // #ifdef H5
+      if (typeof window === 'undefined' || !window.addEventListener) return
+      window.addEventListener('storage', (event) => {
+        if (event.key !== SHARED_AUTH_KEY) return
+        if (useAuthStore().syncFromSharedSession()) {
+          const pages = getCurrentPages()
+          const route = pages.length ? pages[pages.length - 1].route : ''
+          if (route.startsWith('pages/login/')) uni.switchTab({ url: '/pages/index/index' })
+          return
+        }
+        redirectToPortal()
+      })
+      // #endif
+    },
     _checkAuth() {
       const authStore = useAuthStore()
       // Initialize dark mode first
       authStore.initDarkMode()
+      // SSO：优先以共享会话键（gri-auth-token）为准还原登录态
+      authStore.syncFromSharedSession()
 
       // Delay navigation to avoid race with uni-app's initial routing
       setTimeout(() => {
@@ -36,20 +56,16 @@ export default {
           // User logged in — verify token freshness
           authStore.verifyToken().then((valid) => {
             if (!valid) {
-              // Token expired, redirect to login
-              if (!isOnAuthPage) {
-                uni.reLaunch({ url: '/pages/login/login' })
-              }
+              // Token expired → 回统一登录入口 portal
+              redirectToPortal()
             } else if (isOnAuthPage) {
               // Already authenticated — navigate to index (tabBar page uses switchTab)
               uni.switchTab({ url: '/pages/index/index' })
             }
           })
         } else {
-          // Not authenticated — redirect to login unless already on an auth page
-          if (!isOnAuthPage) {
-            uni.reLaunch({ url: '/pages/login/login' })
-          }
+          // Not authenticated — 模块端不再自持登录页，统一回 portal 登录
+          redirectToPortal()
         }
       }, 100)
     }

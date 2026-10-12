@@ -1,17 +1,17 @@
 {
   "pages": [
     {
-      "path": "pages/login/login",
-      "style": {
-        "navigationBarTitleText": "登录",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "智学慧眼",
         "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "enablePullDownRefresh": false
       }
     },
     {

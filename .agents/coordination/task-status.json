@@ -266,28 +266,31 @@
   "_verification_2026_10_12": {
     "P3-S1": "done_verified（独立复验全绿，含真实浏览器 E2E）",
     "next_queue": [
-      "Codex←S1b（跨端 SSO）或 S2（独立）"
+      "Codex←S2",
+      "S2-S6 提示词已交（.agents/codex/dispatch/p3-s2-s6-prompts.md）"
     ],
-    "P3-S1b": "补卡待下达（修跨端 SSO 缺口）"
+    "P3-S1b": "done_verified（独立复验全绿，逐端注入审计）"
   },
   "p3-s1b": {
-    "status": "pending",
+    "status": "done_verified",
     "agent": "codex",
     "depends_on": "p3-s1",
     "summary": "跨模块统一 SSO（订餐+A�辅导两端均二次登录，原因不同）：对齐 gri-auth-token；未登录跳 portal 登录",
     "card": ".agents/codex/tasks/p3-s1b-cross-app-sso.md",
     "verification": {
-      "acceptance": [
-        "portal 登录后 /food/ /tutor/ 免二次登录",
-        "未登录直访模块→回 portal 登录",
-        "portal 登出→各端失效"
-      ]
+      "builds": "web+tutor build:h5 OK",
+      "unauth": "food/tutor → portal 登录",
+      "auth": "注入 gri-auth-token → food/tutor 均免二次登录(业务首页)",
+      "logout": "清键 → food 回 portal",
+      "errors": 0,
+      "independent": true
     },
     "scope_audit": {
       "portal": "✅ SSO 正常",
       "web(订餐)": "❌ 无 auth-client，自建 store（键≠gri-auth-token）→ 真二次登录",
       "web-ai-tutor(AI辅导)": "❌ pages.json 首路由=login + 守卫无'已登录→回首页'分支 → 停登录页",
       "mini-program": "微信端，非 web SSO，单列复核"
-    }
+    },
+    "commit": null
   }
 }

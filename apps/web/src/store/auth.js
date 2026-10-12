@@ -8,11 +8,18 @@
  *    {accessToken,refreshToken,user} → {token,refreshToken,user}），JWT 无状态，user 携带 externalId 业务主键。
  *  - 本 store 保留订餐端特有的 UI 态（darkMode / activeProduct / loginMethod / memberLevel），
  *    故未直接复用 @gri/auth-client 的 pinia store（两 AI 前端因其无 UI 态已完整接入）。
- *    统一登录态由 auth-center 契约 + JWT 保证；本 store 是其薄 UI 层。
+ *  - SSO（P3-S1b）：会话真源对齐 @gri/auth-client 的 `gri-auth-token`（见 store/session.js），
+ *    与 portal / AI 辅导共享同一登录态；本 store 仅作其上的薄 UI 层。
  */
 
 import { defineStore } from 'pinia'
 import * as authApi from '../api/auth.js'
+import {
+  clearSharedSession,
+  readSharedSession,
+  redirectToPortal,
+  writeSharedSession
+} from './session.js'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -79,6 +86,37 @@ export const useAuthStore = defineStore('auth', {
       this.isLoggedIn = true
       this.loginMethod = result.method || 'email'
       this._hydrated = true
+      // 写入共享会话键，供 portal / AI 辅导复用（SSO）。
+      writeSharedSession({
+        accessToken: this.token,
+        refreshToken: this.refreshToken,
+        user: this.user
+      })
+    },
+
+    /**
+     * 从共享会话键（gri-auth-token）还原登录态。
+     * portal 登录后进入本模块时，本端持久化状态可能为空/过期，
+     * 此处以共享会话为准补一份，避免二次登录。返回是否已登录。
+     */
+    syncFromSharedSession() {
+      const shared = readSharedSession()
+      if (!shared) {
+        // 共享键才是 SSO 会话真源；portal 登出后不得被本端旧持久化态“复活”。
+        this.token = null
+        this.refreshToken = null
+        this.user = null
+        this.isLoggedIn = false
+        this.loginMethod = null
+        this._hydrated = true
+        return false
+      }
+      this.token = shared.accessToken
+      this.refreshToken = shared.refreshToken
+      this.user = shared.user
+      this.isLoggedIn = true
+      this._hydrated = true
+      return true
     },
 
     /**
@@ -192,6 +230,11 @@ export const useAuthStore = defineStore('auth', {
         if (result.code === 200 && result.data) {
           this.token = result.data.token
           this.refreshToken = result.data.refreshToken || this.refreshToken
+          writeSharedSession({
+            accessToken: this.token,
+            refreshToken: this.refreshToken,
+            user: this.user
+          })
           return true
         }
       } catch {
@@ -239,6 +282,9 @@ export const useAuthStore = defineStore('auth', {
         authApi.logoutServer(this.token, this.refreshToken).catch(() => { /* non-fatal */ })
       }
 
+      // 清除共享会话键：令 portal / AI 辅导同步失效。
+      clearSharedSession()
+
       // Clear state
       this.token = null
       this.refreshToken = null
@@ -254,7 +300,7 @@ export const useAuthStore = defineStore('auth', {
 
       // Redirect to login page
       if (!silent) {
-        uni.reLaunch({ url: '/pages/login/login' })
+        redirectToPortal()
       }
     },
 

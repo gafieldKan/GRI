@@ -68,6 +68,7 @@ import TrustBar from '../../components/login/TrustBar.vue'
 import ProductPreviewCards from '../../components/login/ProductPreviewCards.vue'
 import FooterLinks from '../../components/login/FooterLinks.vue'
 import { useAuthStore } from '../../store/auth.js'
+import { redirectToPortal } from '../../store/session.js'
 
 export default {
   name: 'LoginPage',
@@ -110,7 +111,8 @@ export default {
       try {
         const result = await this.authStore.login(credentials.identifier, credentials.password)
         if (result && result.code === 200) {
-          uni.switchTab({ url: '/pages/index/index' })
+          // 已登录 → 回统一入口继续（portal 守卫会把会话导到工作台）。
+          redirectToPortal()
         } else {
           this.serverError = (result && result.message) || '登录失败，请检查账号和密码'
         }

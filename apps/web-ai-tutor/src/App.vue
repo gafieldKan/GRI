@@ -10,6 +10,10 @@ import { useAuthStore } from '@gri/auth-client'
 import { useUserStore } from './store/user.js'
 import TwinIcons from './components/twin/TwinIcons.vue'
 
+// 统一登录入口 = portal（nginx / → 工作台；未登录由 portal 守卫送到登录/注册）。
+const SHARED_AUTH_KEY = 'gri-auth-token'
+const PORTAL_ENTRY = '/'
+
 export default {
   components: { TwinIcons },
   globalData: {
@@ -24,18 +28,60 @@ export default {
     const auth = useAuthStore()
     auth.restore()
     useUserStore().syncFromAuth()
+    // SSO：portal 登出/登录改写共享键 → 跨标签同步；登出即回 portal 登录。
+    this._listenSharedSession()
   },
   onShow() {
     console.log('智学慧眼 App Show')
-    // 路由守卫：未登录访问业务页重定向到登录页（登录页自身跳过）
+    // 路由守卫：未登录访问业务页 → 统一回 portal 登录（模块端不再自持登录入口）
+    const auth = useAuthStore()
+    auth.restore()
     const pages = getCurrentPages()
     const route = pages.length ? pages[pages.length - 1].route : ''
-    if (!useAuthStore().isAuthenticated && !route.startsWith('pages/login/')) {
-      uni.reLaunch({ url: '/pages/login/login' })
+    if (!auth.isAuthenticated) {
+      this._redirectToPortal()
     }
   },
   onHide() {
     console.log('智学慧眼 App Hide')
+  },
+  methods: {
+    _redirectToPortal() {
+      // H5：模块挂在 /tutor 子路径，uni.reLaunch('/') 会被 SPA base 解析回本模块，
+      // 故用整页导航跳到网关根 `/`（portal 工作台 / 登录）。
+      // #ifdef H5
+      if (typeof window !== 'undefined' && window.location) {
+        window.location.replace(PORTAL_ENTRY)
+        return
+      }
+      // #endif
+      uni.reLaunch({ url: PORTAL_ENTRY })
+    },
+    _listenSharedSession() {
+      // #ifdef H5
+      if (typeof window === 'undefined' || !window.addEventListener) return
+      window.addEventListener('storage', (event) => {
+        if (event.key !== SHARED_AUTH_KEY) return
+        const auth = useAuthStore()
+        // 共享键被移除/清空 = portal 已登出 → 本端同步失效
+        if (event.newValue === null || event.newValue === '' || event.newValue === 'null') {
+          auth._clear()
+          this._redirectToPortal()
+          return
+        }
+        // 共享键写入 = portal 已登录 → 只重置内存态再从共享键还原。
+        // 不能先 `_clear()`：那会删除刚写入的 gri-auth-token，反向破坏 portal/web 会话。
+        auth.$reset()
+        auth.restore()
+        if (!auth.isAuthenticated) {
+          this._redirectToPortal()
+        } else {
+          useUserStore().syncFromAuth()
+          uni.switchTab({ url: '/pages/index/index' })
+        }
+      })
+      // #endif
+    }
   }
 }
 </script>
