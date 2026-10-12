@@ -274,7 +274,7 @@
     "status": "pending",
     "agent": "codex",
     "depends_on": "p3-s1",
-    "summary": "跨模块统一 SSO：各模块前端共享 gri-auth-token；未登录跳 portal 登录（apps/web 自建 store 未接 auth-client → 修）",
+    "summary": "跨模块统一 SSO（订餐+A�辅导两端均二次登录，原因不同）：对齐 gri-auth-token；未登录跳 portal 登录",
     "card": ".agents/codex/tasks/p3-s1b-cross-app-sso.md",
     "verification": {
       "acceptance": [
@@ -282,6 +282,12 @@
         "未登录直访模块→回 portal 登录",
         "portal 登出→各端失效"
       ]
+    },
+    "scope_audit": {
+      "portal": "✅ SSO 正常",
+      "web(订餐)": "❌ 无 auth-client，自建 store（键≠gri-auth-token）→ 真二次登录",
+      "web-ai-tutor(AI辅导)": "❌ pages.json 首路由=login + 守卫无'已登录→回首页'分支 → 停登录页",
+      "mini-program": "微信端，非 web SSO，单列复核"
     }
   }
 }
