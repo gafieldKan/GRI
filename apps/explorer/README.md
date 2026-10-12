@@ -3,8 +3,13 @@
 GRI 首页（`/` → 302 `/explore/`）：顶栏（品牌 + 区域/行业切换 + **右上 SSO**）+ iframe 承载两个「域览」浏览器。
 
 ## 文件
-- `index.html` —— **GRI 首页外壳**（本目录唯一入库文件）：顶栏 + 维度切换 + SSO（读同源 `gri-auth-token`）+ iframe。
-- `region.html` / `industry.html` —— 两个参考浏览器（**不入库**，从源文件复制并做 GRI 皮肤轻量对齐）。
+- `index.html` —— **GRI 自渲染 Explorer（引擎 v2）**：顶栏（品牌 + 区域/行业切换 + **右上 SSO**）+ 左树 + 中舞台（**SVG 世界地图** / **行业 treemap**）+ 右明细。数据取 `data/*.json`。
+- `data/regions.geo.json`（248 国精简国界 1MB）· `data/regions.json`（区域树 1.8MB）· `data/industry.json`（ISIC 832 节点）
+- `slim-region.py` —— 几何精简脚本（供参考浏览器版复现）
+- `region.html` / `industry.html` —— **参考浏览器（旧，不入库）**：早期 iframe 承载版，已由 `index.html` 自渲染取代，仅留作视觉对照。
+
+## 现状
+**引擎 v2（自渲染）**：不再 iframe；区域=真实国界 SVG 地图（248 国，点选+树下钻到省/市/区），行业=squarified treemap（22 门类，点击下钻）。后续：几何按需分片加载（省市级地图下钻）、接本体 API、治理（S5/S6）。
 
 ## 复现（源文件在仓库外时）
 ```bash

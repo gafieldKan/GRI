@@ -8,11 +8,13 @@
   :root{
     --gri-primary:#1B7A3D; --gri-primary-dk:#11562c; --gri-tint:#e6f4ec;
     --gri-ink:#1a1a2e; --gri-muted:#5f6b65; --gri-bg:#f4fcf5; --gri-line:#e6ebe7; --gri-card:#fff;
+    --gri-gold:#b6935c;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--gri-ink);background:var(--gri-bg);overflow:hidden}
-  .topbar{height:56px;display:flex;align-items:center;gap:20px;padding:0 20px;background:var(--gri-card);border-bottom:1px solid var(--gri-line);position:relative;z-index:10}
+  /* topbar */
+  .topbar{height:56px;display:flex;align-items:center;gap:20px;padding:0 20px;background:var(--gri-card);border-bottom:1px solid var(--gri-line);position:relative;z-index:20}
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:3px;font-size:18px;color:var(--gri-primary)}
   .brand .mark{width:28px;height:28px;border-radius:8px;background:var(--gri-primary);color:#fff;display:grid;place-items:center;font-size:15px}
   .tabs{display:flex;gap:4px;background:var(--gri-tint);padding:4px;border-radius:10px}
@@ -23,12 +25,45 @@
   .sso .btn{border:1px solid var(--gri-line);background:var(--gri-card);padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;color:var(--gri-ink);cursor:pointer;text-decoration:none;transition:background .15s}
   .sso .btn:hover{background:var(--gri-tint)}
   .sso .btn.primary{background:var(--gri-primary);border-color:var(--gri-primary);color:#fff}
-  .sso .btn.primary:hover{background:var(--gri-primary-dk)}
-  .sso .who{font-size:13px;color:var(--gri-muted)}
-  .sso .who b{color:var(--gri-ink)}
-  main{position:relative;height:calc(100vh - 56px)}
-  iframe{display:block;width:100%;height:100%;border:0}
-  .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--gri-muted);font-size:14px;background:var(--gri-bg);z-index:5}
+  .sso .who{font-size:13px;color:var(--gri-muted)}.sso .who b{color:var(--gri-ink)}
+  /* layout */
+  .workspace{display:grid;grid-template-columns:250px 1fr 300px;height:calc(100vh - 56px)}
+  .tree{background:var(--gri-card);border-right:1px solid var(--gri-line);overflow:auto;padding:12px 8px}
+  .tree h2{font-size:12px;color:var(--gri-muted);padding:4px 10px 10px;letter-spacing:.5px}
+  .trow{display:flex;align-items:center;gap:6px;font-size:13px;padding:5px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden}
+  .trow:hover{background:var(--gri-tint)}
+  .trow.on{background:var(--gri-tint);color:var(--gri-primary-dk);font-weight:600}
+  .trow .tw{width:14px;text-align:center;color:#9aa;flex:none}
+  .trow .lbl{overflow:hidden;text-overflow:ellipsis}
+  .trow .cnt{color:#9aa;font-size:11px;margin-left:auto;flex:none}
+  .stage{position:relative;background:var(--gri-bg);min-width:0;display:flex;flex-direction:column}
+  .stage-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--gri-line);background:var(--gri-card);font-size:12px;color:var(--gri-muted);flex-wrap:wrap}
+  .stage-bar b{color:var(--gri-ink)}
+  .stage-bar button{border:1px solid var(--gri-line);background:var(--gri-card);padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--gri-ink)}
+  .stage-bar button:hover{background:var(--gri-tint)}
+  .canvas{flex:1;position:relative;overflow:hidden}
+  .canvas svg{width:100%;height:100%;display:block}
+  .geo-shape{fill:#cfe6d6;stroke:#fff;stroke-width:.4;cursor:pointer;vector-effect:non-scaling-stroke}
+  .geo-shape:hover{fill:#7cc79b}
+  .geo-shape.on{fill:var(--gri-primary);stroke:#fff}
+  .tl{border:1px solid #fff;cursor:pointer}
+  .tl:hover{stroke:var(--gri-primary);stroke-width:2}
+  .tl text{pointer-events:none;fill:#1a1a2e;font-size:11px}
+  .tile-hit{fill:transparent;cursor:pointer}
+  .detail{background:var(--gri-card);border-left:1px solid var(--gri-line);overflow:auto;padding:18px}
+  .detail .kicker{font-size:11px;color:var(--gri-muted);letter-spacing:1px;text-transform:uppercase}
+  .detail h3{font-size:22px;margin:6px 0 4px;line-height:1.3}
+  .detail .path{font-size:12px;color:var(--gri-muted);line-height:1.7;margin-bottom:14px}
+  .detail .stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+  .detail .stat>div{background:var(--gri-tint);border-radius:8px;padding:10px}
+  .detail .stat small{font-size:10px;color:var(--gri-muted);display:block}
+  .detail .stat b{font-size:16px;color:var(--gri-primary-dk)}
+  .detail .children{margin-top:10px;font-size:13px}
+  .detail .children .row{display:flex;justify-content:space-between;padding:8px 6px;border-bottom:1px solid var(--gri-line);cursor:pointer}
+  .detail .children .row:hover{background:var(--gri-tint)}
+  .empty{color:var(--gri-muted);font-size:13px;padding:10px}
+  .hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--gri-muted);background:#ffffffcc;padding:4px 8px;border-radius:6px}
+  @media(max-width:960px){.workspace{grid-template-columns:1fr}.tree,.detail{display:none}}
 </style>
 </head>
 <body>
@@ -41,45 +76,235 @@
     <div class="spacer"></div>
     <div class="sso" id="sso"></div>
   </header>
-  <main>
-    <div class="loading" id="loading">正在加载「域览」区域地图…</div>
-    <iframe id="stage" src="/explore/region.html" title="GRI 维度浏览"></iframe>
-  </main>
-  <script>
-    var SOURCES = { region:'/explore/region.html', industry:'/explore/industry.html' };
-    var LABEL = { region:'区域地图', industry:'行业分类' };
-    var stage = document.getElementById('stage');
-    var loading = document.getElementById('loading');
-    document.querySelectorAll('.tabs button').forEach(function(b){
-      b.addEventListener('click', function(){
-        document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.remove('active'); });
-        b.classList.add('active');
-        var dim = b.dataset.dim;
-        loading.style.display = 'grid';
-        loading.textContent = '正在加载「域览」' + LABEL[dim] + '…';
-        stage.src = SOURCES[dim];
-      });
-    });
-    stage.addEventListener('load', function(){ loading.style.display = 'none'; });
 
-    // SSO：读同源 gri-auth-token（与 portal/各端共享）
-    function token(){ try { return JSON.parse(localStorage.getItem('gri-auth-token') || 'null'); } catch(e){ return null; } }
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
-    function renderSso(){
-      var t = token(); var sso = document.getElementById('sso');
-      if (t && t.accessToken){
-        var name = (t.user && (t.user.name || t.user.username)) || '已登录';
-        sso.innerHTML = '<span class="who">你好，<b>' + escapeHtml(name) + '</b></span>'
-          + '<a class="btn" href="/portal/">工作台</a>'
-          + '<button class="btn" id="logout">退出</button>';
-        document.getElementById('logout').onclick = function(){ localStorage.removeItem('gri-auth-token'); renderSso(); };
-      } else {
-        sso.innerHTML = '<a class="btn" href="/portal/#/pages/login/login">登录</a>'
-          + '<a class="btn primary" href="/portal/#/pages/register/index">注册</a>';
-      }
+  <div class="workspace">
+    <aside class="tree" id="tree"><h2 id="treeTitle">加载中…</h2></aside>
+    <main class="stage">
+      <div class="stage-bar" id="stageBar"></div>
+      <div class="canvas" id="canvas"></div>
+    </main>
+    <aside class="detail" id="detail"><div class="empty">选择一个节点查看明细</div></aside>
+  </div>
+
+<script>
+'use strict';
+var DIMS = {
+  region:  { label:'区域', treeUrl:'./data/regions.json', geoUrl:'./data/regions.geo.json', view:'geo' },
+  industry:{ label:'行业', treeUrl:'./data/industry.json', view:'treemap' }
+};
+var state = { dim:'region', nodes:null, byId:null, root:null, focus:null, geo:null, expanded:{} };
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+
+// ── 数据加载 ──
+function loadDim(dim){
+  state.dim = dim; state.focus = null; state.expanded = {};
+  var cfg = DIMS[dim];
+  var tasks = [fetch(cfg.treeUrl).then(function(r){return r.json();})];
+  if (cfg.geoUrl) tasks.push(fetch(cfg.geoUrl).then(function(r){return r.json();}));
+  return Promise.all(tasks).then(function(res){
+    var tree = res[0];
+    state.nodes = tree.nodes;
+    state.byId = {}; state.nodes.forEach(function(n){ state.byId[String(n.id)] = n; });
+    state.root = state.nodes.find(function(n){ return n.parent == null; }) || state.nodes[0];
+    state.geo = res[1] || null;
+    state.expanded[String(state.root.id)] = true;
+    // 自动展开单链，并（treemap 维度）把焦点落到「有多个子级」的首节点（如 ISIC 门类层）
+    var cur = state.root, guard = 0;
+    while (cur.children && cur.children.length === 1 && guard++ < 20){
+      var only = nodeById(cur.children[0]); if (!only) break;
+      state.expanded[String(only.id)] = true; cur = only;
     }
-    window.addEventListener('storage', renderSso);
-    renderSso();
-  </script>
+    if (DIMS[dim].view === 'treemap' && cur.children && cur.children.length > 1){ state.focus = cur; }
+    renderAll();
+  });
+}
+
+function nodeById(id){ return state.byId[String(id)] || null; }
+function label(n){ return n ? (n.name || n.short || n.code || n.id) : ''; }
+function pathOf(n){ var out=[], c=n; var g=0; while(c && g++<20){ out.unshift(label(c)); c = c.parent==null?null:nodeById(c.parent);} return out.join(' / '); }
+function childCount(n){ return (n && n.children ? n.children.length : 0); }
+
+// ── 渲染 ──
+function renderAll(){ renderTree(); renderStageBar(); renderCanvas(); renderDetail(); }
+
+function renderTree(){
+  var box = el('tree');
+  box.innerHTML = '<h2>'+esc(DIMS[state.dim].label)+'层级</h2>';
+  var frag = document.createDocumentFragment();
+  function walk(n, depth){
+    var row = document.createElement('div');
+    row.className = 'trow' + (state.focus && String(state.focus.id)===String(n.id) ? ' on' : '');
+    row.style.paddingLeft = (8 + depth*14) + 'px';
+    var hasKids = n.children && n.children.length;
+    row.innerHTML = '<span class="tw">'+(hasKids ? (state.expanded[String(n.id)]?'−':'+') : '·')+'</span>'
+      + '<span class="lbl">'+esc(label(n))+'</span>'
+      + (hasKids ? '<span class="cnt">'+n.children.length+'</span>' : '');
+    row.title = pathOf(n);
+    row.onclick = function(e){
+      if (e.target.className === 'tw' && hasKids){ state.expanded[String(n.id)] = !state.expanded[String(n.id)]; }
+      else { state.focus = n; state.expanded[String(n.id)] = true; }
+      select(n);
+    };
+    frag.appendChild(row);
+    if (hasKids && state.expanded[String(n.id)]){ n.children.forEach(function(cid){ var c=nodeById(cid); if(c) walk(c, depth+1); }); }
+  }
+  walk(state.root, 0);
+  box.appendChild(frag);
+}
+
+function select(n){
+  state.focus = n;
+  if (DIMS[state.dim].view==='treemap'){ state.expanded[String(n.id)] = true; }
+  renderTree(); renderStageBar(); renderCanvas(); renderDetail();
+}
+
+function renderStageBar(){
+  var bar = el('stageBar'); var f = state.focus || state.root;
+  var bc = pathOf(f);
+  bar.innerHTML = '<span>'+esc(bc)+'</span><span class="spacer"></span>'
+    + (state.focus && state.focus.parent!=null ? '<button id="upBtn">返回上级</button>' : '');
+  var up = el('upBtn'); if (up) up.onclick = function(){ select(nodeById(state.focus.parent) || state.root); };
+}
+
+function renderCanvas(){
+  var c = el('canvas');
+  if (DIMS[state.dim].view==='geo') renderGeo(c); else renderTreemap(c);
+}
+
+// ── Geo 视图（SVG 世界地图）──
+function renderGeo(c){
+  var feats = (state.geo && state.geo.features) || [];
+  var W=1000, H=500;
+  function px(lon){ return (lon+180)/360*W; }
+  function py(lat){ return (90-lat)/180*H; }
+  function ringPath(ring){ var d=''; for(var i=0;i<ring.length;i++){ d += (i?'L':'M') + px(ring[i][0]).toFixed(1) + ',' + py(ring[i][1]).toFixed(1); } return d+'Z'; }
+  var parts = ['<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'];
+  parts.push('<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="#eaf4ee"/>');
+  feats.forEach(function(f){
+    var ad = f.properties.adcode; var node = nodeById(ad);
+    var d = '';
+    var g = f.geometry;
+    if (g.type==='Polygon'){ g.coordinates.forEach(function(r){ d += ringPath(r); }); }
+    else if (g.type==='MultiPolygon'){ g.coordinates.forEach(function(poly){ poly.forEach(function(r){ d += ringPath(r); }); }); }
+    var on = (state.focus && String(state.focus.id)===String(ad)) ? ' on' : '';
+    parts.push('<path class="geo-shape'+on+'" d="'+d+'" data-id="'+esc(ad)+'"><title>'+esc(f.properties.name)+'</title></path>');
+  });
+  parts.push('</svg><div class="hint">'+feats.length+' 个国家 · 点击选中；左侧树可下钻省/市/区</div>');
+  c.innerHTML = parts.join('');
+  c.querySelectorAll('.geo-shape').forEach(function(p){
+    p.onclick = function(){ var n = nodeById(p.getAttribute('data-id')); if(n) select(n); };
+  });
+}
+
+// ── Treemap 视图（行业）──
+function leafCount(n){
+  if (!n.children || !n.children.length) return 1;
+  return n.children.reduce(function(s,cid){ var c=nodeById(cid); return s + (c?leafCount(c):0); }, 0);
+}
+function squarify(items, x, y, w, h){
+  // 标准 squarified treemap（Bruls et al.）
+  var total = items.reduce(function(s,i){return s+i.value;},0) || 1;
+  var area = w*h;
+  var scaled = items.map(function(i){ return Object.assign({}, i, {a: (i.value/total)*area}); }).sort(function(p,q){ return q.a-p.a; });
+  var out = []; var rx=x, ry=y, rw=w, rh=h; var i=0;
+  function worst(row, side){
+    var s=0, mx=-Infinity, mn=Infinity;
+    row.forEach(function(r){ s+=r.a; if(r.a>mx)mx=r.a; if(r.a<mn)mn=r.a; });
+    if (s<=0) return Infinity;
+    return Math.max((side*side*mx)/(s*s), (s*s)/(side*side*mn));
+  }
+  while (i < scaled.length && rw>0 && rh>0){
+    var vertical = rw >= rh;
+    var side = vertical ? rh : rw;
+    var row = [scaled[i]]; var j = i+1;
+    while (j < scaled.length){
+      var test = row.concat([scaled[j]]);
+      if (worst(test, side) <= worst(row, side)) { row = test; j++; } else break;
+    }
+    var sum=0; row.forEach(function(r){ sum+=r.a; });
+    if (vertical){
+      var rw2 = sum/rh, oy=ry;
+      row.forEach(function(r){ var ih=r.a/rw2; out.push(Object.assign({},r,{x:rx,y:oy,w:rw2,h:ih})); oy+=ih; });
+      rx += rw2; rw -= rw2;
+    } else {
+      var rh2 = sum/rw, ox=rx;
+      row.forEach(function(r){ var iw=r.a/rh2; out.push(Object.assign({},r,{x:ox,y:ry,w:iw,h:rh2})); ox+=iw; });
+      ry += rh2; rh -= rh2;
+    }
+    i = j;
+  }
+  return out;
+}
+function renderTreemap(c){
+  var f = state.focus || state.root;
+  var kids = (f.children||[]).map(function(cid){ return nodeById(cid); }).filter(Boolean);
+  var W=1000, H=560;
+  var parts = ['<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'];
+  if (!kids.length){ parts.push('</svg><div class="hint">已是叶子节点</div>'); c.innerHTML=parts.join(''); return; }
+  var items = kids.map(function(k){ return {id:k.id, name:label(k), code:k.code||'', value: leafCount(k), node:k}; });
+  var tiles = squarify(items, 0, 0, W, H);
+  var palette = ['#1B7A3D','#2f8f4f','#4aa564','#6cba7d','#93cf9e','#bde3c2','#247862','#3d9478','#5aab8d','#7fc2a6',
+                 '#b6935c','#c4a678','#d1b98f','#88b04b','#a3c55f','#bfd97a'];
+  tiles.forEach(function(t,i){
+    var col = palette[i % palette.length];
+    parts.push('<rect class="tl" x="'+t.x.toFixed(1)+'" y="'+t.y.toFixed(1)+'" width="'+(t.w-1).toFixed(1)+'" height="'+(t.h-1).toFixed(1)+'" fill="'+col+'" data-id="'+esc(t.id)+'"><title>'+esc(t.name)+'（'+t.value+' 小类）</title></rect>');
+    if (t.w>54 && t.h>26){
+      parts.push('<text x="'+(t.x+7).toFixed(1)+'" y="'+(t.y+18).toFixed(1)+'">'+esc(t.name.length>12?t.name.slice(0,12)+'…':t.name)+'</text>');
+      parts.push('<text x="'+(t.x+7).toFixed(1)+'" y="'+(t.y+33).toFixed(1)+'" fill="#2c4a37" font-size="10">'+esc(t.code)+'</text>');
+    }
+  });
+  parts.push('</svg><div class="hint">'+kids.length+' 项 · 点击方块下钻；顶部「返回上级」回退</div>');
+  c.innerHTML = parts.join('');
+  c.querySelectorAll('.tl').forEach(function(r){
+    r.onclick = function(){ var n=nodeById(r.getAttribute('data-id')); if(n){ state.focus=n; state.expanded[String(n.id)]=true; renderTree(); renderStageBar(); renderCanvas(); renderDetail(); } };
+  });
+}
+
+// ── 明细 ──
+function renderDetail(){
+  var f = state.focus; var d = el('detail');
+  if (!f){ d.innerHTML = '<div class="empty">选择一个节点查看明细</div>'; return; }
+  var kids = (f.children||[]).map(function(cid){return nodeById(cid);}).filter(Boolean);
+  var rows = kids.slice(0,50).map(function(k){
+    return '<div class="row" data-id="'+esc(k.id)+'"><span>'+esc(label(k))+'</span><span style="color:#9aa">'+esc(k.code||'')+'</span></div>';
+  }).join('');
+  d.innerHTML =
+    '<div class="kicker">'+esc(DIMS[state.dim].label)+' · '+esc(f.level||'')+'</div>'
+    + '<h3>'+esc(label(f))+'</h3>'
+    + '<div class="path">'+esc(pathOf(f))+'</div>'
+    + '<div class="stat"><div><small>编码</small><b style="font-size:13px">'+esc(f.code||f.short||'—')+'</b></div>'
+    + '<div><small>下级</small><b>'+kids.length+'</b></div></div>'
+    + (f.en? '<div class="path">'+esc(f.en)+'</div>' : '')
+    + '<div class="children"><div class="kicker" style="margin-bottom:4px">下级</div>'+(rows||'<div class="empty">无</div>')+'</div>';
+  d.querySelectorAll('.children .row').forEach(function(r){
+    r.onclick = function(){ var n=nodeById(r.getAttribute('data-id')); if(n) select(n); };
+  });
+}
+
+// ── 顶栏 / SSO ──
+document.querySelectorAll('.tabs button').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('.tabs button').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    loadDim(b.dataset.dim);
+  };
+});
+function token(){ try{ return JSON.parse(localStorage.getItem('gri-auth-token')||'null'); }catch(e){ return null; } }
+function renderSso(){
+  var t=token(); var sso=el('sso');
+  if (t && t.accessToken){
+    var name=(t.user&&(t.user.name||t.user.username))||'已登录';
+    sso.innerHTML='<span class="who">你好，<b>'+esc(name)+'</b></span><a class="btn" href="/portal/">工作台</a><button class="btn" id="logout">退出</button>';
+    el('logout').onclick=function(){ localStorage.removeItem('gri-auth-token'); renderSso(); };
+  } else {
+    sso.innerHTML='<a class="btn" href="/portal/#/pages/login/login">登录</a><a class="btn primary" href="/portal/#/pages/register/index">注册</a>';
+  }
+}
+window.addEventListener('storage', renderSso);
+renderSso();
+loadDim('region').catch(function(e){ el('canvas').innerHTML='<div class="empty">数据加载失败：'+esc(e.message)+'</div>'; });
+</script>
 </body>
 </html>
