@@ -57,8 +57,7 @@
 import { computed, ref } from 'vue'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@gri/auth-client'
-import api from '@/api'
-import { modulesForRole } from '@/config/modules'
+import api, { listModules } from '@/api'
 
 const ROLE_LABELS = {
   consumer: '消费者',
@@ -74,6 +73,7 @@ export default {
     auth.restore()
 
     const identity = ref(null)
+    const modules = ref([])
     const loading = ref(true)
     const loggingOut = ref(false)
     const error = ref('')
@@ -87,8 +87,6 @@ export default {
       || auth.user?.username
       || '已登录用户'
     ))
-    const modules = computed(() => modulesForRole(role.value))
-
     const currentIdentity = async () => api.get('/api/identity/me')
 
     const loadIdentity = async () => {
@@ -100,7 +98,12 @@ export default {
       loading.value = true
       error.value = ''
       try {
-        identity.value = await currentIdentity()
+        const [identityData, moduleData] = await Promise.all([
+          currentIdentity(),
+          listModules()
+        ])
+        identity.value = identityData
+        modules.value = Array.isArray(moduleData) ? moduleData : []
       } catch (err) {
         error.value = err?.message || '工作台加载失败'
       } finally {

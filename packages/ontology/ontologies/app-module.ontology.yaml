@@ -1,0 +1,62 @@
+# 应用注册表本体 —— 门户可用模块目录的唯一结构真源
+#
+# 由 @gri/codegen 消费，确定性产出 ontology.app_module 的迁移主体。
+# 本对象只承载模块目录；用户选用状态由后续 S3 的独立对象承载。
+
+schemaVersion: 0.1.0
+name: gri-app-module-registry
+description: 统一工作台应用注册表（模块目录、入口、角色可见性与排序）
+
+objects:
+  - name: AppModule
+    table: ontology.app_module
+    description: 门户应用模块目录项
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 稳定模块编码（food/tutor/org-admin/...）
+      - name: name
+        type: string
+        required: true
+        description: 模块展示名
+      - name: short
+        type: string
+        description: 模块短名
+      - name: description
+        type: text
+        description: 模块说明
+      - name: icon
+        type: string
+        description: 前端图标标识
+      - name: entryUrl
+        type: string
+        required: true
+        description: 模块入口 URL（空字符串表示尚未接入）
+      - name: category
+        type: enum
+        required: true
+        values: [business, tool, admin]
+        description: 模块分类
+      - name: allowedRoles
+        type: array
+        required: true
+        description: 可见角色闭集；空数组表示所有登录角色可见
+      - name: isCore
+        type: boolean
+        required: true
+        default: false
+        description: 是否核心模块
+      - name: status
+        type: string
+        required: true
+        dbDefault: "'active'"
+        description: 目录状态（active/inactive）
+      - name: sortOrder
+        type: integer
+        required: true
+        description: 展示排序（升序）
+    indexes:
+      - columns: [status, sortOrder]
+        name: idx_app_module_status_sort

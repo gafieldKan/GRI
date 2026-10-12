@@ -112,6 +112,7 @@ describe('public-routes 公开读白名单', () => {
     it('个人数据 / 写操作 / 未上榜路径都被强制鉴权', () => {
       expect(isPublicRoute('GET', '/identity/me')).toBe(false);
       expect(isPublicRoute('PUT', '/identity/me')).toBe(false);
+      expect(isPublicRoute('GET', '/modules')).toBe(false);
       expect(isPublicRoute('GET', '/food/orders/me')).toBe(false);
       expect(isPublicRoute('POST', '/food/orders')).toBe(false);
       expect(isPublicRoute('GET', '/tuition/wrong-questions')).toBe(false);

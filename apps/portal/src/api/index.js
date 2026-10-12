@@ -30,6 +30,13 @@ api.interceptors.response.use(
 
 export default api
 
+// ===== 统一工作台应用目录 =====
+
+// 登录人按服务端业务角色过滤后的可用模块目录。
+export async function listModules() {
+  return api.get('/api/modules')
+}
+
 // 统一错误兜底：{ success:false, error }（承载 200+success:false / 非 2xx reject 两种形态）
 function toError(e) {
   const msg = (e && (e.message || e.error || e.response?.data?.error)) || '请求失败'

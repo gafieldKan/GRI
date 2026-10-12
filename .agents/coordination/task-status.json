@@ -266,10 +266,10 @@
   "_verification_2026_10_12": {
     "P3-S1": "done_verified（独立复验全绿，含真实浏览器 E2E）",
     "next_queue": [
-      "Codex←S2",
-      "S2-S6 提示词已交（.agents/codex/dispatch/p3-s2-s6-prompts.md）"
+      "Codex←S3"
     ],
-    "P3-S1b": "done_verified（独立复验全绿，逐端注入审计）"
+    "P3-S1b": "done_verified（独立复验全绿，逐端注入审计）",
+    "P3-S2": "done_verified（独立复验全绿，含网关+浏览器）"
   },
   "p3-s1b": {
     "status": "done_verified",
@@ -295,7 +295,21 @@
   },
   "p3-s2": {
     "agent": "codex",
-    "status": "pending"
+    "status": "done_verified",
+    "commit": null,
+    "summary": "应用注册表 ontology.app_module（本体→迁移023+9种子）+ GET /api/modules 按角色过滤；S1 工作台改消费后端（删本地常量）",
+    "verification": {
+      "ontology": "双校验OK，codegen一致",
+      "migration": "023 登记，9 行",
+      "tsc": "0 error",
+      "module_tests": "2/4",
+      "full_tests": "34/521",
+      "e2e_temp": "401/[food]/9",
+      "e2e_gateway": "401/[food]/9",
+      "browser": "工作台从后端渲染，异常0",
+      "deployed": "api 容器已重建",
+      "independent": true
+    }
   },
   "p3-s3": {
     "agent": "codex",
@@ -326,5 +340,8 @@
       ],
       "rule": "按优点分工（ORCHESTRATION §角色定位）"
     }
+  },
+  "_deploy_2026_10_12": {
+    "api_rebuilt": "docker compose build api && up -d（陈旧镜像→含 module-registry）"
   }
 }
