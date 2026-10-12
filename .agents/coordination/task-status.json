@@ -324,7 +324,10 @@
       "module_tests": "2/11",
       "full_tests": "34/528",
       "e2e": "consumer 越权403零写; student enable/disable 幂等+selected 投影",
-      "independent": true
+      "independent": true,
+      "e2e_gateway": "enable 200/selected true",
+      "browser": "工作台选用开关 0/3 渲染，异常0",
+      "deployed": "api 容器已重建"
     }
   },
   "p3-s4": {
@@ -354,6 +357,7 @@
     }
   },
   "_deploy_2026_10_12": {
-    "api_rebuilt": "docker compose build api && up -d（陈旧镜像→含 module-registry）"
+    "api_rebuilt": "docker compose build api && up -d（陈旧镜像→含 module-registry）",
+    "api_rebuilt_s3": "docker compose build api && up -d（含 user_module/enable/disable）"
   }
 }
