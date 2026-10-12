@@ -161,6 +161,7 @@ POST /api/ontology/dimensions/apply { "planId" }
 | # | 卡（建议命名） | 执行 | 内容 | 依赖 | 验收（含"能亲手点"） |
 |---|---|---|---|---|---|
 | **S1** | `p3-s1-portal-sso-workbench` | Codex | 门户壳改造：未登录→登录/注册页；已登录→工作台（先按**角色**过滤渲染插件卡片）；SSO 会话复用 auth-client | — | 浏览器 `/`：未登录见登录页；登录后见按角色过滤的卡片 |
+| **S1b** | `p3-s1b-cross-app-sso` | Codex | **跨模块统一 SSO**：各模块前端共享 `gri-auth-token`；未登录跳 portal 登录（但 `apps/web` 自建 store，未接 auth-client → 二次登录） | S1 | portal 登录后直访 `/food/` `/tutor/` 不二次登录 |
 | **S2** | `p3-s2-app-module-registry` | Codex | 本体 `AppModule` → 迁移 023 + 种子（把 9 模块注册）+ `GET /api/modules`（按角色返回可用）| S1 | 登录不同角色，`/api/modules` 返回不同集合 |
 | **S3** | `p3-s3-user-plugin-optin` | Codex | `UserModule` 选用（enable/disable）+ 工作台勾选 UI + 列表按选用过滤 | S2 | 用户勾选/取消插件，刷新后工作台随之变化 |
 | **S4** | `p3-s4-dimension-binding` | Codex | `module_region`/`module_industry` + 门户「区域×行业」选择器 + `?region=&industry=` 过滤 | S3 | 选定区域/行业，插件列表按上下文过滤 |

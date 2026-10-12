@@ -260,12 +260,28 @@
       "verify_sh": "PASS=44 FAIL=0",
       "independent": true
     },
-    "notes": "次要：已登录直载登录路由时守卫可能不重定向(getCurrentPages 空)；index.shell.html 成死文件。"
+    "notes": "次要：已登录直载登录路由时守卫可能不重定向(getCurrentPages 空)；index.shell.html 成死文件。",
+    "caveat": "验收#4（跨端 SSO）过度声称：apps/web 未接 auth-client，二次登录 → 已补 S1b。"
   },
   "_verification_2026_10_12": {
     "P3-S1": "done_verified（独立复验全绿，含真实浏览器 E2E）",
     "next_queue": [
-      "Codex<-S2（下达前复核承重事实）"
-    ]
+      "Codex←S1b（跨端 SSO）或 S2（独立）"
+    ],
+    "P3-S1b": "补卡待下达（修跨端 SSO 缺口）"
+  },
+  "p3-s1b": {
+    "status": "pending",
+    "agent": "codex",
+    "depends_on": "p3-s1",
+    "summary": "跨模块统一 SSO：各模块前端共享 gri-auth-token；未登录跳 portal 登录（apps/web 自建 store 未接 auth-client → 修）",
+    "card": ".agents/codex/tasks/p3-s1b-cross-app-sso.md",
+    "verification": {
+      "acceptance": [
+        "portal 登录后 /food/ /tutor/ 免二次登录",
+        "未登录直访模块→回 portal 登录",
+        "portal 登出→各端失效"
+      ]
+    }
   }
 }
