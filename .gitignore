@@ -99,3 +99,9 @@ scripts/k12-curriculum/maps-draft/
 
 # 一次性 scratch 目录
 .p2t4/
+
+# Explorer 参考浏览器（从源 HTML 复制，体积大，勿入库；来源见 apps/explorer/README.md）
+apps/explorer/region.html
+apps/explorer/industry.html
+# 区域细分几何（52MB，派生自源文件）
+scripts/reference-data/data/un-regions-maps.geo.json

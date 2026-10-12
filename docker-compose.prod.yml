@@ -78,6 +78,8 @@ services:
       - ./ssl:/etc/nginx/ssl:ro
       # 统一入口壳（纯静态）
       - ./apps/portal/index.shell.html:/usr/share/nginx/html/shell/index.shell.html:ro
+      # 双维度 Explorer（区域×行业 浏览器 + GRI 首页外壳）
+      - ./apps/explorer:/usr/share/nginx/html/explore:ro
       # 前端构建产物（npm run build:all-h5 产出，dist/ 已 gitignore）
       - ./apps/web/dist/build/h5:/usr/share/nginx/html/food:ro
       - ./apps/web-ai-tutor/dist/build/h5:/usr/share/nginx/html/tutor:ro
