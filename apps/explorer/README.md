@@ -9,7 +9,13 @@ GRI 首页（`/` → 302 `/explore/`）：顶栏（品牌 + 区域/行业切换 
 - `region.html` / `industry.html` —— **参考浏览器（旧，不入库）**：早期 iframe 承载版，已由 `index.html` 自渲染取代，仅留作视觉对照。
 
 ## 现状
-**引擎 v2（自渲染）**：不再 iframe；区域=真实国界 SVG 地图（248 国，点选+树下钻到省/市/区），行业=squarified treemap（22 门类，点击下钻）。后续：几何按需分片加载（省市级地图下钻）、接本体 API、治理（S5/S6）。
+**引擎 v2（自渲染）**：不再 iframe。
+- **区域**：真实国界 SVG 世界地图（248 国，点选）→ **点国家地图下钻**（按需加载该国切片，自动缩放）→ 省→市→区；左树同步。
+- **行业**：squarified treemap（22 门类，点击下钻大类/中类/小类）。
+- 顶栏：区域/行业切换 + **右上 SSO**。
+
+数据由 `python3 apps/explorer/prepare-data.py` 从 `scripts/reference-data/data/*` 派生（产物在 `data/`，体积大故 gitignore）。
+后续：接本体 API、更多视图（graph/list）、治理（S5/S6）。
 
 ## 复现（源文件在仓库外时）
 ```bash

@@ -173,29 +173,44 @@ function renderCanvas(){
   if (DIMS[state.dim].view==='geo') renderGeo(c); else renderTreemap(c);
 }
 
-// ── Geo 视图（SVG 世界地图）──
-function renderGeo(c){
-  var feats = (state.geo && state.geo.features) || [];
-  var W=1000, H=500;
-  function px(lon){ return (lon+180)/360*W; }
-  function py(lat){ return (90-lat)/180*H; }
-  function ringPath(ring){ var d=''; for(var i=0;i<ring.length;i++){ d += (i?'L':'M') + px(ring[i][0]).toFixed(1) + ',' + py(ring[i][1]).toFixed(1); } return d+'Z'; }
-  var parts = ['<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'];
-  parts.push('<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="#eaf4ee"/>');
+// ── Geo 视图（世界地图 / 国家下级下钻）──
+function ancestorCountry(nid){ var c=nodeById(nid), g=0; while(c&&g++<30){ if(c.level==='country') return c; c=(c.parent==null?null:nodeById(c.parent)); } return null; }
+function isDesc(adcode, fid){ var c=nodeById(adcode), g=0; while(c&&g++<30){ if(String(c.id)===String(fid)) return true; c=(c.parent==null?null:nodeById(c.parent)); } return false; }
+function collectPts(coords, acc){ if(typeof coords[0]==='number'){ acc.push(coords); } else { coords.forEach(function(x){ collectPts(x, acc); }); } }
+function drawGeo(c, feats, note){
+  if(!feats.length){ c.innerHTML='<div class="empty">该节点无下级地图</div>'; return; }
+  var acc=[]; feats.forEach(function(f){ collectPts(f.geometry.coordinates, acc); });
+  var mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9;
+  acc.forEach(function(p){ if(p[0]<mnx)mnx=p[0]; if(p[0]>mxx)mxx=p[0]; if(p[1]<mny)mny=p[1]; if(p[1]>mxy)mxy=p[1]; });
+  var pad=Math.max((mxx-mnx),(mxy-mny))*0.04 + 0.5;
+  var lon0=mnx-pad, lon1=mxx+pad, lat0=mny-pad, lat1=mxy+pad;
+  var lonSpan=(lon1-lon0)||1, latSpan=(lat1-lat0)||1;
+  var W=1000, H=560;
+  var scale=Math.min(W/lonSpan, H/latSpan);
+  var offx=(W-lonSpan*scale)/2, offy=(H-latSpan*scale)/2;
+  function px(lon){ return offx+(lon-lon0)*scale; }
+  function py(lat){ return offy+(lat1-lat)*scale; }
+  function ringPath(ring){ var d=''; for(var i=0;i<ring.length;i++){ d+=(i?'L':'M')+px(ring[i][0]).toFixed(1)+','+py(ring[i][1]).toFixed(1); } return d+'Z'; }
+  var parts=['<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet"><rect x="0" y="0" width="'+W+'" height="'+H+'" fill="#eaf4ee"/>'];
   feats.forEach(function(f){
-    var ad = f.properties.adcode; var node = nodeById(ad);
-    var d = '';
-    var g = f.geometry;
-    if (g.type==='Polygon'){ g.coordinates.forEach(function(r){ d += ringPath(r); }); }
-    else if (g.type==='MultiPolygon'){ g.coordinates.forEach(function(poly){ poly.forEach(function(r){ d += ringPath(r); }); }); }
-    var on = (state.focus && String(state.focus.id)===String(ad)) ? ' on' : '';
+    var ad=f.properties.adcode; var d=''; var g=f.geometry;
+    if(g.type==='Polygon'){ g.coordinates.forEach(function(r){ d+=ringPath(r); }); }
+    else if(g.type==='MultiPolygon'){ g.coordinates.forEach(function(poly){ poly.forEach(function(r){ d+=ringPath(r); }); }); }
+    var on=(state.focus && String(state.focus.id)===String(ad))?' on':'';
     parts.push('<path class="geo-shape'+on+'" d="'+d+'" data-id="'+esc(ad)+'"><title>'+esc(f.properties.name)+'</title></path>');
   });
-  parts.push('</svg><div class="hint">'+feats.length+' 个国家 · 点击选中；左侧树可下钻省/市/区</div>');
-  c.innerHTML = parts.join('');
-  c.querySelectorAll('.geo-shape').forEach(function(p){
-    p.onclick = function(){ var n = nodeById(p.getAttribute('data-id')); if(n) select(n); };
-  });
+  parts.push('</svg><div class="hint">'+esc(note)+'</div>');
+  c.innerHTML=parts.join('');
+  c.querySelectorAll('.geo-shape').forEach(function(p){ p.onclick=function(){ var n=nodeById(p.getAttribute('data-id')); if(n) select(n); }; });
+}
+function renderGeo(c){
+  var f=state.focus;
+  var scope = f ? ancestorCountry(f.id) : null;
+  if(!scope){ var wf=(state.geo&&state.geo.features)||[]; drawGeo(c, wf, wf.length+' 个国家 · 点击选中下钻'); return; }
+  var cid=String(scope.id);
+  if(state._sliceFor===cid && state._slice){ var feats=(state._slice.features||[]).filter(function(ft){ var n=nodeById(ft.properties.adcode); return n && (String(n.id)===String(f.id) || String(n.parent)===String(f.id)); }); drawGeo(c, feats, label(scope)+' · '+label(f)+' 下级 '+feats.length+' 项'); return; }
+  c.innerHTML='<div class="empty">正在加载「'+esc(label(scope))+'」下级地图…</div>';
+  fetch('./data/geo/'+cid+'.json').then(function(r){return r.json();}).then(function(fc){ state._sliceFor=cid; state._slice=fc; renderGeo(c); }).catch(function(){ c.innerHTML='<div class="empty">该国家暂无下级地图数据</div>'; });
 }
 
 // ── Treemap 视图（行业）──
