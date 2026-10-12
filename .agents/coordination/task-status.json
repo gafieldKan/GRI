@@ -379,5 +379,11 @@
   },
   "_env_2026_10_12": {
     "npmjs_unreachable": "registry.npmjs.org 间歇不可达；npmmirror 可用；容器构建用临时 Dockerfile 注入镜像源"
+  },
+  "p3-c1": {
+    "status": "pending",
+    "agent": "codex",
+    "summary": "本体 Taxonomy/几何 API（只读）：children/node/search/path + geo 切片；Explorer 数据面从静态 JSON 转 API",
+    "card": ".agents/codex/tasks/p3-c1-taxonomy-api.md"
   }
 }
