@@ -344,7 +344,10 @@
       "module_tests": "2/24",
       "full_tests": "34/541",
       "e2e": "consumer[food]; 非operator403; district/ZZZ 400; operator 挂100000→命中可见/他国隐藏; 非法PUT 400回滚",
-      "independent": true
+      "independent": true,
+      "e2e_gateway": "operator bindings 200; 挂接他国隐藏/清除恢复",
+      "browser": "工作台作用域选择器渲染，异常0",
+      "deployed": "api 容器已重建(npmmirror)"
     }
   },
   "p3-s5": {
@@ -371,6 +374,10 @@
   },
   "_deploy_2026_10_12": {
     "api_rebuilt": "docker compose build api && up -d（陈旧镜像→含 module-registry）",
-    "api_rebuilt_s3": "docker compose build api && up -d（含 user_module/enable/disable）"
+    "api_rebuilt_s3": "docker compose build api && up -d（含 user_module/enable/disable）",
+    "api_rebuilt_s4": "临时 Dockerfile npm_config_registry=npmmirror（npmjs 间歇断网）；up -d 成功"
+  },
+  "_env_2026_10_12": {
+    "npmjs_unreachable": "registry.npmjs.org 间歇不可达；npmmirror 可用；容器构建用临时 Dockerfile 注入镜像源"
   }
 }
