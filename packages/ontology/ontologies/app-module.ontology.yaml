@@ -2,6 +2,7 @@
 #
 # 由 @gri/codegen 消费，确定性产出 ontology.app_module 的迁移主体。
 # AppModule 只承载模块目录；UserModule 只承载登录人的选用偏好，不参与授权判定。
+# ModuleRegion / ModuleIndustry 承载可选维度限定：未挂接 = 全维度可见。
 
 schemaVersion: 0.1.0
 name: gri-app-module-registry
@@ -75,3 +76,80 @@ objects:
         description: 选用的 ontology.app_module.code
     uniqueConstraints:
       - [userId, moduleCode]
+
+  # 既有维度表的只读桥对象：abstract 确保 codegen 不重复产出其建表 DDL。
+  - name: RegionDimensionRef
+    table: ontology.region
+    abstract: true
+    description: 既有 UN 区域树的 codegen 关联目标
+
+  - name: IndustryDimensionRef
+    table: ontology.industry
+    abstract: true
+    description: 既有 ISIC Rev.5 行业树的 codegen 关联目标
+
+  - name: ModuleRegion
+    table: ontology.module_region
+    description: 模块的可选区域作用域（真 FK 到 ontology.region）
+    fields:
+      - name: moduleId
+        type: uuid
+        required: true
+        description: 模块主键（与 Link foreignKey 共用列）
+      - name: regionId
+        type: uuid
+        required: true
+        description: 区域节点主键（与 Link foreignKey 共用列）
+    links:
+      - name: module
+        source: ModuleRegion
+        target: AppModule
+        cardinality: many
+        foreignKey: moduleId
+        onDelete: cascade
+      - name: region
+        source: ModuleRegion
+        target: RegionDimensionRef
+        cardinality: many
+        foreignKey: regionId
+        onDelete: cascade
+    uniqueConstraints:
+      - [moduleId, regionId]
+    indexes:
+      - columns: [moduleId]
+        name: idx_module_region_module
+      - columns: [regionId]
+        name: idx_module_region_region
+
+  - name: ModuleIndustry
+    table: ontology.module_industry
+    description: 模块的可选行业作用域（真 FK 到 ontology.industry）
+    fields:
+      - name: moduleId
+        type: uuid
+        required: true
+        description: 模块主键（与 Link foreignKey 共用列）
+      - name: industryId
+        type: uuid
+        required: true
+        description: 行业节点主键（与 Link foreignKey 共用列）
+    links:
+      - name: module
+        source: ModuleIndustry
+        target: AppModule
+        cardinality: many
+        foreignKey: moduleId
+        onDelete: cascade
+      - name: industry
+        source: ModuleIndustry
+        target: IndustryDimensionRef
+        cardinality: many
+        foreignKey: industryId
+        onDelete: cascade
+    uniqueConstraints:
+      - [moduleId, industryId]
+    indexes:
+      - columns: [moduleId]
+        name: idx_module_industry_module
+      - columns: [industryId]
+        name: idx_module_industry_industry

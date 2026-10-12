@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   ForbiddenException,
   Get,
@@ -6,9 +7,13 @@ import {
   HttpStatus,
   Param,
   Post,
+  Put,
+  Query,
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { OrganizationService } from '../organization/organization.service';
+import { ModuleBindingInput } from './module-registry.types';
 import { ModuleRegistryService } from './module-registry.service';
 
 interface ReqAuth {
@@ -17,11 +22,44 @@ interface ReqAuth {
 
 @Controller('modules')
 export class ModuleRegistryController {
-  constructor(private readonly moduleRegistryService: ModuleRegistryService) {}
+  constructor(
+    private readonly moduleRegistryService: ModuleRegistryService,
+    private readonly organizationService: OrganizationService,
+  ) {}
 
   @Get()
-  async list(@Req() req: Request) {
-    return this.moduleRegistryService.listAvailableModules(this.externalId(req));
+  async list(
+    @Req() req: Request,
+    @Query('region') region?: string,
+    @Query('industry') industry?: string,
+  ) {
+    return this.moduleRegistryService.listAvailableModules(this.externalId(req), {
+      region,
+      industry,
+    });
+  }
+
+  @Get('dimensions')
+  async dimensions() {
+    return this.moduleRegistryService.listDimensionOptions();
+  }
+
+  @Get(':code/bindings')
+  async getBindings(@Req() req: Request, @Param('code') code: string) {
+    const externalId = this.externalId(req);
+    await this.organizationService.assertSiteOperator(externalId);
+    return this.moduleRegistryService.getModuleBindings(code);
+  }
+
+  @Put(':code/bindings')
+  async putBindings(
+    @Req() req: Request,
+    @Param('code') code: string,
+    @Body() body: ModuleBindingInput,
+  ) {
+    const externalId = this.externalId(req);
+    await this.organizationService.assertSiteOperator(externalId);
+    return this.moduleRegistryService.replaceModuleBindings(code, body);
   }
 
   @Post(':code/enable')

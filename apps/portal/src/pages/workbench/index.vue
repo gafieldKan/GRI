@@ -24,9 +24,50 @@
     </view>
 
     <template v-else>
+      <view class="scope-toolbar">
+        <view class="scope-toolbar-head">
+          <text class="scope-title">作用域</text>
+          <button
+            v-if="hasScopeFilter"
+            class="scope-reset"
+            :disabled="moduleLoading"
+            @click="clearScopeFilters"
+          >
+            全部
+          </button>
+        </view>
+        <view class="scope-fields">
+          <picker
+            class="scope-picker"
+            :range="regionLabels"
+            :value="regionIndex"
+            :disabled="moduleLoading"
+            @change="handleRegionChange"
+          >
+            <view class="scope-field">
+              <text class="scope-label">区域</text>
+              <text class="scope-value">{{ selectedRegionLabel }}</text>
+            </view>
+          </picker>
+          <picker
+            class="scope-picker"
+            :range="industryLabels"
+            :value="industryIndex"
+            :disabled="moduleLoading"
+            @change="handleIndustryChange"
+          >
+            <view class="scope-field">
+              <text class="scope-label">行业</text>
+              <text class="scope-value">{{ selectedIndustryLabel }}</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
       <view class="section-heading">
         <text class="section-title">可用模块</text>
         <text class="section-count">{{ visibleModules.length }}</text>
+        <text v-if="moduleLoading" class="scope-loading">更新中</text>
       </view>
 
       <view class="module-grid">
@@ -46,7 +87,7 @@
         </view>
       </view>
 
-      <view v-if="!visibleModules.length" class="workbench-state">
+      <view v-if="!visibleModules.length && !moduleLoading" class="workbench-state">
         <text class="state-text">当前还没有已启用模块</text>
       </view>
 
@@ -85,7 +126,12 @@
 import { computed, ref } from 'vue'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@gri/auth-client'
-import api, { disableModule, enableModule, listModules } from '@/api'
+import api, {
+  disableModule,
+  enableModule,
+  listModuleDimensions,
+  listModules
+} from '@/api'
 
 const ROLE_LABELS = {
   consumer: '消费者',
@@ -102,10 +148,15 @@ export default {
 
     const identity = ref(null)
     const modules = ref([])
+    const dimensions = ref({ regions: [], industries: [] })
+    const selectedRegion = ref('')
+    const selectedIndustry = ref('')
     const pendingModuleCodes = ref([])
     const loading = ref(true)
+    const moduleLoading = ref(false)
     const loggingOut = ref(false)
     const error = ref('')
+    let moduleRequestId = 0
 
     const role = computed(() => identity.value?.user?.role || '')
     const roleLabel = computed(() => ROLE_LABELS[role.value] || role.value || '未识别角色')
@@ -125,7 +176,53 @@ export default {
     const selectedOptionalCount = computed(() => (
       optionalModules.value.filter(module => module.selected).length
     ))
+    const regionLabels = computed(() => (
+      dimensions.value.regions.map(region => region.name)
+    ))
+    const industryLabels = computed(() => (
+      dimensions.value.industries.map(industry => industry.name)
+    ))
+    const regionIndex = computed(() => (
+      dimensions.value.regions.findIndex(region => region.nodeId === selectedRegion.value)
+    ))
+    const industryIndex = computed(() => (
+      dimensions.value.industries.findIndex(industry => industry.code === selectedIndustry.value)
+    ))
+    const selectedRegionLabel = computed(() => (
+      dimensions.value.regions.find(region => region.nodeId === selectedRegion.value)?.name
+      || '全部区域'
+    ))
+    const selectedIndustryLabel = computed(() => (
+      dimensions.value.industries.find(industry => industry.code === selectedIndustry.value)?.name
+      || '全部行业'
+    ))
+    const hasScopeFilter = computed(() => (
+      Boolean(selectedRegion.value || selectedIndustry.value)
+    ))
     const currentIdentity = async () => api.get('/api/identity/me')
+
+    const scopeFilters = () => ({
+      region: selectedRegion.value || undefined,
+      industry: selectedIndustry.value || undefined
+    })
+
+    const loadModules = async (options = {}) => {
+      const requestId = ++moduleRequestId
+      moduleLoading.value = true
+      try {
+        const moduleData = await listModules(scopeFilters())
+        if (requestId !== moduleRequestId) return
+        modules.value = Array.isArray(moduleData) ? moduleData : []
+      } catch (err) {
+        if (!options.silent) throw err
+        uni.showToast({
+          title: err?.message || '模块筛选失败',
+          icon: 'none'
+        })
+      } finally {
+        if (requestId === moduleRequestId) moduleLoading.value = false
+      }
+    }
 
     const loadIdentity = async () => {
       if (!auth.isAuthenticated) {
@@ -136,12 +233,16 @@ export default {
       loading.value = true
       error.value = ''
       try {
-        const [identityData, moduleData] = await Promise.all([
+        const [identityData, dimensionData] = await Promise.all([
           currentIdentity(),
-          listModules()
+          listModuleDimensions()
         ])
         identity.value = identityData
-        modules.value = Array.isArray(moduleData) ? moduleData : []
+        dimensions.value = {
+          regions: Array.isArray(dimensionData?.regions) ? dimensionData.regions : [],
+          industries: Array.isArray(dimensionData?.industries) ? dimensionData.industries : []
+        }
+        await loadModules()
       } catch (err) {
         error.value = err?.message || '工作台加载失败'
       } finally {
@@ -166,6 +267,24 @@ export default {
     }
 
     const isModulePending = code => pendingModuleCodes.value.includes(code)
+
+    const handleRegionChange = (event) => {
+      const index = Number(event?.detail?.value)
+      selectedRegion.value = dimensions.value.regions[index]?.nodeId || ''
+      loadModules({ silent: true })
+    }
+
+    const handleIndustryChange = (event) => {
+      const index = Number(event?.detail?.value)
+      selectedIndustry.value = dimensions.value.industries[index]?.code || ''
+      loadModules({ silent: true })
+    }
+
+    const clearScopeFilters = () => {
+      selectedRegion.value = ''
+      selectedIndustry.value = ''
+      loadModules({ silent: true })
+    }
 
     const toggleModule = async (module, event) => {
       const selected = Boolean(event?.detail?.value)
@@ -220,18 +339,30 @@ export default {
 
     return {
       auth,
+      clearScopeFilters,
+      dimensions,
       displayName,
       error,
+      handleIndustryChange,
+      handleRegionChange,
+      hasScopeFilter,
       handleLogout,
+      industryIndex,
+      industryLabels,
       isModulePending,
       loadIdentity,
       loading,
       loggingOut,
       modules,
+      moduleLoading,
       optionalModules,
       openModule,
+      regionIndex,
+      regionLabels,
       roleLabel,
       selectedOptionalCount,
+      selectedIndustryLabel,
+      selectedRegionLabel,
       toggleModule,
       visibleModules
     }
@@ -327,6 +458,82 @@ export default {
   align-items: center;
   gap: 16rpx;
   margin-bottom: 20rpx;
+}
+
+.scope-toolbar {
+  padding: 24rpx 28rpx 28rpx;
+  margin-bottom: 32rpx;
+  background: var(--color-bg-card, #fff);
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: var(--radius-md, 12rpx);
+  box-shadow: var(--shadow-sm, 0 4rpx 16rpx rgba(0, 0, 0, 0.05));
+}
+
+.scope-toolbar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.scope-title {
+  color: var(--color-text-primary, #1a1a2e);
+  font-size: 28rpx;
+  font-weight: 650;
+}
+
+.scope-reset {
+  min-width: 112rpx;
+  padding: 8rpx 20rpx;
+  margin: 0;
+  color: var(--color-text-secondary, #59596b);
+  background: var(--color-bg-secondary, #f0f0f5);
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: var(--radius-sm, 8rpx);
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.scope-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20rpx;
+}
+
+.scope-picker {
+  min-width: 0;
+}
+
+.scope-field {
+  min-height: 92rpx;
+  padding: 16rpx 20rpx;
+  background: var(--color-bg-secondary, #f0f0f5);
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: var(--radius-sm, 8rpx);
+  box-sizing: border-box;
+}
+
+.scope-label {
+  display: block;
+  margin-bottom: 6rpx;
+  color: var(--color-text-tertiary, #8a8f98);
+  font-size: 22rpx;
+}
+
+.scope-value {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text-primary, #1a1a2e);
+  font-size: 26rpx;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-loading {
+  margin-left: auto;
+  color: var(--color-text-tertiary, #8a8f98);
+  font-size: 22rpx;
 }
 
 .section-title {

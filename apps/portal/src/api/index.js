@@ -32,9 +32,17 @@ export default api
 
 // ===== 统一工作台应用目录 =====
 
-// 登录人按服务端业务角色过滤后的可用模块目录。
-export async function listModules() {
-  return api.get('/api/modules')
+// 登录人按服务端业务角色与可选区域/行业上下文过滤后的模块目录。
+export async function listModules(filters = {}) {
+  const params = {}
+  if (filters.region) params.region = filters.region
+  if (filters.industry) params.industry = filters.industry
+  return api.get('/api/modules', { params })
+}
+
+// 维度选择器闭集：country/province 区域 + section 行业。
+export async function listModuleDimensions() {
+  return api.get('/api/modules/dimensions')
 }
 
 export async function enableModule(code) {
