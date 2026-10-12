@@ -11,8 +11,11 @@ GRI 首页（`/` → 302 `/explore/`）：顶栏（品牌 + 区域/行业切换 
 D="/home/ubantu/文档/xwechat_files/kanlifeng_bfe0/msg/file/2026-10"
 cp "$D/联合国区域划分地图_逐层展开_V1.0.html" apps/explorer/region.html
 cp "$D/联合国行业分类_ISIC_Rev5_逐层展开_V1.0.html" apps/explorer/industry.html
+chmod u+w apps/explorer/region.html apps/explorer/industry.html
 sed -i 's/--teal:#247862/--teal:#1B7A3D/g; s/--teal-dark:#155c48/--teal-dark:#11562c/g' \
   apps/explorer/region.html apps/explorer/industry.html
+# 几何精简（region 30MB → ~7MB，保最细下钻）
+python3 apps/explorer/slim-region.py 0.02
 ```
 
 ## 部署
