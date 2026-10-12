@@ -32,6 +32,10 @@
       <button class="login-btn" :loading="loading" :disabled="loading" @click="handleLogin">
         {{ loading ? '登录中...' : '登录' }}
       </button>
+
+      <view class="register-link" @click="goRegister">
+        <text>没有账号？立即注册</text>
+      </view>
     </view>
   </view>
 </template>
@@ -50,6 +54,9 @@ export default {
     }
   },
   methods: {
+    goRegister() {
+      uni.navigateTo({ url: '/pages/register/index' })
+    },
     async handleLogin() {
       if (!this.identifier.trim() || !this.password) {
         this.error = '请输入账号和密码'
@@ -60,7 +67,7 @@ export default {
       try {
         const auth = useAuthStore()
         await auth.login(this.identifier.trim(), this.password)
-        uni.reLaunch({ url: '/pages/console/index' })
+        uni.reLaunch({ url: '/pages/workbench/index' })
       } catch (err) {
         this.error = err?.message || '登录失败，请检查账号和密码'
       } finally {
@@ -146,5 +153,12 @@ export default {
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
+}
+
+.register-link {
+  margin-top: var(--spacing-md);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 </style>

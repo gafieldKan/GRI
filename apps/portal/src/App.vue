@@ -18,11 +18,20 @@ export default {
   },
   onShow() {
     console.log('GRI 组织管理台 Show')
-    // 路由守卫：未登录访问业务页重定向到登录页（登录页自身跳过）
+    // 路由守卫：登录/注册页公开，业务页必须登录。
     const pages = getCurrentPages()
     const route = pages.length ? pages[pages.length - 1].route : ''
-    if (!useAuthStore().isAuthenticated && !route.startsWith('pages/login/')) {
+    const publicRoutes = ['pages/login/login', 'pages/register/index']
+    const isPublicRoute = publicRoutes.some((publicRoute) => route.startsWith(publicRoute))
+    const auth = useAuthStore()
+
+    if (!auth.isAuthenticated && !isPublicRoute) {
       uni.reLaunch({ url: '/pages/login/login' })
+      return
+    }
+
+    if (auth.isAuthenticated && isPublicRoute) {
+      uni.reLaunch({ url: '/pages/workbench/index' })
     }
   },
   onHide() {

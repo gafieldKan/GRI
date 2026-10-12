@@ -1,9 +1,23 @@
 {
   "pages": [
     {
+      "path": "pages/workbench/index",
+      "style": {
+        "navigationBarTitleText": "GRI 工作台",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
       "path": "pages/login/login",
       "style": {
         "navigationBarTitleText": "登录",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/register/index",
+      "style": {
+        "navigationBarTitleText": "注册",
         "enablePullDownRefresh": false
       }
     },

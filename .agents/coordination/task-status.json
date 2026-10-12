@@ -232,5 +232,40 @@
     "②api_health": "非契约。main.ts:14 setGlobalPrefix('api',{exclude:['health']})→仅 /health 为路由；nginx 仅映射 /health；无消费者。health-check.sh 已正确降 WARN。",
     "③audit_export": "零需求（无消费者/无 UI）。YAGNI，删范围而非另立卡。",
     "basis": "逐项 grep 实证，非凭印象"
+  },
+  "p3-s1": {
+    "status": "done_verified",
+    "agent": "codex",
+    "commit": null,
+    "summary": "门户 SSO 工作台：未登录→登录/注册；已登录→工作台按角色渲染插件卡片；nginx / 302→/portal/",
+    "files": [
+      "apps/portal/src/pages/workbench/index.vue",
+      "apps/portal/src/pages/register/index.vue",
+      "apps/portal/src/config/modules.js",
+      "apps/portal/src/pages.json",
+      "apps/portal/src/App.vue",
+      "apps/portal/src/pages/login/login.vue",
+      "nginx/conf.d/default.conf",
+      "nginx/conf.d.prod/default.conf"
+    ],
+    "deliverables": [
+      ".agents/codex/outputs/p3-s1-file-list.md",
+      ".agents/codex/outputs/p3-s1-verify.sh"
+    ],
+    "verification": {
+      "build": "portal build:h5 OK",
+      "live": "/ -> 302 /portal/",
+      "browser_cdp": "登录->工作台；consumer 仅见订餐；刷新保持；无异常",
+      "api_e2e": "register/login/me/role-filter",
+      "verify_sh": "PASS=44 FAIL=0",
+      "independent": true
+    },
+    "notes": "次要：已登录直载登录路由时守卫可能不重定向(getCurrentPages 空)；index.shell.html 成死文件。"
+  },
+  "_verification_2026_10_12": {
+    "P3-S1": "done_verified（独立复验全绿，含真实浏览器 E2E）",
+    "next_queue": [
+      "Codex<-S2（下达前复核承重事实）"
+    ]
   }
 }
