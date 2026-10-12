@@ -37,6 +37,14 @@ export async function listModules() {
   return api.get('/api/modules')
 }
 
+export async function enableModule(code) {
+  return api.post(`/api/modules/${encodeURIComponent(code)}/enable`)
+}
+
+export async function disableModule(code) {
+  return api.post(`/api/modules/${encodeURIComponent(code)}/disable`)
+}
+
 // 统一错误兜底：{ success:false, error }（承载 200+success:false / 非 2xx reject 两种形态）
 function toError(e) {
   const msg = (e && (e.message || e.error || e.response?.data?.error)) || '请求失败'

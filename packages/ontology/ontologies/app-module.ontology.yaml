@@ -1,7 +1,7 @@
 # 应用注册表本体 —— 门户可用模块目录的唯一结构真源
 #
 # 由 @gri/codegen 消费，确定性产出 ontology.app_module 的迁移主体。
-# 本对象只承载模块目录；用户选用状态由后续 S3 的独立对象承载。
+# AppModule 只承载模块目录；UserModule 只承载登录人的选用偏好，不参与授权判定。
 
 schemaVersion: 0.1.0
 name: gri-app-module-registry
@@ -60,3 +60,18 @@ objects:
     indexes:
       - columns: [status, sortOrder]
         name: idx_app_module_status_sort
+
+  - name: UserModule
+    table: ontology.user_module
+    description: 登录人对非核心模块的选用偏好
+    fields:
+      - name: userId
+        type: uuid
+        required: true
+        description: 登录人的 public.users.id（JWT externalId）
+      - name: moduleCode
+        type: string
+        required: true
+        description: 选用的 ontology.app_module.code
+    uniqueConstraints:
+      - [userId, moduleCode]

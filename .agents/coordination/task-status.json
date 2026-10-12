@@ -266,10 +266,11 @@
   "_verification_2026_10_12": {
     "P3-S1": "done_verified（独立复验全绿，含真实浏览器 E2E）",
     "next_queue": [
-      "Codex←S3"
+      "Codex←S4"
     ],
     "P3-S1b": "done_verified（独立复验全绿，逐端注入审计）",
-    "P3-S2": "done_verified（独立复验全绿，含网关+浏览器）"
+    "P3-S2": "done_verified（独立复验全绿，含网关+浏览器）",
+    "P3-S3": "done_verified（独立复验全绿）"
   },
   "p3-s1b": {
     "status": "done_verified",
@@ -313,7 +314,18 @@
   },
   "p3-s3": {
     "agent": "codex",
-    "status": "pending"
+    "status": "done_verified",
+    "commit": null,
+    "summary": "用户插件选用 ontology.user_module（行存在=已选用）+ POST /api/modules/:code/enable|disable + GET 增 selected；工作台勾选 UI",
+    "verification": {
+      "ontology": "双校验OK(2 obj)",
+      "migration": "024 登记",
+      "tsc": "0",
+      "module_tests": "2/11",
+      "full_tests": "34/528",
+      "e2e": "consumer 越权403零写; student enable/disable 幂等+selected 投影",
+      "independent": true
+    }
   },
   "p3-s4": {
     "agent": "codex",

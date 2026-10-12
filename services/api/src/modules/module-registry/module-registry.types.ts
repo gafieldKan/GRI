@@ -15,6 +15,7 @@ export interface AppModule {
   isCore: boolean;
   status: string;
   sortOrder?: number | null;
+  selected: boolean;
 }
 
 export interface AppModuleRow {
@@ -29,4 +30,10 @@ export interface AppModuleRow {
   is_core: boolean;
   status: string;
   sort_order: number | null;
+  selected: boolean;
+}
+
+export interface ModuleSelection {
+  code: string;
+  selected: boolean;
 }

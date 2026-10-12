@@ -26,12 +26,12 @@
     <template v-else>
       <view class="section-heading">
         <text class="section-title">可用模块</text>
-        <text class="section-count">{{ modules.length }}</text>
+        <text class="section-count">{{ visibleModules.length }}</text>
       </view>
 
       <view class="module-grid">
         <view
-          v-for="module in modules"
+          v-for="module in visibleModules"
           :key="module.code"
           class="module-card"
           :class="{ disabled: !module.entryUrl }"
@@ -46,8 +46,36 @@
         </view>
       </view>
 
-      <view v-if="!modules.length" class="workbench-state">
-        <text class="state-text">当前角色暂无可用模块</text>
+      <view v-if="!visibleModules.length" class="workbench-state">
+        <text class="state-text">当前还没有已启用模块</text>
+      </view>
+
+      <view v-if="optionalModules.length" class="plugin-section">
+        <view class="section-heading plugin-heading">
+          <text class="section-title">选用插件</text>
+          <text class="section-count">{{ selectedOptionalCount }}/{{ optionalModules.length }}</text>
+        </view>
+
+        <view class="plugin-list">
+          <view v-for="module in optionalModules" :key="module.code" class="plugin-row">
+            <view class="plugin-copy">
+              <view class="plugin-title-row">
+                <text class="plugin-icon">{{ module.icon }}</text>
+                <text class="plugin-name">{{ module.name }}</text>
+              </view>
+              <text class="plugin-description">
+                {{ module.description || module.short || '按需加入工作台' }}
+              </text>
+            </view>
+            <switch
+              class="plugin-switch"
+              :checked="module.selected"
+              :disabled="isModulePending(module.code)"
+              color="#1b7a3d"
+              @change="toggleModule(module, $event)"
+            />
+          </view>
+        </view>
       </view>
     </template>
   </view>
@@ -57,7 +85,7 @@
 import { computed, ref } from 'vue'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@gri/auth-client'
-import api, { listModules } from '@/api'
+import api, { disableModule, enableModule, listModules } from '@/api'
 
 const ROLE_LABELS = {
   consumer: '消费者',
@@ -74,6 +102,7 @@ export default {
 
     const identity = ref(null)
     const modules = ref([])
+    const pendingModuleCodes = ref([])
     const loading = ref(true)
     const loggingOut = ref(false)
     const error = ref('')
@@ -86,6 +115,15 @@ export default {
       || auth.user?.name
       || auth.user?.username
       || '已登录用户'
+    ))
+    const visibleModules = computed(() => (
+      modules.value.filter(module => module.isCore || module.selected)
+    ))
+    const optionalModules = computed(() => (
+      modules.value.filter(module => !module.isCore)
+    ))
+    const selectedOptionalCount = computed(() => (
+      optionalModules.value.filter(module => module.selected).length
     ))
     const currentIdentity = async () => api.get('/api/identity/me')
 
@@ -121,6 +159,40 @@ export default {
       }
     }
 
+    const setModuleSelected = (code, selected) => {
+      modules.value = modules.value.map(module => (
+        module.code === code ? { ...module, selected } : module
+      ))
+    }
+
+    const isModulePending = code => pendingModuleCodes.value.includes(code)
+
+    const toggleModule = async (module, event) => {
+      const selected = Boolean(event?.detail?.value)
+      if (isModulePending(module.code) || module.selected === selected) return
+
+      const previous = Boolean(module.selected)
+      pendingModuleCodes.value = [...pendingModuleCodes.value, module.code]
+      setModuleSelected(module.code, selected)
+
+      try {
+        const result = selected
+          ? await enableModule(module.code)
+          : await disableModule(module.code)
+        if (typeof result?.selected === 'boolean') {
+          setModuleSelected(module.code, result.selected)
+        }
+      } catch (err) {
+        setModuleSelected(module.code, previous)
+        uni.showToast({
+          title: err?.message || '插件状态更新失败',
+          icon: 'none'
+        })
+      } finally {
+        pendingModuleCodes.value = pendingModuleCodes.value.filter(code => code !== module.code)
+      }
+    }
+
     const openModule = (module) => {
       if (!module.entryUrl) {
         uni.showToast({ title: '模块正在接入', icon: 'none' })
@@ -151,12 +223,17 @@ export default {
       displayName,
       error,
       handleLogout,
+      isModulePending,
       loadIdentity,
       loading,
       loggingOut,
       modules,
+      optionalModules,
       openModule,
-      roleLabel
+      roleLabel,
+      selectedOptionalCount,
+      toggleModule,
+      visibleModules
     }
   }
 }
@@ -325,6 +402,85 @@ export default {
   margin-top: 16rpx;
   color: var(--color-text-tertiary, #8a8f98);
   font-size: 24rpx;
+}
+
+.plugin-section {
+  margin-top: 40rpx;
+}
+
+.plugin-heading {
+  margin-bottom: 20rpx;
+}
+
+.plugin-list {
+  overflow: hidden;
+  background: var(--color-bg-card, #fff);
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: var(--radius-md, 12rpx);
+  box-shadow: var(--shadow-sm, 0 4rpx 16rpx rgba(0, 0, 0, 0.05));
+}
+
+.plugin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  min-height: 132rpx;
+  padding: 24rpx 28rpx;
+  border-bottom: 1px solid var(--color-border, #e8e8e8);
+  box-sizing: border-box;
+}
+
+.plugin-row:last-child {
+  border-bottom: 0;
+}
+
+.plugin-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.plugin-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.plugin-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  flex-shrink: 0;
+  color: var(--color-primary, #1b7a3d);
+  background: var(--color-primary-light, rgba(27, 122, 61, 0.1));
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.plugin-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary, #1a1a2e);
+  font-size: 28rpx;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugin-description {
+  display: block;
+  margin-top: 12rpx;
+  color: var(--color-text-tertiary, #8a8f98);
+  font-size: 24rpx;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.plugin-switch {
+  flex-shrink: 0;
 }
 
 .workbench-state {
