@@ -1,7 +1,18 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { OrganizationService } from '../organization/organization.service';
+import { CommandService } from './command.service';
 import { TaxonomyController } from './taxonomy.controller';
 import { TaxonomyService } from './taxonomy.service';
+
+// CommandService 依赖 @gri/agent-core（ESM）；jest 无法直接解析 → mock（同 T6/T7 惯例）。
+jest.mock('@gri/agent-core', () => ({
+  LlmClient: class {
+    async chat() {
+      return { content: '[]' };
+    }
+  },
+}));
 
 describe('TaxonomyController', () => {
   let controller: TaxonomyController;
@@ -17,7 +28,17 @@ describe('TaxonomyController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TaxonomyController],
-      providers: [{ provide: TaxonomyService, useValue: service }],
+      providers: [
+        { provide: TaxonomyService, useValue: service },
+        {
+          provide: OrganizationService,
+          useValue: { assertSiteOperator: jest.fn(async () => undefined) },
+        },
+        {
+          provide: CommandService,
+          useValue: { propose: jest.fn(), apply: jest.fn() },
+        },
+      ],
     }).compile();
 
     controller = module.get(TaxonomyController);

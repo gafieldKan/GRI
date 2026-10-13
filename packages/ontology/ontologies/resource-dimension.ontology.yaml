@@ -1,0 +1,64 @@
+# 资源维度绑定本体 —— 业务资源与区域/行业维度的唯一结构真源
+#
+# ResourceDimension 使用独立关联表承载绑定，不改 restaurants/organizations 遗留表。
+# region/industry 均落真实 UUID FK；空值表示该维度未限定。
+
+schemaVersion: 0.1.0
+name: gri-resource-dimension
+description: 业务资源到 UN 区域与 ISIC 行业维度的绑定
+
+objects:
+  - name: ResourceDimension
+    table: ontology.resource_dimension
+    description: 业务资源（餐厅/组织）的区域与行业维度绑定
+    fields:
+      - name: resourceType
+        type: enum
+        required: true
+        values: [restaurant, organization]
+        description: 资源类型闭集
+      - name: resourceId
+        type: uuid
+        required: true
+        description: 资源在来源业务表中的 UUID 主键
+      - name: regionId
+        type: uuid
+        description: 区域维度真 FK（可空）
+      - name: industryId
+        type: uuid
+        description: 行业维度真 FK（可空）
+    links:
+      - name: region
+        source: ResourceDimension
+        target: RegionDimensionRef
+        cardinality: many
+        foreignKey: regionId
+        onDelete: set null
+        description: 绑定区域节点
+      - name: industry
+        source: ResourceDimension
+        target: IndustryDimensionRef
+        cardinality: many
+        foreignKey: industryId
+        onDelete: set null
+        description: 绑定行业节点
+    uniqueConstraints:
+      - [resourceType, resourceId]
+    indexes:
+      - columns: [resourceType]
+        name: idx_resource_dimension_type
+      - columns: [regionId]
+        name: idx_resource_dimension_region
+      - columns: [industryId]
+        name: idx_resource_dimension_industry
+
+  # 既有维度表的只读桥对象：abstract 禁止 codegen 重复建表。
+  - name: RegionDimensionRef
+    table: ontology.region
+    abstract: true
+    description: ontology.region 的 codegen 关联目标
+
+  - name: IndustryDimensionRef
+    table: ontology.industry
+    abstract: true
+    description: ontology.industry 的 codegen 关联目标

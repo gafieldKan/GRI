@@ -125,6 +125,16 @@ describe('public-routes 公开读白名单', () => {
     });
   });
 
+  describe('资源定位查询', () => {
+    it('只放行 GET /resources，PUT 绑定维度必须登录', () => {
+      expect(isPublicRoute('GET', '/resources')).toBe(true);
+      expect(isPublicRoute('GET', '/resources/')).toBe(true);
+      expect(isPublicRoute('PUT', `/resources/restaurant/${'b0000000-0000-0000-0000-000000000001'}/dimension`)).toBe(false);
+      expect(isPublicRoute('GET', `/resources/restaurant/${'b0000000-0000-0000-0000-000000000001'}/dimension`)).toBe(false);
+      expect(isPublicRoute('GET', '/resources/extra')).toBe(false);
+    });
+  });
+
   describe('受保护端点一律不放行', () => {
     it('注册公开；改密与注销必须登录', () => {
       expect(isPublicRoute('POST', '/auth/register')).toBe(true);

@@ -410,7 +410,8 @@
   },
   "_verification_2026_10_13": {
     "P3-C1": "done_verified",
-    "P3-S6": "done_verified"
+    "P3-S6": "done_verified",
+    "P4-A": "done_verified"
   },
   "p3-governance": {
     "status": "done_verified(首片)",
@@ -439,9 +440,17 @@
   "_waveP4_2026_10_13": {
     "P4-A": {
       "agent": "codex",
-      "status": "pending",
+      "status": "done_verified",
       "card": ".agents/codex/tasks/p4-a-resource-dimension.md",
-      "desc": "维度挂业务对象(ResourceDimension) + 资源定位 API"
+      "desc": "维度挂业务对象(ResourceDimension) + 资源定位 API",
+      "commit": null,
+      "verification": {
+        "ontology": "3 obj OK",
+        "migration": "027 登记",
+        "full_tests": "40/572 全绿（修回归）",
+        "e2e": "GET region/industry/AND/400；PUT 200+审计/404",
+        "independent": true
+      }
     },
     "P4-B": {
       "agent": "claude",

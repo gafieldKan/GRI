@@ -50,6 +50,8 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   get('GET', /^\/taxonomy\/[^/]+\/path\/[^/]+\/?$/),
   get('GET', /^\/taxonomy\/[^/]+\/tree\/?$/),
   get('GET', /^\/geo\/regions\/[^/]+\/?$/),
+  // 资源定位查询：只读列表公开；维度绑定 PUT 不入白名单，由 operator 门禁保护。
+  get('GET', /^\/resources\/?$/),
   // K12 课程体系目录（curriculum 门面，本体驱动）：目录公开读（学科/学段/年级/教材/章节/知识点）。
   // knowledge-graph 游客可看结构、登录后叠加个人掌握度（OptionalAuth 语义）。
   // review 审核动作（POST）不入白名单 → 强制鉴权。
