@@ -5,81 +5,100 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GRI · 双维度资源定位</title>
 <style>
-  :root{
-    --gri-primary:#1B7A3D; --gri-primary-dk:#11562c; --gri-tint:#e6f4ec;
-    --gri-ink:#1a1a2e; --gri-muted:#5f6b65; --gri-bg:#f4fcf5; --gri-line:#e6ebe7; --gri-card:#fff;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--gri-ink);background:var(--gri-bg);overflow:hidden}
-  .topbar{height:56px;display:flex;align-items:center;gap:20px;padding:0 20px;background:var(--gri-card);border-bottom:1px solid var(--gri-line);position:relative;z-index:10}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:3px;font-size:18px;color:var(--gri-primary)}
-  .brand .mark{width:28px;height:28px;border-radius:8px;background:var(--gri-primary);color:#fff;display:grid;place-items:center;font-size:15px}
-  .tabs{display:flex;gap:4px;background:var(--gri-tint);padding:4px;border-radius:10px}
-  .tabs button{border:0;background:transparent;padding:7px 18px;border-radius:7px;font-size:14px;font-weight:600;color:var(--gri-muted);cursor:pointer}
-  .tabs button.active{background:var(--gri-card);color:var(--gri-primary);box-shadow:0 1px 4px rgba(0,0,0,.08)}
-  .spacer{flex:1}
-  .sso{display:flex;align-items:center;gap:10px}
-  .sso .btn{border:1px solid var(--gri-line);background:var(--gri-card);padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;color:var(--gri-ink);cursor:pointer;text-decoration:none;transition:background .15s}
-  .sso .btn:hover{background:var(--gri-tint)}
-  .sso .btn.primary{background:var(--gri-primary);border-color:var(--gri-primary);color:#fff}
-  .sso .btn.primary:hover{background:var(--gri-primary-dk)}
-  .sso .who{font-size:13px;color:var(--gri-muted)}
-  .sso .who b{color:var(--gri-ink)}
-  main{position:relative;height:calc(100vh - 56px)}
-  iframe{display:block;width:100%;height:100%;border:0}
-  .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--gri-muted);font-size:14px;background:var(--gri-bg);z-index:5}
+  /* GRI 注入到参考顶栏的控件（作用域限 .gri-*） */
+  .gri-controls{display:flex;align-items:center;gap:12px;margin-left:auto}
+  .gri-tabs{display:flex;gap:4px;background:#e9f4ed;padding:3px;border-radius:8px}
+  .gri-tabs button{border:0;background:transparent;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;color:#5f6b65;cursor:pointer}
+  .gri-tabs button.on{background:#fff;color:#1B7A3D;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .gri-sso{display:flex;align-items:center}
+  .gri-sso a,.gri-sso button{border:1px solid #e4ebe6;background:#fff;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:600;color:#1a1a2e;text-decoration:none;cursor:pointer;margin-left:6px}
+  .gri-sso .primary{background:#1B7A3D;border-color:#1B7A3D;color:#fff}
+  .gri-sso .who{font-size:12px;color:#5f6b65;margin-right:4px}
+  .gri-loading{position:fixed;inset:0;display:grid;place-items:center;color:#5f6b65;font-size:14px;background:#f4fcf5;z-index:9999}
 </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand"><span class="mark">◈</span>GRI</div>
-    <nav class="tabs">
-      <button data-dim="region" class="active">区域</button>
-      <button data-dim="industry">行业</button>
-    </nav>
-    <div class="spacer"></div>
-    <div class="sso" id="sso"></div>
-  </header>
-  <main>
-    <div class="loading" id="loading">正在加载「域览」区域地图…</div>
-    <iframe id="stage" src="/explore/region.html" title="GRI 维度浏览"></iframe>
-  </main>
-  <script>
-    var SOURCES = { region:'/explore/region.html', industry:'/explore/industry.html' };
-    var LABEL = { region:'区域地图', industry:'行业分类' };
-    var stage = document.getElementById('stage');
-    var loading = document.getElementById('loading');
-    document.querySelectorAll('.tabs button').forEach(function(b){
-      b.addEventListener('click', function(){
-        document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.remove('active'); });
-        b.classList.add('active');
-        var dim = b.dataset.dim;
-        loading.style.display = 'grid';
-        loading.textContent = '正在加载「域览」' + LABEL[dim] + '…';
-        stage.src = SOURCES[dim];
-      });
-    });
-    stage.addEventListener('load', function(){ loading.style.display = 'none'; });
+<div class="gri-loading" id="griLoading">正在加载「域览」双维度浏览器…</div>
+<script>
+/* GRI 内嵌加载器（方案 B）：把参考文件「域览」整体并入本文档（非 iframe），
+   并把 GRI 的维度切换 + SSO 注入其顶栏。切换维度用 ?dim= 重载（仍同文档、无 iframe）。 */
+(function () {
+  'use strict';
+  var dim = new URLSearchParams(location.search).get('dim') || 'region';
 
-    // SSO：读同源 gri-auth-token（与 portal/各端共享）
-    function token(){ try { return JSON.parse(localStorage.getItem('gri-auth-token') || 'null'); } catch(e){ return null; } }
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
-    function renderSso(){
-      var t = token(); var sso = document.getElementById('sso');
-      if (t && t.accessToken){
-        var name = (t.user && (t.user.name || t.user.username)) || '已登录';
-        sso.innerHTML = '<span class="who">你好，<b>' + escapeHtml(name) + '</b></span>'
-          + '<a class="btn" href="/portal/">工作台</a>'
-          + '<button class="btn" id="logout">退出</button>';
-        document.getElementById('logout').onclick = function(){ localStorage.removeItem('gri-auth-token'); renderSso(); };
-      } else {
-        sso.innerHTML = '<a class="btn" href="/portal/#/pages/login/login">登录</a>'
-          + '<a class="btn primary" href="/portal/#/pages/register/index">注册</a>';
-      }
-    }
-    window.addEventListener('storage', renderSso);
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function token(){ try { return JSON.parse(localStorage.getItem('gri-auth-token')||'null'); } catch(e){ return null; } }
+
+  function injectControls(){
+    var topbar = document.querySelector('.topbar');
+    if (!topbar) return;
+    if (topbar.querySelector('.gri-controls')) return;
+    var box = document.createElement('div');
+    box.className = 'gri-controls';
+    box.innerHTML = '<span class="gri-tabs">'
+      + '<button data-dim="region"' + (dim==='region'?' class="on"':'') + '>区域</button>'
+      + '<button data-dim="industry"' + (dim==='industry'?' class="on"':'') + '>行业</button>'
+      + '</span><span class="gri-sso" id="griSso"></span>';
+    topbar.appendChild(box);
+    box.querySelectorAll('.gri-tabs button').forEach(function (b) {
+      b.onclick = function () { location.search = '?dim=' + b.getAttribute('data-dim'); location.reload(); };
+    });
     renderSso();
-  </script>
+  }
+
+  function renderSso(){
+    var sso = document.getElementById('griSso'); if (!sso) return;
+    var t = token();
+    if (t && t.accessToken) {
+      var name = (t.user && (t.user.name || t.user.username)) || '已登录';
+      sso.innerHTML = '<span class="who">你好，<b>' + esc(name) + '</b></span>'
+        + '<a href="/portal/">工作台</a><button class="logout">退出</button>';
+      sso.querySelector('.logout').onclick = function(){ localStorage.removeItem('gri-auth-token'); renderSso(); };
+    } else {
+      sso.innerHTML = '<a href="/portal/#/pages/login/login">登录</a>'
+        + '<a class="primary" href="/portal/#/pages/register/index">注册</a>';
+    }
+  }
+
+  function load(d){
+    return fetch('./' + d + '.html', { cache: 'no-cache' }).then(function (r) { return r.text(); }).then(function (raw) {
+      var doc = new DOMParser().parseFromString(raw, 'text/html');
+      if (doc.title) document.title = 'GRI · ' + doc.title;
+      document.querySelectorAll('style[data-gri-embed]').forEach(function (e) { e.remove(); });
+      doc.querySelectorAll('style').forEach(function (s) {
+        var st = document.createElement('style'); st.setAttribute('data-gri-embed','1'); st.textContent = s.textContent;
+        document.head.appendChild(st);
+      });
+      // 收集脚本：数据块（application/json）延后注入；其余收集待执行
+      var dataScripts = [], runScripts = [];
+      doc.querySelectorAll('script').forEach(function (s) {
+        if ((s.getAttribute('type') || '') === 'application/json') {
+          dataScripts.push({ id: s.id || '', text: s.textContent });
+        } else if (s.textContent.trim()) {
+          runScripts.push(s.textContent);
+        }
+      });
+      doc.querySelectorAll('script').forEach(function (s) { s.remove(); });
+      // 1) 先铺 body（会清掉 loading）
+      document.body.className = doc.body.className || '';
+      document.body.innerHTML = doc.body.innerHTML;
+      // 2) 再注入数据块
+      dataScripts.forEach(function (ds) {
+        var dj = document.createElement('script'); dj.type = 'application/json'; if (ds.id) dj.id = ds.id; dj.textContent = ds.text;
+        document.body.appendChild(dj);
+      });
+      // 3) 执行主脚本
+      var sc = document.createElement('script'); sc.textContent = runScripts.join('\n;\n'); document.body.appendChild(sc);
+      // 4) 注入 GRI 控件
+      injectControls();
+    });
+  }
+
+  window.addEventListener('storage', renderSso);
+  load(dim).catch(function (e) {
+    var ld = document.getElementById('griLoading'); if (ld) ld.textContent = '加载失败：' + e.message;
+  });
+})();
+</script>
 </body>
 </html>
