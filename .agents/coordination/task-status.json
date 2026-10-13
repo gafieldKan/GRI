@@ -407,14 +407,17 @@
     "status": "done_verified(首片)",
     "agent": "me",
     "commit": null,
-    "summary": "维度编辑名称 + 审计（PATCH taxonomy node + dimension_change_log）+ Explorer 内嵌编辑入口",
+    "summary": "维度维护：改名称 + 移动(防环) + 归档 + 审计；Explorer 内嵌 编辑/移动/归档",
     "verification": {
       "migration": "026 登记",
       "e2e": "非operator 403/operator 200+审计",
       "gateway": true,
       "browser": "编辑按钮渲染",
       "deployed": true,
-      "independent": true
+      "independent": true,
+      "move": "201 改父级；防环 400",
+      "archive": "201 status=archived",
+      "audit": "move/archive 记录"
     },
     "next": [
       "移动/归档 (S5 剩余)",

@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Query, Req } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { OrganizationService } from '../organization/organization.service';
 import { TaxonomyService } from './taxonomy.service';
@@ -68,5 +68,26 @@ export class TaxonomyController {
     const actorId = this.externalId(req);
     await this.org.assertSiteOperator(actorId);
     return this.taxonomyService.updateNode(name, id, body || {}, actorId);
+  }
+
+  /** 移动节点（防环；operator 门禁 + 审计）。 */
+  @Post(':name/node/:id/move')
+  async move(
+    @Req() req: Request,
+    @Param('name') name: string,
+    @Param('id') id: string,
+    @Body() body: { parentId?: string | null },
+  ) {
+    const actorId = this.externalId(req);
+    await this.org.assertSiteOperator(actorId);
+    return this.taxonomyService.moveNode(name, id, body?.parentId, actorId);
+  }
+
+  /** 归档（停用）节点（operator 门禁 + 审计）。 */
+  @Post(':name/node/:id/archive')
+  async archive(@Req() req: Request, @Param('name') name: string, @Param('id') id: string) {
+    const actorId = this.externalId(req);
+    await this.org.assertSiteOperator(actorId);
+    return this.taxonomyService.archiveNode(name, id, actorId);
   }
 }

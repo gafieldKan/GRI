@@ -154,6 +154,66 @@ export class TaxonomyService {
     };
   }
 
+  /** 移动节点到新父级（防环）；写审计。 */
+  async moveNode(
+    name: string,
+    id: string,
+    parentId: unknown,
+    actorId: string | null,
+  ): Promise<TaxonomyNode> {
+    const kind = this.resolveName(name);
+    const nodeId = this.validateId(kind, id);
+    const before = await this.findNode(kind, nodeId);
+    if (!before) throw new NotFoundException('节点不存在');
+    const table = kind === 'region' ? 'ontology.region' : 'ontology.industry';
+    const key = kind === 'region' ? 'node_id' : 'code';
+    let newParent: string | null = null;
+    const raw = parentId === undefined || parentId === null ? '' : String(parentId);
+    if (raw !== '') {
+      newParent = this.validateId(kind, raw);
+      const p = await this.findNode(kind, newParent);
+      if (!p) throw new NotFoundException('目标父级不存在');
+      if (String(newParent) === String(nodeId)) throw new BadRequestException('不能移动到自身');
+      let cur: string | null = newParent; let guard = 0;
+      while (cur != null && guard++ < 500) {
+        if (String(cur) === String(nodeId)) throw new BadRequestException('不能移动到自身后代下');
+        const row = (await this.findNode(kind, cur)) as { parent_id?: string | null } | null;
+        cur = row ? (row.parent_id ?? null) : null;
+      }
+    }
+    await this.db.query(
+      `UPDATE ${table} SET parent_id = (SELECT id FROM ${table} WHERE ${key} = $1) WHERE ${key} = $2`,
+      [newParent, nodeId],
+    );
+    await this.db.query(
+      `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
+       VALUES ($1, $2, 'move', $3, $4, $5, 'manual')`,
+      [kind, nodeId, JSON.stringify(before), JSON.stringify({ parent: newParent }), actorId],
+    );
+    const after = (await this.findNode(kind, nodeId)) as RegionTaxonomyRow | IndustryTaxonomyRow;
+    return kind === 'region' ? this.mapRegion(after as RegionTaxonomyRow) : this.mapIndustry(after as IndustryTaxonomyRow);
+  }
+
+  /** 归档（停用）节点：status='archived'；写审计。 */
+  async archiveNode(name: string, id: string, actorId: string | null): Promise<TaxonomyNode> {
+    const kind = this.resolveName(name);
+    const nodeId = this.validateId(kind, id);
+    const before = await this.findNode(kind, nodeId);
+    if (!before) throw new NotFoundException('节点不存在');
+    const beforeNode = kind === 'region'
+      ? this.mapRegion(before as RegionTaxonomyRow)
+      : this.mapIndustry(before as IndustryTaxonomyRow);
+    const table = kind === 'region' ? 'ontology.region' : 'ontology.industry';
+    const key = kind === 'region' ? 'node_id' : 'code';
+    await this.db.query(`UPDATE ${table} SET status = 'archived' WHERE ${key} = $1`, [nodeId]);
+    await this.db.query(
+      `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
+       VALUES ($1, $2, 'archive', $3, $4, $5, 'manual')`,
+      [kind, nodeId, JSON.stringify(beforeNode), JSON.stringify({ status: 'archived' }), actorId],
+    );
+    return beforeNode;
+  }
+
   /** 维度节点维护（改 name/short/english|en）；operator 门禁在 controller；写审计。 */
   async updateNode(
     name: string,
