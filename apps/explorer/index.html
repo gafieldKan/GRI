@@ -186,7 +186,27 @@
         .catch(function () { return null; })
         .then(function (apiTree) {
           if (mainData && apiTree && apiTree.nodes && apiTree.nodes.length) {
-            try { var obj = JSON.parse(mainData.text); obj.nodes = apiTree.nodes; obj.__fromApi = true; mainData.text = JSON.stringify(obj); } catch (e) {}
+            try {
+              var obj = JSON.parse(mainData.text);
+              var embNodes = obj.nodes || [];
+              var codeToId = {};
+              embNodes.forEach(function (n) { if (n && n.code != null) codeToId[String(n.code)] = n.id; });
+              var mapId = function (v) { var k = String(v); return Object.prototype.hasOwnProperty.call(codeToId, k) ? codeToId[k] : v; };
+              if (d === 'industry') {
+                // 参考把 system 节点 id 硬编码为 'ISIC5'（≠code），按内嵌 id↔code 映射还原，保参考 JS 不变
+                obj.nodes = apiTree.nodes.map(function (n) {
+                  return Object.assign({}, n, {
+                    id: mapId(n.id),
+                    parent: n.parent == null ? null : mapId(n.parent),
+                    children: (n.children || []).map(mapId),
+                  });
+                });
+              } else {
+                obj.nodes = apiTree.nodes;
+              }
+              obj.__fromApi = true;
+              mainData.text = JSON.stringify(obj);
+            } catch (e) {}
           }
           dataScripts.forEach(function (ds) {
             var dj = document.createElement('script'); dj.type = 'application/json'; if (ds.id) dj.id = ds.id; dj.textContent = ds.text;
