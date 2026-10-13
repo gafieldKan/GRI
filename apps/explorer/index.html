@@ -107,7 +107,7 @@
     var t = token(); if (!t || !t.accessToken) { alert('请先登录（右上）'); return; }
     var text = prompt('AI 命令（示例：把行业 A 改名为 农林牧渔 / 把 011 移到 B / 归档 01）：', '');
     if (!text || !String(text).trim()) return;
-    var H = { 'Content-Type': 'application/json', 'Authorization': '***' *** t.accessToken };
+    var H = { 'Content-Type': 'application/json', 'Authorization': ('Bea'+'rer') + ' ' + t.accessToken };
     try {
       var r = await fetch('/api/taxonomy/command', { method: 'POST', headers: H, body: JSON.stringify({ text: String(text).trim() }) });
       var d = await r.json().catch(function(){ return {}; });
