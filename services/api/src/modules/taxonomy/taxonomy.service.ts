@@ -160,6 +160,7 @@ export class TaxonomyService {
     id: string,
     parentId: unknown,
     actorId: string | null,
+    source = 'manual',
   ): Promise<TaxonomyNode> {
     const kind = this.resolveName(name);
     const nodeId = this.validateId(kind, id);
@@ -187,15 +188,15 @@ export class TaxonomyService {
     );
     await this.db.query(
       `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
-       VALUES ($1, $2, 'move', $3, $4, $5, 'manual')`,
-      [kind, nodeId, JSON.stringify(before), JSON.stringify({ parent: newParent }), actorId],
+       VALUES ($1, $2, 'move', $3, $4, $5, $6)`,
+      [kind, nodeId, JSON.stringify(before), JSON.stringify({ parent: newParent }), actorId, source],
     );
     const after = (await this.findNode(kind, nodeId)) as RegionTaxonomyRow | IndustryTaxonomyRow;
     return kind === 'region' ? this.mapRegion(after as RegionTaxonomyRow) : this.mapIndustry(after as IndustryTaxonomyRow);
   }
 
   /** 归档（停用）节点：status='archived'；写审计。 */
-  async archiveNode(name: string, id: string, actorId: string | null): Promise<TaxonomyNode> {
+  async archiveNode(name: string, id: string, actorId: string | null, source = 'manual'): Promise<TaxonomyNode> {
     const kind = this.resolveName(name);
     const nodeId = this.validateId(kind, id);
     const before = await this.findNode(kind, nodeId);
@@ -208,8 +209,8 @@ export class TaxonomyService {
     await this.db.query(`UPDATE ${table} SET status = 'archived' WHERE ${key} = $1`, [nodeId]);
     await this.db.query(
       `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
-       VALUES ($1, $2, 'archive', $3, $4, $5, 'manual')`,
-      [kind, nodeId, JSON.stringify(beforeNode), JSON.stringify({ status: 'archived' }), actorId],
+       VALUES ($1, $2, 'archive', $3, $4, $5, $6)`,
+      [kind, nodeId, JSON.stringify(beforeNode), JSON.stringify({ status: 'archived' }), actorId, source],
     );
     return beforeNode;
   }
@@ -220,6 +221,7 @@ export class TaxonomyService {
     id: string,
     patch: Record<string, unknown>,
     actorId: string | null,
+    source = 'manual',
   ): Promise<TaxonomyNode> {
     const kind = this.resolveName(name);
     const nodeId = this.validateId(kind, id);
@@ -243,8 +245,8 @@ export class TaxonomyService {
     await this.db.query(`UPDATE ${table} SET ${sets.join(', ')} WHERE ${key} = $${params.length}`, params);
     await this.db.query(
       `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
-       VALUES ($1, $2, 'update', $3, $4, $5, 'manual')`,
-      [kind, nodeId, JSON.stringify(before), JSON.stringify(patch), actorId],
+       VALUES ($1, $2, 'update', $3, $4, $5, $6)`,
+      [kind, nodeId, JSON.stringify(before), JSON.stringify(patch), actorId, source],
     );
     const after = (await this.findNode(kind, nodeId)) as RegionTaxonomyRow | IndustryTaxonomyRow;
     return kind === 'region'

@@ -1,6 +1,7 @@
 import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { OrganizationService } from '../organization/organization.service';
+import { CommandService } from './command.service';
 import { TaxonomyService } from './taxonomy.service';
 
 interface ReqAuth {
@@ -12,6 +13,7 @@ export class TaxonomyController {
   constructor(
     private readonly taxonomyService: TaxonomyService,
     private readonly org: OrganizationService,
+    private readonly commandService: CommandService,
   ) {}
 
   private externalId(req: Request): string {
@@ -89,5 +91,21 @@ export class TaxonomyController {
     const actorId = this.externalId(req);
     await this.org.assertSiteOperator(actorId);
     return this.taxonomyService.archiveNode(name, id, actorId);
+  }
+
+  /** AI 命令：自然语言 → 结构化提案（不落库；operator 门禁）。 */
+  @Post('command')
+  async command(@Req() req: Request, @Body() body: { text?: string }) {
+    const actorId = this.externalId(req);
+    await this.org.assertSiteOperator(actorId);
+    return this.commandService.propose(String((body && body.text) || ''));
+  }
+
+  /** AI 命令：确认应用提案（operator 门禁 + 审计 source=ai_command）。 */
+  @Post('command/apply')
+  async commandApply(@Req() req: Request, @Body() body: { planId?: string }) {
+    const actorId = this.externalId(req);
+    await this.org.assertSiteOperator(actorId);
+    return this.commandService.apply(String((body && body.planId) || ''), actorId);
   }
 }

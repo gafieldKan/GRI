@@ -103,17 +103,36 @@
     } catch (err) { alert('请求失败：' + err.message); }
   }
 
+  async function commandCurrent(){
+    var t = token(); if (!t || !t.accessToken) { alert('请先登录（右上）'); return; }
+    var text = prompt('AI 命令（示例：把行业 A 改名为 农林牧渔 / 把 011 移到 B / 归档 01）：', '');
+    if (!text || !String(text).trim()) return;
+    var H = { 'Content-Type': 'application/json', 'Authorization': '***' *** t.accessToken };
+    try {
+      var r = await fetch('/api/taxonomy/command', { method: 'POST', headers: H, body: JSON.stringify({ text: String(text).trim() }) });
+      var d = await r.json().catch(function(){ return {}; });
+      if (!r.ok) { alert('解析失败：' + (d.message || r.status)); return; }
+      var pv = (d.preview || []).map(function(x){ return x.dimension + ' ' + x.op + ' ' + x.id + (x.name ? (' → ' + x.name) : '') + (x.parentId ? (' → 父 ' + x.parentId) : ''); }).join('\n');
+      if (!confirm('提案（解析自 ' + d.parsedBy + '）:\n' + pv + '\n\n确认应用？')) return;
+      var r2 = await fetch('/api/taxonomy/command/apply', { method: 'POST', headers: H, body: JSON.stringify({ planId: d.planId }) });
+      var d2 = await r2.json().catch(function(){ return {}; });
+      if (r2.ok) { alert('已应用 ' + d2.applied + ' 项，刷新后生效'); location.reload(); }
+      else { alert('应用失败：' + (d2.message || r2.status)); }
+    } catch (err) { alert('请求失败：' + err.message); }
+  }
+
   function renderSso(){
     var sso = document.getElementById('griSso'); if (!sso) return;
     var t = token();
     if (t && t.accessToken) {
       var name = (t.user && (t.user.name || t.user.username)) || '已登录';
       sso.innerHTML = '<span class="who">你好，<b>' + esc(name) + '</b></span>'
-        + '<button class="edit">✎ 编辑名称</button><button class="move">⇄ 移动</button><button class="arch">⧗ 归档</button>'
+        + '<button class="edit">✎ 编辑名称</button><button class="move">⇄ 移动</button><button class="arch">⧗ 归档</button><button class="ai">✦ AI 命令</button>'
         + '<a href="/portal/">工作台</a><button class="logout">退出</button>';
       sso.querySelector('.edit').onclick = editCurrent;
       sso.querySelector('.move').onclick = moveCurrent;
       sso.querySelector('.arch').onclick = archiveCurrent;
+      sso.querySelector('.ai').onclick = commandCurrent;
       sso.querySelector('.logout').onclick = function(){ localStorage.removeItem('gri-auth-token'); renderSso(); };
     } else {
       sso.innerHTML = '<a href="/portal/#/pages/login/login">登录</a>'
