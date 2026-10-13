@@ -49,9 +49,22 @@ export class CommandService {
       const preview: unknown[] = [];
       let ok = true;
       for (const op of ops) {
-        const before = (await this.taxonomy.getNode(op.dimension, op.id).catch(() => null)) as {
+        let before = (await this.taxonomy.getNode(op.dimension, op.id).catch(() => null)) as {
           id?: string; name?: string; parentId?: string | null;
         } | null;
+        if (!before) {
+          // 兼容：命令里写的是「名称」而非编码 → 搜索；唯一命中则采用其 id
+          const s = (await this.taxonomy.search(op.dimension, op.id, 5).catch(() => null)) as
+            | { items?: Array<{ id: string }> }
+            | null;
+          const items = (s && s.items) || [];
+          if (items.length === 1) {
+            op.id = items[0].id;
+            before = (await this.taxonomy.getNode(op.dimension, op.id).catch(() => null)) as {
+              id?: string; name?: string; parentId?: string | null;
+            } | null;
+          }
+        }
         if (!before) { ok = false; break; }
         preview.push({ ...op, before: { id: before.id, name: before.name, parentId: before.parentId } });
       }
