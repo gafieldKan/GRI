@@ -1,88 +1,88 @@
 <template>
-  <view class="register-page">
-    <view class="register-card">
-      <text class="register-title">创建 GRI 账号</text>
-      <text class="register-subtitle">注册后将以消费者身份进入工作台</text>
+  <AuthShell
+    title="创建账号"
+    subtitle="注册后将以消费者身份进入工作台"
+    brand-title="GRI 组织管理台"
+    brand-subtitle="以人为本 · 组织树 · 成员 · 角色 · 邀请 · 审计"
+    :points="brandPoints"
+    foot="GRI · 统一身份与组织域"
+    secure-hint="密码至少 8 位，请勿使用弱口令"
+  >
+    <view class="register-form">
+      <FormField
+        v-model="username"
+        label="用户名"
+        placeholder="至少 3 个字符"
+        :maxlength="32"
+        confirm-type="next"
+      />
 
-      <view class="form-item">
-        <text class="form-label">用户名</text>
-        <input
-          class="form-input"
-          v-model="username"
-          type="text"
-          maxlength="32"
-          placeholder="至少 3 个字符"
-          confirm-type="next"
-        />
-      </view>
+      <FormField
+        v-model="email"
+        label="邮箱"
+        placeholder="name@example.com"
+        :maxlength="128"
+        confirm-type="next"
+      />
 
-      <view class="form-item">
-        <text class="form-label">邮箱</text>
-        <input
-          class="form-input"
-          v-model="email"
-          type="text"
-          maxlength="128"
-          placeholder="name@example.com"
-          confirm-type="next"
-        />
-      </view>
+      <FormField
+        v-model="name"
+        label="姓名"
+        placeholder="请输入姓名"
+        :maxlength="64"
+        optional
+        confirm-type="next"
+      />
 
-      <view class="form-item">
-        <text class="form-label">姓名（选填）</text>
-        <input
-          class="form-input"
-          v-model="name"
-          type="text"
-          maxlength="64"
-          placeholder="请输入姓名"
-          confirm-type="next"
-        />
-      </view>
-
-      <view class="form-item">
-        <text class="form-label">密码</text>
-        <input
-          class="form-input"
+      <view class="field-row">
+        <FormField
           v-model="password"
+          label="密码"
           type="password"
-          maxlength="128"
           placeholder="至少 8 个字符"
+          :maxlength="128"
           confirm-type="next"
         />
-      </view>
 
-      <view class="form-item">
-        <text class="form-label">确认密码</text>
-        <input
-          class="form-input"
+        <FormField
           v-model="confirmPassword"
+          label="确认密码"
           type="password"
-          maxlength="128"
           placeholder="再次输入密码"
+          :maxlength="128"
           confirm-type="done"
           @confirm="handleRegister"
         />
       </view>
 
-      <text v-if="error" class="form-error">{{ error }}</text>
+      <text v-if="error" class="form-error" role="alert" aria-live="polite">{{ error }}</text>
 
-      <button class="register-btn" :loading="loading" :disabled="loading" @click="handleRegister">
-        {{ loading ? '注册中...' : '注册并进入工作台' }}
+      <button
+        class="submit-btn"
+        :loading="loading"
+        :disabled="loading"
+        :aria-busy="loading ? 'true' : 'false'"
+        @click="handleRegister"
+      >
+        {{ loading ? '注册中…' : '注册并进入工作台' }}
       </button>
 
-      <view class="login-link" @click="goLogin">
-        <text>已有账号，返回登录</text>
+      <view class="form-foot">
+        <text class="form-foot-label">已有账号？</text>
+        <button class="link-btn" @click="goLogin">返回登录</button>
       </view>
     </view>
-  </view>
+  </AuthShell>
 </template>
 
 <script>
+import AuthShell from '@/components/ui/AuthShell.vue'
+import FormField from '@/components/ui/FormField.vue'
 import { useAuthStore } from '@gri/auth-client'
 
 export default {
   name: 'PortalRegister',
+  components: { AuthShell, FormField },
   data() {
     return {
       username: '',
@@ -91,7 +91,12 @@ export default {
       password: '',
       confirmPassword: '',
       loading: false,
-      error: null
+      error: null,
+      brandPoints: [
+        { icon: '❖', label: '即刻可用的工作台', desc: '注册即开通消费者身份与模块入口' },
+        { icon: '✦', label: '按需启用模块', desc: '核心模块默认就绪，插件随需加入' },
+        { icon: '◈', label: '随时升级为组织', desc: '后续可被邀请加入组织并切换角色' }
+      ]
     }
   },
   methods: {
@@ -140,88 +145,112 @@ export default {
 </script>
 
 <style scoped>
-.register-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48rpx 32rpx;
-  background: var(--color-bg-primary, #f5f7f6);
-  box-sizing: border-box;
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-md);
 }
 
-.register-card {
-  width: 100%;
-  max-width: 600rpx;
-  padding: 48rpx 40rpx;
-  background: var(--color-bg-card, #fff);
-  border: 1px solid var(--color-border, #e8e8e8);
-  border-radius: var(--radius-md, 12rpx);
-  box-shadow: var(--shadow-sm, 0 4rpx 16rpx rgba(0, 0, 0, 0.05));
-  box-sizing: border-box;
+.field-row :deep(.field) {
+  margin-bottom: var(--spacing-md);
 }
 
-.register-title {
-  display: block;
-  color: var(--color-text-primary, #1a1a2e);
-  font-size: 40rpx;
-  font-weight: 700;
-  text-align: center;
-}
-
-.register-subtitle {
-  display: block;
-  margin: 12rpx 0 40rpx;
-  color: var(--color-text-secondary, #59596b);
-  font-size: 26rpx;
-  text-align: center;
-}
-
-.form-item {
-  margin-bottom: 24rpx;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 10rpx;
-  color: var(--color-text-primary, #1a1a2e);
-  font-size: 26rpx;
-  font-weight: 600;
-}
-
-.form-input {
-  width: 100%;
-  padding: 18rpx 22rpx;
-  color: var(--color-text-primary, #1a1a2e);
-  background: var(--color-bg-card, #fff);
-  border: 1px solid var(--color-border, #e8e8e8);
-  border-radius: var(--radius-sm, 8rpx);
-  font-size: 28rpx;
-  box-sizing: border-box;
+@media (max-width: 560px) {
+  .field-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
 }
 
 .form-error {
   display: block;
-  margin-bottom: 24rpx;
-  color: var(--color-danger, #d93025);
-  font-size: 24rpx;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-danger);
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
 }
 
-.register-btn {
+.submit-btn {
   width: 100%;
-  padding: 20rpx 0;
-  color: #fff;
-  background: var(--color-primary, #1b7a3d);
+  margin-top: var(--spacing-xs);
+  padding: 0;
+  color: var(--color-text-inverse);
+  background: var(--color-primary-gradient, var(--color-primary));
   border: none;
-  border-radius: var(--radius-md, 12rpx);
-  font-size: 28rpx;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: 92rpx;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
-.login-link {
-  margin-top: 28rpx;
-  color: var(--color-primary, #1b7a3d);
-  font-size: 26rpx;
-  text-align: center;
+.submit-btn::after {
+  border: none;
+}
+
+.submit-btn:active {
+  transform: translateY(2rpx) scale(0.995);
+  box-shadow: var(--shadow-sm);
+  opacity: 0.94;
+}
+
+.submit-btn[disabled] {
+  opacity: 0.6;
+}
+
+@media (hover: hover) {
+  .submit-btn:not([disabled]):hover {
+    background: var(--color-primary-hover);
+    box-shadow: var(--shadow-hover);
+  }
+}
+
+.submit-btn:focus-visible {
+  outline: 4rpx solid var(--color-primary-light);
+  outline-offset: 4rpx;
+}
+
+.form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  margin-top: var(--spacing-lg);
+}
+
+.form-foot-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.link-btn {
+  margin: 0;
+  padding: 0;
+  color: var(--color-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.6;
+}
+
+.link-btn::after {
+  border: none;
+}
+
+.link-btn:active {
+  color: var(--color-primary-active);
+}
+
+.link-btn:focus-visible {
+  outline: 4rpx solid var(--color-primary-light);
+  outline-offset: 4rpx;
 }
 </style>

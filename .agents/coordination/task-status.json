@@ -412,7 +412,8 @@
     "P3-C1": "done_verified",
     "P3-S6": "done_verified",
     "P4-A": "done_verified",
-    "P4-B": "done_verified"
+    "P4-B": "done_verified",
+    "P4-C": "done_verified"
   },
   "p3-governance": {
     "status": "done_verified(首片)",
@@ -469,9 +470,17 @@
     },
     "P4-C": {
       "agent": "claude",
-      "status": "pending",
+      "status": "done_verified",
       "card": ".agents/claude/tasks/p4-c-portal-visual.md",
-      "desc": "门户登录/工作台 视觉（P3-UI）"
+      "desc": "门户登录/工作台 视觉（P3-UI）",
+      "commit": null,
+      "verification": {
+        "build": "OK",
+        "bare_color": "无（355 令牌引用）",
+        "browser": "登录页/工作台新视觉 + SSO + 异常0",
+        "scope": "仅 portal 6 文件",
+        "independent": true
+      }
     },
     "P4-D": {
       "agent": "codex",
