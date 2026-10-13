@@ -42,6 +42,13 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   // 本体语义真源目录（M4 ontology 门面）：只读知识端点，游客可内省（不承载写）
   get('GET', /^\/ontology\/objects\/?$/),
   get('GET', /^\/ontology\/objects\/[^/]+(?:\/(?:chain|dispatch\/[^/]+))?\/?$/),
+  // Explorer 区域/行业数据面：本体只读树/详情/搜索/路径与公开几何切片，游客冷启动可浏览。
+  // 维度名只放行只读路由形状；未知 name 由 TaxonomyService 统一返回 404。
+  get('GET', /^\/taxonomy\/[^/]+\/children\/?$/),
+  get('GET', /^\/taxonomy\/[^/]+\/node\/[^/]+\/?$/),
+  get('GET', /^\/taxonomy\/[^/]+\/search\/?$/),
+  get('GET', /^\/taxonomy\/[^/]+\/path\/[^/]+\/?$/),
+  get('GET', /^\/geo\/regions\/[^/]+\/?$/),
   // K12 课程体系目录（curriculum 门面，本体驱动）：目录公开读（学科/学段/年级/教材/章节/知识点）。
   // knowledge-graph 游客可看结构、登录后叠加个人掌握度（OptionalAuth 语义）。
   // review 审核动作（POST）不入白名单 → 强制鉴权。

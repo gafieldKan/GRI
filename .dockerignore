@@ -29,6 +29,9 @@ coverage
 # 运行时数据（上传文件、数据库导出一类）
 **/uploads
 **/data
+!scripts/reference-data/data
+!scripts/reference-data/data/un-regions.geo.json
+!scripts/reference-data/data/un-regions-maps.geo.json
 pgdata
 
 # 其余无需进镜像的工作区源码（各服务 Dockerfile 按需显式 COPY；apps/packages 其它目录同理）

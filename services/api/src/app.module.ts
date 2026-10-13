@@ -12,6 +12,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { TwinModule } from './modules/twin/twin.module';
 import { ModuleRegistryModule } from './modules/module-registry/module-registry.module';
+import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 
 /**
  * GRI API 根模块（M0 骨架 → M1 身份 → M2 订餐 → M3 学情 → M4 organization/ontology
@@ -20,6 +21,6 @@ import { ModuleRegistryModule } from './modules/module-registry/module-registry.
  * import 同源缓存（scripts/k12-curriculum/import.mjs 读写），不再有 API 面。
  */
 @Module({
-  imports: [DatabaseModule, HealthModule, IdentityModule, AuthModule, FoodModule, TuitionModule, OrganizationModule, OntologyModule, CurriculumModule, DashboardModule, AgentModule, TwinModule, ModuleRegistryModule],
+  imports: [DatabaseModule, HealthModule, IdentityModule, AuthModule, FoodModule, TuitionModule, OrganizationModule, OntologyModule, CurriculumModule, DashboardModule, AgentModule, TwinModule, ModuleRegistryModule, TaxonomyModule],
 })
 export class AppModule {}

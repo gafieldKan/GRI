@@ -34,6 +34,8 @@ COPY packages ./packages
 COPY services/api/package.json ./services/api/package.json
 # 编译产物（dist/ 含 migrate/*.sql assets）
 COPY --from=build /app/services/api/dist ./services/api/dist
+# Explorer 几何 API 的只读数据源（GeoService 运行时按需读取并缓存切片）
+COPY scripts/reference-data/data/un-regions.geo.json scripts/reference-data/data/un-regions-maps.geo.json ./scripts/reference-data/data/
 # 运行时文件清单仅依赖 package.json + dist；其余源码不需要
 
 # 只装本工作区生产依赖；--ignore-scripts 跳过根 prepare

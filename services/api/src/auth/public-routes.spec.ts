@@ -102,6 +102,29 @@ describe('public-routes 公开读白名单', () => {
     });
   });
 
+  describe('区域/行业 Explorer 数据面', () => {
+    it('放行 taxonomy 只读端点', () => {
+      expect(isPublicRoute('GET', '/taxonomy/region/children')).toBe(true);
+      expect(isPublicRoute('GET', '/taxonomy/region/node/100000')).toBe(true);
+      expect(isPublicRoute('GET', '/taxonomy/industry/search')).toBe(true);
+      expect(isPublicRoute('GET', '/taxonomy/industry/path/ISIC%20Rev.5')).toBe(true);
+      expect(isPublicRoute('GET', '/taxonomy/unknown/children')).toBe(true);
+    });
+
+    it('放行按国家加载的几何切片', () => {
+      expect(isPublicRoute('GET', '/geo/regions/100000')).toBe(true);
+      expect(isPublicRoute('GET', '/geo/regions/world')).toBe(true);
+    });
+
+    it('taxonomy/geo 写方法与未定义深路径不放行', () => {
+      expect(isPublicRoute('POST', '/taxonomy/region/children')).toBe(false);
+      expect(isPublicRoute('PUT', '/taxonomy/industry/node/A')).toBe(false);
+      expect(isPublicRoute('GET', '/taxonomy/region/children/extra')).toBe(false);
+      expect(isPublicRoute('POST', '/geo/regions/100000')).toBe(false);
+      expect(isPublicRoute('GET', '/geo/regions/100000/extra')).toBe(false);
+    });
+  });
+
   describe('受保护端点一律不放行', () => {
     it('注册公开；改密与注销必须登录', () => {
       expect(isPublicRoute('POST', '/auth/register')).toBe(true);

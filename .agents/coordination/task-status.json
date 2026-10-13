@@ -381,9 +381,21 @@
     "npmjs_unreachable": "registry.npmjs.org 间歇不可达；npmmirror 可用；容器构建用临时 Dockerfile 注入镜像源"
   },
   "p3-c1": {
-    "status": "pending",
+    "status": "done_verified",
     "agent": "codex",
     "summary": "本体 Taxonomy/几何 API（只读）：children/node/search/path + geo 切片；Explorer 数据面从静态 JSON 转 API",
-    "card": ".agents/codex/tasks/p3-c1-taxonomy-api.md"
+    "card": ".agents/codex/tasks/p3-c1-taxonomy-api.md",
+    "commit": null,
+    "verification": {
+      "tsc": "0",
+      "taxonomy_tests": "4/16",
+      "full_tests": "38/560",
+      "e2e": "children/node/search/path + geo(248 world/3237 china) + 404/400",
+      "independent": true
+    },
+    "notes": "industry 标识用 code 非源 id；index.html 集成已被 iframe revert 覆盖（API 供后续内嵌/引擎消费）"
+  },
+  "_verification_2026_10_13": {
+    "P3-C1": "done_verified"
   }
 }
