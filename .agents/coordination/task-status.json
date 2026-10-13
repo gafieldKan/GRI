@@ -435,5 +435,37 @@
   },
   "_env_2026_10_13": {
     "brew_redaction": "exec/write 中 'Bearer \\$TOKEN' 会被脱敏成 *** → 鉴权 curl 用 -H @文件；host 连 DB/auth 用容器 IP"
+  },
+  "_waveP4_2026_10_13": {
+    "P4-A": {
+      "agent": "codex",
+      "status": "pending",
+      "card": ".agents/codex/tasks/p4-a-resource-dimension.md",
+      "desc": "维度挂业务对象(ResourceDimension) + 资源定位 API"
+    },
+    "P4-B": {
+      "agent": "claude",
+      "status": "pending",
+      "card": ".agents/claude/tasks/p4-b-dimension-admin-ui.md",
+      "desc": "维度治理 UI 补全（新建节点 + 审计查看）"
+    },
+    "P4-C": {
+      "agent": "claude",
+      "status": "pending",
+      "card": ".agents/claude/tasks/p4-c-portal-visual.md",
+      "desc": "门户登录/工作台 视觉（P3-UI）"
+    },
+    "P4-D": {
+      "agent": "codex",
+      "status": "pending",
+      "card": ".agents/codex/tasks/p4-d-tuition-wiring.md",
+      "desc": "教学卡 T6/T7 接线 + DI 冒烟"
+    },
+    "order": [
+      "P4-A",
+      "P4-B",
+      "P4-C",
+      "P4-D"
+    ]
   }
 }
