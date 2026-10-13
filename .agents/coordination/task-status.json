@@ -393,7 +393,12 @@
       "e2e": "children/node/search/path + geo(248 world/3237 china) + 404/400",
       "independent": true
     },
-    "notes": "industry 标识用 code 非源 id；index.html 集成已被 iframe revert 覆盖（API 供后续内嵌/引擎消费）"
+    "notes": "industry 标识用 code 非源 id；index.html 集成已被 iframe revert 覆盖（API 供后续内嵌/引擎消费）",
+    "followups": {
+      "tree_endpoint": "GET /api/taxonomy/:name/tree（全树·参考同形）已加 + 白名单",
+      "explorer_api": "内嵌 Explorer 数据树改从 API 取（几何/meta 仍内嵌）",
+      "deployed": "api 容器已重建(npmmirror)"
+    }
   },
   "_verification_2026_10_13": {
     "P3-C1": "done_verified"

@@ -154,6 +154,58 @@ export class TaxonomyService {
     };
   }
 
+  /** 全树（参考 Explorer 同形）：region 用 node_id/english，industry 用 code/en。 */
+  async fullTree(name: string): Promise<{ nodes: unknown[] }> {
+    const kind = this.resolveName(name);
+    if (kind === 'region') {
+      const result = await this.db.query(
+        `SELECT r.node_id, r.code, r.name, r.short, r.english, r.level,
+                r.iso2, r.iso3, r.center, r.admin_type, r.alias, r.note, r.source,
+                p.node_id AS parent_node_id
+           FROM ontology.region r
+           LEFT JOIN ontology.region p ON p.id = r.parent_id`,
+      );
+      const rows = result.rows as Array<Record<string, any>>;
+      const kids = new Map<string, number[]>();
+      for (const r of rows) {
+        if (r.parent_node_id != null) {
+          const k = String(r.parent_node_id);
+          let arr = kids.get(k); if (!arr) { arr = []; kids.set(k, arr); }
+          arr.push(Number(r.node_id));
+        }
+      }
+      return { nodes: rows.map((r) => ({
+        id: Number(r.node_id), code: r.code, name: r.name, short: r.short, english: r.english,
+        level: r.level, iso2: r.iso2, iso3: r.iso3, center: r.center, adminType: r.admin_type,
+        alias: r.alias, note: r.note, source: r.source,
+        parent: r.parent_node_id != null ? Number(r.parent_node_id) : null,
+        children: kids.get(String(r.node_id)) ?? [],
+      })) };
+    }
+    const result = await this.db.query(
+      `SELECT i.code, i.name, i.short, i.en, i.level, i.section, i.intro,
+              i.includes, i.also, i.excludes, i.refs, i.updated, p.code AS parent_code
+         FROM ontology.industry i
+         LEFT JOIN ontology.industry p ON p.id = i.parent_id`,
+    );
+    const rows = result.rows as Array<Record<string, any>>;
+    const kids = new Map<string, string[]>();
+    for (const r of rows) {
+      if (r.parent_code != null) {
+        const k = String(r.parent_code);
+        let arr = kids.get(k); if (!arr) { arr = []; kids.set(k, arr); }
+        arr.push(r.code);
+      }
+    }
+    return { nodes: rows.map((r) => ({
+      id: r.code, code: r.code, name: r.name, short: r.short, en: r.en, level: r.level,
+      section: r.section, intro: r.intro, includes: r.includes, also: r.also,
+      excludes: r.excludes, refs: r.refs, updated: r.updated,
+      parent: r.parent_code != null ? r.parent_code : null,
+      children: kids.get(String(r.code)) ?? [],
+    })) };
+  }
+
   private resolveName(name: string): TaxonomyName {
     const normalized = typeof name === 'string' ? name.trim().toLowerCase() : '';
     if (!normalized) throw new BadRequestException('分类名称不能为空');

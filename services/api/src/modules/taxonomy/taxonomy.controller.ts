@@ -28,4 +28,10 @@ export class TaxonomyController {
   path(@Param('name') name: string, @Param('id') id: string) {
     return this.taxonomyService.path(name, id);
   }
+
+  /** 全树（参考 Explorer 同形；供内嵌实例从 API 取数据）。 */
+  @Get(':name/tree')
+  tree(@Param('name') name: string) {
+    return this.taxonomyService.fullTree(name);
+  }
 }

@@ -82,15 +82,24 @@
       // 1) 先铺 body（会清掉 loading）
       document.body.className = doc.body.className || '';
       document.body.innerHTML = doc.body.innerHTML;
-      // 2) 再注入数据块
-      dataScripts.forEach(function (ds) {
-        var dj = document.createElement('script'); dj.type = 'application/json'; if (ds.id) dj.id = ds.id; dj.textContent = ds.text;
-        document.body.appendChild(dj);
-      });
-      // 3) 执行主脚本
-      var sc = document.createElement('script'); sc.textContent = runScripts.join('\n;\n'); document.body.appendChild(sc);
-      // 4) 注入 GRI 控件
-      injectControls();
+      // 2) 数据：优先 API 全树（真源），几何/meta 保留内嵌；失败回退内嵌
+      var mainData = dataScripts.find(function (s) { return /-data$/.test(s.id); }) || dataScripts[0];
+      fetch('/api/taxonomy/' + d + '/tree', { cache: 'no-cache' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
+        .then(function (apiTree) {
+          if (mainData && apiTree && apiTree.nodes && apiTree.nodes.length) {
+            try { var obj = JSON.parse(mainData.text); obj.nodes = apiTree.nodes; obj.__fromApi = true; mainData.text = JSON.stringify(obj); } catch (e) {}
+          }
+          dataScripts.forEach(function (ds) {
+            var dj = document.createElement('script'); dj.type = 'application/json'; if (ds.id) dj.id = ds.id; dj.textContent = ds.text;
+            document.body.appendChild(dj);
+          });
+          // 3) 执行主脚本
+          var sc = document.createElement('script'); sc.textContent = runScripts.join('\n;\n'); document.body.appendChild(sc);
+          // 4) 注入 GRI 控件
+          injectControls();
+        });
     });
   }
 
