@@ -60,6 +60,22 @@
     }
   }
 
+  // ② GRI 主题：把参考的 teal 调色板并入 GRI 令牌（后注入覆盖参考 :root）
+  function injectSkin(){
+    if (document.getElementById('griSkin')) return;
+    var st = document.createElement('style'); st.id = 'griSkin';
+    st.textContent = ':root{'
+      + '--teal:#1B7A3D;--teal-dark:#11562c;--tint:#e6f4ec;'   /* GRI food 绿 */
+      + '--bg:#f4fcf5;--paper:#ffffff;--ink:#1a1a2e;--muted:#5f6b65;--line:#e6ebe7;'
+      + '--gold:#b6935c;'
+      + '}'
+      /* 地图主色向 GRI 绿靠拢 */
+      + '.region:hover,.region.hovered{fill:#1B7A3D!important}'
+      + '.map-label{fill:#2c5a3a}'
+      + '.map-marker{fill:#1B7A3D}';
+    document.head.appendChild(st);
+  }
+
   function load(d){
     return fetch('./' + d + '.html', { cache: 'no-cache' }).then(function (r) { return r.text(); }).then(function (raw) {
       var doc = new DOMParser().parseFromString(raw, 'text/html');
@@ -69,6 +85,7 @@
         var st = document.createElement('style'); st.setAttribute('data-gri-embed','1'); st.textContent = s.textContent;
         document.head.appendChild(st);
       });
+      injectSkin();
       // 收集脚本：数据块（application/json）延后注入；其余收集待执行
       var dataScripts = [], runScripts = [];
       doc.querySelectorAll('script').forEach(function (s) {
