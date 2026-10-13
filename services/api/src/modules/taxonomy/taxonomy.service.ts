@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,6 +21,30 @@ const REGION_ID_PATTERN = /^\d{1,18}$/;
 const INDUSTRY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/;
 const ACTIVE_REGION = "(r.status = 'active' OR r.status IS NULL)";
 const ACTIVE_INDUSTRY = "(i.status = 'active' OR i.status IS NULL)";
+const MAX_TEXT_LENGTH = 200;
+
+/**
+ * 可新建层级闭集（同 S4 模块挂接粒度）：父级 level → 新节点 level。
+ * 取自真源实际父子层级（region: world/subregion/intermediate → country、country → province；
+ * industry: system → section）——超出即 400（「粒度外」），不做隐式推导。
+ */
+const CREATE_LEVEL_RULES: Record<TaxonomyName, Record<string, string>> = {
+  region: { world: 'country', subregion: 'country', intermediate: 'country', country: 'province' },
+  industry: { system: 'section' },
+};
+const CREATE_LEVEL_HINT: Record<TaxonomyName, string> = {
+  region: 'region 仅可新建 country/province 级（父级须为 world/subregion/intermediate 或 country）',
+  industry: 'industry 仅可新建 section 级（父级须为 system 层节点）',
+};
+
+/** PG 唯一约束冲突（23505）。 */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    (error as { code?: unknown }).code === '23505'
+  );
+}
 
 const REGION_NODE_SELECT = `
   SELECT r.node_id AS id,
@@ -254,6 +279,77 @@ export class TaxonomyService {
       : this.mapIndustry(after as IndustryTaxonomyRow);
   }
 
+  /**
+   * 新建维度节点（operator 门禁在 controller）；写审计 op=create。
+   * body：{code, name, short?, parentId}。层级不来自请求，而由父级按闭集推导（CREATE_LEVEL_RULES）。
+   * 校验：必填/编码规则非法 → 400；父级不存在 → 404；编码重复（含已归档）→ 409；粒度外 → 400。
+   */
+  async createNode(
+    name: string,
+    input: Record<string, unknown>,
+    actorId: string | null,
+    source = 'manual',
+  ): Promise<TaxonomyNode> {
+    const kind = this.resolveName(name);
+    const body = input && typeof input === 'object' ? input : {};
+
+    const nodeName = this.requireText(body.name, 'name');
+    const short = this.optionalText(body.short, 'short');
+    const code = this.requireText(body.code, 'code');
+    this.validateId(kind, code); // 编码规则同既有节点 id（region 数字编码 / industry ISIC 编码）
+
+    const parentRaw = body.parentId;
+    if (parentRaw === undefined || parentRaw === null || String(parentRaw).trim() === '') {
+      throw new BadRequestException('缺少父级（parentId）');
+    }
+    const parentId = this.validateId(kind, String(parentRaw));
+    const parent = await this.findNode(kind, parentId);
+    if (!parent) throw new NotFoundException('父级不存在');
+
+    const level = CREATE_LEVEL_RULES[kind][String(parent.level)];
+    if (!level) {
+      throw new BadRequestException(
+        `该层级不支持新建（当前父级 level=${parent.level}）：${CREATE_LEVEL_HINT[kind]}`,
+      );
+    }
+
+    // 编码唯一性：唯一约束覆盖全表（含已归档），故预检不带 status 过滤
+    if (await this.codeExists(kind, code)) {
+      throw new ConflictException(`编码已存在：${code}`);
+    }
+
+    try {
+      if (kind === 'region') {
+        await this.db.query(
+          `INSERT INTO ontology.region (node_id, code, name, short, level, parent_id, status)
+           VALUES ($1, $1, $2, $3, $4, (SELECT id FROM ontology.region WHERE node_id = $5), 'active')`,
+          [code, nodeName, short, level, parentId],
+        );
+      } else {
+        await this.db.query(
+          `INSERT INTO ontology.industry (code, name, short, level, section, parent_id, status)
+           VALUES ($1, $2, $3, $4, $1, (SELECT id FROM ontology.industry WHERE code = $5), 'active')`,
+          [code, nodeName, short, level, parentId],
+        );
+      }
+    } catch (error) {
+      // 并发兜底：唯一约束（node_id / code）冲突 → 409（与预检同语义）
+      if (isUniqueViolation(error)) throw new ConflictException(`编码已存在：${code}`);
+      throw error;
+    }
+
+    const row = (await this.findNode(kind, code)) as RegionTaxonomyRow | IndustryTaxonomyRow;
+    const node = kind === 'region'
+      ? this.mapRegion(row as RegionTaxonomyRow)
+      : this.mapIndustry(row as IndustryTaxonomyRow);
+    await this.db.query(
+      `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
+       VALUES ($1, $2, 'create', $3, $4, $5, $6)`,
+      [kind, code, JSON.stringify({}), JSON.stringify(node), actorId, source],
+    );
+    return node;
+  }
+
   /** 维度变更审计流水（治理查看）。 */
   async changes(name: string, limit = 50): Promise<unknown[]> {
     const kind = this.resolveName(name);
@@ -333,6 +429,33 @@ export class TaxonomyService {
       throw new BadRequestException('节点 id 非法');
     }
     return normalized;
+  }
+
+  /** 必填文本：空/非字符串/超长 → 400（不把坏值丢给 PG 的 NOT NULL/VARCHAR 约束）。 */
+  private requireText(value: unknown, field: string): string {
+    const text = value === undefined || value === null ? '' : String(value).trim();
+    if (!text) throw new BadRequestException(`缺少必填字段：${field}`);
+    if (text.length > MAX_TEXT_LENGTH) {
+      throw new BadRequestException(`${field} 过长（≤${MAX_TEXT_LENGTH} 字符）`);
+    }
+    return text;
+  }
+
+  /** 可选文本：缺省/空白 → null；否则同 requireText 校验。 */
+  private optionalText(value: unknown, field: string): string | null {
+    if (value === undefined || value === null || String(value).trim() === '') return null;
+    return this.requireText(value, field);
+  }
+
+  /** 编码是否已占用（region.node_id / industry.code；含已归档节点）。 */
+  private async codeExists(kind: TaxonomyName, code: string): Promise<boolean> {
+    const result = await this.db.query(
+      kind === 'region'
+        ? 'SELECT 1 FROM ontology.region WHERE node_id = $1 LIMIT 1'
+        : 'SELECT 1 FROM ontology.industry WHERE code = $1 LIMIT 1',
+      [code],
+    );
+    return result.rows.length > 0;
   }
 
   private parseLimit(input?: string | number): number {

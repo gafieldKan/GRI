@@ -123,6 +123,13 @@ describe('public-routes 公开读白名单', () => {
       expect(isPublicRoute('POST', '/geo/regions/100000')).toBe(false);
       expect(isPublicRoute('GET', '/geo/regions/100000/extra')).toBe(false);
     });
+
+    it('维度治理写路径（新建）与审计流水必须登录（P4-B）', () => {
+      expect(isPublicRoute('POST', '/taxonomy/region/node')).toBe(false);
+      expect(isPublicRoute('POST', '/taxonomy/industry/node')).toBe(false);
+      // 审计流水含 actor_id，属治理内部视图，不对外开放
+      expect(isPublicRoute('GET', '/taxonomy/region/changes')).toBe(false);
+    });
   });
 
   describe('资源定位查询', () => {

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrganizationService } from '../organization/organization.service';
 import { CommandService } from './command.service';
@@ -17,6 +17,7 @@ jest.mock('@gri/agent-core', () => ({
 describe('TaxonomyController', () => {
   let controller: TaxonomyController;
   let service: jest.Mocked<TaxonomyService>;
+  let org: { assertSiteOperator: jest.Mock };
 
   beforeEach(async () => {
     service = {
@@ -24,16 +25,15 @@ describe('TaxonomyController', () => {
       getNode: jest.fn(),
       search: jest.fn(),
       path: jest.fn(),
+      createNode: jest.fn(),
     } as unknown as jest.Mocked<TaxonomyService>;
+    org = { assertSiteOperator: jest.fn(async () => undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TaxonomyController],
       providers: [
         { provide: TaxonomyService, useValue: service },
-        {
-          provide: OrganizationService,
-          useValue: { assertSiteOperator: jest.fn(async () => undefined) },
-        },
+        { provide: OrganizationService, useValue: org },
         {
           provide: CommandService,
           useValue: { propose: jest.fn(), apply: jest.fn() },
@@ -74,5 +74,33 @@ describe('TaxonomyController', () => {
     await expect(controller.node('region', '999999')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('create：operator 门禁 + externalId 作操作者，body 原样下传', async () => {
+    service.createNode.mockResolvedValue({ id: '990000' } as never);
+    const body = { code: '990000', name: '测试国', parentId: '9000030' };
+
+    await expect(
+      controller.create({ auth: { externalId: 'op-1' } } as never, 'region', body),
+    ).resolves.toEqual({ id: '990000' });
+    expect(org.assertSiteOperator).toHaveBeenCalledWith('op-1');
+    expect(service.createNode).toHaveBeenCalledWith('region', body, 'op-1');
+  });
+
+  it('create：缺外部身份标识 → 403，门禁与服务层均不触达', async () => {
+    await expect(
+      controller.create({ auth: {} } as never, 'region', {}),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(org.assertSiteOperator).not.toHaveBeenCalled();
+    expect(service.createNode).not.toHaveBeenCalled();
+  });
+
+  it('create：非 operator（门禁抛 403）→ 逐字透传且不落库', async () => {
+    org.assertSiteOperator.mockRejectedValueOnce(new ForbiddenException('需要站点运营权限'));
+
+    await expect(
+      controller.create({ auth: { externalId: 'u-9' } } as never, 'region', { code: '990000' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(service.createNode).not.toHaveBeenCalled();
   });
 });

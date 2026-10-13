@@ -59,6 +59,18 @@ export class TaxonomyController {
     return this.taxonomyService.changes(name, limit ? Number(limit) : 50);
   }
 
+  /** 新建维度节点（operator 门禁 + 审计 op=create；粒度闭集同 S4）。 */
+  @Post(':name/node')
+  async create(
+    @Req() req: Request,
+    @Param('name') name: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    const actorId = this.externalId(req);
+    await this.org.assertSiteOperator(actorId);
+    return this.taxonomyService.createNode(name, body || {}, actorId);
+  }
+
   /** 维度节点维护（改名称；operator 门禁 + 审计）。 */
   @Patch(':name/node/:id')
   async update(

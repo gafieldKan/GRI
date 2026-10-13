@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
@@ -323,5 +324,189 @@ describe('TaxonomyService', () => {
     expect(sql).toContain('FROM ontology.region');
     expect(sql).toContain('ORDER BY');
     expect(params).toEqual(['100000']);
+  });
+
+  describe('createNode（新建：粒度闭集 + 审计 op=create）', () => {
+    const calls = (queries: jest.Mock) => queries.mock.calls as Array<[string, unknown[]]>;
+    const insertCall = (queries: jest.Mock) =>
+      calls(queries).find(([sql]) => /^INSERT INTO ontology\.(region|industry)/.test(sql.trim()));
+    const auditCall = (queries: jest.Mock) =>
+      calls(queries).find(([sql]) => sql.includes('ontology.dimension_change_log'));
+
+    const REGION_INTERMEDIATE = {
+      ...REGION_PARENT,
+      id: '9000030',
+      code: '030',
+      name: '东亚',
+      level: 'intermediate',
+      parent_id: '9000020',
+    };
+    const REGION_CREATED = {
+      ...REGION_PARENT,
+      id: '990000',
+      code: '990000',
+      name: '测试国',
+      short: null,
+      english: null,
+      level: 'country',
+      iso2: null,
+      iso3: null,
+      center: null,
+      parent_id: '9000030',
+      has_children: false,
+      child_count: 0,
+    };
+    const INDUSTRY_SECTION = {
+      ...INDUSTRY_SYSTEM,
+      id: 'Z9',
+      code: 'Z9',
+      name: '测试门类',
+      english: null,
+      level: 'section',
+      parent_id: 'ISIC Rev.5',
+      section: 'Z9',
+      has_children: false,
+      child_count: 0,
+    };
+
+    it('region：父级 intermediate → 新建 country；INSERT 锚点=编码、level 由父级推导，并写审计', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [REGION_INTERMEDIATE] }) // 父级存在
+        .mockResolvedValueOnce({ rows: [] }) // 编码未占用
+        .mockResolvedValueOnce({ rows: [] }) // INSERT
+        .mockResolvedValueOnce({ rows: [REGION_CREATED] }); // 回读
+      const service = new TaxonomyService(mockDb(query));
+
+      const node = await service.createNode(
+        'region',
+        { code: '990000', name: '测试国', parentId: '9000030' },
+        'op-1',
+      );
+
+      expect(node).toMatchObject({
+        id: '990000',
+        name: '测试国',
+        level: 'country',
+        parentId: '9000030',
+      });
+      const insert = insertCall(query);
+      expect(insert?.[0]).toContain('INSERT INTO ontology.region');
+      expect(insert?.[0]).toContain('(SELECT id FROM ontology.region WHERE node_id = $5)');
+      expect(insert?.[1]).toEqual(['990000', '测试国', null, 'country', '9000030']);
+
+      const audit = auditCall(query);
+      expect(audit?.[0]).toContain('ontology.dimension_change_log');
+      expect(audit?.[0]).toContain("'create'");
+      const params = audit?.[1] as unknown[];
+      expect(params[0]).toBe('region');
+      expect(params[1]).toBe('990000');
+      expect(params[4]).toBe('op-1');
+      expect(params[5]).toBe('manual');
+      expect(JSON.parse(String(params[3]))).toMatchObject({ id: '990000', level: 'country' });
+    });
+
+    it('industry：父级 system → 新建 section（section 列取编码），审计 source 可透传', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [INDUSTRY_SYSTEM] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [INDUSTRY_SECTION] });
+      const service = new TaxonomyService(mockDb(query));
+
+      const node = await service.createNode(
+        'industry',
+        { code: 'Z9', name: '测试门类', short: '测试', parentId: 'ISIC Rev.5' },
+        'op-1',
+        'ai_command',
+      );
+
+      expect(node).toMatchObject({ id: 'Z9', level: 'section', parentId: 'ISIC Rev.5' });
+      const insert = insertCall(query);
+      expect(insert?.[0]).toContain('INSERT INTO ontology.industry');
+      expect(insert?.[1]).toEqual(['Z9', '测试门类', '测试', 'section', 'ISIC Rev.5']);
+      expect((auditCall(query)?.[1] as unknown[])[5]).toBe('ai_command');
+    });
+
+    it('粒度外：region 父级 province → 400，且不落库、不写审计', async () => {
+      const query = jest.fn().mockResolvedValueOnce({ rows: [REGION_CHILD] });
+      const service = new TaxonomyService(mockDb(query));
+
+      await expect(
+        service.createNode('region', { code: '990001', name: '越界', parentId: '110000' }, 'op-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(insertCall(query)).toBeUndefined();
+      expect(auditCall(query)).toBeUndefined();
+    });
+
+    it('粒度外：industry 父级 section → 400（仅 system 下可建 section）', async () => {
+      const section = { ...INDUSTRY_SECTION, parent_id: 'UN' };
+      const query = jest.fn().mockResolvedValueOnce({ rows: [section] });
+      const service = new TaxonomyService(mockDb(query));
+
+      await expect(
+        service.createNode('industry', { code: 'Z8', name: '越界', parentId: 'Z9' }, 'op-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(insertCall(query)).toBeUndefined();
+    });
+
+    it('父级不存在 → 404', async () => {
+      const query = jest.fn().mockResolvedValueOnce({ rows: [] });
+      const service = new TaxonomyService(mockDb(query));
+
+      await expect(
+        service.createNode('region', { code: '990000', name: '测试国', parentId: '888888' }, 'op-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('空值/非法编码 → 400（校验先于任何查询）', async () => {
+      const query = jest.fn();
+      const service = new TaxonomyService(mockDb(query));
+
+      for (const body of [
+        { code: '990000', parentId: '9000030' }, // 缺 name
+        { name: '测试国', parentId: '9000030' }, // 缺 code
+        { name: '测试国', code: '990000' }, // 缺 parentId
+        { name: '测试国', code: '990000', parentId: '   ' }, // 父级空白
+        { name: '测试国', code: 'ABC', parentId: '9000030' }, // region 编码须为数字
+      ]) {
+        await expect(service.createNode('region', body, 'op-1')).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+      }
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('编码重复 → 409（预检覆盖已归档节点：不带 status 过滤）', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [REGION_INTERMEDIATE] })
+        .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
+      const service = new TaxonomyService(mockDb(query));
+
+      await expect(
+        service.createNode('region', { code: '990000', name: '测试国', parentId: '9000030' }, 'op-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      const exists = calls(query)[1];
+      expect(exists[0]).toContain('FROM ontology.region WHERE node_id = $1');
+      expect(exists[0]).not.toContain('status');
+      expect(insertCall(query)).toBeUndefined();
+    });
+
+    it('并发兜底：唯一约束冲突 23505 → 409（不冒 500）', async () => {
+      const conflict = Object.assign(new Error('duplicate key'), { code: '23505' });
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [REGION_INTERMEDIATE] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockRejectedValueOnce(conflict);
+      const service = new TaxonomyService(mockDb(query));
+
+      await expect(
+        service.createNode('region', { code: '990000', name: '测试国', parentId: '9000030' }, 'op-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(auditCall(query)).toBeUndefined();
+    });
   });
 });

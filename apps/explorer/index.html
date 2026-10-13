@@ -15,6 +15,34 @@
   .gri-sso .primary{background:#1B7A3D;border-color:#1B7A3D;color:#fff}
   .gri-sso .who{font-size:12px;color:#5f6b65;margin-right:4px}
   .gri-loading{position:fixed;inset:0;display:grid;place-items:center;color:#5f6b65;font-size:14px;background:#f4fcf5;z-index:9999}
+  /* GRI 治理层：新建弹窗 + 审计流水面板（作用域限 .gri-*） */
+  .gri-modal{position:fixed;inset:0;display:grid;place-items:center;background:rgba(16,32,22,.45);z-index:10000}
+  .gri-modal .gri-card{background:#fff;border-radius:12px;padding:20px;width:min(420px,92vw);box-shadow:0 16px 48px rgba(0,0,0,.22);font-size:13px;color:#1a1a2e}
+  .gri-modal h3{margin:0 0 4px;font-size:15px}
+  .gri-modal .gri-sub{font-size:11px;color:#8a968f;line-height:1.5;margin-bottom:10px}
+  .gri-modal label{display:block;font-size:12px;color:#5f6b65;margin:10px 0 4px}
+  .gri-modal input{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #e4ebe6;border-radius:7px;font-size:13px;color:#1a1a2e;background:#fbfdfc}
+  .gri-modal input:focus{outline:2px solid #cfe8da;border-color:#1B7A3D}
+  .gri-modal .gri-msg{font-size:12px;margin-top:10px;min-height:16px;color:#c0392b;word-break:break-all}
+  .gri-modal .gri-row{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .gri-modal button{border:1px solid #e4ebe6;background:#fff;padding:7px 16px;border-radius:7px;font-size:13px;font-weight:600;color:#1a1a2e;cursor:pointer}
+  .gri-modal button.gri-ok{background:#1B7A3D;border-color:#1B7A3D;color:#fff}
+  .gri-modal button[disabled]{opacity:.6;cursor:default}
+  .gri-panel{position:fixed;top:0;right:0;bottom:0;width:min(560px,96vw);background:#fff;z-index:10000;box-shadow:-10px 0 44px rgba(0,0,0,.2);display:flex;flex-direction:column;font-size:12px;color:#1a1a2e}
+  .gri-panel header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef3ef;font-size:14px}
+  .gri-panel header button{border:0;background:transparent;font-size:16px;color:#5f6b65;cursor:pointer}
+  .gri-panel .gri-list{overflow:auto;padding:4px 16px 20px}
+  .gri-log{border-bottom:1px solid #f1f5f2;padding:10px 0;line-height:1.5}
+  .gri-log .gri-l1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .gri-log .gri-op{font-weight:700;font-size:11px;padding:1px 7px;border-radius:99px;background:#eef3ef;color:#41564a}
+  .gri-log .gri-op.create{background:#e6f4ec;color:#1B7A3D}
+  .gri-log .gri-op.update{background:#eaf1fb;color:#2f5fa8}
+  .gri-log .gri-op.move{background:#fdf3e3;color:#9a6b1f}
+  .gri-log .gri-op.archive{background:#fbeaea;color:#a83a3a}
+  .gri-log .gri-src{font-size:11px;color:#8a968f}
+  .gri-log .gri-time{margin-left:auto;font-size:11px;color:#8a968f;white-space:nowrap}
+  .gri-log .gri-l2{color:#5f6b65;font-size:11px;margin-top:3px;word-break:break-all}
+  .gri-panel .gri-empty{color:#8a968f;padding:20px 0;text-align:center}
 </style>
 </head>
 <body>
@@ -121,6 +149,125 @@
     } catch (err) { alert('请求失败：' + err.message); }
   }
 
+  // ── GRI 治理层（P4-B）：新建节点 + 审计流水（按钮仅 operator 可见，见 renderSso）──
+  var CREATE_RULE_HINT = {
+    region: 'region 仅可新建 country/province 级：父级 world/subregion/intermediate → country；父级 country → province',
+    industry: 'industry 仅可新建 section 级：父级须为 system 层节点（如 ISIC Rev.5）',
+  };
+  function authHeader(t){ return { 'Content-Type': 'application/json', 'Authorization': ('Bea'+'rer') + ' ' + t.accessToken }; }
+  function errText(d, status){
+    if (d && d.message) return Array.isArray(d.message) ? d.message.join('；') : String(d.message);
+    return 'HTTP ' + status;
+  }
+  function fmtTime(v){
+    if (!v) return '';
+    var d = new Date(v);
+    return isNaN(d.getTime()) ? String(v) : d.toLocaleString('zh-CN', { hour12: false });
+  }
+  function brief(v){
+    if (v === null || v === undefined) return '';
+    var s = typeof v === 'string' ? v : JSON.stringify(v);
+    return s && s.length > 160 ? s.slice(0, 160) + '…' : String(s || '');
+  }
+  // before → after 变更摘要（逐字段比对；无字段差异时退化为 after 全量）
+  function diffText(before, after){
+    var b = before && typeof before === 'object' ? before : {};
+    var a = after && typeof after === 'object' ? after : {};
+    var keys = Object.keys(a).concat(Object.keys(b)).filter(function (k, i, arr) { return arr.indexOf(k) === i; });
+    var parts = [];
+    for (var i = 0; i < keys.length && parts.length < 5; i++) {
+      var k = keys[i], bv = brief(b[k]), av = brief(a[k]);
+      if (bv === av) continue;
+      parts.push(k + '：' + (bv || '∅') + ' → ' + (av || '∅'));
+    }
+    return parts.length ? parts.join('；') : brief(a);
+  }
+  function logRow(x){
+    var op = esc(x.op || '');
+    return '<div class="gri-log">'
+      + '<div class="gri-l1"><span class="gri-op ' + op + '">' + op + '</span>'
+      + '<b>' + esc(x.target_id) + '</b>'
+      + '<span class="gri-src">' + esc(x.source || 'manual') + '</span>'
+      + '<span class="gri-time">' + esc(fmtTime(x.created_at)) + '</span></div>'
+      + '<div class="gri-l2">' + esc(diffText(x.before, x.after)) + '</div>'
+      + '</div>';
+  }
+
+  // 新建弹窗：父级/编码/名称/简称 → POST /api/taxonomy/:name/node（operator + 审计 op=create）
+  function openCreate(){
+    var t = token(); if (!t || !t.accessToken) { alert('请先登录（右上）'); return; }
+    var dim = curDim();
+    var m = document.createElement('div');
+    m.className = 'gri-modal';
+    m.innerHTML = '<div class="gri-card">'
+      + '<h3>＋ 新建' + (dim === 'region' ? '区域' : '行业') + '节点</h3>'
+      + '<div class="gri-sub">' + esc(CREATE_RULE_HINT[dim] || '') + '</div>'
+      + '<label>父级 id（必填）</label><input class="gri-parent" value="' + esc(currentId() || '') + '" placeholder="'
+      + (dim === 'region' ? '如 9000030（intermediate）或 100000（country）' : '如 ISIC Rev.5') + '">'
+      + '<label>编码（必填，唯一）</label><input class="gri-code" placeholder="'
+      + (dim === 'region' ? '如 990000（数字编码）' : '如 Z9') + '">'
+      + '<label>名称（必填）</label><input class="gri-name" placeholder="新节点名称">'
+      + '<label>简称（可选）</label><input class="gri-short">'
+      + '<div class="gri-msg"></div>'
+      + '<div class="gri-row"><button class="gri-cancel">取消</button><button class="gri-ok">创建</button></div>'
+      + '</div>';
+    document.body.appendChild(m);
+
+    var msg = m.querySelector('.gri-msg');
+    var okBtn = m.querySelector('.gri-ok');
+    function close(){ m.remove(); document.removeEventListener('keydown', onKey); }
+    function onKey(e){ if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    m.querySelector('.gri-cancel').onclick = close;
+    m.onclick = function (e) { if (e.target === m) close(); };
+
+    okBtn.onclick = async function () {
+      var parentId = m.querySelector('.gri-parent').value.trim();
+      var code = m.querySelector('.gri-code').value.trim();
+      var name = m.querySelector('.gri-name').value.trim();
+      var short = m.querySelector('.gri-short').value.trim();
+      msg.textContent = '';
+      if (!parentId || !code || !name) { msg.textContent = '父级、编码、名称为必填项'; return; }
+      var body = { code: code, name: name, parentId: parentId };
+      if (short) body.short = short;
+      okBtn.disabled = true;
+      try {
+        var r = await fetch('/api/taxonomy/' + dim + '/node', { method: 'POST', headers: authHeader(t), body: JSON.stringify(body) });
+        var d = await r.json().catch(function () { return {}; });
+        if (r.status === 201) { close(); alert('已创建 ' + dim + ' · ' + (d.id || code) + '，刷新后生效'); location.reload(); return; }
+        msg.textContent = '失败（' + r.status + '）：' + errText(d, r.status);
+      } catch (err) { msg.textContent = '请求失败：' + err.message; }
+      okBtn.disabled = false;
+    };
+    m.querySelector('.gri-parent').focus();
+  }
+
+  // 审计流水面板：GET /api/taxonomy/:name/changes（operator 门禁）
+  async function openAudit(){
+    var t = token(); if (!t || !t.accessToken) { alert('请先登录（右上）'); return; }
+    var dim = curDim();
+    var p = document.createElement('div');
+    p.className = 'gri-panel';
+    p.innerHTML = '<header><b>▤ 审计流水 · ' + (dim === 'region' ? '区域' : '行业') + '</b><button title="关闭">✕</button></header>'
+      + '<div class="gri-list"><div class="gri-empty">加载中…</div></div>';
+    document.body.appendChild(p);
+    p.querySelector('header button').onclick = function () { p.remove(); };
+    var list = p.querySelector('.gri-list');
+    try {
+      var r = await fetch('/api/taxonomy/' + dim + '/changes?limit=50', {
+        headers: { 'Authorization': ('Bea'+'rer') + ' ' + t.accessToken },
+      });
+      var d = await r.json().catch(function () { return null; });
+      if (!r.ok) { list.innerHTML = '<div class="gri-empty">加载失败：' + esc(errText(d, r.status)) + '</div>'; return; }
+      var rows = Array.isArray(d) ? d : ((d && d.rows) || []);
+      list.innerHTML = rows.length
+        ? rows.map(logRow).join('')
+        : '<div class="gri-empty">暂无变更记录</div>';
+    } catch (err) {
+      list.innerHTML = '<div class="gri-empty">请求失败：' + esc(err.message) + '</div>';
+    }
+  }
+
   async function probeOperator(){
     var t = token(); if (!t || !t.accessToken) return false;
     try {
@@ -128,7 +275,6 @@
       return r.ok;
     } catch (e) { return false; }
   }
-
   function renderSso(){
     var t = token(); var sso = document.getElementById('griSso'); if (!sso) return;
     if (t && t.accessToken) {
@@ -140,8 +286,10 @@
         var box = sso.querySelector('.gov');
         if (!isOp || box) return;
         box = document.createElement('span'); box.className = 'gov';
-        box.innerHTML = '<button class="edit">✎ 编辑名称</button><button class="move">⇄ 移动</button><button class="arch">⧗ 归档</button><button class="ai">✦ AI 命令</button>';
+        box.innerHTML = '<button class="new">＋ 新建</button><button class="audit">▤ 审计</button><button class="edit">✎ 编辑名称</button><button class="move">⇄ 移动</button><button class="arch">⧗ 归档</button><button class="ai">✦ AI 命令</button>';
         sso.insertBefore(box, sso.querySelector('.logout'));
+        box.querySelector('.new').onclick = openCreate;
+        box.querySelector('.audit').onclick = openAudit;
         box.querySelector('.edit').onclick = editCurrent;
         box.querySelector('.move').onclick = moveCurrent;
         box.querySelector('.arch').onclick = archiveCurrent;
