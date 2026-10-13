@@ -41,7 +41,7 @@
       + '</span><span class="gri-sso" id="griSso"></span>';
     topbar.appendChild(box);
     box.querySelectorAll('.gri-tabs button').forEach(function (b) {
-      b.onclick = function () { location.search = '?dim=' + b.getAttribute('data-dim'); location.reload(); };
+      b.onclick = function () { location.href = '/explore/?dim=' + encodeURIComponent(b.getAttribute('data-dim')); };
     });
     renderSso();
   }
