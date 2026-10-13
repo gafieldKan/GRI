@@ -121,19 +121,32 @@
     } catch (err) { alert('请求失败：' + err.message); }
   }
 
+  async function probeOperator(){
+    var t = token(); if (!t || !t.accessToken) return false;
+    try {
+      var r = await fetch('/api/taxonomy/region/changes?limit=1', { headers: { 'Authorization': ('Bea'+'rer') + ' ' + t.accessToken } });
+      return r.ok;
+    } catch (e) { return false; }
+  }
+
   function renderSso(){
-    var sso = document.getElementById('griSso'); if (!sso) return;
-    var t = token();
+    var t = token(); var sso = document.getElementById('griSso'); if (!sso) return;
     if (t && t.accessToken) {
       var name = (t.user && (t.user.name || t.user.username)) || '已登录';
       sso.innerHTML = '<span class="who">你好，<b>' + esc(name) + '</b></span>'
-        + '<button class="edit">✎ 编辑名称</button><button class="move">⇄ 移动</button><button class="arch">⧗ 归档</button><button class="ai">✦ AI 命令</button>'
         + '<a href="/portal/">工作台</a><button class="logout">退出</button>';
-      sso.querySelector('.edit').onclick = editCurrent;
-      sso.querySelector('.move').onclick = moveCurrent;
-      sso.querySelector('.arch').onclick = archiveCurrent;
-      sso.querySelector('.ai').onclick = commandCurrent;
       sso.querySelector('.logout').onclick = function(){ localStorage.removeItem('gri-auth-token'); renderSso(); };
+      probeOperator().then(function (isOp) {
+        var box = sso.querySelector('.gov');
+        if (!isOp || box) return;
+        box = document.createElement('span'); box.className = 'gov';
+        box.innerHTML = '<button class="edit">✎ 编辑名称</button><button class="move">⇄ 移动</button><button class="arch">⧗ 归档</button><button class="ai">✦ AI 命令</button>';
+        sso.insertBefore(box, sso.querySelector('.logout'));
+        box.querySelector('.edit').onclick = editCurrent;
+        box.querySelector('.move').onclick = moveCurrent;
+        box.querySelector('.arch').onclick = archiveCurrent;
+        box.querySelector('.ai').onclick = commandCurrent;
+      });
     } else {
       sso.innerHTML = '<a href="/portal/#/pages/login/login">登录</a>'
         + '<a class="primary" href="/portal/#/pages/register/index">注册</a>';
