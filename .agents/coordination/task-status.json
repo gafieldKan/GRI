@@ -413,7 +413,8 @@
     "P3-S6": "done_verified",
     "P4-A": "done_verified",
     "P4-B": "done_verified",
-    "P4-C": "done_verified"
+    "P4-C": "done_verified",
+    "P4-D": "done_verified"
   },
   "p3-governance": {
     "status": "done_verified(首片)",
@@ -484,9 +485,17 @@
     },
     "P4-D": {
       "agent": "codex",
-      "status": "pending",
+      "status": "done_verified",
       "card": ".agents/codex/tasks/p4-d-tuition-wiring.md",
-      "desc": "教学卡 T6/T7 接线 + DI 冒烟"
+      "desc": "教学卡 T6/T7 接线 + DI 冒烟",
+      "commit": null,
+      "verification": {
+        "tsc": "0",
+        "full_tests": "42/595",
+        "di_smoke": "启动成功+/health200+5路由",
+        "endpoints": "classify200/400/variants200",
+        "independent": true
+      }
     },
     "order": [
       "P4-A",

@@ -1,6 +1,9 @@
 import {
+  BadRequestException,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Put,
   Body,
@@ -13,7 +16,31 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TuitionService } from './tuition.service';
-import { AnswerSubmitDto } from './tuition.types';
+import {
+  AnswerSubmitDto,
+  Intent,
+  QuestionSeed,
+  SocraticContext,
+  VariantGenerationOptions,
+} from './tuition.types';
+import {
+  IllegalCardTransitionError,
+  TeachingCardFsm,
+  TeachingCardState,
+  initialCardState,
+} from './agents/teaching-card-fsm';
+import {
+  IntentClassifier,
+  IntentContext,
+} from './agents/intent-classifier';
+import {
+  MissingTemplateError,
+  MissingTemplateVariableError,
+  SocraticTemplates,
+  TemplateKey,
+} from './agents/socratic-templates';
+import { ExamScannerAgent } from './agents/exam-scanner';
+import { VariantGenerator } from './agents/variant-generator';
 import { Request } from 'express';
 
 /**
@@ -29,7 +56,14 @@ import { Request } from 'express';
  */
 @Controller('tuition')
 export class TuitionController {
-  constructor(private readonly tuitionService: TuitionService) {}
+  constructor(
+    private readonly tuitionService: TuitionService,
+    private readonly intentClassifier: IntentClassifier,
+    private readonly teachingCardFsm: TeachingCardFsm,
+    private readonly socraticTemplates: SocraticTemplates,
+    private readonly examScanner: ExamScannerAgent,
+    private readonly variantGenerator: VariantGenerator,
+  ) {}
 
   private userId(req: Request): string {
     return (req as any).auth.externalId as string;
@@ -233,6 +267,104 @@ export class TuitionController {
 
   // ===================== 试卷识别与学情分析（个人私有） =====================
 
+  // ===================== 教学卡片 T6（最小接线） =====================
+
+  @Post('agent/classify-intent')
+  @HttpCode(HttpStatus.OK)
+  classifyIntent(@Body() body: { input?: unknown; context?: IntentContext }) {
+    const input = typeof body?.input === 'string' ? body.input.trim() : '';
+    if (!input) throw new BadRequestException('缺少 input');
+    return this.intentClassifier.classify(input, body.context ?? {});
+  }
+
+  @Post('agent/card/advance')
+  @HttpCode(HttpStatus.OK)
+  advanceCard(
+    @Body() body: { state?: TeachingCardState; intent?: Intent; correct?: boolean },
+  ) {
+    if (!isCardIntent(body?.intent)) throw new BadRequestException('缺少或非法 intent');
+    const state = body.state ?? initialCardState();
+    if (!isCardState(state)) throw new BadRequestException('非法卡片状态');
+    try {
+      return this.teachingCardFsm.advance(state, body.intent, { correct: body.correct });
+    } catch (error) {
+      if (error instanceof IllegalCardTransitionError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Post('agent/socratic/render')
+  @HttpCode(HttpStatus.OK)
+  renderSocratic(@Body() body: { key?: TemplateKey; context?: Partial<SocraticContext> }) {
+    if (!isTemplateKey(body?.key)) throw new BadRequestException('缺少或非法模板 key');
+    if (!body.context || typeof body.context.knowledgePoint !== 'string' || !body.context.knowledgePoint.trim()) {
+      throw new BadRequestException('缺少 knowledgePoint');
+    }
+    try {
+      return { message: this.socraticTemplates.render(body.key, body.context as SocraticContext) };
+    } catch (error) {
+      if (error instanceof MissingTemplateError || error instanceof MissingTemplateVariableError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  // ===================== 拍照解题 T7（最小接线） =====================
+
+  @Post('exam/scan')
+  @HttpCode(HttpStatus.OK)
+  scanExam(
+    @Body()
+    body: {
+      imageDataUrl?: unknown;
+      rawText?: unknown;
+      subject?: unknown;
+      gradeLevel?: unknown;
+      withVariants?: unknown;
+    },
+  ) {
+    const imageDataUrl = typeof body?.imageDataUrl === 'string' ? body.imageDataUrl.trim() : '';
+    const rawText = typeof body?.rawText === 'string' ? body.rawText : undefined;
+    if (!imageDataUrl && !rawText?.trim()) {
+      throw new BadRequestException('缺少 imageDataUrl 或 rawText');
+    }
+    return this.examScanner.scanExam({
+      imageDataUrl,
+      rawText,
+      subject: typeof body.subject === 'string' ? body.subject : undefined,
+      gradeLevel: typeof body.gradeLevel === 'string' ? body.gradeLevel : undefined,
+      withVariants: body.withVariants === true,
+    });
+  }
+
+  @Post('exam/variants')
+  @HttpCode(HttpStatus.OK)
+  generateVariants(
+    @Body()
+    body: {
+      seed?: Partial<QuestionSeed>;
+      count?: unknown;
+      strategy?: unknown;
+      subject?: unknown;
+      gradeLevel?: unknown;
+    },
+  ) {
+    const seed = body?.seed;
+    if (!seed || typeof seed.content !== 'string' || !seed.content.trim() || !isQuestionType(seed.type)) {
+      throw new BadRequestException('缺少或非法 seed');
+    }
+    const options: VariantGenerationOptions = {
+      count: typeof body.count === 'number' ? body.count : undefined,
+      strategy: isVariantStrategy(body.strategy) ? body.strategy : undefined,
+      subject: typeof body.subject === 'string' ? body.subject : undefined,
+      gradeLevel: typeof body.gradeLevel === 'string' ? body.gradeLevel : undefined,
+    };
+    return this.variantGenerator.generate(seed as QuestionSeed, options).then((variants) => ({ variants }));
+  }
+
   @Post('exam/upload')
   @UseInterceptors(FileInterceptor('image'))
   async uploadExam(@Req() req: Request, @UploadedFile() file: Express.Multer.File, @Body() form: any) {
@@ -325,4 +457,86 @@ export class TuitionController {
   markReminderSent(@Req() req: Request, @Param('id', new ParseUUIDPipe()) id: string) {
     return this.tuitionService.markReminderSent(this.userId(req), id);
   }
+}
+
+const CARD_INTENTS = new Set<Intent>([
+  'ASK_HINT',
+  'ASK_SOLUTION',
+  'ATTEMPT_ANSWER',
+  'ASK_CLARIFICATION',
+  'OFF_TOPIC',
+  'GIVE_UP',
+  'NEXT_QUESTION',
+]);
+
+const CARD_STAGES = new Set<TeachingCardState['stage']>([
+  'Question',
+  'Hint',
+  'Scaffold',
+  'Solution',
+  'Reflection',
+]);
+
+const QUESTION_TYPES = new Set<NonNullable<QuestionSeed['type']>>([
+  'single_choice',
+  'multiple_choice',
+  'fill_blank',
+  'solution',
+  'multiple-choice',
+  'short-answer',
+  'essay',
+]);
+
+const TEMPLATE_STAGES = new Set<TemplateKey['stage']>(['hint', 'scaffold', 'solution']);
+const TEMPLATE_TYPES = new Set<TemplateKey['type']>([
+  'single-choice',
+  'multiple-choice',
+  'fill',
+  'solution',
+]);
+const TEMPLATE_DIFFICULTIES = new Set<TemplateKey['difficulty']>(['easy', 'medium', 'hard']);
+const VARIANT_STRATEGIES = new Set<NonNullable<VariantGenerationOptions['strategy']>>([
+  'numeric',
+  'swap',
+  'auto',
+]);
+
+function isCardIntent(value: unknown): value is Intent {
+  return typeof value === 'string' && CARD_INTENTS.has(value as Intent);
+}
+
+function isCardState(value: unknown): value is TeachingCardState {
+  if (!value || typeof value !== 'object') return false;
+  const state = value as Partial<TeachingCardState>;
+  return (
+    typeof state.stage === 'string' &&
+    CARD_STAGES.has(state.stage as TeachingCardState['stage']) &&
+    Number.isInteger(state.hintCount) &&
+    Number.isInteger(state.attemptCount) &&
+    Number(state.hintCount) >= 0 &&
+    Number(state.attemptCount) >= 0
+  );
+}
+
+function isTemplateKey(value: unknown): value is TemplateKey {
+  if (!value || typeof value !== 'object') return false;
+  const key = value as Partial<TemplateKey>;
+  return (
+    typeof key.subject === 'string' &&
+    !!key.subject.trim() &&
+    typeof key.type === 'string' &&
+    TEMPLATE_TYPES.has(key.type as TemplateKey['type']) &&
+    typeof key.difficulty === 'string' &&
+    TEMPLATE_DIFFICULTIES.has(key.difficulty as TemplateKey['difficulty']) &&
+    typeof key.stage === 'string' &&
+    TEMPLATE_STAGES.has(key.stage as TemplateKey['stage'])
+  );
+}
+
+function isQuestionType(value: unknown): value is QuestionSeed['type'] {
+  return typeof value === 'string' && QUESTION_TYPES.has(value as QuestionSeed['type']);
+}
+
+function isVariantStrategy(value: unknown): value is NonNullable<VariantGenerationOptions['strategy']> {
+  return typeof value === 'string' && VARIANT_STRATEGIES.has(value as NonNullable<VariantGenerationOptions['strategy']>);
 }

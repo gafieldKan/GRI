@@ -2,6 +2,35 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
 import { LlmService } from './llm.service';
 
+export type TutorQuestionType = 'choice' | 'fill' | 'solution';
+
+/**
+ * parser 产出 `single_choice` / `multiple_choice` / `fill_blank` / `solution`，
+ * TutorAgent 的分析分桶使用 `choice` / `fill` / `solution`。在消费边界统一归一，
+ * 避免未知题型被 byType 静默跳过。
+ */
+export function normalizeTutorQuestionType(type: unknown): TutorQuestionType | null {
+  if (typeof type !== 'string') return null;
+  switch (type.trim().toLowerCase()) {
+    case 'choice':
+    case 'single_choice':
+    case 'multiple_choice':
+    case 'multiple-choice':
+      return 'choice';
+    case 'fill':
+    case 'fill_blank':
+    case 'text':
+      return 'fill';
+    case 'solution':
+    case 'short-answer':
+    case 'short_answer':
+    case 'essay':
+      return 'solution';
+    default:
+      return null;
+  }
+}
+
 /**
  * TutorAgent（移植旧 TutorAgent.js）：学情分析。
  * 答案校验/知识点掌握度/Bloom 能力维/错误归因/同龄对比/AI 建议，
@@ -70,12 +99,13 @@ export class TutorAgent {
     if (!studentAnswer) return false;
     const correct = question?.answer?.toString().toLowerCase().trim();
     const student = studentAnswer.toString().toLowerCase().trim();
+    const type = normalizeTutorQuestionType(question?.type);
 
-    if (question?.type === 'choice') {
+    if (type === 'choice') {
       if (!correct) return student === '';
       return student.toUpperCase() === correct.toUpperCase() || (correct && student.includes(correct)) || (student && correct.includes(student));
     }
-    if (question?.type === 'fill') {
+    if (type === 'fill') {
       const correctNum = parseFloat(correct);
       const studentNum = parseFloat(student);
       if (!isNaN(correctNum) && !isNaN(studentNum)) {
@@ -99,9 +129,10 @@ export class TutorAgent {
       const isCorrect = this._checkAnswer(q, answer);
       if (isCorrect) analysis.correct++;
       else analysis.incorrect++;
-      if (q.type && analysis.byType[q.type]) {
-        analysis.byType[q.type].total++;
-        if (isCorrect) analysis.byType[q.type].correct++;
+      const type = normalizeTutorQuestionType(q.type);
+      if (type && analysis.byType[type]) {
+        analysis.byType[type].total++;
+        if (isCorrect) analysis.byType[type].correct++;
       }
       analysis.details.push({ questionId: q.id, isCorrect, studentAnswer: answer, correctAnswer: q.answer, knowledgePoint: q.knowledgePoint });
     });
