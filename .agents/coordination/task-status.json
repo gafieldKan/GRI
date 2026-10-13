@@ -402,5 +402,26 @@
   },
   "_verification_2026_10_13": {
     "P3-C1": "done_verified"
+  },
+  "p3-governance": {
+    "status": "done_verified(首片)",
+    "agent": "me",
+    "commit": null,
+    "summary": "维度编辑名称 + 审计（PATCH taxonomy node + dimension_change_log）+ Explorer 内嵌编辑入口",
+    "verification": {
+      "migration": "026 登记",
+      "e2e": "非operator 403/operator 200+审计",
+      "gateway": true,
+      "browser": "编辑按钮渲染",
+      "deployed": true,
+      "independent": true
+    },
+    "next": [
+      "移动/归档 (S5 剩余)",
+      "AI 命令 (S6)"
+    ]
+  },
+  "_env_2026_10_13": {
+    "brew_redaction": "exec/write 中 'Bearer \\$TOKEN' 会被脱敏成 *** → 鉴权 curl 用 -H @文件；host 连 DB/auth 用容器 IP"
   }
 }

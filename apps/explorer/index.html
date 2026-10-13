@@ -46,13 +46,43 @@
     renderSso();
   }
 
+  // 当前维度（从 URL ?dim=）
+  function curDim(){ return (new URLSearchParams(location.search).get('dim') === 'industry') ? 'industry' : 'region'; }
+  // 当前选中节点 id（region 用 window.Atlas.current()；industry 读树当前行 .node-code）
+  function currentId(){
+    try { if (window.Atlas && typeof window.Atlas.current === 'function') { var n = window.Atlas.current(); if (n && n.id != null) return String(n.id); } } catch (e) {}
+    var row = document.querySelector('.tree-row.current');
+    if (row) { var c = row.querySelector('.node-code'); if (c) return c.textContent.trim(); }
+    return null;
+  }
+  async function editCurrent(){
+    var t = token();
+    if (!t || !t.accessToken) { alert('请先登录（右上）'); return; }
+    var id = currentId();
+    if (!id) { alert('未定位到当前节点：请先在左侧树上选中一个节点'); return; }
+    var dim = curDim();
+    var name = prompt('修改名称（' + dim + ' · ' + id + '）：', '');
+    if (name == null || !String(name).trim()) return;
+    try {
+      var r = await fetch('/api/taxonomy/' + dim + '/node/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t.accessToken },
+        body: JSON.stringify({ name: String(name).trim() }),
+      });
+      if (r.ok) { alert('已更新，刷新后生效'); location.reload(); }
+      else { var e = await r.json().catch(function(){ return {}; }); alert('失败：' + (e.message || r.status)); }
+    } catch (err) { alert('请求失败：' + err.message); }
+  }
+
   function renderSso(){
     var sso = document.getElementById('griSso'); if (!sso) return;
     var t = token();
     if (t && t.accessToken) {
       var name = (t.user && (t.user.name || t.user.username)) || '已登录';
       sso.innerHTML = '<span class="who">你好，<b>' + esc(name) + '</b></span>'
+        + '<button class="edit">✎ 编辑名称</button>'
         + '<a href="/portal/">工作台</a><button class="logout">退出</button>';
+      sso.querySelector('.edit').onclick = editCurrent;
       sso.querySelector('.logout').onclick = function(){ localStorage.removeItem('gri-auth-token'); renderSso(); };
     } else {
       sso.innerHTML = '<a href="/portal/#/pages/login/login">登录</a>'

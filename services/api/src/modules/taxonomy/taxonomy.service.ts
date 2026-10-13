@@ -154,6 +154,57 @@ export class TaxonomyService {
     };
   }
 
+  /** 维度节点维护（改 name/short/english|en）；operator 门禁在 controller；写审计。 */
+  async updateNode(
+    name: string,
+    id: string,
+    patch: Record<string, unknown>,
+    actorId: string | null,
+  ): Promise<TaxonomyNode> {
+    const kind = this.resolveName(name);
+    const nodeId = this.validateId(kind, id);
+    const before = await this.findNode(kind, nodeId);
+    if (!before) throw new NotFoundException('节点不存在');
+    const table = kind === 'region' ? 'ontology.region' : 'ontology.industry';
+    const key = kind === 'region' ? 'node_id' : 'code';
+    const map: Record<string, string> = kind === 'region'
+      ? { name: 'name', short: 'short', english: 'english' }
+      : { name: 'name', short: 'short', en: 'en' };
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    for (const [k, col] of Object.entries(map)) {
+      if (patch[k] !== undefined && patch[k] !== null) {
+        params.push(String(patch[k]));
+        sets.push(`${col} = $${params.length}`);
+      }
+    }
+    if (!sets.length) throw new BadRequestException('无可更新字段（允许 name/short/english|en）');
+    params.push(nodeId);
+    await this.db.query(`UPDATE ${table} SET ${sets.join(', ')} WHERE ${key} = $${params.length}`, params);
+    await this.db.query(
+      `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
+       VALUES ($1, $2, 'update', $3, $4, $5, 'manual')`,
+      [kind, nodeId, JSON.stringify(before), JSON.stringify(patch), actorId],
+    );
+    const after = (await this.findNode(kind, nodeId)) as RegionTaxonomyRow | IndustryTaxonomyRow;
+    return kind === 'region'
+      ? this.mapRegion(after as RegionTaxonomyRow)
+      : this.mapIndustry(after as IndustryTaxonomyRow);
+  }
+
+  /** 维度变更审计流水（治理查看）。 */
+  async changes(name: string, limit = 50): Promise<unknown[]> {
+    const kind = this.resolveName(name);
+    const lim = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    const result = await this.db.query(
+      `SELECT id, dimension, target_id, op, before, after, actor_id, source, created_at
+         FROM ontology.dimension_change_log WHERE dimension = $1
+        ORDER BY created_at DESC LIMIT $2`,
+      [kind, lim],
+    );
+    return result.rows as unknown[];
+  }
+
   /** 全树（参考 Explorer 同形）：region 用 node_id/english，industry 用 code/en。 */
   async fullTree(name: string): Promise<{ nodes: unknown[] }> {
     const kind = this.resolveName(name);
