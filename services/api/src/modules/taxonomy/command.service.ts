@@ -32,32 +32,36 @@ export class CommandService {
   /** 解析命令 → 提案（校验节点存在；不落库）。 */
   async propose(text: string): Promise<{ planId: string; parsedBy: string; preview: unknown[] }> {
     if (!text || !String(text).trim()) throw new BadRequestException('命令为空');
-    let ops: DimOp[] = [];
-    let parsedBy = 'llm';
+    // 候选解析：LLM 优先，规则兜底；逐个校验节点存在，取首个全部命中的
+    const candidates: Array<[string, DimOp[]]> = [];
     try {
-      ops = await this.parseLlm(String(text));
+      const l = await this.parseLlm(String(text));
+      if (l.length) candidates.push(['llm', l]);
     } catch {
-      ops = [];
+      /* 忽略 LLM 失败，走规则 */
     }
-    if (!ops.length) {
-      ops = this.parseRules(String(text));
-      parsedBy = 'rules';
-    }
-    if (!ops.length) {
+    const r = this.parseRules(String(text));
+    if (r.length) candidates.push(['rules', r]);
+    if (!candidates.length) {
       throw new BadRequestException('无法理解命令（示例：把行业 A 改名为「农林牧渔」/ 把 011 移到 B / 归档 01）');
     }
-    const preview: unknown[] = [];
-    for (const op of ops) {
-      const before = (await this.taxonomy.getNode(op.dimension, op.id).catch(() => null)) as {
-        id?: string; name?: string; parentId?: string | null;
-      } | null;
-      if (!before) throw new NotFoundException(`节点不存在：${op.dimension} ${op.id}`);
-      preview.push({ ...op, before: { id: before.id, name: before.name, parentId: before.parentId } });
+    for (const [parsedBy, ops] of candidates) {
+      const preview: unknown[] = [];
+      let ok = true;
+      for (const op of ops) {
+        const before = (await this.taxonomy.getNode(op.dimension, op.id).catch(() => null)) as {
+          id?: string; name?: string; parentId?: string | null;
+        } | null;
+        if (!before) { ok = false; break; }
+        preview.push({ ...op, before: { id: before.id, name: before.name, parentId: before.parentId } });
+      }
+      if (!ok) continue;
+      const planId = randomUUID();
+      this.plans.set(planId, { ops, at: Date.now() });
+      this.gc();
+      return { planId, parsedBy, preview };
     }
-    const planId = randomUUID();
-    this.plans.set(planId, { ops, at: Date.now() });
-    this.gc();
-    return { planId, parsedBy, preview };
+    throw new BadRequestException('未能匹配到有效节点：请写明维度与编码（如「把行业 A 改名为 X」或「归档 01」）');
   }
 
   /** 应用提案（校验 planId；事务式逐条应用；审计 source=ai_command）。 */
@@ -88,7 +92,8 @@ export class CommandService {
     const sys =
       '你是 GRI 维度治理命令解析器。把用户指令转换为 JSON 数组，每项形如 ' +
       '{"dimension":"region"|"industry","op":"rename"|"move"|"archive","id":"<节点id/code>","name":"<新名，仅rename>","parentId":"<新父id，仅move，可为null>"}。' +
-      '规则：region 的 id 是数字编码（如 100000），industry 的 id 是编码（如 A、01、011）；未指明维度时默认 industry。只输出 JSON 数组，不要解释。';
+      '规则：region 的 id 是数字编码（如 100000），industry 的 id 是编码（如 A、01、011）；未指明维度时默认 industry。'+
+      '必须使用用户给定的准确编码，**绝不臆造或拼接编码**；若无法确定准确编码，返回空数组 []。只输出 JSON 数组，不要解释。';
     const res = await this.llm.chat(
       [{ role: 'system', content: sys }, { role: 'user', content: text }],
       'default',

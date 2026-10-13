@@ -79,3 +79,4 @@
 ⚠️坑：printf 'Bearer %s' 的 %s 也会被脱敏吃掉 → 构造 header 用 拆分 "Bea"+"rer"。
 2026-10-13T12:28:58+08:00 | 修复 | 行业页卡在加载。根因：参考把 system 节点 id 硬编码为 'ISIC5'（9 处 JS，≠ code 'ISIC Rev.5'），而「数据树接 API」后节点 id=code → node('ISIC5') 返回 undefined → visibleNodes/render 崩（map-loading 一直转）。修：加载器仅对 industry 按内嵌 id↔code 映射把 API 节点 id 还原成参考 id 方案（ISIC Rev.5→ISIC5；region 恒等）。实测：.map-loading=none、树24/treemap22、异常0。
 2026-10-13T12:56:42+08:00 | 修复 | 「AI 命令修改不成功」不是功能 bug——治理动词（改名/移动/归档/AI 命令）走 operator 门禁 assertSiteOperator（根组织 owner/admin），用户账号非运营 → 403。改 UI：登录后先 probeOperator()（探 /api/taxonomy/region/changes）→ 仅运营显示四个治理按钮；非运营只见「工作台/退出」。实测：非运营治理按钮 0、运营(testuser) 4。运营账号：testuser/test1234（根组织 owner）。
+2026-10-13T13:13:14+08:00 | 修复 | AI 命令「解析失败：节点不存在：industry ATA+99？」根因：LLM 解析不可靠，臆造 id。修：propose 先 LLM→校验节点存在，不通过→回退规则解析，都不行→清晰 400「未能匹配到有效节点…」（不再抛垃圾 404）；提示词强化「绝不臆造编码，不确定返回 []」。实测：合法改名 201；不存在→400；垃圾→规则回退给可确认提案。
