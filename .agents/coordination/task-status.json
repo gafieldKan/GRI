@@ -510,7 +510,7 @@
       "status": "done_verified",
       "card": ".agents/codex/tasks/p5-a-resource-master-cpc.md",
       "desc": "资源主数据维度 UN CPC → ontology.resource + taxonomy resource + Explorer 资源页签",
-      "commit": null,
+      "commit": "75bab7e",
       "verification": {
         "ontology": "2 obj OK（un-cpc Resource）",
         "migration": "028 登记；scratch 库可执行+幂等",
