@@ -355,10 +355,10 @@
   }
 
   var RESOURCE_LEVEL_LABELS = {
-    section: '大类',
-    division: '中类',
-    group: '小类',
-    class: '细类',
+    section: '门类',
+    division: '大类',
+    group: '中类',
+    class: '小类',
     subclass: '子类',
   };
 
@@ -429,7 +429,7 @@
         + '<div class="gri-code">' + esc(node.code || node.id) + '</div>'
         + '<dl>'
         + '<dt>编码</dt><dd>' + esc(node.code || node.id) + '</dd>'
-        + '<dt>层级</dt><dd>' + esc(node.level || '') + '</dd>'
+        + '<dt>层级</dt><dd>' + esc(levelLabel(node.level)) + '</dd>'
         + '<dt>父级</dt><dd>' + esc(parent ? ((parent.code || parent.id) + ' · ' + parent.name) : '无（根节点）') + '</dd>'
         + '<dt>直接子级</dt><dd>' + childCount + '</dd>'
         + '</dl>';

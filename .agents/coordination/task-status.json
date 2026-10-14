@@ -529,5 +529,24 @@
   },
   "_verification_2026_10_14": {
     "P5-A": "done_verified"
+  },
+  "_waveP5_2026_10_15": {
+    "P5-A2": {
+      "agent": "assistant",
+      "status": "done_verified",
+      "desc": "CPC 名称中文化（LLM 术语翻译，name=中文 + english 留档）+ Explorer 层级标签「门类/大类/中类/小类/子类」",
+      "commit": null,
+      "verification": {
+        "translation": "4586/4586（4 条手工修订：利口酒/铜锍/木质素磺酸盐/木砖）",
+        "quality": "无 ASCII 标点/英文残留（IT/T恤/X射线 等标准写法保留）；去冗余括号 14",
+        "db": "重灌 ontology.resource name=中文；计数 4586/4576/0",
+        "api": "网关 /api/taxonomy/resource/node/0 → 中文",
+        "explorer": "jsdom 10/10；树/详情中文、层级=门类/大类、异常 0",
+        "independent": true
+      }
+    },
+    "order": [
+      "P5-A2"
+    ]
   }
 }
