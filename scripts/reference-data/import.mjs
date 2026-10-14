@@ -1,11 +1,12 @@
 /**
  * reference-data 数据管线 —— import.mjs（幂等灌库）
  *
- * 把《联合国区域划分地图》《ISIC Rev.5 行业分类》两份逐层展开图内嵌的 JSON
- * 幂等灌入 ontology.region / ontology.industry（结构真源见对应 *.ontology.yaml）。
+ * 把《联合国区域划分地图》《ISIC Rev.5 行业分类》《UN CPC Ver.3.0 资源分类》逐层展开
+ * JSON 幂等灌入 ontology.region / ontology.industry / ontology.resource（结构真源见对应
+ * *.ontology.yaml）。
  *
  * 结构轨/数据轨分离（照 scripts/k12-curriculum 惯例）：
- *   - 结构：packages/ontology/ontologies/{un-regions,isic-rev5}.ontology.yaml → codegen → 021/022 迁移
+ *   - 结构：packages/ontology/ontologies/{un-regions,isic-rev5,un-cpc}.ontology.yaml → codegen → 021/022/028 迁移
  *   - 数据：本脚本读 data/*.json 幂等 upsert（本文件不建表）
  *
  * 幂等锚点：ontology.region.node_id（源数字 id 字符串化，全局唯一）
@@ -87,6 +88,22 @@ const DATASETS = [
     // 二者对 system 节点不一致，故经 id→锚点 索引换算（见 wireParents）。
     parentKey: (n) => (n.parent === null || n.parent === undefined ? null : String(n.parent)),
     anchorOf: (n) => n.code,
+  },
+  {
+    file: 'un-cpc.json',
+    table: 'ontology.resource',
+    anchor: 'code',
+    columns: ['code', 'name', 'level', 'status', 'sort_order'],
+    map: (n) => [
+      String(n.code),
+      n.name ?? null,
+      n.level ?? null,
+      'active',
+      n.sortOrder ?? null,
+    ],
+    // CPC 源节点的 parent 与 code 同构；根节点 parent=null。
+    parentKey: (n) => (n.parent === null || n.parent === undefined ? null : String(n.parent)),
+    anchorOf: (n) => String(n.code),
   },
 ]
 

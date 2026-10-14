@@ -1,4 +1,4 @@
-export type TaxonomyName = 'region' | 'industry';
+export type TaxonomyName = 'region' | 'industry' | 'resource';
 
 export interface TaxonomyNode {
   id: string;
@@ -67,6 +67,16 @@ export interface IndustryTaxonomyRow {
   excludes: string | null;
   refs: unknown;
   updated: boolean | null;
+  has_children: boolean;
+  child_count: number | string;
+}
+
+export interface ResourceTaxonomyRow {
+  id: string;
+  code: string;
+  name: string;
+  level: string;
+  parent_id: string | null;
   has_children: boolean;
   child_count: number | string;
 }

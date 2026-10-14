@@ -108,6 +108,8 @@ describe('public-routes 公开读白名单', () => {
       expect(isPublicRoute('GET', '/taxonomy/region/node/100000')).toBe(true);
       expect(isPublicRoute('GET', '/taxonomy/industry/search')).toBe(true);
       expect(isPublicRoute('GET', '/taxonomy/industry/path/ISIC%20Rev.5')).toBe(true);
+      expect(isPublicRoute('GET', '/taxonomy/resource/children')).toBe(true);
+      expect(isPublicRoute('GET', '/taxonomy/resource/tree')).toBe(true);
       expect(isPublicRoute('GET', '/taxonomy/unknown/children')).toBe(true);
     });
 
@@ -119,6 +121,7 @@ describe('public-routes 公开读白名单', () => {
     it('taxonomy/geo 写方法与未定义深路径不放行', () => {
       expect(isPublicRoute('POST', '/taxonomy/region/children')).toBe(false);
       expect(isPublicRoute('PUT', '/taxonomy/industry/node/A')).toBe(false);
+      expect(isPublicRoute('POST', '/taxonomy/resource/node')).toBe(false);
       expect(isPublicRoute('GET', '/taxonomy/region/children/extra')).toBe(false);
       expect(isPublicRoute('POST', '/geo/regions/100000')).toBe(false);
       expect(isPublicRoute('GET', '/geo/regions/100000/extra')).toBe(false);

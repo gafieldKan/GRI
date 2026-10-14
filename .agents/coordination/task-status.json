@@ -503,5 +503,31 @@
       "P4-C",
       "P4-D"
     ]
+  },
+  "_waveP5_2026_10_14": {
+    "P5-A": {
+      "agent": "codex",
+      "status": "done_verified",
+      "card": ".agents/codex/tasks/p5-a-resource-master-cpc.md",
+      "desc": "资源主数据维度 UN CPC → ontology.resource + taxonomy resource + Explorer 资源页签",
+      "commit": null,
+      "verification": {
+        "ontology": "2 obj OK（un-cpc Resource）",
+        "migration": "028 登记；scratch 库可执行+幂等",
+        "codegen": "46/46 且结构块与 028 一致",
+        "tsc": "0",
+        "full_tests": "42/598（基线 595，+3 不回归）",
+        "import": "run1≡run2 幂等；4586/4576/0 悬空",
+        "api": "children/node/search/path/tree 200；404/400/401 正确",
+        "explorer": "jsdom 10/10；资源页签 active、CPC 树渲染、异常 0",
+        "independent": true
+      }
+    },
+    "order": [
+      "P5-A"
+    ]
+  },
+  "_verification_2026_10_14": {
+    "P5-A": "done_verified"
   }
 }

@@ -8,6 +8,7 @@ import { DatabaseService } from '../../database/database.service';
 import {
   IndustryTaxonomyRow,
   RegionTaxonomyRow,
+  ResourceTaxonomyRow,
   TaxonomyChildren,
   TaxonomyName,
   TaxonomyNode,
@@ -19,8 +20,10 @@ const DEFAULT_SEARCH_LIMIT = 20;
 const MAX_SEARCH_LIMIT = 100;
 const REGION_ID_PATTERN = /^\d{1,18}$/;
 const INDUSTRY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/;
+const RESOURCE_ID_PATTERN = /^\d{1,5}$/;
 const ACTIVE_REGION = "(r.status = 'active' OR r.status IS NULL)";
 const ACTIVE_INDUSTRY = "(i.status = 'active' OR i.status IS NULL)";
+const ACTIVE_RESOURCE = "(x.status = 'active' OR x.status IS NULL)";
 const MAX_TEXT_LENGTH = 200;
 
 /**
@@ -31,10 +34,12 @@ const MAX_TEXT_LENGTH = 200;
 const CREATE_LEVEL_RULES: Record<TaxonomyName, Record<string, string>> = {
   region: { world: 'country', subregion: 'country', intermediate: 'country', country: 'province' },
   industry: { system: 'section' },
+  resource: { section: 'division', division: 'group', group: 'class', class: 'subclass' },
 };
 const CREATE_LEVEL_HINT: Record<TaxonomyName, string> = {
   region: 'region 仅可新建 country/province 级（父级须为 world/subregion/intermediate 或 country）',
   industry: 'industry 仅可新建 section 级（父级须为 system 层节点）',
+  resource: 'resource 仅可新建 division/group/class/subclass 级（父级须为 section/division/group/class 层节点）',
 };
 
 /** PG 唯一约束冲突（23505）。 */
@@ -104,6 +109,28 @@ const INDUSTRY_NODE_SELECT = `
     LEFT JOIN ontology.industry parent ON parent.id = i.parent_id
 `;
 
+const RESOURCE_NODE_SELECT = `
+  SELECT x.code AS id,
+         x.code,
+         x.name,
+         x.level,
+         parent.code AS parent_id,
+         EXISTS (
+           SELECT 1
+             FROM ontology.resource child
+            WHERE child.parent_id = x.id
+              AND (child.status = 'active' OR child.status IS NULL)
+         ) AS has_children,
+         (
+           SELECT count(*)::int
+             FROM ontology.resource child
+            WHERE child.parent_id = x.id
+              AND (child.status = 'active' OR child.status IS NULL)
+         ) AS child_count
+    FROM ontology.resource x
+    LEFT JOIN ontology.resource parent ON parent.id = x.parent_id
+`;
+
 @Injectable()
 export class TaxonomyService {
   constructor(private readonly db: DatabaseService) {}
@@ -115,14 +142,8 @@ export class TaxonomyService {
     const rows = await this.findDirectChildren(kind, parentRow.id);
 
     return {
-      parent: kind === 'region'
-        ? this.mapRegion(parentRow as RegionTaxonomyRow)
-        : this.mapIndustry(parentRow as IndustryTaxonomyRow),
-      children: rows.map((row) =>
-        kind === 'region'
-          ? this.mapRegion(row as RegionTaxonomyRow)
-          : this.mapIndustry(row as IndustryTaxonomyRow),
-      ),
+      parent: this.mapNode(kind, parentRow),
+      children: rows.map((row) => this.mapNode(kind, row)),
     };
   }
 
@@ -131,9 +152,7 @@ export class TaxonomyService {
     const nodeId = this.validateId(kind, id);
     const row = await this.findNode(kind, nodeId);
     if (!row) throw new NotFoundException('节点不存在');
-    return kind === 'region'
-      ? this.mapRegion(row as RegionTaxonomyRow)
-      : this.mapIndustry(row as IndustryTaxonomyRow);
+    return this.mapNode(kind, row);
   }
 
   async search(
@@ -149,16 +168,14 @@ export class TaxonomyService {
     const limit = this.parseLimit(limitInput);
     const rows = kind === 'region'
       ? await this.searchRegions(query, limit)
-      : await this.searchIndustries(query, limit);
+      : kind === 'industry'
+        ? await this.searchIndustries(query, limit)
+        : await this.searchResources(query, limit);
 
     return {
       query,
       limit,
-      items: rows.map((row) =>
-        kind === 'region'
-          ? this.mapRegion(row as RegionTaxonomyRow)
-          : this.mapIndustry(row as IndustryTaxonomyRow),
-      ),
+      items: rows.map((row) => this.mapNode(kind, row)),
     };
   }
 
@@ -167,15 +184,13 @@ export class TaxonomyService {
     const nodeId = this.validateId(kind, id);
     const rows = kind === 'region'
       ? await this.pathRegions(nodeId)
-      : await this.pathIndustries(nodeId);
+      : kind === 'industry'
+        ? await this.pathIndustries(nodeId)
+        : await this.pathResources(nodeId);
     if (rows.length === 0) throw new NotFoundException('节点不存在');
 
     return {
-      nodes: rows.map((row) =>
-        kind === 'region'
-          ? this.mapRegion(row as RegionTaxonomyRow)
-          : this.mapIndustry(row as IndustryTaxonomyRow),
-      ),
+      nodes: rows.map((row) => this.mapNode(kind, row)),
     };
   }
 
@@ -191,8 +206,8 @@ export class TaxonomyService {
     const nodeId = this.validateId(kind, id);
     const before = await this.findNode(kind, nodeId);
     if (!before) throw new NotFoundException('节点不存在');
-    const table = kind === 'region' ? 'ontology.region' : 'ontology.industry';
-    const key = kind === 'region' ? 'node_id' : 'code';
+    const table = this.tableName(kind);
+    const key = this.anchorColumn(kind);
     let newParent: string | null = null;
     const raw = parentId === undefined || parentId === null ? '' : String(parentId);
     if (raw !== '') {
@@ -216,8 +231,8 @@ export class TaxonomyService {
        VALUES ($1, $2, 'move', $3, $4, $5, $6)`,
       [kind, nodeId, JSON.stringify(before), JSON.stringify({ parent: newParent }), actorId, source],
     );
-    const after = (await this.findNode(kind, nodeId)) as RegionTaxonomyRow | IndustryTaxonomyRow;
-    return kind === 'region' ? this.mapRegion(after as RegionTaxonomyRow) : this.mapIndustry(after as IndustryTaxonomyRow);
+    const after = await this.findNode(kind, nodeId);
+    return this.mapNode(kind, after as RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow);
   }
 
   /** 归档（停用）节点：status='archived'；写审计。 */
@@ -226,11 +241,9 @@ export class TaxonomyService {
     const nodeId = this.validateId(kind, id);
     const before = await this.findNode(kind, nodeId);
     if (!before) throw new NotFoundException('节点不存在');
-    const beforeNode = kind === 'region'
-      ? this.mapRegion(before as RegionTaxonomyRow)
-      : this.mapIndustry(before as IndustryTaxonomyRow);
-    const table = kind === 'region' ? 'ontology.region' : 'ontology.industry';
-    const key = kind === 'region' ? 'node_id' : 'code';
+    const beforeNode = this.mapNode(kind, before);
+    const table = this.tableName(kind);
+    const key = this.anchorColumn(kind);
     await this.db.query(`UPDATE ${table} SET status = 'archived' WHERE ${key} = $1`, [nodeId]);
     await this.db.query(
       `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
@@ -252,11 +265,13 @@ export class TaxonomyService {
     const nodeId = this.validateId(kind, id);
     const before = await this.findNode(kind, nodeId);
     if (!before) throw new NotFoundException('节点不存在');
-    const table = kind === 'region' ? 'ontology.region' : 'ontology.industry';
-    const key = kind === 'region' ? 'node_id' : 'code';
+    const table = this.tableName(kind);
+    const key = this.anchorColumn(kind);
     const map: Record<string, string> = kind === 'region'
       ? { name: 'name', short: 'short', english: 'english' }
-      : { name: 'name', short: 'short', en: 'en' };
+      : kind === 'industry'
+        ? { name: 'name', short: 'short', en: 'en' }
+        : { name: 'name' };
     const sets: string[] = [];
     const params: unknown[] = [];
     for (const [k, col] of Object.entries(map)) {
@@ -273,10 +288,8 @@ export class TaxonomyService {
        VALUES ($1, $2, 'update', $3, $4, $5, $6)`,
       [kind, nodeId, JSON.stringify(before), JSON.stringify(patch), actorId, source],
     );
-    const after = (await this.findNode(kind, nodeId)) as RegionTaxonomyRow | IndustryTaxonomyRow;
-    return kind === 'region'
-      ? this.mapRegion(after as RegionTaxonomyRow)
-      : this.mapIndustry(after as IndustryTaxonomyRow);
+    const after = await this.findNode(kind, nodeId);
+    return this.mapNode(kind, after as RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow);
   }
 
   /**
@@ -325,11 +338,17 @@ export class TaxonomyService {
            VALUES ($1, $1, $2, $3, $4, (SELECT id FROM ontology.region WHERE node_id = $5), 'active')`,
           [code, nodeName, short, level, parentId],
         );
-      } else {
+      } else if (kind === 'industry') {
         await this.db.query(
           `INSERT INTO ontology.industry (code, name, short, level, section, parent_id, status)
            VALUES ($1, $2, $3, $4, $1, (SELECT id FROM ontology.industry WHERE code = $5), 'active')`,
           [code, nodeName, short, level, parentId],
+        );
+      } else {
+        await this.db.query(
+          `INSERT INTO ontology.resource (code, name, level, parent_id, status)
+           VALUES ($1, $2, $3, (SELECT id FROM ontology.resource WHERE code = $4), 'active')`,
+          [code, nodeName, level, parentId],
         );
       }
     } catch (error) {
@@ -338,10 +357,8 @@ export class TaxonomyService {
       throw error;
     }
 
-    const row = (await this.findNode(kind, code)) as RegionTaxonomyRow | IndustryTaxonomyRow;
-    const node = kind === 'region'
-      ? this.mapRegion(row as RegionTaxonomyRow)
-      : this.mapIndustry(row as IndustryTaxonomyRow);
+    const row = await this.findNode(kind, code);
+    const node = this.mapNode(kind, row as RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow);
     await this.db.query(
       `INSERT INTO ontology.dimension_change_log (dimension, target_id, op, before, after, actor_id, source)
        VALUES ($1, $2, 'create', $3, $4, $5, $6)`,
@@ -391,6 +408,27 @@ export class TaxonomyService {
         children: kids.get(String(r.node_id)) ?? [],
       })) };
     }
+    if (kind === 'resource') {
+      const result = await this.db.query(
+        `SELECT c.code, c.name, c.level, p.code AS parent_code
+           FROM ontology.resource c
+           LEFT JOIN ontology.resource p ON p.id = c.parent_id`,
+      );
+      const rows = result.rows as Array<Record<string, any>>;
+      const kids = new Map<string, string[]>();
+      for (const r of rows) {
+        if (r.parent_code != null) {
+          const k = String(r.parent_code);
+          let arr = kids.get(k); if (!arr) { arr = []; kids.set(k, arr); }
+          arr.push(r.code);
+        }
+      }
+      return { nodes: rows.map((r) => ({
+        id: r.code, code: r.code, name: r.name, level: r.level,
+        parent: r.parent_code != null ? r.parent_code : null,
+        children: kids.get(String(r.code)) ?? [],
+      })) };
+    }
     const result = await this.db.query(
       `SELECT i.code, i.name, i.short, i.en, i.level, i.section, i.intro,
               i.includes, i.also, i.excludes, i.refs, i.updated, p.code AS parent_code
@@ -418,13 +456,17 @@ export class TaxonomyService {
   private resolveName(name: string): TaxonomyName {
     const normalized = typeof name === 'string' ? name.trim().toLowerCase() : '';
     if (!normalized) throw new BadRequestException('分类名称不能为空');
-    if (normalized === 'region' || normalized === 'industry') return normalized;
+    if (normalized === 'region' || normalized === 'industry' || normalized === 'resource') return normalized;
     throw new NotFoundException('未知分类维度');
   }
 
   private validateId(kind: TaxonomyName, id: string): string {
     const normalized = typeof id === 'string' ? id.trim() : '';
-    const pattern = kind === 'region' ? REGION_ID_PATTERN : INDUSTRY_ID_PATTERN;
+    const pattern = kind === 'region'
+      ? REGION_ID_PATTERN
+      : kind === 'industry'
+        ? INDUSTRY_ID_PATTERN
+        : RESOURCE_ID_PATTERN;
     if (!normalized || !pattern.test(normalized)) {
       throw new BadRequestException('节点 id 非法');
     }
@@ -452,7 +494,9 @@ export class TaxonomyService {
     const result = await this.db.query(
       kind === 'region'
         ? 'SELECT 1 FROM ontology.region WHERE node_id = $1 LIMIT 1'
-        : 'SELECT 1 FROM ontology.industry WHERE code = $1 LIMIT 1',
+        : kind === 'industry'
+          ? 'SELECT 1 FROM ontology.industry WHERE code = $1 LIMIT 1'
+          : 'SELECT 1 FROM ontology.resource WHERE code = $1 LIMIT 1',
       [code],
     );
     return result.rows.length > 0;
@@ -471,16 +515,20 @@ export class TaxonomyService {
   private async findParent(
     kind: TaxonomyName,
     parentId?: string,
-  ): Promise<RegionTaxonomyRow | IndustryTaxonomyRow> {
+  ): Promise<RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow> {
     const sql = kind === 'region'
       ? parentId
         ? `${REGION_NODE_SELECT} WHERE r.node_id = $1 AND ${ACTIVE_REGION} LIMIT 1`
         : `${REGION_NODE_SELECT} WHERE r.level = 'world' AND r.parent_id IS NULL AND ${ACTIVE_REGION} ORDER BY r.sort_order ASC NULLS LAST, r.node_id ASC LIMIT 1`
-      : parentId
-        ? `${INDUSTRY_NODE_SELECT} WHERE i.code = $1 AND ${ACTIVE_INDUSTRY} LIMIT 1`
-        : `${INDUSTRY_NODE_SELECT} WHERE i.level = 'root' AND i.parent_id IS NULL AND ${ACTIVE_INDUSTRY} ORDER BY i.sort_order ASC NULLS LAST, i.code ASC LIMIT 1`;
+      : kind === 'industry'
+        ? parentId
+          ? `${INDUSTRY_NODE_SELECT} WHERE i.code = $1 AND ${ACTIVE_INDUSTRY} LIMIT 1`
+          : `${INDUSTRY_NODE_SELECT} WHERE i.level = 'root' AND i.parent_id IS NULL AND ${ACTIVE_INDUSTRY} ORDER BY i.sort_order ASC NULLS LAST, i.code ASC LIMIT 1`
+        : parentId
+          ? `${RESOURCE_NODE_SELECT} WHERE x.code = $1 AND ${ACTIVE_RESOURCE} LIMIT 1`
+          : `${RESOURCE_NODE_SELECT} WHERE x.level = 'section' AND x.parent_id IS NULL AND ${ACTIVE_RESOURCE} ORDER BY x.sort_order ASC NULLS LAST, x.code ASC LIMIT 1`;
     const result = await this.db.query(sql, parentId ? [parentId] : []);
-    const row = result.rows[0] as RegionTaxonomyRow | IndustryTaxonomyRow | undefined;
+    const row = result.rows[0] as RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow | undefined;
     if (!row) throw new NotFoundException('节点不存在');
     return row;
   }
@@ -488,18 +536,20 @@ export class TaxonomyService {
   private async findNode(
     kind: TaxonomyName,
     id: string,
-  ): Promise<RegionTaxonomyRow | IndustryTaxonomyRow | undefined> {
+  ): Promise<RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow | undefined> {
     const sql = kind === 'region'
       ? `${REGION_NODE_SELECT} WHERE r.node_id = $1 AND ${ACTIVE_REGION} LIMIT 1`
-      : `${INDUSTRY_NODE_SELECT} WHERE i.code = $1 AND ${ACTIVE_INDUSTRY} LIMIT 1`;
+      : kind === 'industry'
+        ? `${INDUSTRY_NODE_SELECT} WHERE i.code = $1 AND ${ACTIVE_INDUSTRY} LIMIT 1`
+        : `${RESOURCE_NODE_SELECT} WHERE x.code = $1 AND ${ACTIVE_RESOURCE} LIMIT 1`;
     const result = await this.db.query(sql, [id]);
-    return result.rows[0] as RegionTaxonomyRow | IndustryTaxonomyRow | undefined;
+    return result.rows[0] as RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow | undefined;
   }
 
   private async findDirectChildren(
     kind: TaxonomyName,
     parentId: string,
-  ): Promise<Array<RegionTaxonomyRow | IndustryTaxonomyRow>> {
+  ): Promise<Array<RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow>> {
     if (kind === 'region') {
       const result = await this.db.query(
         `SELECT c.node_id AS id,
@@ -532,6 +582,35 @@ export class TaxonomyService {
         [parentId],
       );
       return result.rows as RegionTaxonomyRow[];
+    }
+
+    if (kind === 'resource') {
+      const result = await this.db.query(
+        `SELECT c.code AS id,
+                c.code,
+                c.name,
+                c.level,
+                p.code AS parent_id,
+                EXISTS (
+                  SELECT 1
+                    FROM ontology.resource child
+                   WHERE child.parent_id = c.id
+                     AND (child.status = 'active' OR child.status IS NULL)
+                ) AS has_children,
+                (
+                  SELECT count(*)::int
+                    FROM ontology.resource child
+                   WHERE child.parent_id = c.id
+                     AND (child.status = 'active' OR child.status IS NULL)
+                ) AS child_count
+           FROM ontology.resource p
+           JOIN ontology.resource c ON c.parent_id = p.id
+          WHERE p.code = $1
+            AND (c.status = 'active' OR c.status IS NULL)
+          ORDER BY c.sort_order ASC NULLS LAST, c.name ASC, c.code ASC`,
+        [parentId],
+      );
+      return result.rows as ResourceTaxonomyRow[];
     }
 
     const result = await this.db.query(
@@ -624,6 +703,31 @@ export class TaxonomyService {
       [query, limit],
     );
     return result.rows as IndustryTaxonomyRow[];
+  }
+
+  private async searchResources(
+    query: string,
+    limit: number,
+  ): Promise<ResourceTaxonomyRow[]> {
+    const result = await this.db.query(
+      `${RESOURCE_NODE_SELECT}
+        WHERE ${ACTIVE_RESOURCE}
+          AND (
+            x.name ILIKE '%' || $1 || '%'
+            OR x.code ILIKE '%' || $1 || '%'
+          )
+        ORDER BY CASE
+                   WHEN lower(x.name) = lower($1) THEN 0
+                   WHEN x.code = $1 THEN 1
+                   ELSE 2
+                 END,
+                 x.sort_order ASC NULLS LAST,
+                 x.name ASC,
+                 x.code ASC
+        LIMIT $2`,
+      [query, limit],
+    );
+    return result.rows as ResourceTaxonomyRow[];
   }
 
   private async pathRegions(id: string): Promise<RegionTaxonomyRow[]> {
@@ -766,6 +870,73 @@ export class TaxonomyService {
     return result.rows as IndustryTaxonomyRow[];
   }
 
+  private async pathResources(id: string): Promise<ResourceTaxonomyRow[]> {
+    const result = await this.db.query(
+      `WITH RECURSIVE ancestry AS (
+         SELECT x.id,
+                x.code,
+                x.name,
+                x.level,
+                x.parent_id,
+                0 AS depth
+           FROM ontology.resource x
+          WHERE x.code = $1
+            AND (x.status = 'active' OR x.status IS NULL)
+         UNION ALL
+         SELECT parent.id,
+                parent.code,
+                parent.name,
+                parent.level,
+                parent.parent_id,
+                ancestry.depth + 1
+           FROM ontology.resource parent
+           JOIN ancestry ON ancestry.parent_id = parent.id
+          WHERE parent.status = 'active' OR parent.status IS NULL
+       )
+       SELECT ancestry.code AS id,
+              ancestry.code,
+              ancestry.name,
+              ancestry.level,
+              parent.code AS parent_id,
+              EXISTS (
+                SELECT 1
+                  FROM ontology.resource child
+                 WHERE child.parent_id = ancestry.id
+                   AND (child.status = 'active' OR child.status IS NULL)
+              ) AS has_children,
+              (
+                SELECT count(*)::int
+                  FROM ontology.resource child
+                 WHERE child.parent_id = ancestry.id
+                   AND (child.status = 'active' OR child.status IS NULL)
+              ) AS child_count
+         FROM ancestry
+         LEFT JOIN ontology.resource parent ON parent.id = ancestry.parent_id
+        ORDER BY ancestry.depth DESC`,
+      [id],
+    );
+    return result.rows as ResourceTaxonomyRow[];
+  }
+
+  private tableName(kind: TaxonomyName): string {
+    if (kind === 'region') return 'ontology.region';
+    if (kind === 'industry') return 'ontology.industry';
+    return 'ontology.resource';
+  }
+
+  private anchorColumn(kind: TaxonomyName): string {
+    return kind === 'region' ? 'node_id' : 'code';
+  }
+
+  private mapNode(
+    kind: TaxonomyName,
+    row: RegionTaxonomyRow | IndustryTaxonomyRow | ResourceTaxonomyRow,
+  ): TaxonomyNode {
+    if (kind === 'region') return this.mapRegion(row as RegionTaxonomyRow);
+    if (kind === 'industry') return this.mapIndustry(row as IndustryTaxonomyRow);
+    return this.mapResource(row as ResourceTaxonomyRow);
+  }
+
   private mapRegion(row: RegionTaxonomyRow): TaxonomyNode {
     return {
       id: row.id,
@@ -801,6 +972,20 @@ export class TaxonomyService {
       excludes: row.excludes ?? null,
       refs: row.refs ?? null,
       updated: row.updated ?? null,
+    };
+  }
+
+  private mapResource(row: ResourceTaxonomyRow): TaxonomyNode {
+    return {
+      id: row.id,
+      code: row.code ?? null,
+      name: row.name,
+      short: null,
+      english: null,
+      level: row.level,
+      parentId: row.parent_id ?? null,
+      hasChildren: row.has_children === true,
+      childCount: Number(row.child_count ?? 0),
     };
   }
 }

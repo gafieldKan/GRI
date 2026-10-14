@@ -56,6 +56,8 @@ export const FieldSchema = z.object({
   dbDefault: z.string().optional(),
   // enum 类型的取值闭集
   values: z.array(z.string()).optional(),
+  // 是否把 enum values 落到数据库 CHECK；默认关闭以保持既有迁移的 SQL 形态稳定
+  dbCheck: z.boolean().optional(),
   // 校验规则（生成器/引擎据此产出运行时校验，如 min/max/正则）
   validation: z
     .object({

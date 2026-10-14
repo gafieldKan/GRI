@@ -1,0 +1,66 @@
+# UN CPC Ver.3.0 资源分类主数据本体 —— 「资源」维度唯一结构真源
+#
+# 数据真源：scripts/reference-data/data/un-cpc.json（UNSD CPC Ver.3.0，4586 节点）
+# 生成方式：@gri/codegen → services/api/src/migrate/028_un_cpc.sql（结构轨）
+# 数据轨：scripts/reference-data/import.mjs 幂等灌库（结构轨/数据轨分离）
+#
+# 本卡只立分类主数据；实例对象与数字孪生对象留后续切片，twinActive 仅作预留位。
+
+schemaVersion: 0.1.0
+name: un-cpc
+description: UN CPC Ver.3.0 商品与服务分类（section→division→group→class→subclass）
+
+objects:
+  - name: Resource
+    table: ontology.resource
+    description: 资源分类主数据节点；code 为唯一稳定锚点，parentId 构成自引用树
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: UN CPC 编码（保留前导零，如 0 / 01 / 011 / 0111 / 01111）
+      - name: name
+        type: text
+        required: true
+        description: 英文官方分类名（部分名称超过 255 字符，故使用 TEXT）
+      - name: level
+        type: enum
+        required: true
+        dbCheck: true
+        values: [section, division, group, class, subclass]
+        description: CPC 层级闭集
+      - name: sortOrder
+        type: integer
+        description: 源树稳定顺序
+      - name: status
+        type: enum
+        dbDefault: "'active'"
+        dbCheck: true
+        values: [draft, active, archived]
+        description: 分类主数据生命周期状态
+      - name: twinActive
+        type: boolean
+        dbDefault: 'FALSE'
+        description: 数字孪生启用预留位；本卡不落实例/孪生对象
+    indexes:
+      - columns: [level]
+        name: idx_resource_level
+      - columns: [parentId]
+        name: idx_resource_parent_id
+    links:
+      - name: parentResource
+        source: Resource
+        target: Resource
+        cardinality: many
+        foreignKey: parentId
+        onDelete: set null
+        description: 自引用父节点；根节点 parentId 为空
+    stateMachine:
+      field: status
+      initial: draft
+      states: [draft, active, archived]
+      transitions:
+        draft: [active]
+        active: [archived]
+        archived: []

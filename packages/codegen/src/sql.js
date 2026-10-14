@@ -49,6 +49,9 @@ export function fieldToColumn(field) {
   } else if (field.default != null) {
     parts.push(`DEFAULT ${sqlLiteral(field.default)}`)
   }
+  if (field.dbCheck === true && Array.isArray(field.values) && field.values.length) {
+    parts.push(`CHECK (${name} IN (${field.values.map(sqlLiteral).join(', ')}))`)
+  }
   return parts.join(' ')
 }
 

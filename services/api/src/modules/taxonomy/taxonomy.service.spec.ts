@@ -78,6 +78,30 @@ const INDUSTRY_SYSTEM = {
   child_count: 22,
 };
 
+const RESOURCE_ROOT = {
+  id: '0',
+  code: '0',
+  name: 'Agriculture, forestry and fishery products',
+  short: null,
+  english: null,
+  level: 'section',
+  parent_id: null,
+  has_children: true,
+  child_count: 4,
+};
+
+const RESOURCE_CHILD = {
+  id: '01',
+  code: '01',
+  name: 'Products of agriculture, horticulture and market gardening',
+  short: null,
+  english: null,
+  level: 'division',
+  parent_id: '0',
+  has_children: true,
+  child_count: 9,
+};
+
 describe('TaxonomyService', () => {
   it('region children 只按 node_id 读取直接子级并映射外部锚点', async () => {
     const query = jest
@@ -184,6 +208,95 @@ describe('TaxonomyService', () => {
     expect((query.mock.calls[0][0] as string)).toContain("level = 'root'");
     expect((query.mock.calls[1][0] as string)).toContain('FROM ontology.industry');
     expect(query.mock.calls[1][1]).toEqual(['UN']);
+  });
+
+  it('resource children 默认从 section 根开始，并以 code 锚点返回直接子级', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [RESOURCE_ROOT] })
+      .mockResolvedValueOnce({ rows: [RESOURCE_CHILD] });
+    const service = new TaxonomyService(mockDb(query));
+
+    const result = await service.children('resource', '0');
+
+    expect(result.parent).toMatchObject({
+      id: '0',
+      code: '0',
+      name: 'Agriculture, forestry and fishery products',
+      level: 'section',
+      parentId: null,
+      hasChildren: true,
+      childCount: 4,
+    });
+    expect(result.children[0]).toMatchObject({
+      id: '01',
+      code: '01',
+      level: 'division',
+      parentId: '0',
+      childCount: 9,
+    });
+    expect((query.mock.calls[0][0] as string)).toContain('FROM ontology.resource');
+    expect((query.mock.calls[0][0] as string)).toContain('x.code = $1');
+    expect((query.mock.calls[1][0] as string)).toContain('p.code = $1');
+    expect(query.mock.calls[1][1]).toEqual(['0']);
+  });
+
+  it('resource search/path/fullTree 均读取 ontology.resource', async () => {
+    const treeRows = [
+      { ...RESOURCE_ROOT, parent_code: null },
+      { ...RESOURCE_CHILD, parent_code: '0' },
+    ];
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [RESOURCE_CHILD] })
+      .mockResolvedValueOnce({ rows: [RESOURCE_ROOT, RESOURCE_CHILD] })
+      .mockResolvedValueOnce({ rows: treeRows });
+    const service = new TaxonomyService(mockDb(query));
+
+    await expect(service.search('resource', '011', '5')).resolves.toMatchObject({
+      query: '011',
+      limit: 5,
+      items: [{ id: '01', code: '01' }],
+    });
+    await expect(service.path('resource', '01')).resolves.toMatchObject({
+      nodes: [{ id: '0' }, { id: '01' }],
+    });
+    await expect(service.fullTree('resource')).resolves.toEqual({
+      nodes: [
+        {
+          id: '0',
+          code: '0',
+          name: 'Agriculture, forestry and fishery products',
+          level: 'section',
+          parent: null,
+          children: ['01'],
+        },
+        {
+          id: '01',
+          code: '01',
+          name: 'Products of agriculture, horticulture and market gardening',
+          level: 'division',
+          parent: '0',
+          children: [],
+        },
+      ],
+    });
+
+    expect((query.mock.calls[0][0] as string)).toContain('x.name ILIKE');
+    expect((query.mock.calls[1][0] as string)).toContain('WITH RECURSIVE');
+    expect((query.mock.calls[2][0] as string)).toContain('FROM ontology.resource');
+  });
+
+  it('resource 非法编码 → 400，未知编码 → 404', async () => {
+    const query = jest.fn().mockResolvedValueOnce({ rows: [] });
+    const service = new TaxonomyService(mockDb(query));
+
+    await expect(service.getNode('resource', '../0')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    await expect(service.getNode('resource', '99999')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('未知 name → 404，未知 id → 404', async () => {

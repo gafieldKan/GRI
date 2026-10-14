@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GRI · 双维度资源定位</title>
+<title>GRI · 资源定位</title>
 <style>
   /* GRI 注入到参考顶栏的控件（作用域限 .gri-*） */
   .gri-controls{display:flex;align-items:center;gap:12px;margin-left:auto}
@@ -43,16 +43,46 @@
   .gri-log .gri-time{margin-left:auto;font-size:11px;color:#8a968f;white-space:nowrap}
   .gri-log .gri-l2{color:#5f6b65;font-size:11px;margin-top:3px;word-break:break-all}
   .gri-panel .gri-empty{color:#8a968f;padding:20px 0;text-align:center}
+  /* 资源维度：UN CPC 原生树（与 ?dim=resource 同文档） */
+  .gri-resource-topbar{display:flex;align-items:center;gap:14px;min-height:58px;padding:0 20px;box-sizing:border-box;background:#fff;border-bottom:1px solid #e6ebe7;position:relative;z-index:2}
+  .gri-resource-brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+  .gri-resource-brand b{font-size:16px;color:#1a1a2e}
+  .gri-resource-brand span{font-size:12px;color:#5f6b65}
+  .gri-resource-shell{display:grid;grid-template-columns:minmax(360px,46%) 1fr;min-height:calc(100vh - 58px);background:#f4fcf5}
+  .gri-resource-tree{height:calc(100vh - 58px);overflow:auto;padding:10px 8px 28px;border-right:1px solid #e6ebe7;background:#fff}
+  .gri-resource-tree .tree-row{display:flex;align-items:center;gap:7px;min-height:28px;padding:3px 8px;border-radius:6px;font-size:12px;color:#26382e;cursor:pointer;white-space:nowrap}
+  .gri-resource-tree .tree-row:hover{background:#f1f8f4}
+  .gri-resource-tree .tree-row.current{background:#e6f4ec;color:#11562c}
+  .gri-resource-tree .gri-expander{width:16px;height:16px;padding:0;border:0;background:transparent;color:#7b8a82;font-size:10px;line-height:16px;cursor:pointer;flex:0 0 auto}
+  .gri-resource-tree .gri-expander[disabled]{cursor:default;color:#c4cec8}
+  .gri-resource-tree .node-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:#6e7d75;flex:0 0 auto}
+  .gri-resource-tree .node-name{overflow:hidden;text-overflow:ellipsis}
+  .gri-resource-tree .node-level{margin-left:auto;font-size:10px;color:#93a19a;flex:0 0 auto}
+  .gri-resource-detail{min-width:0;padding:28px 32px;overflow:auto}
+  .gri-resource-detail .gri-kicker{font-size:11px;font-weight:700;color:#1B7A3D;letter-spacing:.04em;text-transform:uppercase}
+  .gri-resource-detail h1{margin:7px 0 4px;font-size:26px;line-height:1.25;color:#1a1a2e}
+  .gri-resource-detail .gri-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;color:#5f6b65}
+  .gri-resource-detail dl{display:grid;grid-template-columns:120px 1fr;gap:10px 16px;margin:26px 0 0;font-size:13px}
+  .gri-resource-detail dt{color:#8a968f}
+  .gri-resource-detail dd{margin:0;color:#26382e;word-break:break-word}
+  .gri-resource-empty{color:#8a968f;padding:18px;font-size:13px}
+  @media (max-width:760px){
+    .gri-resource-topbar{padding:0 12px;flex-wrap:wrap}
+    .gri-resource-shell{grid-template-columns:1fr}
+    .gri-resource-tree{height:52vh;border-right:0;border-bottom:1px solid #e6ebe7}
+    .gri-resource-detail{padding:20px 16px;min-height:calc(48vh - 58px)}
+  }
 </style>
 </head>
 <body>
-<div class="gri-loading" id="griLoading">正在加载「域览」双维度浏览器…</div>
+<div class="gri-loading" id="griLoading">正在加载「域览」浏览器…</div>
 <script>
 /* GRI 内嵌加载器（方案 B）：把参考文件「域览」整体并入本文档（非 iframe），
    并把 GRI 的维度切换 + SSO 注入其顶栏。切换维度用 ?dim= 重载（仍同文档、无 iframe）。 */
 (function () {
   'use strict';
-  var dim = new URLSearchParams(location.search).get('dim') || 'region';
+  var requestedDim = new URLSearchParams(location.search).get('dim');
+  var dim = (requestedDim === 'industry' || requestedDim === 'resource') ? requestedDim : 'region';
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
   function token(){ try { return JSON.parse(localStorage.getItem('gri-auth-token')||'null'); } catch(e){ return null; } }
@@ -66,6 +96,7 @@
     box.innerHTML = '<span class="gri-tabs">'
       + '<button data-dim="region"' + (dim==='region'?' class="on"':'') + '>区域</button>'
       + '<button data-dim="industry"' + (dim==='industry'?' class="on"':'') + '>行业</button>'
+      + '<button data-dim="resource"' + (dim==='resource'?' class="on"':'') + '>资源</button>'
       + '</span><span class="gri-sso" id="griSso"></span>';
     topbar.appendChild(box);
     box.querySelectorAll('.gri-tabs button').forEach(function (b) {
@@ -75,7 +106,11 @@
   }
 
   // 当前维度（从 URL ?dim=）
-  function curDim(){ return (new URLSearchParams(location.search).get('dim') === 'industry') ? 'industry' : 'region'; }
+  function curDim(){
+    var d = new URLSearchParams(location.search).get('dim');
+    return (d === 'industry' || d === 'resource') ? d : 'region';
+  }
+  function dimLabel(d){ return d === 'industry' ? '行业' : (d === 'resource' ? '资源' : '区域'); }
   // 当前选中节点 id（region 用 window.Atlas.current()；industry 读树当前行 .node-code）
   function currentId(){
     try { if (window.Atlas && typeof window.Atlas.current === 'function') { var n = window.Atlas.current(); if (n && n.id != null) return String(n.id); } } catch (e) {}
@@ -153,6 +188,7 @@
   var CREATE_RULE_HINT = {
     region: 'region 仅可新建 country/province 级：父级 world/subregion/intermediate → country；父级 country → province',
     industry: 'industry 仅可新建 section 级：父级须为 system 层节点（如 ISIC Rev.5）',
+    resource: 'resource 仅可新建 division/group/class/subclass 级：父级须为 section/division/group/class 层节点',
   };
   function authHeader(t){ return { 'Content-Type': 'application/json', 'Authorization': ('Bea'+'rer') + ' ' + t.accessToken }; }
   function errText(d, status){
@@ -200,14 +236,14 @@
     var m = document.createElement('div');
     m.className = 'gri-modal';
     m.innerHTML = '<div class="gri-card">'
-      + '<h3>＋ 新建' + (dim === 'region' ? '区域' : '行业') + '节点</h3>'
+      + '<h3>＋ 新建' + dimLabel(dim) + '节点</h3>'
       + '<div class="gri-sub">' + esc(CREATE_RULE_HINT[dim] || '') + '</div>'
       + '<label>父级 id（必填）</label><input class="gri-parent" value="' + esc(currentId() || '') + '" placeholder="'
-      + (dim === 'region' ? '如 9000030（intermediate）或 100000（country）' : '如 ISIC Rev.5') + '">'
+      + (dim === 'region' ? '如 9000030（intermediate）或 100000（country）' : (dim === 'resource' ? '如 0（section）或 01（division）' : '如 ISIC Rev.5')) + '">'
       + '<label>编码（必填，唯一）</label><input class="gri-code" placeholder="'
-      + (dim === 'region' ? '如 990000（数字编码）' : '如 Z9') + '">'
+      + (dim === 'region' ? '如 990000（数字编码）' : (dim === 'resource' ? '如 011（父级 01）' : '如 Z9')) + '">'
       + '<label>名称（必填）</label><input class="gri-name" placeholder="新节点名称">'
-      + '<label>简称（可选）</label><input class="gri-short">'
+      + (dim === 'resource' ? '' : '<label>简称（可选）</label><input class="gri-short">')
       + '<div class="gri-msg"></div>'
       + '<div class="gri-row"><button class="gri-cancel">取消</button><button class="gri-ok">创建</button></div>'
       + '</div>';
@@ -225,7 +261,8 @@
       var parentId = m.querySelector('.gri-parent').value.trim();
       var code = m.querySelector('.gri-code').value.trim();
       var name = m.querySelector('.gri-name').value.trim();
-      var short = m.querySelector('.gri-short').value.trim();
+      var shortEl = m.querySelector('.gri-short');
+      var short = shortEl ? shortEl.value.trim() : '';
       msg.textContent = '';
       if (!parentId || !code || !name) { msg.textContent = '父级、编码、名称为必填项'; return; }
       var body = { code: code, name: name, parentId: parentId };
@@ -248,7 +285,7 @@
     var dim = curDim();
     var p = document.createElement('div');
     p.className = 'gri-panel';
-    p.innerHTML = '<header><b>▤ 审计流水 · ' + (dim === 'region' ? '区域' : '行业') + '</b><button title="关闭">✕</button></header>'
+    p.innerHTML = '<header><b>▤ 审计流水 · ' + dimLabel(dim) + '</b><button title="关闭">✕</button></header>'
       + '<div class="gri-list"><div class="gri-empty">加载中…</div></div>';
     document.body.appendChild(p);
     p.querySelector('header button').onclick = function () { p.remove(); };
@@ -317,7 +354,169 @@
     document.head.appendChild(st);
   }
 
+  var RESOURCE_LEVEL_LABELS = {
+    section: '大类',
+    division: '中类',
+    group: '小类',
+    class: '细类',
+    subclass: '子类',
+  };
+
+  function levelLabel(level){
+    return RESOURCE_LEVEL_LABELS[level] || level || '节点';
+  }
+
+  function renderResourceTree(payload){
+    var nodes = payload && Array.isArray(payload.nodes) ? payload.nodes : [];
+    if (!nodes.length) throw new Error('资源树为空');
+
+    var byId = new Map();
+    var childrenByParent = new Map();
+    nodes.forEach(function (node) {
+      var id = String(node && node.id != null ? node.id : node && node.code);
+      if (!id) return;
+      var copy = Object.assign({}, node, { id: id });
+      byId.set(id, copy);
+    });
+    byId.forEach(function (node) {
+      var parent = node.parent == null ? null : String(node.parent);
+      if (parent == null) return;
+      if (!childrenByParent.has(parent)) childrenByParent.set(parent, []);
+      childrenByParent.get(parent).push(node);
+    });
+    childrenByParent.forEach(function (children) {
+      children.sort(function (a, b) {
+        return String(a.code || a.id).localeCompare(String(b.code || b.id), 'en', { numeric: true });
+      });
+    });
+
+    var roots = nodes
+      .filter(function (node) { return node && node.parent == null; })
+      .map(function (node) { return byId.get(String(node.id != null ? node.id : node.code)); })
+      .filter(Boolean)
+      .sort(function (a, b) {
+        return String(a.code || a.id).localeCompare(String(b.code || b.id), 'en', { numeric: true });
+      });
+    if (!roots.length) throw new Error('资源树缺少根节点');
+
+    document.title = 'GRI · 资源分类（UN CPC Ver.3.0）';
+    document.body.className = 'gri-resource-page';
+    document.body.innerHTML = ''
+      + '<header class="topbar gri-resource-topbar">'
+      + '<div class="gri-resource-brand"><b>资源分类</b><span>UN CPC Ver.3.0 · ' + nodes.length + ' 节点</span></div>'
+      + '</header>'
+      + '<main class="gri-resource-shell">'
+      + '<section class="gri-resource-tree" id="griResourceTree" aria-label="UN CPC 资源分类树"></section>'
+      + '<aside class="gri-resource-detail" id="griResourceDetail"></aside>'
+      + '</main>';
+    injectSkin();
+
+    var treeEl = document.getElementById('griResourceTree');
+    var detailEl = document.getElementById('griResourceDetail');
+    var expanded = new Set(roots.map(function (node) { return node.id; }));
+    var selected = roots[0];
+
+    function showDetail(node){
+      if (!node) {
+        detailEl.innerHTML = '<div class="gri-resource-empty">请选择资源分类节点</div>';
+        return;
+      }
+      var parent = node.parent == null ? null : byId.get(String(node.parent));
+      var childCount = (childrenByParent.get(node.id) || []).length;
+      detailEl.innerHTML = ''
+        + '<div class="gri-kicker">UN CPC Ver.3.0 · ' + esc(levelLabel(node.level)) + '</div>'
+        + '<h1>' + esc(node.name) + '</h1>'
+        + '<div class="gri-code">' + esc(node.code || node.id) + '</div>'
+        + '<dl>'
+        + '<dt>编码</dt><dd>' + esc(node.code || node.id) + '</dd>'
+        + '<dt>层级</dt><dd>' + esc(node.level || '') + '</dd>'
+        + '<dt>父级</dt><dd>' + esc(parent ? ((parent.code || parent.id) + ' · ' + parent.name) : '无（根节点）') + '</dd>'
+        + '<dt>直接子级</dt><dd>' + childCount + '</dd>'
+        + '</dl>';
+    }
+
+    function markCurrent(){
+      var currentId = selected ? selected.id : null;
+      Array.prototype.forEach.call(treeEl.querySelectorAll('.tree-row'), function (row) {
+        row.classList.toggle('current', currentId != null && row.getAttribute('data-id') === currentId);
+      });
+    }
+
+    function makeRow(node, depth){
+      var children = childrenByParent.get(node.id) || [];
+      var row = document.createElement('div');
+      row.className = 'tree-row';
+      row.setAttribute('data-id', node.id);
+      row.style.paddingLeft = (8 + depth * 18) + 'px';
+
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'gri-expander';
+      toggle.disabled = children.length === 0;
+      toggle.textContent = children.length === 0 ? '·' : (expanded.has(node.id) ? '▾' : '▸');
+      toggle.title = children.length ? (expanded.has(node.id) ? '折叠' : '展开') : '无子级';
+      toggle.onclick = function (event) {
+        event.stopPropagation();
+        if (!children.length) return;
+        if (expanded.has(node.id)) expanded.delete(node.id);
+        else expanded.add(node.id);
+        renderTree();
+      };
+
+      var code = document.createElement('span');
+      code.className = 'node-code';
+      code.textContent = node.code || node.id;
+      var name = document.createElement('span');
+      name.className = 'node-name';
+      name.textContent = node.name || '(未命名)';
+      var level = document.createElement('span');
+      level.className = 'node-level';
+      level.textContent = levelLabel(node.level);
+
+      row.appendChild(toggle);
+      row.appendChild(code);
+      row.appendChild(name);
+      row.appendChild(level);
+      row.onclick = function () {
+        selected = node;
+        markCurrent();
+        showDetail(node);
+      };
+      return row;
+    }
+
+    function appendBranch(parentEl, node, depth){
+      parentEl.appendChild(makeRow(node, depth));
+      if (!expanded.has(node.id)) return;
+      (childrenByParent.get(node.id) || []).forEach(function (child) {
+        appendBranch(parentEl, child, depth + 1);
+      });
+    }
+
+    function renderTree(){
+      treeEl.innerHTML = '';
+      roots.forEach(function (root) { appendBranch(treeEl, root, 0); });
+      markCurrent();
+    }
+
+    renderTree();
+    showDetail(selected);
+  }
+
+  function loadResource(){
+    return fetch('/api/taxonomy/resource/tree', { cache: 'no-cache' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.json();
+      })
+      .then(function (payload) {
+        renderResourceTree(payload);
+        injectControls();
+      });
+  }
+
   function load(d){
+    if (d === 'resource') return loadResource();
     return fetch('./' + d + '.html', { cache: 'no-cache' }).then(function (r) { return r.text(); }).then(function (raw) {
       var doc = new DOMParser().parseFromString(raw, 'text/html');
       if (doc.title) document.title = 'GRI · ' + doc.title;
