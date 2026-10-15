@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>域览 · 联合国资源分类 CPC Ver.3.0</title><meta name="description" content="联合国 CPC Ver.3.0 主要产品分类地图，10 门类、71 大类、327 中类、1301 小类、2877 子类，逐层展开，搜索、层级图、列表、收藏与导出。"><style>
+/* ============================================================================
+   令牌真源（本文件：apps/explorer/resource.html）
+   与「域览」参考浏览器（apps/explorer/industry.html 的 :root）及 GRI 皮肤
+   （apps/explorer/index.html 的 injectSkin）同源同值 —— 经内嵌合并后由 GRI 值覆盖，
+   故本页视觉与区域 / 行业页签一致。规则区一律 var(--…)，不出现任何裸色字面量。
+   ============================================================================ */
+:root{
+  /* ── 域览 / GRI 基础令牌 ── */
+  --bg:#f3f6f4;--paper:#ffffff;--ink:#263d35;--muted:#7d8d85;--line:#e4ebe6;
+  --teal:#1B7A3D;--teal-dark:#11562c;--tint:#e9f4ed;--gold:#b6935c;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --shadow:0 8px 30px #23433409;--drop:0 15px 45px #23433420;--lift:0 6px 25px #203b2d26;
+  /* ── 本页派生令牌（层级图 / 列表 / 明细）── */
+  --wash:#f4f7f5;--panel:#fbfcfb;--sunken:#f2f6f3;--head:#f8faf8;
+  --stage:#eef3ef;--stage-line:#e0e8e1;--grid:#edf1ed;--softline:#dce6de;
+  --focus:#61ae98;--dim:#94a096;--faint:#b8c1ba;
+  --tip:#eef5ef;--tip-line:#e2ece2;--link:#c5d8ca;--rail:#d8e5dc;--dotline:#e5ece5;
+  --tile-0:#c3dfcd;--tile-1:#cce1d9;--tile-2:#d3e1cb;--tile-3:#cddde6;--tile-4:#e6dfc9;--tile-5:#d9dfcd;
+  --tile-leaf:#dce6ee;--tile-code:#397454;--tile-badge:#698c75;--tile-name:#355f47;
+  --tile-en:#75917e;--tile-count:#688672;--tile-leaf-count:#728b9e;--tile-ink:#426b52;
+  --tab-idle:#8a988f;--val:#526d59;--val-ink:#496551;--code:#688271;
+  --toast-bg:#244e38;--scrim:#153d2c55;--modal-shadow:0 20px 90px #133d2c35;
+}
+/* 基础 */
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:var(--font);color:var(--ink);background:var(--bg)}
+button,input,textarea{font:inherit}button{cursor:pointer;color:inherit}button:disabled{cursor:default;opacity:.45}
+button{border:0;background:none}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.hidden{display:none!important}.mono{font-family:Consolas,monospace}.muted{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:9px;padding:10px 13px;background:var(--paper);font-size:12px;white-space:nowrap;transition:background .15s}
+.btn:hover{background:var(--tint)}.btn.primary{color:var(--paper);background:var(--teal);border-color:var(--teal)}.btn.primary:hover{background:var(--teal-dark)}
+.icon-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
+.icon-btn:hover{background:var(--tint)}
+/* 顶栏 */
+.topbar{height:76px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 26px;gap:32px;position:relative;z-index:20}
+.brand{display:flex;align-items:center;gap:11px;min-width:222px}
+.brand-mark{width:39px;height:39px;border-radius:11px;background:var(--teal);color:var(--paper);display:grid;place-items:center}
+.brand-mark .icon{width:26px;height:26px}
+.brand-title{font-size:21px;font-weight:750;letter-spacing:4px}
+.brand-sub{color:var(--muted);font-size:9px;letter-spacing:2.2px;margin-top:2px}
+.search-wrap{position:relative;width:400px;max-width:38vw}
+.search-box{display:flex;align-items:center;gap:10px;height:40px;background:var(--wash);border:1px solid var(--grid);border-radius:9px;padding:0 13px}
+.search-box .icon{color:var(--muted)}.search-box input{border:0;outline:none!important;background:none;min-width:0;width:100%;font-size:12px;color:var(--ink)}
+.search-box kbd{color:var(--dim);border:1px solid var(--softline);border-radius:4px;padding:2px 4px;font-size:9px;white-space:nowrap}
+.search-results{position:absolute;top:48px;left:0;right:0;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--drop);padding:8px;max-height:420px;overflow:auto;z-index:50}
+.search-result{width:100%;text-align:left;display:flex;gap:12px;padding:11px 9px;border-radius:7px;align-items:center}
+.search-result:hover,.search-result.focused{background:var(--tint)}
+.search-result strong{font-size:13px}.search-result small{display:block;font-size:10px;color:var(--muted);margin-top:4px}
+.search-result .code{margin-left:auto;font-size:10px;color:var(--muted)}
+.top-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.cpc-badge{font-size:10px;font-weight:650;letter-spacing:.4px;background:var(--tint);border:1px solid var(--rail);color:var(--teal);border-radius:6px;padding:8px 10px;white-space:nowrap}
+.mobile-menu{display:none}
+.export-wrap{position:relative}
+.export-menu{position:absolute;right:0;top:45px;min-width:175px;background:var(--paper);border:1px solid var(--line);border-radius:9px;box-shadow:var(--drop);padding:6px;z-index:30}
+.export-menu button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:11px 10px;font-size:11px;border-radius:6px}
+.export-menu button:hover{background:var(--tint)}.export-menu button .icon{width:14px;height:14px}
+/* 三栏工作区 */
+.workspace{height:calc(100% - 76px);display:grid;grid-template-columns:236px minmax(410px,1fr) 300px;gap:0}
+/* 侧栏 */
+.sidebar{background:var(--paper);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side-head{display:flex;align-items:center;justify-content:space-between;padding:23px 20px 16px}
+.side-head h2{font-size:13px;letter-spacing:.5px;margin:0}
+.side-head span{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:3px 6px}
+.side-caption{padding:0 20px 18px;font-size:10px;color:var(--muted);line-height:1.7}
+.tree{overflow:auto;padding:0 9px 16px;flex:1;scrollbar-width:thin}
+.tree-row{display:flex;align-items:center;height:34px;padding-right:8px;border-radius:7px;margin:1px 0;position:relative;gap:1px}
+.tree-row:hover{background:var(--wash)}
+.tree-row.current{background:var(--tint);color:var(--teal-dark)}
+.tree-row.current:before{content:"";width:3px;height:17px;position:absolute;left:0;background:var(--teal);border-radius:3px}
+.twisty{width:24px;height:30px;display:grid;place-items:center;flex:none}
+.twisty .icon{width:12px;height:12px;transition:transform .15s;color:var(--muted)}
+.twisty.expanded .icon{transform:rotate(90deg)}
+.node-label{flex:1;min-width:0;text-align:left;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:100%;padding:0 5px;display:flex;align-items:center;gap:7px}
+.node-label .icon{width:13px;height:13px;color:var(--teal)}
+.node-code{font-family:Consolas,monospace;font-size:10px;color:var(--dim);min-width:23px;flex:none}
+.node-name{overflow:hidden;text-overflow:ellipsis}
+.tree-row.current .node-label{font-weight:650}.tree-row.current .node-code{color:var(--teal)}
+.tree-count{font-size:9px;color:var(--dim);padding-right:3px;flex:none}
+.favorite-area{border-top:1px solid var(--line);padding:16px 17px 11px}
+.favorite-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;margin-bottom:9px}
+.favorite-title .icon{width:13px;height:13px;color:var(--gold)}
+.favorite-list{max-height:126px;overflow:auto}
+.favorite-item{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin:3px 0}
+.favorite-item>button:first-child{text-align:left;padding:6px 0;flex:1}
+.favorite-item>button:first-child:hover{color:var(--teal)}
+.favorite-item .icon-btn{height:25px;width:25px;color:var(--muted)}
+.favorite-empty{font-size:9px;color:var(--muted);padding:4px 0;line-height:1.8}
+.side-foot{padding:13px 18px 17px;font-size:9px;color:var(--dim);line-height:1.75}
+.side-foot .version{display:flex;justify-content:space-between;align-items:center}
+/* 主区 */
+.main{min-width:0;min-height:0;padding:23px 24px 17px;display:flex;flex-direction:column;gap:16px}
+.pagebar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.page-heading{min-width:0}
+.eyebrow{font-size:9px;color:var(--dim);letter-spacing:1.7px;margin-bottom:6px}
+.pagebar h1{font-size:23px;letter-spacing:.6px;margin:0 0 8px;font-weight:650;line-height:1.3}
+.pagebar h1.long{font-size:18px;max-width:700px;line-height:1.5}
+.breadcrumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10px;min-height:16px;color:var(--muted)}
+.breadcrumbs button{padding:0;color:var(--muted);font-size:10px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.breadcrumbs button:hover{color:var(--teal)}
+.breadcrumbs .last{color:var(--teal);font-weight:600}
+.breadcrumbs .icon{width:10px;height:10px;color:var(--faint)}
+.page-actions{display:flex;gap:7px;padding-top:3px}
+.page-actions .btn{padding:8px 10px;font-size:10px}.page-actions .icon{width:14px;height:14px}
+.summary{display:flex;align-items:center;gap:15px;background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:13px 16px}
+.summary-level{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:var(--teal)}
+.summary-level .icon{width:15px;height:15px}
+.summary-sep{height:17px;width:1px;background:var(--line)}
+.summary-number{font-size:11px;color:var(--muted)}
+.summary-number b{color:var(--ink);font-size:15px;font-weight:600;padding-right:5px}
+.summary-hint{font-size:9px;color:var(--dim);margin-left:auto}
+.view-switch{display:flex;padding:3px;background:var(--tint);border:1px solid var(--softline);border-radius:8px;gap:2px}
+.view-switch button{font-size:10px;display:flex;align-items:center;gap:5px;padding:7px 10px;border-radius:5px;color:var(--muted);white-space:nowrap}
+.view-switch button.active{background:var(--paper);color:var(--teal);box-shadow:var(--shadow)}
+/* 舞台（层级图 / 列表） */
+.map-card{flex:1;min-height:310px;position:relative;background:var(--stage);border:1px solid var(--stage-line);border-radius:15px;overflow:hidden;box-shadow:var(--shadow);isolation:isolate}
+.map-stage{position:absolute;inset:0;touch-action:none}
+.map-svg{width:100%;height:100%;display:block;user-select:none;touch-action:none;min-height:340px}
+.map-top{position:absolute;top:19px;left:19px;z-index:3;pointer-events:none;display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted)}
+.map-top .dot{height:5px;width:5px;border-radius:50%;background:var(--teal)}
+.map-tools{position:absolute;right:15px;top:60px;z-index:4;display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--softline);border-radius:10px;box-shadow:var(--shadow);padding:4px}
+.map-tools button{width:33px;height:35px;display:grid;place-items:center;border-radius:6px;color:var(--muted)}
+.map-tools button:hover{background:var(--tint);color:var(--teal)}
+.map-tools .rule{border-top:1px solid var(--line);margin:3px 4px}
+.map-tools .icon{width:17px;height:17px}
+.map-bottom{position:absolute;bottom:10px;left:13px;right:13px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;font-size:9px;color:var(--muted);background:var(--stage);padding:5px;border-radius:5px}
+.legend{display:flex;align-items:center;gap:12px}
+.legend>span{display:flex;align-items:center;gap:5px}
+.legend i{width:8px;height:8px;border-radius:2px;background:var(--tile-0);border:1px solid var(--link)}
+.legend i.leaf{background:var(--tile-leaf);border-color:var(--link)}
+.map-bottom .zoom{font-family:Consolas,monospace;color:var(--teal-dark)}
+.map-tooltip{position:absolute;min-width:160px;max-width:270px;padding:13px 15px;border:1px solid var(--stage-line);background:var(--paper);box-shadow:var(--drop);border-radius:10px;z-index:8;pointer-events:none;color:var(--ink);font-size:10px;line-height:1.6}
+.map-tooltip strong{font-size:12px;display:block;margin-bottom:6px}
+.map-tooltip .tooltip-code{font-size:10px;color:var(--muted)}
+.map-tooltip .tooltip-hint{font-size:10px;color:var(--teal);padding-top:9px;margin-top:9px;border-top:1px solid var(--line)}
+.map-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:var(--stage);z-index:9;font-size:12px;color:var(--muted)}
+.loader{width:24px;height:24px;border:2px solid var(--softline);border-top-color:var(--teal);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 层级图瓦片（颜色一律来自 .p0–.p5 / .t-* 规则，脚本不写颜色） */
+.cpc-tile{cursor:pointer;outline:none}
+.cpc-tile .tile-bg{fill:var(--tile-0);stroke:var(--paper);stroke-width:1.5;vector-effect:non-scaling-stroke;transition:stroke .15s,fill .15s}
+.cpc-tile.p1 .tile-bg{fill:var(--tile-1)}.cpc-tile.p2 .tile-bg{fill:var(--tile-2)}.cpc-tile.p3 .tile-bg{fill:var(--tile-3)}.cpc-tile.p4 .tile-bg{fill:var(--tile-4)}.cpc-tile.p5 .tile-bg{fill:var(--tile-5)}
+.cpc-tile.leaf .tile-bg{fill:var(--tile-leaf)}
+.cpc-tile:hover .tile-bg,.cpc-tile.hovered .tile-bg,.cpc-tile:focus-visible .tile-bg{stroke:var(--teal-dark);stroke-width:2.5}
+.cpc-text{font-family:var(--font)}
+.t-code{font-size:16px;font-weight:650;fill:var(--tile-code)}
+.t-badge{font-size:9px;font-weight:450;fill:var(--tile-badge)}
+.t-name{font-size:12px;font-weight:550;fill:var(--tile-name)}
+.t-en{font-size:8.5px;fill:var(--tile-en)}
+.t-count{font-size:8.5px;fill:var(--tile-count)}
+.t-count.leaf{fill:var(--tile-leaf-count)}
+.t-hint{font-size:10px;fill:var(--tile-ink)}
+.t-head{font-size:11px;font-weight:600;fill:var(--tile-name)}
+.t-head-sub{font-size:9px;fill:var(--tile-badge)}
+.cpc-tile.large .t-code{font-size:30px}.cpc-tile.large .t-badge{font-size:11px;font-weight:450}
+.cpc-tile.large .t-name{font-size:21px}.cpc-tile.large .t-count{font-size:11px}
+.stage-bg{fill:var(--stage)}
+.cpc-link{fill:none;stroke:var(--link);stroke-width:.8;stroke-opacity:.62}
+.head-box{fill:var(--paper);stroke:var(--link)}
+.tile-arrow{fill:none;stroke:var(--tile-badge);stroke-width:1.2}
+/* 列表视图 */
+.cpc-list{padding:56px 18px 45px;background:var(--sunken);min-height:100%;overflow:auto}
+.list-caption{font-size:10px;color:var(--muted);padding:0 2px 12px}
+.cpc-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;background:var(--paper);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.cpc-table th{font-size:10px;font-weight:550;color:var(--muted);background:var(--head);padding:13px 12px;text-align:left;border-bottom:1px solid var(--line)}
+.cpc-table td{padding:13px 12px;border-bottom:1px solid var(--grid);vertical-align:middle}
+.cpc-table tr:last-child td{border:0}.cpc-table tbody tr{cursor:pointer}.cpc-table tbody tr:hover{background:var(--tint)}
+.cpc-table strong{display:block;font-weight:500;line-height:1.5}
+.cpc-table small{display:block;font-size:9px;color:var(--muted);line-height:1.6;margin-top:4px}
+.cpc-table .code{font-size:12px;color:var(--teal);font-family:Consolas,monospace}
+.cpc-table .count{text-align:right;white-space:nowrap;color:var(--muted);font-size:10px}
+.map-stage.list-mode{touch-action:pan-y;overflow:auto}
+/* 快速探索 / 完整目录 / 来源行 */
+.quick-strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:24px}
+.quick-strip>span{font-size:10px;color:var(--dim);margin-right:3px}
+.quick-strip button{border:1px solid var(--softline);border-radius:6px;font-size:10px;padding:5px 9px;color:var(--code);background:var(--paper);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quick-strip button:hover{background:var(--tint);color:var(--teal)}
+.catalog-strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.catalog-strip span{font-size:9px;color:var(--dim);letter-spacing:.2px}
+.catalog-strip button{font-size:9px;display:flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--softline);background:var(--paper);border-radius:6px;color:var(--code)}
+.catalog-strip button:hover{color:var(--teal)}
+.catalog-strip b{font-size:10px;font-weight:600;color:var(--teal-dark)}
+.source-line{font-size:8px;color:var(--dim);display:flex;justify-content:space-between;gap:10px}
+/* 明细 */
+.detail{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.detail-heading{padding:24px 22px 16px;display:flex;justify-content:space-between;align-items:center}
+.detail-heading h2{margin:0;font-size:12px;font-weight:650}
+.detail-heading .icon{color:var(--teal);width:15px;height:15px}
+.detail-hero{padding:0 22px 20px}
+.region-kind{display:inline-flex;align-items:center;gap:5px;font-size:9px;border:1px solid var(--tip-line);padding:4px 7px;border-radius:5px;background:var(--tip);color:var(--code);margin-bottom:12px}
+.region-kind:before{content:"";width:4px;height:4px;background:var(--teal);border-radius:50%}
+.detail-hero h3{font-size:21px;letter-spacing:.1px;margin:0 0 7px;line-height:1.45;font-weight:650;word-break:break-word}
+.detail-hero h3.long{font-size:17px}
+.detail-english{font-size:10px;color:var(--muted);line-height:1.65;margin:7px 0 0}
+.detail-path{font-size:10px;color:var(--muted);line-height:1.8;margin-top:9px}
+.detail-stat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
+.detail-stat>div{padding:12px 11px;background:var(--paper);border:1px solid var(--line);border-radius:9px}
+.detail-stat small{font-size:9px;color:var(--muted);display:block}
+.detail-stat b{display:block;margin-top:6px;font-size:22px;font-weight:600;color:var(--teal-dark)}
+.detail-stat b.code-val{font-size:19px;letter-spacing:.6px;padding:0}
+.detail-tabs{display:flex;padding:0 22px;border-bottom:1px solid var(--line);gap:19px}
+.detail-tabs button{font-size:11px;padding:12px 0;color:var(--tab-idle);position:relative;white-space:nowrap}
+.detail-tabs button.active{color:var(--teal);font-weight:600}
+.detail-tabs button.active:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--teal)}
+.detail-body{padding:19px 22px;overflow:auto;flex:1;min-height:0;scrollbar-width:thin}
+.field-row{display:flex;justify-content:space-between;gap:15px;font-size:10px;line-height:1.8;padding:10px 0;border-bottom:1px dashed var(--dotline)}
+.field-row .key{color:var(--muted);flex:none}
+.field-row .value{text-align:right;color:var(--val);overflow-wrap:anywhere}
+.section-label{margin:20px 0 12px;font-size:10px;font-weight:650;display:flex;align-items:center;gap:7px}
+.section-label .icon{width:12px;height:12px;color:var(--teal)}
+.path-timeline{border-left:1px solid var(--rail);margin:13px 0 7px 5px;padding-left:17px}
+.path-step{position:relative;font-size:11px;padding:0 0 17px;line-height:1.3}
+.path-step:last-child{padding-bottom:0;color:var(--teal);font-weight:650}
+.path-step:before{content:"";position:absolute;left:-21px;top:3px;width:6px;height:6px;border-radius:50%;background:var(--link);border:1px solid var(--paper)}
+.path-step:last-child:before{background:var(--teal)}
+.path-step small{font-size:9px;color:var(--muted);display:block;margin-top:4px;font-weight:400}
+.path-step button{padding:0;font-size:11px}.path-step button:hover{color:var(--teal)}
+.detail-tip{font-size:10px;line-height:1.9;color:var(--muted);background:var(--tip);border:1px solid var(--tip-line);border-radius:8px;padding:11px 12px;margin-top:20px}
+.related-counts{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.related-counts span{font-size:9px;color:var(--muted);padding:4px 7px;border:1px solid var(--line);border-radius:5px;background:var(--paper)}
+.source-note{font-size:9px;color:var(--dim);line-height:1.85;margin-top:14px}
+.detail-footer{padding:15px 22px 19px;border-top:1px solid var(--line);background:var(--panel)}
+.detail-footer .btn{width:100%;font-size:11px;padding:11px}.detail-footer .btn .icon{width:14px;height:14px}
+.child-filter{border:1px solid var(--line);background:var(--paper);width:100%;border-radius:7px;font-size:10px;padding:9px 10px;outline:none;color:var(--ink);margin-bottom:8px}
+.child-row{width:100%;display:flex;align-items:center;text-align:left;padding:11px 2px;border-bottom:1px solid var(--line);gap:8px}
+.child-row strong{font-size:11px;font-weight:500;display:block;line-height:1.55}
+.child-row small{display:block;font-size:9px;color:var(--muted);margin-top:5px;line-height:1.65}
+.child-row .mono{color:var(--teal);font-size:10px;font-weight:600}
+.child-row>.icon{margin-left:auto;width:12px;height:12px;color:var(--faint)}
+.child-row:hover strong{color:var(--teal)}
+.empty-state{text-align:center;padding:26px 6px;color:var(--muted);font-size:10px;line-height:2}
+.empty-state .icon{width:34px;height:34px;color:var(--rail);margin:0 auto 11px;display:block}
+.notes-label{font-size:10px;color:var(--muted);margin:0 0 10px;line-height:1.8}
+.notes-input{width:100%;min-height:170px;border:1px solid var(--softline);background:var(--paper);border-radius:9px;resize:vertical;padding:13px;font-size:11px;color:var(--val-ink);line-height:1.9;outline:none}
+.notes-status{font-size:9px;color:var(--teal);padding-top:8px}
+/* 帮助弹窗 / 提示条 */
+.modal-backdrop{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(3px);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{background:var(--paper);border:1px solid var(--line);border-radius:16px;width:580px;max-height:85vh;overflow:auto;box-shadow:var(--modal-shadow);padding:26px}
+.modal-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.modal h2{font-size:19px;margin:0;letter-spacing:.7px}
+.modal h3{font-size:12px;margin:23px 0 9px}
+.modal p,.modal li{font-size:11px;line-height:1.95;color:var(--muted)}
+.modal ul{padding-left:17px}
+.modal-summary{display:flex;gap:8px;margin:15px 0;flex-wrap:wrap}
+.modal-summary span{font-size:10px;background:var(--tint);color:var(--teal);padding:8px 10px;border-radius:6px}
+.modal kbd{font-size:10px;padding:2px 5px;border:1px solid var(--softline);border-radius:4px;background:var(--wash)}
+.modal-table{width:100%;border-collapse:collapse;font-size:10px}
+.modal-table td,.modal-table th{text-align:left;border-bottom:1px solid var(--line);padding:8px}
+.modal-table th{color:var(--muted);font-weight:500}
+.version-info{background:var(--tint);border-radius:8px;padding:12px;margin-top:15px;font-size:10px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--toast-bg);color:var(--paper);font-size:11px;padding:12px 20px;border-radius:9px;box-shadow:var(--lift);z-index:110;max-width:90vw}
+.no-script{padding:30px;background:var(--tint);color:var(--ink);font-size:14px}
+/* 响应式 */
+@media(min-width:1600px){.workspace{grid-template-columns:255px minmax(550px,1fr) 330px}.main{padding:27px 32px 20px}.topbar{padding:0 30px}.detail-hero h3{font-size:23px}}
+@media(max-width:1200px){.workspace{grid-template-columns:205px minmax(380px,1fr) 265px}.topbar{padding:0 18px;gap:18px}.brand{min-width:186px}.main{padding:20px 17px 15px}
+  .detail-hero,.detail-heading,.detail-body,.detail-footer{padding-left:17px;padding-right:17px}.summary-hint{display:none}.summary{padding:12px}.detail-tabs{padding:0 17px;gap:16px}
+  .side-head,.side-caption{padding-left:16px;padding-right:16px}.view-switch button{padding:7px 8px;font-size:9px}.detail-hero h3{font-size:19px}}
+@media(max-width:960px){.topbar{height:65px;gap:14px}.brand{min-width:150px}.brand-title{font-size:19px}.brand-sub{font-size:8px}.search-wrap{width:330px;max-width:45vw}.search-box kbd{display:none}
+  .workspace{height:calc(100% - 65px);grid-template-columns:minmax(400px,1fr) 275px}
+  .sidebar{position:fixed;left:0;top:65px;bottom:0;width:245px;z-index:30;box-shadow:var(--drop);transform:translateX(-100%);transition:transform .2s}
+  .sidebar.open{transform:translateX(0)}.mobile-menu{display:inline-flex}
+  .top-actions{gap:7px}.top-actions .btn{padding:9px;font-size:10px}.top-actions .help-text{display:none}.cpc-badge{display:none}
+  .pagebar h1{font-size:21px}.page-actions{padding:0}.detail-hero h3.long{font-size:16px}.cpc-table td{padding:12px 9px}}
+@media(max-width:700px){html,body{height:auto;min-height:100%}.topbar{padding:0 12px;gap:10px;position:sticky;top:0;height:64px}
+  .brand{min-width:0;gap:7px}.brand-title{font-size:17px;letter-spacing:2px}.brand-sub{display:none}.brand-mark{display:none!important}
+  .search-wrap{flex:1;max-width:none;width:auto}.search-box{padding:0 9px;height:35px}.search-box input{font-size:10px}
+  .top-actions .export-wrap{display:none}.top-actions .btn{padding:8px}.top-actions .icon{width:15px;height:15px}
+  .workspace{display:flex;flex-direction:column;height:auto}.main{padding:18px 12px 13px;gap:13px;flex:none}
+  .pagebar{flex-wrap:wrap;gap:9px}.pagebar h1{font-size:22px}.eyebrow{font-size:8px}.page-actions{margin-left:auto}.page-actions .btn span{display:none}
+  .breadcrumbs,.breadcrumbs button{font-size:9px}.summary{padding:11px 13px;gap:10px}.summary-number{font-size:10px}.summary-number b{font-size:14px}
+  .map-card{height:auto;min-height:360px;flex:none;border-radius:12px;overflow:visible}
+  .map-stage{position:relative;overflow:visible;touch-action:pan-y}.map-svg{width:100%;height:auto!important;touch-action:pan-y}
+  .map-tools{display:none}.map-bottom{font-size:8px;left:13px;right:13px}.map-top{font-size:8px;top:14px;left:13px}
+  .legend{gap:9px}.legend span:nth-child(2){display:none}
+  .cpc-list{padding:50px 12px 44px}.cpc-table{font-size:10px}.cpc-table th,.cpc-table td{padding:12px 8px}.cpc-table .count{font-size:9px}
+  .detail{border-left:0;border-top:1px solid var(--line);min-height:410px;overflow:visible}
+  .detail-heading{padding-top:20px}.detail-hero{padding-bottom:15px}.detail-hero h3{font-size:24px}.detail-stat{margin-top:13px}.detail-stat>div{padding:10px 13px}
+  .detail-body{min-height:225px;max-height:700px;overflow:auto}.detail-tabs{gap:28px}.side-head .mobile-menu{display:block}
+  .field-row{font-size:11px}.child-row strong{font-size:12px}.child-row small{font-size:10px}
+  .source-line{font-size:8px}.source-line span:last-child{display:none}.quick-strip{gap:5px}.quick-strip button{max-width:140px}
+  .modal{padding:21px;width:100%}.modal-backdrop{padding:14px}.modal h2{font-size:17px}
+  .search-results{position:fixed;left:12px;right:12px;top:60px}.sidebar{top:64px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style></head>
+<body class="resource-page">
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><defs>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m10 5-7 7 7 7M3 12h18"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3V10Z"/><path d="M9 20v-7h6v7"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5L2.6 9.8l6.5-.9L12 3Z"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 15v6h16v-6"/></symbol>
+<symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 7v5M5 12h14M5 12v5m14-5v5"/><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H4v18h16V9l-6-6Zm0 0v6h6M8 13h8M8 17h5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M10 3v18"/></symbol>
+<symbol id="i-searchdoc" viewBox="0 0 24 24"><path d="M14 3H4v18h16V9l-6-6Zm0 0v6h6"/><circle cx="11" cy="14" r="3"/><path d="m14 17 2.5 2.5"/></symbol>
+</defs></svg>
+<noscript><div class="no-script">请使用支持 JavaScript 的浏览器打开本文件。推荐使用最新版 Edge 或 Chrome。</div></noscript>
+<header class="topbar">
+ <button class="icon-btn mobile-menu" id="tree-open" aria-label="打开资源分类树"><svg class="icon"><use href="#i-menu"/></svg></button>
+ <a class="brand" href="#UN" aria-label="域览，联合国资源分类"><span class="brand-mark"><svg class="icon"><use href="#i-layers"/></svg></span><span><span class="brand-title">域览</span><div class="brand-sub">PRODUCT CLASSIFICATION</div></span></a>
+ <div class="search-wrap"><label class="search-box"><svg class="icon"><use href="#i-search"/></svg><input id="search" type="search" placeholder="搜索产品名称或编码（如 谷物 / 011）" aria-label="搜索资源分类" aria-autocomplete="list" aria-controls="search-results" autocomplete="off"><kbd>Ctrl K</kbd></label><div class="search-results hidden" id="search-results" role="listbox"></div></div>
+ <div class="top-actions"><span class="cpc-badge">CPC Ver.3.0</span><button class="btn" id="help-open"><svg class="icon"><use href="#i-info"/></svg><span class="help-text">分类说明</span></button><div class="export-wrap"><button class="btn primary" id="export-toggle" aria-expanded="false"><svg class="icon"><use href="#i-download"/></svg>导出</button><div class="export-menu hidden" id="export-menu"><button id="export-branch-json"><svg class="icon"><use href="#i-note"/></svg>当前分支 JSON</button><button id="export-branch-csv"><svg class="icon"><use href="#i-grid"/></svg>当前分支 CSV</button><button id="export-all-csv"><svg class="icon"><use href="#i-tree"/></svg>完整目录 CSV</button><button id="export-png"><svg class="icon"><use href="#i-layers"/></svg>当前层级图 PNG</button></div></div></div>
+</header>
+<div class="workspace">
+ <aside class="sidebar" id="sidebar" aria-label="资源分类树"><div class="side-head"><h2>资源分类层级</h2><span>逐层展开</span><button id="tree-close" class="icon-btn mobile-menu" aria-label="关闭分类树"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="side-caption">点击箭头展开分类<br>点击名称进入该层级</div><div class="tree" id="tree" role="tree"></div><div class="favorite-area"><div class="favorite-title"><svg class="icon"><use href="#i-star"/></svg>我的收藏</div><div class="favorite-list" id="favorites"></div></div><div class="side-foot"><div class="version"><span>联合国 → CPC → 门类 → 大类 → 中类 → 小类 → 子类</span><span>V1.0</span></div><div>数据经 C1 本体 API 实时读取 · 中文工作译名</div></div></aside>
+ <main class="main">
+  <div class="pagebar"><div class="page-heading"><div class="eyebrow">UNITED NATIONS · PRODUCT ATLAS</div><h1 id="map-name">联合国资源分类</h1><nav class="breadcrumbs" id="breadcrumbs" aria-label="当前分类路径"></nav></div><div class="page-actions"><button class="btn" id="go-back"><svg class="icon"><use href="#i-back"/></svg><span>返回上级</span></button><button class="btn" id="go-home"><svg class="icon"><use href="#i-home"/></svg><span>全景</span></button></div></div>
+  <div class="summary"><span class="summary-level"><svg class="icon"><use href="#i-layers"/></svg><span id="view-level">门类全景</span></span><span class="summary-sep"></span><span class="summary-number"><b id="child-count">10</b><span id="child-count-label">个门类</span></span><span class="summary-hint" id="summary-hint">按产品门类分类 · 点击继续展开</span><div class="view-switch"><button data-view="graph" class="active" aria-pressed="true">层级图</button><button data-view="list" aria-pressed="false">列表</button></div></div>
+  <section class="map-card" id="map-card" aria-label="可逐层展开的产品分类层级图">
+   <div class="map-top"><span class="dot"></span><span id="map-caption">联合国 · CPC Ver.3.0 · 10 门类</span></div>
+   <div class="map-stage" id="map-stage"><svg class="map-svg" id="map-svg" viewBox="0 0 1000 760" aria-label="产品分类层级图"></svg><div class="cpc-list hidden" id="cpc-list"></div></div>
+   <div class="map-tools" id="map-tools"><button id="zoom-in" aria-label="放大层级图" title="放大 (+)"><svg class="icon"><use href="#i-plus"/></svg></button><button id="zoom-out" aria-label="缩小层级图" title="缩小 (-)"><svg class="icon"><use href="#i-minus"/></svg></button><button id="zoom-reset" aria-label="复位层级图" title="适配当前层级"><svg class="icon"><use href="#i-target"/></svg></button><div class="rule"></div><button id="fullscreen-toggle" aria-label="全屏层级图" title="全屏"><svg class="icon"><use href="#i-expand"/></svg></button></div>
+   <div class="map-bottom"><div class="legend"><span><i></i>可继续展开</span><span><i class="leaf"></i>末级子类</span></div><span class="zoom" id="zoom-value">100%</span></div>
+   <div class="map-tooltip hidden" id="map-tooltip"></div><div class="map-loading" id="map-loading"><div class="loader"></div><span>正在准备资源分类…</span></div>
+  </section>
+  <div class="quick-strip" id="quick-strip"><span>快速探索</span></div>
+  <div class="catalog-strip" id="catalog-strip"><span>完整目录</span></div>
+  <div class="source-line"><span id="source-left">UNSD CPC Ver.3.0 · 数据经 C1 本体 API 实时读取 · 中文工作译名（机器翻译，非联合国官方中文）</span><span>点击展开 · 缩放平移 · Esc 返回上级</span></div>
+ </main>
+ <aside class="detail" aria-label="当前资源分类明细"><div class="detail-heading"><h2>资源分类明细</h2><svg class="icon"><use href="#i-layers"/></svg></div><div class="detail-hero"><span class="region-kind" id="region-kind">联合国统计司 · 产品分类</span><h3 id="detail-name">联合国</h3><div class="detail-english" id="detail-english">United Nations</div><div class="detail-path" id="detail-path">联合国统计司 · CPC</div><div class="detail-stat"><div><small>分类编码</small><b class="code-val mono" id="detail-code">UN</b></div><div><small id="detail-count-label">直接子级</small><b id="detail-count">1</b></div></div></div><div class="detail-tabs" role="tablist"><button class="active" role="tab" aria-selected="true" data-tab="info">分类说明</button><button role="tab" aria-selected="false" data-tab="children">子级列表</button><button role="tab" aria-selected="false" data-tab="notes">我的笔记</button></div><div class="detail-body" id="detail-body" role="tabpanel"></div><div class="detail-footer"><button class="btn" id="favorite-toggle"><svg class="icon"><use href="#i-star"/></svg><span>收藏当前层级</span></button></div></aside>
+</div>
+<div class="modal-backdrop hidden" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title"><div class="modal"><div class="modal-heading"><h2 id="help-title">联合国资源分类与使用说明</h2><button class="icon-btn" id="help-close" aria-label="关闭说明"><svg class="icon"><use href="#i-close"/></svg></button></div><p>CPC 对产品（货物与服务）进行分类。可以从联合国进入 CPC Ver.3.0，再按门类、大类、中类、小类、子类逐层查看；左侧分类树、中部层级图和右侧说明同步更新。</p><div class="modal-summary" id="help-summary"></div><h3>五级编码</h3><table class="modal-table"><tr><th>中文层级</th><th>官方层级</th><th>编码</th></tr><tr><td>门类</td><td>Section</td><td>1 位，如 0</td></tr><tr><td>大类</td><td>Division</td><td>2 位，如 01</td></tr><tr><td>中类</td><td>Group</td><td>3 位，如 011</td></tr><tr><td>小类</td><td>Class</td><td>4 位，如 2684</td></tr><tr><td>子类</td><td>Subclass</td><td>5 位，如 26840</td></tr></table><h3>版本与来源</h3><p>采用联合国统计司 <a href="https://unstats.un.org/unsd/classifications/Econ/cpc" target="_blank" rel="noopener">UN CPC Ver.3.0</a> 的编码结构与产品目录。本页数据全部经 GRI 本体 API（<span class="mono">/api/taxonomy/resource</span>）实时读取，不内嵌副本；编码按文本保存，保留 01、011 等前导零。</p><h3>中文名称</h3><p>中文名称为<b>工作译名</b>：由术语向的机器翻译产生，<b>非联合国官方中文</b>。官方英文原名与范围说明保留在上游真源（<span class="mono">scripts/reference-data</span>），本视图经 API 仅取中文名称字段。</p><h3>视图与导出</h3><p>中部可切换<b>层级图</b>（当前层级的直接子级方块，点击进入）与<b>列表</b>（表格，点击一行进入）。可导出当前分支或完整目录为 CSV / JSON，层级图可导出 PNG；收藏和笔记保存在当前浏览器。</p><div class="version-info">分类层级由父级推导，不单独存储于请求；「联合国」与「CPC Ver.3.0」两级为<b>视图层合成</b>，上游数据模型以门类为根。</div><h3>快捷操作</h3><p><kbd>Ctrl K</kbd> 搜索；<kbd>Esc</kbd> 返回上级；<kbd>+</kbd> <kbd>−</kbd> 缩放。桌面层级图支持滚轮缩放、拖动平移。手机上直接点击方块或使用分类树。</p></div></div>
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+<!-- 数据容器（空占位）：内嵌于 index.html 时由加载器用 C1 API 全树回填；
+     直接打开本文件时由下方脚本自行 fetch 同一 API。两者都不携带内嵌副本。 -->
+<script id="resource-data" type="application/json">{"nodes":[],"meta":{}}</script>
+<script>'use strict';
+(() => {
+const $ = id => document.getElementById(id), NS = 'http://www.w3.org/2000/svg';
+const STANDARD = 'UN CPC Ver.3.0';
+/* 五级中文层级（N4）+ 官方层级英文名 + 下一级 + 编码位数 */
+const LEVELS = {root:'联合国',system:'分类体系',section:'门类',division:'大类',group:'中类',class:'小类',subclass:'子类'};
+const LEVEL_EN = {root:'Root',system:'Classification',section:'Section',division:'Division',group:'Group',class:'Class',subclass:'Subclass'};
+const NEXT = {root:'section',system:'section',section:'division',division:'group',group:'class',class:'subclass'};
+const CODE_LEN = {section:'1 位',division:'2 位',group:'3 位',class:'4 位',subclass:'5 位'};
+/* 视图层合成的两级根（不改后端 id/level 模型；合成 id 与非数字冲突，不入 C1 API） */
+const UN = {id:'UN',code:'UN',name:'联合国',level:'root',parent:null,children:['CPC'],synthetic:true};
+const CPC = {id:'CPC',code:'CPC',name:'CPC Ver.3.0（主要产品分类）',level:'system',parent:'UN',children:[],synthetic:true};
+const UN_EN = 'United Nations';
+const CPC_EN = 'Central Product Classification, Version 3.0';
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const svgEl = (tag,attrs={},parent) => {const el=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));if(parent)parent.appendChild(el);return el;};
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const FONT = cssVar('--font') || 'sans-serif';
+
+let NODES = new Map(), ALL = [], SECTIONS = [];
+const node = id => NODES.get(String(id));
+const kids = n => n.children.map(node).filter(Boolean);
+const pathTo = n => {const out=[];while(n){out.unshift(n);n=node(n.parent);}return out;};
+const allBelow = n => [n,...kids(n).flatMap(allBelow)];
+const cmpCode = (a,b) => String(a).localeCompare(String(b),'en',{numeric:true});
+const byCode = (a,b) => cmpCode(a.code,b.code);
+const sectionOf = n => pathTo(n).find(a=>a.level==='section') || null;
+const statsCache = new Map();
+function stats(n){if(statsCache.has(n.id))return statsCache.get(n.id);const out={section:0,division:0,group:0,class:0,subclass:0};
+ for(const c of kids(n)){if(c.level in out)out[c.level]++;const d=stats(c);Object.keys(out).forEach(k=>out[k]+=d[k]);}statsCache.set(n.id,out);return out;}
+
+/* ── 图构建：C1 API 全树 → 内存树 + 两级合成根（联合国 → CPC Ver.3.0 → 门类…） ── */
+function buildTree(nodes){
+  NODES = new Map(); statsCache.clear();
+  const real = nodes.map(n=>({
+    id:String(n.id), code:String(n.code ?? n.id), name:n.name, level:n.level,
+    parent: n.parent == null ? null : String(n.parent),
+    children: (n.children||[]).map(String),
+  }));
+  real.forEach(n=>NODES.set(n.id,n));
+  SECTIONS = real.filter(n=>n.parent==null).sort(byCode);
+  SECTIONS.forEach(s=>{s.parent='CPC';});
+  CPC.children = SECTIONS.map(s=>s.id);
+  NODES.set('UN',UN); NODES.set('CPC',CPC);
+  NODES.forEach(n=>n.children.sort(cmpCode));
+  ALL = real;
+}
+
+let current='UN',tab='info',view='graph',catalog=null,expanded=new Set(['UN','CPC']),
+    favorites=[],notes={},storageOK=true,searchMatches=[],searchFocus=-1,
+    zoom=1,panX=0,panY=0,mapLayer,W=800,H=620,toastTimer,lastModalFocus,searchSeq=0,searchAbort=null;
+const measureCanvas=document.createElement('canvas'),measure=measureCanvas.getContext('2d');
+const STORE_KEY='gri-cpc-v1';
+function localRead(){try{return JSON.parse(localStorage.getItem(STORE_KEY)||'{}');}catch(e){storageOK=false;return {};}}
+function persist(){try{localStorage.setItem(STORE_KEY,JSON.stringify({current,favorites,notes,view}));storageOK=true;return true;}catch(e){storageOK=false;return false;}}
+function toast(s){$('toast').textContent=s;$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),3200);}
+
+function visualParent(){return node(current==='UN'?'CPC':current);}
+function visibleNodes(){
+  if(catalog&&catalog.level) return ALL.filter(n=>n.level===catalog.level).sort(byCode);
+  const n=visualParent();
+  return n.children.length?kids(n):[n];
+}
+function go(id,{history=true}={}){
+  const n=node(id); if(!n) return;
+  current=n.id; catalog=null; zoom=1; panX=panY=0; hideTooltip();
+  pathTo(n).forEach(a=>{if(a.children.length)expanded.add(a.id);});
+  if(history){try{window.history.pushState(null,'','#'+encodeURIComponent(n.id));}catch(e){location.hash=n.id;}}
+  persist(); $('search-results').classList.add('hidden'); $('search').value='';
+  $('sidebar').classList.remove('open'); $('map-stage').scrollTop=0;
+  render();
+  if(window.innerWidth<=700)window.scrollTo({top:0,behavior:'auto'});
+  requestAnimationFrame(()=>{const row=$('tree').querySelector(`[data-row="${n.id}"]`);
+    if(row){const tr=$('tree').getBoundingClientRect(),rr=row.getBoundingClientRect();
+      if(rr.top<tr.top||rr.bottom>tr.bottom)row.scrollIntoView({block:'nearest'});}});
+}
+function render(){renderHeader();renderTree();renderFavorites();renderDetail();renderStage();}
+
+function renderHeader(){
+  const n=node(current),vp=visualParent(),list=visibleNodes(),leaf=!vp.children.length,level=NEXT[n.level];
+  $('map-name').textContent = catalog?.level ? `CPC · 全部${LEVELS[catalog.level]}` :
+    n.level==='root' ? '联合国资源分类' : n.level==='system' ? 'CPC Ver.3.0 · 资源全景' : `${n.code} · ${n.name}`;
+  $('map-name').classList.toggle('long',$('map-name').textContent.length>25);
+  $('breadcrumbs').innerHTML = pathTo(n).map((a,i,arr)=>
+    `${i?icon('arrow'):''}<button class="${i===arr.length-1?'last':''}" data-go="${a.id}" title="${esc(a.name)}">${
+      esc(a.level==='root'?'联合国':a.level==='system'?'CPC Ver.3.0':a.code+' '+a.name)}</button>`).join('');
+  if(catalog)$('breadcrumbs').innerHTML+=icon('arrow')+`<span class="last">${LEVELS[catalog.level]}完整目录</span>`;
+  $('go-back').disabled=!n.parent&&!catalog;
+  $('view-level').textContent = catalog?'完整目录' : leaf?'末级明细' : LEVELS[level]+'全景';
+  if(leaf){$('child-count').textContent='5';$('child-count-label').textContent='位分类编码';}
+  else{$('child-count').textContent=list.length;$('child-count-label').textContent='个'+(LEVELS[level]||'子级');}
+  $('summary-hint').textContent = leaf?'末级子类 · 完整路径见右侧':'按产品门类分类 · 点击继续展开';
+  const caption = catalog ? $('map-name').textContent : leaf ? `${n.code} · 末级子类` :
+    `${vp.code} · ${list.length} 个${LEVELS[list[0]?.level]||'分类'}`;
+  $('map-caption').textContent = caption + (view==='list'?' · 分类列表':' · 层级关系');
+  document.querySelectorAll('[data-view]').forEach(b=>{const on=b.dataset.view===view;
+    b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+  $('region-kind').textContent = n.level==='root'?'联合国统计司 · 产品分类' : n.level==='system'?'CPC Ver.3.0 · 主要产品分类' : `${LEVELS[n.level]} · ${LEVEL_EN[n.level]}`;
+  $('detail-name').textContent=n.name; $('detail-name').classList.toggle('long',n.name.length>20);
+  $('detail-english').textContent = n.synthetic ? (n.level==='root'?UN_EN:CPC_EN) : `${LEVEL_EN[n.level]} · ${CODE_LEN[n.level]}编码`;
+  $('detail-path').textContent = pathTo(n).slice(0,-1).map(a=>a.code+' '+a.name).join(' / ') || '联合国统计司 · UNSD';
+  $('detail-code').textContent=n.code;
+  $('detail-count').textContent=n.children.length;
+  $('detail-count-label').textContent = n.level==='subclass' ? '直接子级（末级）' : '直接子级';
+}
+
+function renderTree(){
+  const root=$('tree'); root.replaceChildren();
+  function add(n,depth){
+    const row=document.createElement('div');
+    row.className='tree-row'+(n.id===current?' current':'');
+    row.style.paddingLeft=(depth*12+3)+'px'; row.dataset.row=n.id;
+    const has=!!n.children.length, open=expanded.has(n.id);
+    const arrow=document.createElement('button');
+    arrow.className='twisty'+(open?' expanded':''); arrow.innerHTML=has?icon('arrow'):'';
+    arrow.disabled=!has; arrow.setAttribute('aria-label',(open?'折叠':'展开')+n.name);
+    if(has)arrow.setAttribute('aria-expanded',String(open));
+    arrow.onclick=()=>{if(open)expanded.delete(n.id);else expanded.add(n.id);renderTree();};
+    row.appendChild(arrow);
+    const name=document.createElement('button');
+    name.className='node-label'; name.title=n.code+' · '+n.name;
+    name.innerHTML = n.level==='root' ? icon('layers')+'<span class="node-name">联合国</span>'
+      : n.level==='system' ? `<span class="node-code">CPC</span><span class="node-name">主要产品分类</span>`
+      : `<span class="node-code">${esc(n.code)}</span><span class="node-name">${esc(n.name)}</span>`;
+    name.setAttribute('role','treeitem'); name.setAttribute('aria-level',depth+1);
+    name.setAttribute('aria-selected',String(n.id===current));
+    if(has)name.setAttribute('aria-expanded',String(open));
+    name.onclick=()=>go(n.id);
+    row.appendChild(name);
+    if(has){const count=document.createElement('span');count.className='tree-count';count.textContent=n.children.length;row.appendChild(count);}
+    root.appendChild(row);
+    if(has&&open)kids(n).forEach(c=>add(c,depth+1));
+  }
+  add(node('UN'),0);
+}
+
+function renderFavorites(){
+  const on=favorites.includes(current);
+  $('favorite-toggle').disabled=['UN','CPC'].includes(current);
+  $('favorite-toggle').innerHTML=icon(on?'check':'star')+`<span>${on?'已收藏 · 点击取消':'收藏当前层级'}</span>`;
+  $('favorites').innerHTML = favorites.length ? favorites.map(id=>{const n=node(id);
+    return `<div class="favorite-item"><button data-go="${id}" title="${esc(n.name)}">${esc(n.code+' '+n.name)}</button><button class="icon-btn" data-remove-favorite="${id}" aria-label="取消收藏${esc(n.name)}">${icon('close')}</button></div>`;}).join('')
+    : '<div class="favorite-empty">收藏常用分类，<br>下次可以直接进入。</div>';
+}
+
+function block(title,text,cls=''){return `<div><div class="scope-title section-label">${icon('note')}${title}</div><div class="detail-tip ${cls}">${esc(text)}</div></div>`;}
+
+function renderDetail(){
+  const n=node(current),body=$('detail-body'); body.scrollTop=0;
+  document.querySelectorAll('[data-tab]').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));});
+  const parent=n.parent?node(n.parent):null, sec=sectionOf(n), d=stats(n);
+  if(tab==='info'){
+    const fields=[['分类标准',STANDARD],['当前层级',`${LEVELS[n.level]}（${LEVEL_EN[n.level]}）`],
+      ['上级编码',parent?`${parent.code} · ${parent.name}`:'—'],['编码位数',CODE_LEN[n.level]||'—']];
+    if(sec&&sec.id!==n.id)fields.push(['所属门类',`${sec.code} · ${sec.name}`]);
+    body.innerHTML=fields.map(([k,v])=>`<div class="field-row"><span class="key">${esc(k)}</span><span class="value">${esc(v)}</span></div>`).join('');
+    if(['root','system'].includes(n.level)){
+      const all=stats(node('CPC'));
+      body.innerHTML+=block('分类体系',`CPC 按产品（货物与服务）组织目录。联合国统计司的 Ver.3.0 在本库收录 ${all.section} 个门类、${all.division} 个大类、${all.group} 个中类、${all.class} 个小类和 ${all.subclass} 个子类，共 ${ALL.length} 个节点。点击层级图中的方块逐层进入；到达子类即为末级编码。`,'root-intro');
+      body.innerHTML+='<div class="section-label">'+icon('tree')+'完整五级目录</div><div class="related-counts">'
+        +['section','division','group','class','subclass'].map(k=>`<span>${LEVELS[k]} ${all[k]}</span>`).join('')+'</div>';
+    }else{
+      const counts=Object.entries(d).filter(([k,v])=>v>0);
+      if(counts.length)body.innerHTML+='<div class="section-label">'+icon('layers')+'下级分布</div><div class="related-counts">'
+        +counts.map(([k,v])=>`<span>${LEVELS[k]} ${v}</span>`).join('')+'</div>';
+      else body.innerHTML+='<div class="detail-tip">已到末级（5 位子类）：该编码下不再细分，可查看所属路径与我的笔记。</div>';
+    }
+    body.innerHTML+='<div class="section-label">'+icon('tree')+'所属分类路径</div><div class="path-timeline">'
+      +pathTo(n).map(a=>`<div class="path-step"><button data-go="${a.id}">${esc(a.name)}</button><small>${LEVELS[a.level]} · <span class="mono">${esc(a.code)}</span></small></div>`).join('')+'</div>';
+    body.innerHTML+=`<div class="source-note">数据来源：GRI 本体 API（<span class="mono">/api/taxonomy/resource</span>）· 上游为联合国统计司 CPC Ver.3.0。<br>中文名称为术语向机器翻译的工作译名，非联合国官方中文；官方英文原名与范围说明保留在上游真源。<br><a href="https://unstats.un.org/unsd/classifications/Econ/cpc" target="_blank" rel="noopener">联合国统计司 · CPC 官方来源 ↗</a></div>`;
+  }else if(tab==='children'){
+    if(!n.children.length){body.innerHTML='<div class="empty-state">'+icon('layers')+'已到 5 位子类。<br>查看“分类说明”了解编码位置，<br>或添加个人笔记。</div>';return;}
+    body.innerHTML='<input class="child-filter" id="child-filter" placeholder="筛选本层名称或编码" aria-label="筛选直接子级分类"><div id="children-list"></div>';
+    const fill=q=>{q=q.trim().toLowerCase();
+      const matches=kids(n).filter(c=>[c.name,c.code].some(s=>String(s).toLowerCase().includes(q)));
+      $('children-list').innerHTML = matches.length ? matches.map(c=>
+        `<button class="child-row" data-go="${c.id}"><span><strong>${esc(c.name)}</strong><small><span class="mono">${esc(c.code)}</span> · ${LEVELS[c.level]}${c.children.length?' · '+c.children.length+' 个子级':''}</small></span>${icon('arrow')}</button>`).join('')
+        : '<div class="empty-state">本层没有匹配的分类</div>';};
+    fill(''); $('child-filter').oninput=e=>fill(e.target.value);
+  }else{
+    body.innerHTML=`<p class="notes-label">为 ${esc(n.code+' '+n.name)} 记录判别依据或待核实项。笔记跟随分类保存，也会随 CSV 导出。</p><textarea id="notes-input" class="notes-input" placeholder="例如：归入该编码的依据、待向业务确认的项…" aria-label="当前分类个人笔记"></textarea><div class="notes-status" id="notes-status">${storageOK?'内容会自动保存到当前浏览器':'当前浏览器无法持久保存，可导出笔记'}</div><button class="btn" id="notes-export" style="margin-top:17px;font-size:10px">${icon('download')}导出当前笔记</button>`;
+    $('notes-input').value=notes[n.id]||'';
+    $('notes-input').oninput=e=>{if(e.target.value)notes[n.id]=e.target.value;else delete notes[n.id];
+      const ok=persist();
+      $('notes-status').textContent=ok?'已自动保存 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):'当前环境无法持久保存，请导出笔记';};
+    $('notes-export').onclick=()=>download(`${n.code}_资源分类笔记.txt`,pathTo(n).map(a=>a.code+' '+a.name).join(' / ')+'\n\n'+(notes[n.id]||''),'text/plain;charset=utf-8');
+  }
+}
+
+/* ── 层级图（treemap 式方块 + 父级关系连线；颜色全部由 CSS 类承担，脚本不写颜色） ── */
+function text(parent,s,x,y,cls){const t=svgEl('text',{x,y,class:'cpc-text '+cls},parent);t.textContent=s;return t;}
+function linesFor(s,width,size,maxLines=2){
+  measure.font=`${size}px ${FONT}`; const out=[]; let line='';
+  for(const c of String(s)){
+    if(line&&measure.measureText(line+c).width>width){
+      out.push(line); line=c;
+      if(out.length===maxLines){const last=out[maxLines-1];out[maxLines-1]=last.slice(0,-2)+'…';return out;}
+    }else line+=c;
+  }
+  if(line)out.push(line);
+  return out.slice(0,maxLines);
+}
+function tile(parent,n,x,y,w,h,{large=false}={}){
+  const g=svgEl('g',{class:'cpc-tile'+(large?' large':'')+(n.children.length?'':' leaf'),'data-id':n.id,
+    transform:`translate(${x},${y})`,role:'button',tabindex:0,
+    'aria-label':n.code+' '+n.name+(n.children.length?'，点击展开':'，已到末级')},parent);
+  const title=svgEl('title',{},g); title.textContent=n.code+' · '+n.name+'\n'+LEVELS[n.level];
+  const sec=sectionOf(n), idx=sec?SECTIONS.findIndex(s=>s.id===sec.id):-1;
+  g.classList.add('p'+(((idx<0?0:idx)%6)+6)%6);
+  svgEl('rect',{width:w,height:h,rx:large?13:9,class:'tile-bg'},g);
+  const pad=large?24:13, ts=large?30:16;
+  text(g,n.code,pad,pad+ts*.65,'t-code');
+  const badge=text(g,LEVELS[n.level],w-pad,pad+(large?19:10),'t-badge'); badge.setAttribute('text-anchor','end');
+  let yy=large?86:41; const size=large?21:12;
+  for(const s of linesFor(n.name,w-pad*2,size,large?3:2)){text(g,s,pad,yy,'t-name');yy+=large?30:17;}
+  yy+=large?10:2;
+  if(yy<=(h-(large?34:26)))text(g,LEVEL_EN[n.level]+(CODE_LEN[n.level]?' · '+CODE_LEN[n.level]+'编码':''),pad,yy,'t-en');
+  const count=!n.children.length?'已到末级 · 无下级'
+    : n.level==='class'?`${n.children.length} 个子类`
+    : `${n.children.length} 个${LEVELS[NEXT[n.level]]||'子级'} · ${stats(n).subclass} 个子类`;
+  text(g,count,pad,h-(large?25:12),'t-count'+(n.children.length?'':' leaf'));
+  if(n.children.length)svgEl('path',{d:`M${w-pad-7} ${h-18} l5 4 l-5 4`,class:'tile-arrow'},g);
+  g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go(n.id);}});
+  g.addEventListener('pointerenter',e=>showTooltip(n,e));
+  g.addEventListener('pointermove',moveTooltip);
+  g.addEventListener('pointerleave',hideTooltip);
+  return g;
+}
+function renderStage(){
+  const svg=$('map-svg'),stage=$('map-stage'),mobile=window.innerWidth<=700,list=visibleNodes();
+  svg.classList.toggle('hidden',view==='list');
+  $('cpc-list').classList.toggle('hidden',view!=='list');
+  stage.classList.toggle('list-mode',view==='list');
+  $('map-tools').classList.toggle('hidden',view==='list');
+  $('zoom-value').textContent = view==='list'?'列表':Math.round(zoom*100)+'%';
+  $('map-loading').classList.add('hidden');
+  if(view==='list'){renderList(list);return;}
+  svg.replaceChildren();
+  W=Math.max(290,stage.clientWidth);
+  const vp=visualParent(), leaf=!vp.children.length;
+  const cols=mobile?2:W>=800?5:W>=560?4:W>=430?3:2;
+  const rows=Math.ceil(list.length/cols), gap=mobile?9:11, side=mobile?13:19, right=mobile?side:62, top=leaf?130:142;
+  const available=Math.max(350,mobile?580:stage.clientHeight);
+  const tileHeight=mobile?112:Math.max(86,(available-top-48-(rows-1)*gap)/Math.max(1,rows));
+  H=leaf?Math.max(mobile?390:420,available):Math.max(available,top+rows*tileHeight+(rows-1)*gap+48);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('aria-label',$('map-name').textContent+'，可逐层点击');
+  svg.style.height=(mobile?H:available)+'px';
+  if(mobile)svg.style.aspectRatio=`${W} / ${H}`; else svg.style.aspectRatio='';
+  svgEl('rect',{width:W,height:H,class:'stage-bg'},svg);
+  mapLayer=svgEl('g',{id:'cpc-world'},svg);
+  if(leaf){
+    const w=Math.min(W-side-right,600),h=Math.min(H-160,370);
+    tile(mapLayer,vp,(W-w)/2,58,w,h,{large:true});
+    const hint=text(mapLayer,'已到 5 位子类 · 末级编码，无下级分类',W/2,58+h+26,'t-hint');
+    hint.setAttribute('text-anchor','middle');
+  }else{
+    const cw=(W-side-right-gap*(cols-1))/cols;
+    const pw=Math.min(W-100,280), px=(W-pw)/2, py=47;
+    const box=svgEl('rect',{x:px,y:py,width:pw,height:58,rx:9,class:'head-box'},mapLayer);
+    box.setAttribute('pointer-events','none');
+    const t=text(mapLayer,linesFor(vp.code+' · '+vp.name,pw-24,11,1)[0],W/2,py+23,'t-head');
+    t.setAttribute('text-anchor','middle');
+    const sub=text(mapLayer,`直接子级关系 · ${list.length} 个分类`,W/2,py+43,'t-head-sub');
+    sub.setAttribute('text-anchor','middle');
+    const links=svgEl('g',{'pointer-events':'none'},mapLayer);
+    list.forEach((n,i)=>{
+      const x=side+(i%cols)*(cw+gap)+cw/2, y=top+Math.floor(i/cols)*(tileHeight+gap);
+      svgEl('path',{d:`M${W/2} ${py+58} C${W/2} ${py+75} ${x} ${y-16} ${x} ${y}`,class:'cpc-link'},links);
+    });
+    list.forEach((n,i)=>tile(mapLayer,n,side+(i%cols)*(cw+gap),top+Math.floor(i/cols)*(tileHeight+gap),cw,tileHeight));
+  }
+  applyTransform();
+}
+function renderList(list){
+  $('cpc-list').innerHTML=`<div class="list-caption">${catalog?'完整目录':'当前层级'} · ${list.length} 个分类 · 点击一行进入明细</div>
+  <table class="cpc-table"><thead><tr><th>编码</th><th>中文名称</th><th class="count">层级 / 子级</th></tr></thead><tbody>${
+    list.map(n=>`<tr data-go="${n.id}" tabindex="0" aria-label="${esc(n.code+' '+n.name)}"><td class="code">${esc(n.code)}</td><td><strong>${esc(n.name)}</strong><small>${LEVEL_EN[n.level]} · ${CODE_LEN[n.level]||''}编码</small></td><td class="count">${LEVELS[n.level]}${n.children.length?'<br>'+n.children.length+' 个子级':''}</td></tr>`).join('')
+  }</tbody></table>`;
+  $('cpc-list').querySelectorAll('tr[data-go]').forEach(r=>r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go(r.dataset.go);}});
+}
+function showTooltip(n,e){
+  if(window.innerWidth<=700)return;
+  const t=$('map-tooltip');
+  t.innerHTML=`<strong>${esc(n.code+' · '+n.name)}</strong><div class="tooltip-code">${LEVELS[n.level]} · ${LEVEL_EN[n.level]}${CODE_LEN[n.level]?' · '+CODE_LEN[n.level]+'编码':''}</div><div class="tooltip-hint">${n.children.length?'点击展开 '+n.children.length+' 个子级':'末级编码 · 无下级'}</div>`;
+  t.classList.remove('hidden'); moveTooltip(e);
+}
+function moveTooltip(e){
+  const t=$('map-tooltip'); if(t.classList.contains('hidden'))return;
+  const b=$('map-card').getBoundingClientRect();
+  const x=Math.min(b.width-t.offsetWidth-10,e.clientX-b.left+15), y=Math.min(b.height-t.offsetHeight-10,e.clientY-b.top+15);
+  t.style.left=Math.max(10,x)+'px'; t.style.top=Math.max(10,y)+'px';
+}
+function hideTooltip(){$('map-tooltip').classList.add('hidden');}
+function applyTransform(){if(mapLayer)mapLayer.setAttribute('transform',`translate(${panX} ${panY}) scale(${zoom})`);}
+function mapPoint(e){const p=$('map-svg').createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform($('map-svg').getScreenCTM().inverse());return {x:q.x,y:q.y};}
+function zoomAt(p,f){if(view==='list'||window.innerWidth<=700)return;const next=Math.max(.6,Math.min(5,zoom*f));panX=p.x-(p.x-panX)*next/zoom;panY=p.y-(p.y-panY)*next/zoom;zoom=next;hideTooltip();applyTransform();$('zoom-value').textContent=Math.round(zoom*100)+'%';}
+
+/* ── 搜索：C1 API /api/taxonomy/resource/search（N2：数据只取 C1 API） ── */
+function searchLocalNote(html){$('search-results').innerHTML=html;}
+function search(q){
+  q=q.trim(); searchFocus=-1;
+  if(!q){searchMatches=[];$('search-results').classList.add('hidden');return;}
+  const seq=++searchSeq;
+  if(searchAbort)searchAbort.abort();
+  searchAbort=new AbortController();
+  const timer=setTimeout(()=>{
+    fetch('/api/taxonomy/resource/search?q='+encodeURIComponent(q)+'&limit=20',{cache:'no-cache',signal:searchAbort.signal})
+      .then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status)))
+      .then(d=>{
+        if(seq!==searchSeq)return;
+        const items=(d&&Array.isArray(d.items)?d.items:[]).filter(x=>node(x.id)&&!['UN','CPC'].includes(String(x.id)));
+        searchMatches=items.slice(0,12);
+        $('search-results').innerHTML = searchMatches.length
+          ? searchMatches.map((n,i)=>{
+              const full=node(n.id), parent=n.parentId?node(n.parentId):null;
+              return `<button class="search-result" role="option" aria-selected="false" data-search-index="${i}">${icon('layers')}<span><strong>${esc(full.name)}</strong><small>${LEVELS[full.level]} · ${esc(parent?parent.code+' '+parent.name:'联合国')}</small></span><span class="code mono">${esc(full.code)}</span></button>`;
+            }).join('')+(d.items.length>12?`<div class="source-note" style="padding:6px 10px">共 ${d.items.length} 项匹配，显示前 12 项；输入更多文字可缩小范围。</div>`:'')
+          : '<div class="empty-state">未找到匹配产品<br>可以输入中文名称或 CPC 编码</div>';
+        $('search-results').classList.remove('hidden');
+      })
+      .catch(err=>{
+        if(err&&err.name==='AbortError')return;
+        if(seq!==searchSeq)return;
+        searchMatches=[]; searchLocalNote('<div class="empty-state">搜索暂不可用<br>请稍后重试</div>'); $('search-results').classList.remove('hidden');
+      });
+  },160);
+  window.__cpcSearchTimer&&clearTimeout(window.__cpcSearchTimer);
+  window.__cpcSearchTimer=timer;
+}
+function searchFocusUpdate(){
+  const items=$('search-results').querySelectorAll('[data-search-index]');
+  items.forEach((b,i)=>{b.classList.toggle('focused',i===searchFocus);b.setAttribute('aria-selected',String(i===searchFocus));});
+  items[searchFocus]?.scrollIntoView({block:'nearest'});
+}
+
+/* ── 导出（CSV / JSON / PNG；无外部依赖） ── */
+function download(name,content,mime){
+  const blob=content instanceof Blob?content:new Blob([content],{type:mime}),url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+function closeExport(){$('export-menu').classList.add('hidden');$('export-toggle').setAttribute('aria-expanded','false');}
+function branch(){return allBelow(node(current)).filter(n=>!n.synthetic);}
+function csvCell(v){const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function csvText(rows){return '﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n';}
+function rowsFor(list){
+  const head=['CPC编码','层级','中文名称','上级编码','完整分类路径','直接子级','我的笔记'];
+  return [head,...list.map(n=>[n.code,LEVELS[n.level],n.name,node(n.parent)?.code||'',pathTo(n).map(a=>a.code+' '+a.name).join(' / '),n.children.length,notes[n.id]||''])];
+}
+function exportBranchCSV(){closeExport();const list=branch();download(`CPC_Ver3_${node(current).code}_分支.csv`,csvText(rowsFor(list)),'text/csv;charset=utf-8');toast(`已导出 ${list.length} 个分类，编码保留前导零`);}
+function exportAllCSV(){closeExport();const list=ALL.slice().sort(byCode);download(`CPC_Ver3_完整目录.csv`,csvText(rowsFor(list)),'text/csv;charset=utf-8');toast(`已导出 ${list.length} 个分类，编码保留前导零`);}
+function exportJSON(){closeExport();const n=node(current);
+  download(`CPC_Ver3_${n.code}_分支.json`,JSON.stringify({standard:STANDARD,root:n.code,updated:new Date().toISOString(),
+    nodes:branch().map(x=>({id:x.id,code:x.code,name:x.name,level:x.level,parent:x.parent,children:x.children,note:notes[x.id]||''}))},null,2),'application/json;charset=utf-8');
+  toast('已导出当前分类分支');}
+async function exportPNG(){
+  closeExport(); const before=view;
+  if(before==='list'){view='graph';renderStage();}
+  try{
+    const original=$('map-svg'),clone=original.cloneNode(true);
+    clone.setAttribute('xmlns',NS);
+    const width=1600,height=Math.round(1600*H/W);
+    clone.setAttribute('width',width); clone.setAttribute('height',height);
+    clone.style.height=''; clone.style.width=''; clone.style.aspectRatio=''; clone.classList.remove('hidden');
+    const a=original.querySelectorAll('*'),b=clone.querySelectorAll('*');
+    const props=['fill','stroke','stroke-width','font-family','font-size','font-weight','stroke-opacity'];
+    for(let i=0;i<a.length;i++){
+      const s=getComputedStyle(a[i]);
+      props.forEach(p=>b[i].style.setProperty(p,s.getPropertyValue(p)));
+      b[i].removeAttribute('tabindex');
+    }
+    const cap=svgEl('text',{x:19,y:28,class:'cpc-text t-head'},clone); cap.textContent=$('map-name').textContent+' · '+STANDARD;
+    const cap2=svgEl('text',{x:19,y:H-15,class:'cpc-text t-head-sub'},clone); cap2.textContent='域览 · 联合国统计司 CPC Ver.3.0 · 数据经 C1 本体 API';
+    const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml;charset=utf-8'}));
+    await new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas'); canvas.width=width; canvas.height=height;
+        const ctx=canvas.getContext('2d');
+        ctx.fillStyle=CSS_SAFE_BG(); ctx.fillRect(0,0,width,height);
+        ctx.drawImage(img,0,0,width,height); URL.revokeObjectURL(url);
+        canvas.toBlob(blob=>{if(blob){download(`CPC_Ver3_${node(current).code}_层级图.png`,blob);resolve();}else reject(new Error('empty image'));},'image/png');
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('SVG image failed'));};
+      img.src=url;
+    });
+    toast('层级图已导出');
+  }catch(e){console.error(e);toast('当前环境无法导出图片，请用浏览器打开文件后重试');}
+  finally{view=before;renderStage();}
+}
+/* 画布底色取自令牌（脚本不写颜色字面量） */
+function CSS_SAFE_BG(){return cssVar('--stage')||'transparent';}
+
+function closeHelp(){$('help-modal').classList.add('hidden');lastModalFocus?.focus();}
+/* 完整目录：CPC 下按层级扁平列出（子类 2877 条时自动落在列表视图） */
+function catalogGo(level){go('CPC');catalog={level};view='list';zoom=1;panX=panY=0;$('map-stage').scrollTop=0;renderHeader();renderStage();}
+
+function renderStrips(){
+  const quick=['0','2','4','9'].map(id=>node(id)).filter(Boolean);
+  $('quick-strip').innerHTML='<span>快速探索</span>'+quick.map(n=>`<button data-go="${n.id}" title="${esc(n.name)}">${esc(n.code+' '+n.name)}</button>`).join('');
+  const all=stats(node('CPC'));
+  const levels=['section','division','group','class','subclass'].filter(k=>all[k]>0);
+  $('catalog-strip').innerHTML='<span>完整目录</span>'+levels.map(k=>`<button data-depth="${k}"><b>${all[k]}</b> ${LEVELS[k]}</button>`).join('');
+  $('help-summary').innerHTML=levels.map(k=>`<span>${all[k]} ${LEVELS[k]}</span>`).join('')+`<span>共 ${ALL.length} 节点</span>`;
+}
+
+function bind(){
+  document.addEventListener('click',e=>{
+    const link=e.target.closest('[data-go]');
+    if(link){if(link.tagName==='A')e.preventDefault();go(link.dataset.go);return;}
+    const result=e.target.closest('[data-search-index]');
+    if(result){const m=searchMatches[Number(result.dataset.searchIndex)];if(m)go(m.id);return;}
+    const depth=e.target.closest('[data-depth]');
+    if(depth){catalogGo(depth.dataset.depth);return;}
+    const remove=e.target.closest('[data-remove-favorite]');
+    if(remove){favorites=favorites.filter(id=>id!==remove.dataset.removeFavorite);persist();renderFavorites();return;}
+    if(!e.target.closest('.search-wrap'))$('search-results').classList.add('hidden');
+    if(!e.target.closest('.export-wrap'))closeExport();
+    if($('sidebar').classList.contains('open')&&!e.target.closest('#sidebar,#tree-open'))$('sidebar').classList.remove('open');
+  });
+  $('go-home').onclick=()=>go('UN');
+  $('go-back').onclick=()=>{if(catalog)go('CPC');else if(node(current).parent)go(node(current).parent);};
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{
+    if(catalog&&b.dataset.view!=='list')catalog=null;
+    view=b.dataset.view; zoom=1; panX=panY=0; $('map-stage').scrollTop=0; persist(); renderHeader(); renderStage();
+  });
+  $('search').oninput=e=>search(e.target.value);
+  $('search').onfocus=e=>{if(e.target.value)search(e.target.value);};
+  $('search').onkeydown=e=>{
+    if(e.key==='ArrowDown'){e.preventDefault();searchFocus=Math.min(searchMatches.length-1,searchFocus+1);searchFocusUpdate();}
+    else if(e.key==='ArrowUp'){e.preventDefault();searchFocus=Math.max(0,searchFocus-1);searchFocusUpdate();}
+    else if(e.key==='Enter'&&searchMatches.length){e.preventDefault();go(searchMatches[Math.max(0,searchFocus)].id);$('search').blur();}
+    else if(e.key==='Escape'){e.stopPropagation();$('search-results').classList.add('hidden');$('search').blur();}
+  };
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;renderDetail();});
+  $('favorite-toggle').onclick=()=>{
+    if(['UN','CPC'].includes(current))return;
+    const on=favorites.includes(current);
+    favorites=on?favorites.filter(id=>id!==current):[...favorites,current];
+    const ok=persist(); renderFavorites();
+    toast((on?'已取消收藏':'已收藏 '+node(current).name)+(ok?'':'，请在支持本地存储的浏览器中打开以持久保存'));
+  };
+  $('zoom-in').onclick=()=>zoomAt({x:W/2,y:H/2},1.25);
+  $('zoom-out').onclick=()=>zoomAt({x:W/2,y:H/2},.8);
+  $('zoom-reset').onclick=()=>{zoom=1;panX=panY=0;applyTransform();$('zoom-value').textContent='100%';};
+  $('fullscreen-toggle').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('map-card').requestFullscreen();}catch(e){toast('当前环境不支持全屏，请在浏览器中打开文件');}};
+  $('tree-open').onclick=()=>$('sidebar').classList.toggle('open');
+  $('tree-close').onclick=()=>$('sidebar').classList.remove('open');
+  $('export-toggle').onclick=()=>{const open=!$('export-menu').classList.toggle('hidden');$('export-toggle').setAttribute('aria-expanded',String(open));};
+  $('export-branch-json').onclick=exportJSON;
+  $('export-branch-csv').onclick=exportBranchCSV;
+  $('export-all-csv').onclick=exportAllCSV;
+  $('export-png').onclick=exportPNG;
+  $('help-open').onclick=()=>{lastModalFocus=document.activeElement;$('help-modal').classList.remove('hidden');$('help-close').focus();};
+  $('help-close').onclick=closeHelp;
+  $('help-modal').onclick=e=>{if(e.target===$('help-modal'))closeHelp();};
+  // 层级图：拖动平移 + 滚轮缩放 + 点击进入（与「域览」一致）
+  let drag=null,moved=false,clickId=null; const svg=$('map-svg');
+  svg.addEventListener('pointerdown',e=>{
+    if(e.button!==0||window.innerWidth<=700)return;
+    const p=mapPoint(e);
+    clickId=e.target.closest('[data-id]')?.dataset.id||null;
+    drag={x:e.clientX,y:e.clientY,p,panX,panY}; moved=false;
+    try{svg.setPointerCapture(e.pointerId);}catch(x){}
+  });
+  svg.addEventListener('pointermove',e=>{
+    if(!drag)return; const p=mapPoint(e);
+    if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>4)moved=true;
+    if(moved){panX=drag.panX+p.x-drag.p.x;panY=drag.panY+p.y-drag.p.y;hideTooltip();applyTransform();}
+  });
+  svg.addEventListener('pointerup',e=>{
+    if(!drag)return; const target=clickId,wasMoved=moved; drag=null; clickId=null;
+    try{svg.releasePointerCapture(e.pointerId);}catch(x){}
+    if(!wasMoved&&target)go(target);
+  });
+  svg.addEventListener('pointercancel',()=>{drag=null;clickId=null;});
+  svg.addEventListener('click',e=>{if(window.innerWidth<=700||e.detail===0){const t=e.target.closest('[data-id]');if(t)go(t.dataset.id);}});
+  svg.addEventListener('wheel',e=>{if(window.innerWidth<=700)return;e.preventDefault();zoomAt(mapPoint(e),e.deltaY<0?1.12:1/1.12);},{passive:false});
+  document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('search').focus();$('search').select();return;}
+    if(!$('help-modal').classList.contains('hidden')){
+      if(e.key==='Escape'){e.preventDefault();closeHelp();}
+      else if(e.key==='Tab'){const f=[...$('help-modal').querySelectorAll('a,button')];
+        if(e.shiftKey&&document.activeElement===f[0]){e.preventDefault();f.at(-1).focus();}
+        else if(!e.shiftKey&&document.activeElement===f.at(-1)){e.preventDefault();f[0].focus();}}
+      return;
+    }
+    if(e.key==='Escape'){
+      if(!$('search-results').classList.contains('hidden')){$('search-results').classList.add('hidden');return;}
+      if($('sidebar').classList.contains('open')){$('sidebar').classList.remove('open');return;}
+      if(!$('export-menu').classList.contains('hidden')){closeExport();return;}
+    }
+    if(/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))return;
+    if(e.key==='Escape'&&!document.fullscreenElement){if(catalog)go('CPC');else if(node(current).parent)go(node(current).parent);}
+    if(e.key==='+'||e.key==='='){e.preventDefault();zoomAt({x:W/2,y:H/2},1.2);}
+    if(e.key==='-'||e.key==='_'){e.preventDefault();zoomAt({x:W/2,y:H/2},1/1.2);}
+  });
+  const historyNav=()=>{
+    let id; try{id=decodeURIComponent(location.hash.slice(1));}catch(e){return;}
+    if(node(id)&&id!==current)go(id,{history:false});
+  };
+  window.addEventListener('popstate',historyNav);
+  window.addEventListener('hashchange',historyNav);
+  let timer;
+  window.addEventListener('resize',()=>{clearTimeout(timer);timer=setTimeout(()=>{zoom=1;panX=panY=0;renderStage();},120);});
+  document.addEventListener('fullscreenchange',()=>setTimeout(renderStage,80));
+}
+
+/* ── 启动：数据来自内嵌容器（index.html 加载器已回填）或 C1 API 直取 ── */
+function readEmbedded(){
+  try{
+    const el=$('resource-data'); if(!el)return null;
+    const d=JSON.parse(el.textContent);
+    return d&&Array.isArray(d.nodes)&&d.nodes.length?d:null;
+  }catch(e){return null;}
+}
+async function fetchTree(){
+  const r=await fetch('/api/taxonomy/resource/tree',{cache:'no-cache'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  if(!d||!Array.isArray(d.nodes)||!d.nodes.length)throw new Error('资源分类数据为空');
+  return d;
+}
+async function boot(){
+  const embedded=readEmbedded();
+  const data=embedded||await fetchTree();
+  if(!embedded&&$('resource-data'))$('resource-data').textContent=JSON.stringify(data);
+  buildTree(data.nodes);
+  const saved=localRead();
+  favorites=(Array.isArray(saved.favorites)?saved.favorites:[]).filter(id=>node(id)&&!['UN','CPC'].includes(id));
+  notes=saved.notes&&typeof saved.notes==='object'?saved.notes:{};
+  view=['graph','list'].includes(saved.view)?saved.view:'graph';
+  let hash; try{hash=decodeURIComponent(location.hash.slice(1));}catch(e){}
+  current=node(hash)?hash:(node(saved.current)?saved.current:'UN');
+  pathTo(node(current)).forEach(n=>{if(n.children.length)expanded.add(n.id);});
+  renderStrips(); bind(); render();
+}
+boot().catch(err=>{
+  const ld=$('map-loading');
+  if(ld){ld.innerHTML='<span>资源分类加载失败：'+esc(err.message)+'</span>';ld.classList.remove('hidden');}
+});
+})();
+</script>
+</body>
+</html>

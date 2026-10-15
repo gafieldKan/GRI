@@ -516,8 +516,10 @@
   }
 
   function load(d){
-    if (d === 'resource') return loadResource();
-    return fetch('./' + d + '.html', { cache: 'no-cache' }).then(function (r) { return r.text(); }).then(function (raw) {
+    return fetch('./' + d + '.html', { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    }).then(function (raw) {
       var doc = new DOMParser().parseFromString(raw, 'text/html');
       if (doc.title) document.title = 'GRI · ' + doc.title;
       document.querySelectorAll('style[data-gri-embed]').forEach(function (e) { e.remove(); });
@@ -577,6 +579,14 @@
           // 4) 注入 GRI 控件
           injectControls();
         });
+    }).catch(function (e) {
+      // resource.html 缺失/不可读时，回退到 P5-A 原生裸树渲染，保证「资源」页签不白屏。
+      // region/industry 无此回退，异常照旧冒泡到 load(dim).catch。
+      if (d === 'resource') {
+        console.warn('[gri] resource.html 加载失败，回退原生裸树：' + e.message);
+        return loadResource();
+      }
+      throw e;
     });
   }
 
