@@ -20,9 +20,15 @@ const okRow = { id: 'm1', organization_id: ORG_ID, user_id: TARGET, role: 'admin
 function makeDb(
   membership: Record<string, Record<string, string>>,
   orgs: Record<string, Record<string, unknown>> = { [ORG_ID]: { id: ORG_ID, level: 1, parent_path: '/' } },
+  activeMemberIds: string[] = [],
 ): DatabaseService {
   const client = {
-    query: jest.fn(async () => ({ rows: [okRow] })),
+    query: jest.fn(async (sql: string) => {
+      if (/SELECT user_id FROM tenant\.organization_members/.test(sql)) {
+        return { rows: activeMemberIds.map((user_id) => ({ user_id })) };
+      }
+      return { rows: [okRow] };
+    }),
     release: jest.fn(),
   };
   const pool = { connect: jest.fn(() => client) };
@@ -111,6 +117,62 @@ describe('OrganizationService 组织级权限（M4：升级 operator/merchant �
       await expect(svc.addMember(ACTOR_MEMBER, ORG_ID, { userId: TARGET })).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+
+    it('成员写穿成功后失效目标人的激活上下文', async () => {
+      const db = makeDb({ [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } });
+      const invalidate = jest.fn().mockResolvedValue(undefined);
+      const svc = new OrganizationService(db, { invalidate } as any);
+
+      await svc.addMember(ACTOR_ADMIN, ORG_ID, { userId: TARGET, role: 'member' });
+
+      expect(invalidate).toHaveBeenCalledWith(TARGET);
+    });
+  });
+
+  describe('createOrganization（激活物化失效）', () => {
+    it('创建组织后失效发起人的激活上下文', async () => {
+      const db = makeDb({}) as DatabaseService;
+      const invalidate = jest.fn().mockResolvedValue(undefined);
+      const svc = new OrganizationService(db, { invalidate } as any);
+
+      await svc.createOrganization(ACTOR_OWNER, { name: '新组织' });
+
+      expect(invalidate).toHaveBeenCalledWith(ACTOR_OWNER);
+    });
+  });
+
+  describe('组织更新/删除（激活物化失效）', () => {
+    it('更新组织后失效该组织全部 active 成员', async () => {
+      const db = makeDb(
+        { [ORG_ID]: { [ACTOR_ADMIN]: 'admin' } },
+        undefined,
+        [ACTOR_ADMIN, TARGET],
+      );
+      const invalidate = jest.fn().mockResolvedValue(undefined);
+      const svc = new OrganizationService(db, { invalidate } as any);
+
+      await svc.updateOrganization(ACTOR_ADMIN, ORG_ID, { name: '新名称' });
+
+      expect(invalidate).toHaveBeenCalledTimes(2);
+      expect(invalidate).toHaveBeenCalledWith(ACTOR_ADMIN);
+      expect(invalidate).toHaveBeenCalledWith(TARGET);
+    });
+
+    it('删除组织后失效删除前该组织全部 active 成员', async () => {
+      const db = makeDb(
+        { [ORG_ID]: { [ACTOR_OWNER]: 'owner' } },
+        undefined,
+        [ACTOR_OWNER, TARGET],
+      );
+      const invalidate = jest.fn().mockResolvedValue(undefined);
+      const svc = new OrganizationService(db, { invalidate } as any);
+
+      await svc.deleteOrganization(ACTOR_OWNER, ORG_ID);
+
+      expect(invalidate).toHaveBeenCalledTimes(2);
+      expect(invalidate).toHaveBeenCalledWith(ACTOR_OWNER);
+      expect(invalidate).toHaveBeenCalledWith(TARGET);
     });
   });
 

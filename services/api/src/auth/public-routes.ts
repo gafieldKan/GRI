@@ -39,6 +39,8 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   get('GET', /^\/organizations\/search\/?$/),
   get('GET', /^\/organizations\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/),
   get('GET', /^\/organizations\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/children\/?$/),
+  // 人本世界只读目录（W1）：场景/意向/模块映射匿名可读，个人激活上下文不入白名单。
+  get('GET', /^\/world\/?$/),
   // 本体语义真源目录（M4 ontology 门面）：只读知识端点，游客可内省（不承载写）
   get('GET', /^\/ontology\/objects\/?$/),
   get('GET', /^\/ontology\/objects\/[^/]+(?:\/(?:chain|dispatch\/[^/]+))?\/?$/),

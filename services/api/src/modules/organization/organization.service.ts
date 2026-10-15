@@ -3,10 +3,13 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  Logger,
+  Optional,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
 import { loadConfig } from '../../config/config';
+import { ActivationContextService } from '../world/activation-context.service';
 import {
   Organization,
   OrganizationMember,
@@ -40,9 +43,42 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  */
 @Injectable()
 export class OrganizationService {
-  constructor(private readonly db: DatabaseService) {}
+  private readonly logger = new Logger(OrganizationService.name);
+
+  constructor(
+    private readonly db: DatabaseService,
+    @Optional() private readonly activationContext?: ActivationContextService,
+  ) {}
 
   private readonly identityCfg = loadConfig().identity;
+
+  /** 失效激活物化；Redis 故障不得回滚已提交的组织写。 */
+  private async invalidateActivation(userId: string): Promise<void> {
+    try {
+      await this.activationContext?.invalidate(userId);
+    } catch (e) {
+      this.logger.warn(`activation context invalidate failed for ${userId}: ${(e as Error).message}`);
+    }
+  }
+
+  /** 组织级变更命中该组织全部有效成员的物化上下文。 */
+  private async invalidateActivations(userIds: Iterable<string>): Promise<void> {
+    await Promise.all(
+      Array.from(new Set(userIds)).map((userId) => this.invalidateActivation(userId)),
+    );
+  }
+
+  private async activeMemberIds(
+    organizationId: string,
+    queryable: Pick<DatabaseService, 'query'> = this.db,
+  ): Promise<string[]> {
+    const res = await queryable.query(
+      `SELECT user_id FROM tenant.organization_members
+        WHERE organization_id = $1 AND status = 'active'`,
+      [organizationId],
+    );
+    return (res.rows as { user_id: string }[]).map((row) => row.user_id);
+  }
 
   // -------------------------------------------------------------------------
   // 身份目录桥（auth-center 服务间面）。仅由 assertSiteOperator 门禁的端点调用，
@@ -211,14 +247,41 @@ export class OrganizationService {
       const org = orgRes.rows[0] as Organization;
 
       await client.query(
+        `INSERT INTO ontology.organization
+           (id, name, type_code, code, description, status, parent_id, meta)
+         VALUES ($1, $2, $3, NULLIF($4, ''), $5, 'active', $6, '{}'::jsonb)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name,
+           type_code = EXCLUDED.type_code,
+           code = EXCLUDED.code,
+           description = EXCLUDED.description,
+           status = EXCLUDED.status,
+           parent_id = EXCLUDED.parent_id,
+           meta = EXCLUDED.meta,
+           updated_at = NOW()`,
+        [org.id, data.name.trim(), orgType, data.code ?? '', data.description ?? null, data.parent_id ?? null],
+      );
+
+      const memberRes = await client.query(
         `INSERT INTO tenant.organization_members (organization_id, user_id, role, status)
-         VALUES ($1, $2, 'owner', 'active')`,
+         VALUES ($1, $2, 'owner', 'active')
+         RETURNING id`,
         [org.id, actorId],
+      );
+      await client.query(
+        `INSERT INTO ontology.org_member (id, org_id, user_id, role, tags, status)
+         VALUES ($1, $2, $3, 'owner', '[]'::jsonb, 'active')
+         ON CONFLICT (org_id, user_id) DO UPDATE SET
+           role = EXCLUDED.role,
+           status = EXCLUDED.status,
+           updated_at = NOW()`,
+        [memberRes.rows[0]?.id ?? null, org.id, actorId],
       );
 
       await this.insertAudit(client, org.id, 'organization.create', 'organization', org.id, actorId, { name: org.name, parent_id: org.parent_id });
 
       await client.query('COMMIT');
+      await this.invalidateActivation(actorId);
       return org;
     } catch (e) {
       await client.query('ROLLBACK');
@@ -255,8 +318,30 @@ export class OrganizationService {
         `UPDATE tenant.organizations SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
         values,
       );
+      await client.query(
+        `INSERT INTO ontology.organization
+           (id, name, type_code, code, logo_url, description, status, parent_id, meta, created_at, updated_at)
+         SELECT legacy.id, legacy.name, legacy.type, NULLIF(legacy.code, ''), legacy.logo_url,
+                legacy.description, COALESCE(legacy.status, 'active'), legacy.parent_id,
+                COALESCE(legacy.metadata, '{}'::jsonb), COALESCE(legacy.created_at, NOW()), COALESCE(legacy.updated_at, NOW())
+           FROM tenant.organizations legacy
+          WHERE legacy.id = $1
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name,
+           type_code = EXCLUDED.type_code,
+           code = EXCLUDED.code,
+           logo_url = EXCLUDED.logo_url,
+           description = EXCLUDED.description,
+           status = EXCLUDED.status,
+           parent_id = EXCLUDED.parent_id,
+           meta = EXCLUDED.meta,
+           updated_at = NOW()`,
+        [id],
+      );
+      const memberIds = await this.activeMemberIds(id, client);
       await this.insertAudit(client, id, 'organization.update', 'organization', id, actorId, allowed);
       await client.query('COMMIT');
+      await this.invalidateActivations(memberIds);
       return res.rows[0] as Organization;
     } catch (e) {
       await client.query('ROLLBACK');
@@ -274,9 +359,12 @@ export class OrganizationService {
     const client = await this.db.getPool().connect();
     try {
       await client.query('BEGIN');
+      const memberIds = await this.activeMemberIds(id, client);
       await client.query('DELETE FROM tenant.organizations WHERE id = $1', [id]);
+      await client.query('DELETE FROM ontology.organization WHERE id = $1', [id]);
       // 审计记录随组织级联删除；父组织下的此变更也会被清理
       await client.query('COMMIT');
+      await this.invalidateActivations(memberIds);
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;
@@ -334,14 +422,24 @@ export class OrganizationService {
       }
       const res = await client.query(
         `INSERT INTO tenant.organization_members (organization_id, user_id, role, department, title, employee_no)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (organization_id, user_id)
-           DO UPDATE SET role = EXCLUDED.role, department = EXCLUDED.department, title = EXCLUDED.title, employee_no = EXCLUDED.employee_no, status = 'active', updated_at = NOW()
-         RETURNING *`,
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (organization_id, user_id)
+          DO UPDATE SET role = EXCLUDED.role, department = EXCLUDED.department, title = EXCLUDED.title, employee_no = EXCLUDED.employee_no, status = 'active', updated_at = NOW()
+        RETURNING *`,
         [organizationId, data.userId, data.role ?? 'member', data.department ?? null, data.title ?? null, data.employee_no ?? null],
+      );
+      await client.query(
+        `INSERT INTO ontology.org_member (id, org_id, user_id, role, tags, status)
+         VALUES ($1, $2, $3, $4, '[]'::jsonb, 'active')
+         ON CONFLICT (org_id, user_id) DO UPDATE SET
+           role = EXCLUDED.role,
+           status = EXCLUDED.status,
+           updated_at = NOW()`,
+        [res.rows[0]?.id ?? null, organizationId, data.userId, data.role ?? 'member'],
       );
       await this.insertAudit(client, organizationId, 'member.add', 'member', res.rows[0].id, actorId, { user_id: data.userId, role: data.role });
       await client.query('COMMIT');
+      await this.invalidateActivation(data.userId);
       return res.rows[0] as OrganizationMember;
     } catch (e) {
       await client.query('ROLLBACK');
@@ -364,8 +462,14 @@ export class OrganizationService {
           WHERE organization_id = $1 AND user_id = $2`,
         [organizationId, targetUserId],
       );
+      await client.query(
+        `UPDATE ontology.org_member SET status = 'inactive', updated_at = NOW()
+          WHERE org_id = $1 AND user_id = $2`,
+        [organizationId, targetUserId],
+      );
       await this.insertAudit(client, organizationId, 'member.remove', 'member', null, actorId, { user_id: targetUserId });
       await client.query('COMMIT');
+      await this.invalidateActivation(targetUserId);
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;
@@ -398,8 +502,14 @@ export class OrganizationService {
         [organizationId, targetUserId, role],
       );
       if (res.rows.length === 0) throw new NotFoundException('目标成员不存在');
+      await client.query(
+        `UPDATE ontology.org_member SET role = $3, updated_at = NOW()
+          WHERE org_id = $1 AND user_id = $2`,
+        [organizationId, targetUserId, role],
+      );
       await this.insertAudit(client, organizationId, 'member.role.update', 'member', res.rows[0].id, actorId, { user_id: targetUserId, role });
       await client.query('COMMIT');
+      await this.invalidateActivation(targetUserId);
       return res.rows[0] as OrganizationMember;
     } catch (e) {
       await client.query('ROLLBACK');
@@ -586,12 +696,21 @@ export class OrganizationService {
     try {
       await client.query('BEGIN');
       // 幂等：已在该组织则并入目标角色
-      await client.query(
+      const memberRes = await client.query(
         `INSERT INTO tenant.organization_members (organization_id, user_id, role, status)
          VALUES ($1, $2, 'member', 'active')
          ON CONFLICT (organization_id, user_id)
-           DO UPDATE SET status = 'active', updated_at = NOW()`,
+           DO UPDATE SET status = 'active', updated_at = NOW()
+         RETURNING id`,
         [inv.organization_id, userId],
+      );
+      await client.query(
+        `INSERT INTO ontology.org_member (id, org_id, user_id, role, tags, status)
+         VALUES ($1, $2, $3, 'member', '[]'::jsonb, 'active')
+         ON CONFLICT (org_id, user_id) DO UPDATE SET
+           status = 'active',
+           updated_at = NOW()`,
+        [memberRes.rows[0]?.id ?? null, inv.organization_id, userId],
       );
       await client.query(
         `UPDATE tenant.organization_invitations
@@ -600,6 +719,7 @@ export class OrganizationService {
         [inv.id, userId],
       );
       await client.query('COMMIT');
+      await this.invalidateActivation(userId);
       return inv;
     } catch (e) {
       await client.query('ROLLBACK');

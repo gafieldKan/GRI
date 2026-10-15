@@ -65,6 +65,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   # ── nginx：直 serve 前端静态产物 + TLS；仅 80/443 对外；依赖收窄为后端真服务 ──
   nginx:

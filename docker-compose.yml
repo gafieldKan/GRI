@@ -50,12 +50,23 @@ services:
     image: redis:7-alpine
     container_name: gri-redis
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-}
+    command:
+      - sh
+      - -c
+      - |
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          exec redis-server --requirepass "$$REDIS_PASSWORD"
+        fi
+        exec redis-server
     ports:
       - "6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -124,9 +135,17 @@ services:
       LLM_MODEL: ${LLM_MODEL:-deepseek-ai/deepseek-v4.1-flash}
       LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
       LLM_MULTIMODAL_MODEL: ${LLM_MULTIMODAL_MODEL:-nvidia/neva-22b}
+      # Redis 仅作物化/缓存视图，不是授权真源；不可用时 API 自动回源 DB。
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        # Redis 是缓存/物化视图；即使不可用也让 API 启动并回源 DB。
+        condition: service_started
 
   # Web — 前端 (Vite Dev Server, 端口 5174)
   web:

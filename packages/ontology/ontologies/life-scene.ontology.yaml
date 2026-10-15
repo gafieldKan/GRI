@@ -1,0 +1,159 @@
+# ---------------------------------------------------------------------------
+# 人本世界本体（life-scene）
+#
+# 人本世界是第一层的「生活主题场景」：场景内以意向路由到模块。本文件只立
+# 人本世界，不包含模块内容世界（ModuleScene）与学科登顶。
+# ---------------------------------------------------------------------------
+schemaVersion: 0.5.0
+name: life-scene
+description: 人本世界本体 —— LifeScene / LifeIntent / SceneModuleLink
+
+objects:
+  # 生活主题场景闭集（居所/餐饮/学习/工作/社交/出行旅游/健康）。
+  - name: LifeScene
+    table: ontology.life_scene
+    description: 人本世界生活主题场景
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 稳定场景码（home/dining/academy/work/social/travel/wellness）
+      - name: name
+        type: string
+        required: true
+        description: 场景中文名
+      - name: en
+        type: string
+        description: 场景英文名
+      - name: theme
+        type: string
+        required: true
+        description: 生活主题（衣/食/住/行/工作/生活/旅游）
+      - name: icon
+        type: string
+        description: 前端图标标识
+      - name: posX
+        type: number
+        description: 人本世界地图横坐标
+      - name: posY
+        type: number
+        description: 人本世界地图纵坐标
+      - name: sortOrder
+        type: integer
+        required: true
+        description: 场景展示顺序
+      - name: status
+        type: string
+        required: true
+        default: active
+        description: 场景状态（active/building/archived）
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    indexes:
+      - columns: [status, sortOrder]
+        name: idx_life_scene_status_sort
+
+  # 场景内意向（我饿了/我想学/我要出门…）。
+  - name: LifeIntent
+    table: ontology.life_intent
+    description: 生活场景内的人本意向
+    fields:
+      - name: sceneCode
+        type: string
+        required: true
+        description: 所属 LifeScene.code
+      - name: code
+        type: string
+        required: true
+        description: 意向稳定码
+      - name: label
+        type: string
+        required: true
+        description: 意向文案
+      - name: description
+        type: text
+        description: 意向说明
+      - name: sortOrder
+        type: integer
+        required: true
+        description: 场景内展示顺序
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    uniqueConstraints:
+      - [sceneCode, code]
+    indexes:
+      - columns: [sceneCode, sortOrder]
+        name: idx_life_intent_scene_sort
+
+  # 场景/意向到模块注册表的语义映射。
+  - name: SceneModuleLink
+    table: ontology.scene_module_link
+    description: 生活场景/意向 → 模块注册表映射
+    fields:
+      - name: sceneCode
+        type: string
+        required: true
+        description: LifeScene.code
+      - name: intentCode
+        type: string
+        description: 可选 LifeIntent.code；为空表示场景级入口
+      - name: moduleCode
+        type: string
+        required: true
+        description: ontology.app_module.code（语义引用）
+      - name: sortOrder
+        type: integer
+        required: true
+        default: 0
+        description: 同一场景/意向内模块入口顺序
+      - name: requiresOptIn
+        type: boolean
+        required: true
+        default: false
+        description: 是否需申请/启用模块（复用 user_module 选用）
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    uniqueConstraints:
+      - [sceneCode, intentCode, moduleCode]
+    indexes:
+      - columns: [sceneCode, sortOrder]
+        name: idx_scene_module_link_scene
+      - columns: [moduleCode]
+        name: idx_scene_module_link_module
+
+# code 语义关系不生成 UUID 外键；模块目标来自 app-module 本体，跨本体引用。
+links:
+  - name: intentBelongsToScene
+    source: LifeIntent
+    target: LifeScene
+    cardinality: many
+    description: LifeIntent.sceneCode → LifeScene.code
+  - name: linkBelongsToScene
+    source: SceneModuleLink
+    target: LifeScene
+    cardinality: many
+    description: SceneModuleLink.sceneCode → LifeScene.code
+  - name: linkBelongsToIntent
+    source: SceneModuleLink
+    target: LifeIntent
+    cardinality: many
+    description: SceneModuleLink.intentCode → LifeIntent.code（可空）

@@ -127,6 +127,13 @@ export interface TwinWorld {
   fields: unknown[];
   areas: unknown[];
   stats: unknown;
+  /** 人本世界场景快照；subject/areas/stats 仍保持学科登顶语义。 */
+  scenes: unknown[];
+}
+
+/** 人本世界（生活场景层）：与学科 world 并列，不改变既有登顶语义。 */
+export interface HumanWorld {
+  scenes: unknown[];
 }
 
 /** 长期记忆一条（agent.memory）。 */
@@ -142,6 +149,7 @@ export interface TwinOverview {
   profile: TwinProfile;
   state: TwinState;
   world: TwinWorld;
+  humanWorld: HumanWorld;
   events: TwinEvent[];
   memories: TwinMemory[];
   generatedAt: string;

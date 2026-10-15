@@ -32,11 +32,19 @@ export interface IdentityBrokerConfig {
   serviceToken: string;
 }
 
+export interface RedisConfig {
+  host: string;
+  port: number;
+  password: string;
+  db: number;
+}
+
 export interface AppConfig {
   db: DbConfig;
   jwt: JwtVerifierConfig;
   llm: LlmConfig;
   identity: IdentityBrokerConfig;
+  redis: RedisConfig;
 }
 
 export function loadConfig(): AppConfig {
@@ -65,6 +73,12 @@ export function loadConfig(): AppConfig {
     identity: {
       authCenterUrl: process.env.AUTH_CENTER_URL ?? 'http://auth-center:3004',
       serviceToken: process.env.AUTH_SERVICE_TOKEN ?? 'gri-service-token',
+    },
+    redis: {
+      host: process.env.REDIS_HOST ?? 'localhost',
+      port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+      password: process.env.REDIS_PASSWORD ?? '',
+      db: parseInt(process.env.REDIS_DB ?? '0', 10),
     },
   };
 }

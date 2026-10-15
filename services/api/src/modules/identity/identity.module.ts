@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { IdentityService } from './identity.service';
 import { IdentityController } from './identity.controller';
 import { OrganizationModule } from '../organization/organization.module';
+import { IdentityCoreModule } from './identity-core.module';
 
 @Module({
-  imports: [OrganizationModule],
+  imports: [IdentityCoreModule, OrganizationModule],
   controllers: [IdentityController],
-  providers: [IdentityService],
-  exports: [IdentityService],
+  exports: [IdentityCoreModule],
 })
 export class IdentityModule {}

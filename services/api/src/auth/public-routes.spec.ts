@@ -145,6 +145,20 @@ describe('public-routes 公开读白名单', () => {
     });
   });
 
+  describe('人本世界读端点（W1）', () => {
+    it('GET /world 匿名放行，写方法与未定义深路径不放行', () => {
+      expect(isPublicRoute('GET', '/world')).toBe(true);
+      expect(isPublicRoute('GET', '/world/')).toBe(true);
+      expect(isPublicRoute('POST', '/world')).toBe(false);
+      expect(isPublicRoute('GET', '/world/extra')).toBe(false);
+    });
+
+    it('个人激活上下文与我的组织必须登录', () => {
+      expect(isPublicRoute('GET', '/context/me')).toBe(false);
+      expect(isPublicRoute('GET', '/organizations/mine')).toBe(false);
+    });
+  });
+
   describe('受保护端点一律不放行', () => {
     it('注册公开；改密与注销必须登录', () => {
       expect(isPublicRoute('POST', '/auth/register')).toBe(true);

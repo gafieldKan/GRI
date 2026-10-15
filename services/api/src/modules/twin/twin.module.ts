@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { WorldModule } from '../world/world.module';
 import { TwinService } from './twin.service';
 import { TwinController } from './twin.controller';
 import { IdentityModule } from '../identity/identity.module';
@@ -11,7 +12,7 @@ import { AgentModule } from '../agent/agent.module';
  * 为孪生五件：身份/状态/世界/经历/记忆；只新增「经历」落 twin.event（015 迁移）。
  */
 @Module({
-  imports: [IdentityModule, TuitionModule, CurriculumModule, AgentModule],
+  imports: [IdentityModule, TuitionModule, CurriculumModule, AgentModule, WorldModule],
   controllers: [TwinController],
   providers: [TwinService],
   exports: [TwinService],

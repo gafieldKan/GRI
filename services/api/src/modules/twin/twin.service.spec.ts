@@ -17,6 +17,7 @@ function makeService(overrides: {
   memories?: any;
   backfillCount?: number;
   existingEventKeys?: any[];
+  humanWorld?: any;
 } = {}) {
   const events = overrides.events ?? [
     {
@@ -99,7 +100,30 @@ function makeService(overrides: {
     ]),
   } as any;
 
-  return { svc: new TwinService(db, identity, tuition, curriculum, agent), db, identity, tuition, curriculum, agent };
+  const world = {
+    getWorld: jest.fn(async () => overrides.humanWorld ?? {
+      scenes: [
+        {
+          code: 'dining',
+          name: '餐饮',
+          status: 'active',
+          intents: [],
+          modules: [{ moduleCode: 'food', requiresOptIn: false, sortOrder: 10 }],
+        },
+      ],
+      generatedAt: '2026-10-15T00:00:00.000Z',
+    }),
+  } as any;
+
+  return {
+    svc: new TwinService(db, identity, tuition, curriculum, agent, world),
+    db,
+    identity,
+    tuition,
+    curriculum,
+    agent,
+    world,
+  };
 }
 
 describe('TwinService —— 学生数字孪生装配', () => {
@@ -141,16 +165,37 @@ describe('TwinService —— 学生数字孪生装配', () => {
   });
 
   it('容错：世界/记忆真源异常时降级为空件，孪生壳仍可渲染', async () => {
-    const { svc, curriculum, agent } = makeService();
+    const { svc, curriculum, agent, world } = makeService();
     curriculum.knowledgeMap.mockRejectedValueOnce(new Error('map down'));
     agent.listMemory.mockRejectedValueOnce(new Error('memory down'));
+    world.getWorld.mockRejectedValueOnce(new Error('world down'));
 
     const o = await svc.assembleOverview('u1', 'math');
     expect(o.world.subject).toBeNull();
     expect(o.world.areas).toEqual([]);
     expect(o.state.skills).toEqual([]);
     expect(o.memories).toEqual([]);
+    expect(o.humanWorld.scenes).toEqual([]);
     expect(o.profile.name).toBe('小智'); // 身份仍在
+  });
+
+  it('assembleOverview：新增 humanWorld，既有学科 world 语义不变', async () => {
+    const { svc } = makeService();
+    const o = await svc.assembleOverview('u1', 'math');
+
+    expect(o.world.subject).toBe('math');
+    expect(o.world.areas).toHaveLength(3);
+    expect(o.world.scenes).toHaveLength(1);
+    expect(o.world.scenes[0]).toMatchObject({ code: 'dining', name: '餐饮' });
+    expect(o.humanWorld.scenes).toEqual([
+      {
+        code: 'dining',
+        name: '餐饮',
+        status: 'active',
+        intents: [],
+        modules: [{ moduleCode: 'food', requiresOptIn: false, sortOrder: 10 }],
+      },
+    ]);
   });
 
   it('listEvents：行 → 驼峰映射 + 限幅', async () => {

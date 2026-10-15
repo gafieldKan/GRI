@@ -1,0 +1,174 @@
+# ---------------------------------------------------------------------------
+# 社会组织本体（organization）
+#
+# 人本论的社会层：组织是与「人本体」同级的独立本体，可实例化；组织类型是
+# 运营后台维护的独立本体。组织树（parent）仅是组织实例的关系属性，不另立
+# 「组织孪生」对象。W1 只用独立表映射既有 tenant 数据，不修改遗留表结构。
+# ---------------------------------------------------------------------------
+schemaVersion: 0.5.0
+name: organization
+description: 社会组织本体 —— OrganizationType / Organization / OrgMember
+
+objects:
+  # 运营后台维护的组织类型字典（家庭/学校/单位/社会团体…）。
+  - name: OrganizationType
+    table: ontology.organization_type
+    description: 组织类型（独立本体，运营后台维护）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 稳定类型码（family/school/company/social-group/department/community/other）
+      - name: name
+        type: string
+        required: true
+        description: 展示名称
+      - name: description
+        type: text
+        description: 类型说明
+      - name: sortOrder
+        type: integer
+        required: true
+        description: 运营后台展示顺序
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    indexes:
+      - columns: [sortOrder]
+        name: idx_organization_type_sort
+
+  # 组织实例。
+  - name: Organization
+    table: ontology.organization
+    description: 组织实例（家庭/学校/单位/社会团体/部门/社区/其他）
+    fields:
+      - name: name
+        type: string
+        required: true
+        description: 组织名称
+      - name: typeCode
+        type: string
+        required: true
+        description: 组织类型码（语义引用 OrganizationType.code）
+      - name: code
+        type: string
+        unique: true
+        description: 组织业务编码（可空；legacy 空串回填时归一为 NULL）
+      - name: logoUrl
+        type: string
+        description: 组织标识
+      - name: description
+        type: text
+        description: 组织简介
+      - name: status
+        type: string
+        required: true
+        default: active
+        description: 状态（active/inactive/archived）
+      - name: parentId
+        type: uuid
+        description: 父组织（组织树关系属性）
+      - name: meta
+        type: json
+        dbDefault: "'{}'::jsonb"
+        description: 扩展元数据
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    links:
+      - name: parentOrganization
+        source: Organization
+        target: Organization
+        cardinality: many
+        foreignKey: parentId
+        onDelete: set null
+        description: 组织树的 child → parent 自引用（关系属性，不是组织孪生本体）
+    indexes:
+      - columns: [typeCode]
+        name: idx_organization_type_code
+      - columns: [status]
+        name: idx_organization_status
+
+  # 人-组织多对多关联。Person 只声明锚点，不生成表（身份真源 public.users）。
+  - name: Person
+    table: public.users
+    abstract: true
+    description: 人本体（身份真源 public.users；本文件只声明组织关联锚点，不建表）
+
+  - name: OrgMember
+    table: ontology.org_member
+    description: 人在组织中的成员关系（多归属）
+    fields:
+      - name: orgId
+        type: uuid
+        required: true
+        description: 组织 id
+      - name: userId
+        type: uuid
+        required: true
+        description: 人 id（≡ public.users.id）
+      - name: role
+        type: string
+        required: true
+        default: member
+        description: 简档角色（owner/admin/member；本期不扩展角色权限模型）
+      - name: tags
+        type: json
+        dbDefault: "'[]'::jsonb"
+        description: 组织内标签
+      - name: status
+        type: string
+        required: true
+        default: active
+        description: 关联状态（active/inactive）
+      - name: createdAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+      - name: updatedAt
+        type: datetime
+        required: true
+        dbDefault: CURRENT_TIMESTAMP
+    links:
+      - name: memberOrganization
+        source: OrgMember
+        target: Organization
+        cardinality: many
+        foreignKey: orgId
+        onDelete: cascade
+        required: true
+        description: 成员关系属于一个组织
+      - name: memberPerson
+        source: OrgMember
+        target: Person
+        cardinality: many
+        foreignKey: userId
+        onDelete: cascade
+        required: true
+        description: 成员关系属于一个人
+    uniqueConstraints:
+      - [orgId, userId]
+    indexes:
+      - columns: [userId, status]
+        name: idx_org_member_user_status
+      - columns: [orgId, status]
+        name: idx_org_member_org_status
+
+# 字符串 code 的跨本体语义关系不落 UUID 外键；表结构由 code 字段承载。
+links:
+  - name: organizationHasType
+    source: Organization
+    target: OrganizationType
+    cardinality: many
+    description: Organization.typeCode → OrganizationType.code

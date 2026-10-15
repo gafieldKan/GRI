@@ -14,6 +14,7 @@ import {
 import { Request } from 'express';
 import { OrganizationService } from './organization.service';
 import { Organization, OrganizationInvitation, OrganizationRole } from './organization.types';
+import { WorldService } from '../world/world.service';
 
 /** req.auth 载荷的精简断言（与 @gri/jwt-verifier VerifierAuth 对齐）。 */
 interface ReqAuth {
@@ -30,7 +31,10 @@ interface ReqAuth {
  */
 @Controller('organizations')
 export class OrganizationController {
-  constructor(private readonly organizationService: OrganizationService) {}
+  constructor(
+    private readonly organizationService: OrganizationService,
+    private readonly worldService: WorldService,
+  ) {}
 
   private auth(req: Request): ReqAuth {
     return req.auth as ReqAuth;
@@ -64,6 +68,12 @@ export class OrganizationController {
   @Get('my')
   my(@Req() req: Request) {
     return this.organizationService.getMemberships(this.externalId(req));
+  }
+
+  /** W1 人本世界组织视图；必须早于 ':id'，否则会被 UUID 参数路由吞掉。 */
+  @Get('mine')
+  mine(@Req() req: Request) {
+    return this.worldService.getOrganizationsMine(this.externalId(req));
   }
 
   /**

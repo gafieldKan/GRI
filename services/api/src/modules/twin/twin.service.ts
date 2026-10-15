@@ -4,6 +4,7 @@ import { IdentityService } from '../identity/identity.service';
 import { TuitionService } from '../tuition/tuition.service';
 import { CurriculumService } from '../curriculum/curriculum.service';
 import { AgentService } from '../agent/agent.service';
+import { WorldService } from '../world/world.service';
 import {
   TwinActionInput,
   TwinArchive,
@@ -32,6 +33,7 @@ const DEFAULT_WORLD: TwinWorld = {
   fields: [],
   areas: [],
   stats: { total: 0, k12: 0, frontier: 0, coverageRatio: 0, byGrade: {} },
+  scenes: [],
 };
 
 /** 人物画像可自助更新字段的展示名（用于经历差异的可读 label）。 */
@@ -85,6 +87,7 @@ export class TwinService {
     private readonly tuition: TuitionService,
     private readonly curriculum: CurriculumService,
     private readonly agent: AgentService,
+    private readonly worldService: WorldService,
   ) {}
 
   private gradeName(g: number | null | undefined): string | null {
@@ -146,9 +149,18 @@ export class TwinService {
         fields: m?.fields ?? [],
         areas: m?.areas ?? [],
         stats: m?.stats ?? DEFAULT_WORLD.stats,
+        scenes: [],
       };
     } catch (e) {
       this.logger.warn(`twin world unavailable for subject=${subject}: ${(e as Error).message}`);
+    }
+
+    let humanWorld: { scenes: unknown[] } = { scenes: [] };
+    try {
+      const human = await this.worldService.getWorld();
+      humanWorld = { scenes: human?.scenes ?? [] };
+    } catch (e) {
+      this.logger.warn(`twin human world unavailable: ${(e as Error).message}`);
     }
 
     const events = await this.listEvents(entityId, 20);
@@ -167,7 +179,8 @@ export class TwinService {
     return {
       profile,
       state,
-      world,
+      world: { ...world, scenes: humanWorld.scenes },
+      humanWorld,
       events,
       memories,
       generatedAt: new Date().toISOString(),
