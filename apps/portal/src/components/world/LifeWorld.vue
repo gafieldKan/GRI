@@ -24,7 +24,12 @@
             :aria-label="ariaLabel"
           >
             <!-- 地形 → 各场景结构 → 我的位置（一组一条链路，顺序即层序） -->
-            <g v-for="group in groups" :key="group.key" :transform="group.transform">
+            <g
+              v-for="group in groups"
+              :key="group.key"
+              :transform="group.transform"
+              :data-person="group.key === 'person' ? 'me' : undefined"
+            >
               <template v-for="(p, i) in group.prims" :key="i">
                 <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
                 <path
@@ -118,7 +123,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { MAP, TERRAIN, buildWorldScenes, personMarker, scenePoint, HOME_SCENE } from '@/utils/world-art'
+import { MAP, TERRAIN, buildWorldScenes, personMarker, scenePoint, HOME_SCENE } from '@world-art'
 
 const props = defineProps({
   /** W1 `GET /api/world` 的场景列表（唯一真源，不二次加工） */
@@ -424,7 +429,7 @@ function pick(scene) {
 }
 
 /* ── 场景热区（透明可点；悬停一道柔光）──
-   几何类的颜色映射见 src/styles/world.css（全局，多组件共用同一套世界色）。 */
+   几何类的颜色映射见 styles/world.css（共享单份，人本世界与模块世界共用同一套世界色）。 */
 .lw-hot {
   fill: var(--world-hot);
   cursor: pointer;

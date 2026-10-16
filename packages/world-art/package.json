@@ -1,0 +1,25 @@
+{
+  "name": "@gri/world-art",
+  "version": "0.1.0",
+  "description": "GRI 世界语言共享件 —— 人本世界与各模块内容世界共用同一套 SVG 画法原语（纯几何、零色值）+ 世界外壳（顶栏 / 过关式过场）",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./art.js": "./src/art.js",
+    "./WorldShell.vue": "./src/WorldShell.vue",
+    "./WorldTransition.vue": "./src/WorldTransition.vue"
+  },
+  "keywords": [
+    "gri",
+    "world",
+    "svg",
+    "isometric",
+    "uniapp"
+  ],
+  "license": "MIT",
+  "dependencies": {},
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  }
+}

@@ -52,7 +52,7 @@
     {
       "path": "pages/twin/world",
       "style": {
-        "navigationBarTitleText": "虚拟世界",
+        "navigationBarTitleText": "学习世界",
         "enablePullDownRefresh": false
       }
     },

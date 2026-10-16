@@ -72,7 +72,7 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import BrandMark from '@/components/ui/BrandMark.vue'
 import { myOrganizations } from '@/api'
-import { stableHash } from '@/utils/world-art'
+import { stableHash } from '@world-art'
 import { orgTypeLabel, orgRoleLabel } from '@/utils/persona'
 
 /**

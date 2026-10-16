@@ -1,18 +1,35 @@
 /**
- * 人本世界 · 矢量拟真图形真源（W2）
+ * 世界画法原语 · 矢量拟真图形真源（W2 立，W3 抽为共享件）
+ *
+ * 一份画法、两处复用（N2）：人本世界（apps/portal 生活全景/人物卡/组织徽记）与
+ * 模块内容世界（apps/web-ai-tutor 学习世界的人物标记）都从这里取图，不各写一套。
+ * 消费方式：vite 别名 `@world-art`（两个前端的 vite.config.js 各配一次，指向同一路径）。
  *
  * 口径（N2/N4/N7）：
- *  - 只产出**几何**（点/路径/圆），颜色一律以类名表达，由组件样式表映射到
- *    `--world-*` 令牌；本文件不含任何色值（零裸色在几何层即成立）。
+ *  - 只产出**几何**（点/路径/圆），颜色一律以类名表达，由样式表
+ *    （styles/world.css，全局单份）映射到 `--world-*` 令牌；本文件不含任何色值
+ *    （零裸色在几何层即成立）。
  *  - 场景位置只由 W1 `GET /api/world` 的 `posX/posY` 决定，前端不另造坐标真源。
  *  - 等距（isometric）受光：每个体块三面（顶面受光 / 左面半侧光 / 右面背光），
  *    地面三层厚土，植被四阶，软阴影落地——「拟真插画」而非卡通扁平。
  *
  * 约定：primitive = { k, c, s, ...coords }
  *   k: poly | path | circle | ellipse | rect | line
- *   c: 填充类名（见 LifeWorld.vue 的 .w-* 样式）
+ *   c: 填充类名（见 styles/world.css 的 .w-* 样式，世界语言的色彩映射单份）
  *   s: 描边类名（可选）
  *   o: 不透明度（可选，非色值）
+ *   w: 描边宽度（存在即描边）
+ *
+ * 渲染链（**规范的唯一一份**就在这里；消费页面照抄这条链）：
+ *   SVG 命名空间在编译期绑定——原语必须与 <svg> 同处一个模板，跨组件边界会丢
+ *   命名空间（子组件里的裸 <polygon> 会变成 HTML 元素而画不出来）。故「画法」唯一
+ *   （本文件），「渲染链」是 12 行命名空间胶水，两个前端各抄一遍：
+ *     <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+ *     <path v-else-if="p.k === 'path'" :class="p.c" :d="p.d" :opacity="p.o"
+ *           :stroke-width="p.w" :stroke-dasharray="p.dash" />
+ *     <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+ *     <ellipse v-else-if="p.k === 'ellipse'" :class="p.c" :cx="p.cx" :cy="p.cy" :rx="p.rx" :ry="p.ry" :opacity="p.o" />
+ *     <rect v-else :class="p.c" :x="p.x" :y="p.y" :width="p.w2" :height="p.h" :opacity="p.o" />
  */
 
 /** 画布（viewBox）尺寸；场景坐标按 posX/posY 百分比映射进内圈安全区。 */

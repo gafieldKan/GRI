@@ -70,7 +70,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { buildPortrait } from '@/utils/world-art'
+import { buildPortrait } from '@world-art'
 import { roleLabel as toRoleLabel, relativeTime } from '@/utils/persona'
 
 const props = defineProps({

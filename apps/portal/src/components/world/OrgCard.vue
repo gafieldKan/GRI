@@ -34,7 +34,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { stableHash } from '@/utils/world-art'
+import { stableHash } from '@world-art'
 import { orgTypeLabel, orgRoleLabel } from '@/utils/persona'
 
 const props = defineProps({

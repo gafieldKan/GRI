@@ -411,6 +411,14 @@ export async function getClassDiagnosisQuestion(questionId) {
   try { return await api.get('/api/agent/admin/class-diagnosis/question', { params: { questionId } }) } catch (e) { return toError(e) }
 }
 
+// ===== 人物激活上下文（W1 `GET /api/context/me`，只读；模块内容世界复用人本世界的身份真源）=====
+// 返回 {version, profile{id,username,name,email,role,avatarUrl}, orgs[], permissions, twin}；
+// 学习世界取 profile 作为「世界里的我」的外观真源（与门户人本世界同一人、同一外观）。
+// 只在未取到时返回 null（调用方退化为本地登录态），绝不抛错阻断页面。
+export async function getActivationContext() {
+  try { return await api.get('/api/context/me') } catch (e) { return null }
+}
+
 // ===== 学生数字孪生（/api/twin/*，人本论：人本体的运行时）=====
 // 孪生 = 身份+状态+世界+经历+记忆，读时装配既成真源；个人数据，强制鉴权、按 users.id 隔离。
 export async function getTwinOverview(subject) {

@@ -1,9 +1,10 @@
-/* ── 人本世界 · 几何类 → 令牌映射（W2）────────────────────────────────────
+/* ── 世界语言 · 几何类 → 令牌映射（W2 立，W3 抽为共享）───────────────────────
  *
  * 为什么是全局样式而不是组件 scoped：
- *   世界图形由多个组件分别绘制（LifeWorld 生活全景、PersonaCard 人物肖像、
- *   组织孪生占位页的地台），但共用同一套 `w-*` 几何类名；把映射收在一处，
- *   既避免三份重复，也保证「同一个世界只有一套颜色」。
+ *   世界图形由多处分别绘制（人本世界的生活全景 / 人物肖像 / 组织徽记 / 过场之门，
+ *   模块内容世界的学科山），但共用同一套 `w-*` 几何类名；把映射收在一处，
+ *   既避免多份重复，也保证「同一个世界只有一套颜色」——门户与各模块世界观感一致（N1）。
+ *   本文件被 apps/portal 与 apps/web-ai-tutor 各引一次（同一份，非拷贝；N2）。
  *
  * 口径（零裸色 / N7）：
  *   本文件**只允许** `var(--world-*)` 取值，不得出现 hex / rgb / 具名色。
@@ -12,6 +13,7 @@
  * 约定：
  *   几何 primitive 带 stroke-width 的走「描边类」（显式 fill: none）；
  *   其余走「填充类」。二者不共用类名，避免一笔既是面又是线。
+ *   `w-gg-*` 为 SVG 渐变断点（stop-color 是 CSS 属性，可以吃 var()）。
  * ─────────────────────────────────────────────────────────────────────── */
 
 /* —— 天光 / 大气 / 远山 —— */
@@ -142,6 +144,50 @@
 .w-ring-mastered { fill: none; stroke: var(--world-ring-mastered); stroke-linecap: round; }
 .w-ring-learning { fill: none; stroke: var(--world-ring-learning); stroke-linecap: round; }
 .w-ring-weak { fill: none; stroke: var(--world-ring-weak); stroke-linecap: round; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⛰ 模块内容世界（W3）：学科山（登峰）—— 与人本世界共用天光/植被/云/鸟/落影，
+     只补「山体 / 雪冠 / 台地 / 登山路 / 岩石 / 版图点阵」这一层新语义。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* —— 版图点阵（天光上的一层织物感）—— */
+.w-grid-dot { fill: var(--world-grid-dot); }
+
+/* —— 山体（受光面 / 背光面 / 等高线）与雪冠 —— */
+.w-hill-body { fill: var(--world-hill-body); }
+.w-hill-body-deep { fill: var(--world-hill-body-deep); }
+.w-hill-line { fill: none; stroke: var(--world-hill-line); }
+.w-snow { fill: var(--world-snow); }
+
+/* —— 分层台地（已翻越 / 当前 / 未至）—— */
+.w-terrace { stroke: var(--world-terrace-line); }
+.w-terrace-passed { fill: var(--world-terrace-passed); }
+.w-terrace-current { fill: var(--world-terrace-current); }
+.w-terrace-ahead { fill: var(--world-terrace-ahead); }
+
+/* —— 登山路（路基 + 流动虚线）—— */
+.w-trail { fill: none; stroke: var(--world-trail); stroke-linecap: round; stroke-linejoin: round; }
+.w-trail-dash { fill: none; stroke: var(--world-trail-dash); stroke-linecap: round; }
+.w-climb { fill: none; stroke: var(--world-marker); stroke-linecap: round; stroke-linejoin: round; }
+
+/* —— 岩石 —— */
+.w-rock { fill: var(--world-rock); }
+.w-rock-light { fill: var(--world-rock-light); }
+
+/* —— 地图注脚（SVG 文本）与热点内的镂空笔（用世界墨色，不用白）—— */
+.w-map-note { fill: var(--world-node-sub); }
+.w-glyph-cut { fill: var(--world-node-on-text); }
+
+/* —— SVG 渐变断点（stop-color 是 CSS 属性，可以取令牌）—— */
+.w-gg-sky-top { stop-color: var(--world-sky-top); }
+.w-gg-sky-mid { stop-color: var(--world-sky-mid); }
+.w-gg-sky-low { stop-color: var(--world-sky-low); }
+.w-gg-sky-haze { stop-color: var(--world-haze); }
+.w-gg-sun { stop-color: var(--world-sun-glow); }
+.w-gg-peak { stop-color: var(--world-cloud); }
+.w-gg-climb { stop-color: var(--world-marker); }
+.w-gg-hill { stop-color: var(--world-hill-body); }
+.w-gg-hill-deep { stop-color: var(--world-hill-body-deep); }
 
 @keyframes w-ring {
   0%,

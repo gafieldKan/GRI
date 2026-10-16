@@ -207,7 +207,7 @@ import PersonaCard from '@/components/world/PersonaCard.vue'
 import LifeWorld from '@/components/world/LifeWorld.vue'
 import OrgCard from '@/components/world/OrgCard.vue'
 import IntentSheet from '@/components/world/IntentSheet.vue'
-import WorldTransition from '@/components/world/WorldTransition.vue'
+import WorldTransition from '@world-art/WorldTransition.vue'
 import {
   activationContext,
   disableModule,
@@ -219,7 +219,7 @@ import {
   worldScenes
 } from '@/api'
 import { useAuthStore } from '@gri/auth-client'
-import { HOME_SCENE } from '@/utils/world-art'
+import { HOME_SCENE } from '@world-art'
 import { roleLabel as toRoleLabel } from '@/utils/persona'
 
 const auth = useAuthStore()
@@ -228,6 +228,20 @@ auth.restore()
 /** 世界只收「生活/经营」类模块；运营与工具类留在世界之外的运营后台入口。 */
 const WORLD_CATEGORIES = ['business']
 const CONSOLE_CATEGORIES = ['admin', 'tool']
+
+/**
+ * 「走进模块」= 走进**该模块的世界**（W3 · N3/N5）。
+ * 注册表给的 `entry_url` 是应用根（后端契约，不动）；模块世界的 app 内路由属于前端约定，
+ * 只在这里补一段 hash 路由，并带 `from=world` 让模块侧承接开场过场（过关式不中断）。
+ */
+const MODULE_WORLD_ROUTES = { tutor: '/pages/twin/world' }
+
+function moduleEntry(module) {
+  const base = module?.entryUrl || ''
+  if (!base || base.startsWith('/pages/')) return base
+  const world = MODULE_WORLD_ROUTES[module.code]
+  return world ? `${base}#${world}?from=world` : base
+}
 
 const context = ref(null)
 const overview = ref(null)
@@ -441,7 +455,7 @@ function runTransition() {
   transition.open = false
   if (!module?.entryUrl) return
 
-  const entry = module.entryUrl
+  const entry = moduleEntry(module)
   // 让过场先卸下（H5 下 navigateTo 会把旧页面留在下层，fixed 幕布会挡住新页面）
   setTimeout(() => {
     if (entry.startsWith('/pages/')) {

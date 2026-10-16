@@ -1,398 +1,455 @@
 <template>
-  <view class="twin-page">
-    <view class="page-head">
-      <view class="ph-main">
-        <text class="ph-title">虚拟世界 · 登峰</text>
-        <text class="ph-sub">每门学科都是一座山——每个知识域是一个营地；点一个营地，看你从山脚一路攀到它。</text>
+  <!--
+    学习世界（W3 · N4）：把「虚拟世界 · 登峰」套入统一世界外壳 + 统一世界令牌。
+    学科登顶的功能与交互一律保留（登峰地图渲染 / 营地选中 / 进度与登顶态 / 学科切换），
+    本卡不重做登顶 UX（那是 W4）——只换世界语言：同 --world-* 令牌、同几何类、同一道过关之门。
+  -->
+  <WorldShell
+    module-code="tutor"
+    kicker="学习世界"
+    title="学习世界 · 登峰"
+    subtitle="每门学科都是一座山——每个知识域是一个营地；点一个营地，看你从山脚一路攀到它。"
+    app-home-url="/pages/index/index"
+    app-home-label="回智学慧眼"
+    :entering="entering"
+    entry-from="人本世界"
+    @entered="entering = false"
+  >
+    <!-- 世界顶栏右侧：当前所在 + 学科切换（模块自己的动作，留在世界顶栏里） -->
+    <template #actions>
+      <text class="tag green" data-here>
+        <svg class="twin-ico sm"><use href="#i-pin" /></svg>当前：{{ scene ? scene.name : '未踏入' }}
+      </text>
+      <button class="tbtn" data-subject-toggle @click="showSubjectBar = !showSubjectBar">
+        <svg class="twin-ico sm"><use href="#i-world" /></svg>切换学科
+      </button>
+    </template>
+
+    <view class="twin-page">
+      <!-- 学科切换条 -->
+      <view class="subject-bar" v-if="showSubjectBar" data-subject-bar>
+        <button
+          v-for="s in knowledgeStore.subjectList"
+          :key="s.id"
+          class="s-tab"
+          :class="{ active: isCurrentSubject(s) }"
+          :data-subject="s.id"
+          :data-subject-active="isCurrentSubject(s) ? 'yes' : undefined"
+          @click="switchSubject(s.id)"
+        >{{ s.icon }} {{ s.name }}</button>
       </view>
-      <view class="ph-actions">
-        <text class="tag green"><svg class="twin-ico sm"><use href="#i-pin" /></svg>当前：{{ scene ? scene.name : '未踏入' }}</text>
-        <button class="tbtn" @click="showSubjectBar = !showSubjectBar"><svg class="twin-ico sm"><use href="#i-world" /></svg>切换学科</button>
-      </view>
-    </view>
 
-    <!-- 学科切换条 -->
-    <view class="subject-bar" v-if="showSubjectBar">
-      <button
-        v-for="s in knowledgeStore.subjectList"
-        :key="s.id"
-        class="s-tab"
-        :class="{ active: knowledgeStore.currentSubject === s.id }"
-        @click="switchSubject(s.id)"
-      >{{ s.icon }} {{ s.name }}</button>
-    </view>
+      <LoadingSkeleton v-if="knowledgeStore.loading" />
 
-    <LoadingSkeleton v-if="knowledgeStore.loading" />
+      <EmptyState
+        v-else-if="!stats.total"
+        icon="🏔"
+        title="该学科版图尚未就绪"
+        description="版图数据由教研侧审核后灌库——换一门学科看看，或稍后再来"
+      />
 
-    <EmptyState
-      v-else-if="!stats.total"
-      icon="🏔"
-      title="该学科版图尚未就绪"
-      description="版图数据由教研侧审核后灌库——换一门学科看看，或稍后再来"
-    />
-
-    <!-- 世界：地图 + 侧栏 -->
-    <view v-else class="world-layout">
-      <view class="col-main">
-        <!-- 世界状态 -->
-        <view class="world-status">
-          <view class="ws-cell">
-            <text class="ws-label">掌握度</text>
-            <text class="ws-value num">{{ masteryAvg }}<text class="ws-unit"> /100</text></text>
-            <view class="ws-bar"><view class="ws-fill" :style="{ width: Math.min(100, masteryAvg) + '%' }" /></view>
+      <!-- 世界：地图 + 侧栏 -->
+      <view v-else class="world-layout">
+        <view class="col-main">
+          <!-- 世界状态 -->
+          <view class="world-status">
+            <view class="ws-cell" data-status="mastery">
+              <text class="ws-label">掌握度</text>
+              <text class="ws-value num" data-mastery>{{ masteryAvg }}<text class="ws-unit"> /100</text></text>
+              <view class="ws-bar"><view class="ws-fill" :style="{ width: Math.min(100, masteryAvg) + '%' }" /></view>
+            </view>
+            <view class="ws-cell" data-status="level">
+              <text class="ws-label">经历等级</text>
+              <text class="ws-value num" data-level>LV.{{ level }}<text class="ws-unit"> · {{ xp }} XP</text></text>
+              <view class="ws-bar"><view class="ws-fill amber" :style="{ width: (xp % 1000) / 10 + '%' }" /></view>
+            </view>
+            <view class="ws-cell" data-status="ascent">
+              <text class="ws-label">已登顶营地</text>
+              <text class="ws-value num" data-ascent>{{ masteredCount }}<text class="ws-unit"> / {{ k12Count }}</text></text>
+              <view class="ws-bar"><view class="ws-fill" :style="{ width: (k12Count ? (masteredCount / k12Count) * 100 : 0) + '%' }" /></view>
+            </view>
           </view>
-          <view class="ws-cell">
-            <text class="ws-label">经历等级</text>
-            <text class="ws-value num">LV.{{ level }}<text class="ws-unit"> · {{ xp }} XP</text></text>
-            <view class="ws-bar"><view class="ws-fill amber" :style="{ width: (xp % 1000) / 10 + '%' }" /></view>
-          </view>
-          <view class="ws-cell">
-            <text class="ws-label">已登顶营地</text>
-            <text class="ws-value num">{{ masteredCount }}<text class="ws-unit"> / {{ k12Count }}</text></text>
-            <view class="ws-bar"><view class="ws-fill" :style="{ width: (k12Count ? (masteredCount / k12Count) * 100 : 0) + '%' }" /></view>
-          </view>
-        </view>
 
-        <!-- 登峰地图 -->
-        <view class="map-panel">
-          <view class="map-scene">
-            <svg
-              class="map-svg"
-              viewBox="0 0 700 1000"
-              preserveAspectRatio="xMidYMid meet"
-              role="img"
-              aria-label="学科登峰地图：展示各知识域营地的学习进度与登峰路线"
-            >
-              <defs>
-                <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
-                  <circle cx="2" cy="2" r="0.8" fill="#9fbf94" />
-                </pattern>
-                <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#ffe4b5" /> <!-- 墙光 -->
-                  <stop offset="0.3" stop-color="#ffdab9" /> <!-- 桃金 -->
-                  <stop offset="0.7" stop-color="#87ceeb" /> <!-- 天蓝 -->
-                  <stop offset="1" stop-color="#b0e0e6" /> <!-- 柔和青 -->
-                </linearGradient>
-                <radialGradient id="sunG" cx="0.5" cy="0.5">
-                  <stop offset="0" stop-color="#fff2cf" stop-opacity="0.95" />
-                  <stop offset="1" stop-color="#ffe9b8" stop-opacity="0" />
-                </radialGradient>
-                <radialGradient id="peakG" cx="0.5" cy="0.5">
-                  <stop offset="0" stop-color="#ffffff" stop-opacity="0.75" />
-                  <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
-                </radialGradient>
-                <linearGradient id="climbBeam" x1="0" y1="0" x2="0" y2="1">
-                  <stop stop-color="#247b68" stop-opacity="0" />
-                  <stop offset="1" stop-color="#247b68" stop-opacity="0.14" />
-                </linearGradient>
-                <linearGradient id="ridgeG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#e9f1df" />
-                  <stop offset="1" stop-color="#d4e2c5" />
-                </linearGradient>
-                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="2.4" result="b" />
-                  <feMerge>
-                    <feMergeNode in="b" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-
-              <!-- 天空 + 点阵 -->
-              <rect width="700" height="1000" fill="url(#sky)" />
-              <rect width="700" height="1000" fill="url(#grid)" opacity="0.13" />
-              <circle cx="596" cy="112" r="86" fill="url(#sunG)" />
-              <circle cx="596" cy="112" r="19" fill="#fdf3d6" />
-
-              <!-- 远峰群 -->
-              <path :d="leftPeakPath" fill="#dce8ce" opacity="0.7" />
-              <path :d="rightPeakPath" fill="#d3e1c5" opacity="0.62" />
-              <path d="M505 196 549 274 532 269 515 285 499 265 470 274Z" fill="#fbfdf6" opacity="0.9" />
-
-              <!-- 飞鸟 -->
-              <g class="birds" opacity="0.5">
-                <path d="M262 208q7-7 14 0M280 200q6-6 12 0" fill="none" stroke="#8fa883" stroke-width="1.6" stroke-linecap="round" />
-              </g>
-
-              <!-- 云带 -->
-              <g class="cloud cloud-a">
-                <path d="M170 154q14-26 44-18 16-24 46-10 26-6 30 20 22 4 16 24H176q-24 0-6-16Z" fill="#ffffff" opacity="0.92" />
-              </g>
-              <g class="cloud cloud-b">
-                <path d="M414 190q12-22 38-15 14-20 40-8 22-5 26 17 18 4 13 20H418q-20 0-4-14Z" fill="#ffffff" opacity="0.82" />
-              </g>
-              <g class="cloud cloud-c">
-                <path d="M300 118q10-18 32-12 12-16 33-6 18-4 21 14 15 3 11 16H303q-17 0-3-12Z" fill="#ffffff" opacity="0.7" />
-              </g>
-
-              <!-- 主峰（多段山脊 + 雪顶 + 等高线） -->
-              <path :d="ridgePath" fill="url(#ridgeG)" />
-              <path v-for="(c, i) in contours" :key="'c' + i" :d="c" fill="none" stroke="#c8d8b2" stroke-width="1" opacity="0.65" />
-              <path :d="snowCap" fill="#fbfdf8" opacity="0.92" />
-              <circle cx="350" cy="150" r="60" fill="url(#peakG)" />
-
-              <!-- 分层台地 -->
-              <polygon
-                v-for="t in terraces"
-                :key="t.g"
-                :points="t.points"
-                :class="['terrace', 'terrace-' + t.state]"
-              />
-
-              <!-- 植被与岩石 -->
-              <g
-                v-for="(f, i) in flora"
-                :key="'f' + i"
-                :class="{ flora: f.sway }"
-                :style="f.sway ? { '--td': (i * 0.37) + 's' } : {}"
-                :transform="`translate(${f.x} ${f.y}) scale(${f.s})`"
+          <!-- 登峰地图（世界画法：几何类 w-* → --world-* 令牌，与门户人本世界同一套色） -->
+          <view class="map-panel">
+            <view class="map-scene">
+              <svg
+                class="map-svg"
+                data-map
+                viewBox="0 0 700 1000"
+                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                aria-label="学科登峰地图：展示各知识域营地的学习进度与登峰路线"
               >
-                <!-- 针叶 -->
-                <template v-if="f.type === 'pine'">
-                  <ellipse cx="0" cy="6" rx="15" ry="6" fill="#6d8a5c" opacity="0.14" />
-                  <g :class="{ sway: f.sway }"><path d="M0-17v23" stroke="#9bb182" stroke-width="4" /><path d="M0-52 14-14H-14Z" fill="#9db67c" /><path d="M0-64 11-30H-11Z" fill="#b3c795" /><path d="M0-74 8-46H-8Z" fill="#8fab6c" /></g>
-                </template>
-                <!-- 阔叶 -->
-                <template v-else-if="f.type === 'oak'">
-                  <ellipse cx="0" cy="6" rx="17" ry="7" fill="#6d8a5c" opacity="0.14" />
-                  <g :class="{ sway: f.sway }"><path d="M0-8v-18" stroke="#8c7a5a" stroke-width="4" /><ellipse cx="-8" cy="-34" rx="15" ry="13" fill="#87a86a" /><ellipse cx="9" cy="-33" rx="14" ry="12" fill="#9bb87a" /><ellipse cx="0" cy="-44" rx="14" ry="12" fill="#a8c286" /></g>
-                </template>
-                <!-- 灌木 -->
-                <template v-else-if="f.type === 'shrub'">
-                  <ellipse cx="0" cy="4" rx="14" ry="5" fill="#6d8a5c" opacity="0.12" />
-                  <g :class="{ sway: f.sway }"><ellipse cx="-7" cy="-6" rx="11" ry="8" fill="#9db87a" /><ellipse cx="7" cy="-5" rx="10" ry="7" fill="#aec98c" /></g>
-                </template>
-                <!-- 岩石 -->
-                <template v-else>
-                  <polygon points="-12,4 -7,-9 4,-12 12,-3 8,5" fill="#b9b09c" />
-                  <polygon points="-7,-9 4,-12 2,-4 -5,-3" fill="#cbc3b0" />
-                </template>
-              </g>
+                <defs>
+                  <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+                    <circle cx="2" cy="2" r="0.8" class="w-grid-dot" />
+                  </pattern>
+                  <!-- 天光四阶：与人本世界的天光同一组令牌（同一天空） -->
+                  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" class="w-gg-sky-top" />
+                    <stop offset="0.3" class="w-gg-sky-mid" />
+                    <stop offset="0.7" class="w-gg-sky-low" />
+                    <stop offset="1" class="w-gg-sky-haze" />
+                  </linearGradient>
+                  <radialGradient id="sunG" cx="0.5" cy="0.5">
+                    <stop offset="0" class="w-gg-sun" stop-opacity="0.95" />
+                    <stop offset="1" class="w-gg-sun" stop-opacity="0" />
+                  </radialGradient>
+                  <radialGradient id="peakG" cx="0.5" cy="0.5">
+                    <stop offset="0" class="w-gg-peak" stop-opacity="0.75" />
+                    <stop offset="1" class="w-gg-peak" stop-opacity="0" />
+                  </radialGradient>
+                  <linearGradient id="climbBeam" x1="0" y1="0" x2="0" y2="1">
+                    <stop class="w-gg-climb" stop-opacity="0" />
+                    <stop offset="1" class="w-gg-climb" stop-opacity="0.14" />
+                  </linearGradient>
+                  <linearGradient id="ridgeG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" class="w-gg-hill" />
+                    <stop offset="1" class="w-gg-hill-deep" />
+                  </linearGradient>
+                  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="2.4" result="b" />
+                    <feMerge>
+                      <feMergeNode in="b" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
 
-              <!-- 登山路：路基 + 流动导向虚线 -->
-              <polyline :points="trailPoints" fill="none" stroke="#e7ded0" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0.55" />
-              <polyline class="trail-dash" :points="trailPoints" fill="none" stroke="#a9c095" stroke-width="1.7" stroke-dasharray="3 7" stroke-linecap="round" opacity="0.85" />
+                <!-- 天空 + 点阵 -->
+                <rect width="700" height="1000" fill="url(#sky)" />
+                <rect width="700" height="1000" fill="url(#grid)" opacity="0.13" />
+                <circle cx="596" cy="112" r="86" fill="url(#sunG)" />
+                <circle cx="596" cy="112" r="19" class="w-sun-glow" />
 
-              <!-- 攀爬轨迹（点击营地后逐段生长） -->
-              <polyline :points="climbedPoints" fill="none" stroke="#247b68" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" opacity="0.9" />
+                <!-- 远峰群（大气透视：越远越冷越淡，与人本世界的远山同色） -->
+                <path :d="leftPeakPath" class="w-ridge-far" opacity="0.7" />
+                <path :d="rightPeakPath" class="w-ridge-near" opacity="0.62" />
+                <path d="M505 196 549 274 532 269 515 285 499 265 470 274Z" class="w-snow" opacity="0.9" />
 
-              <!-- 孪生人物（外层定位，内层浮动） -->
-              <g v-if="climber" :transform="`translate(${climber.x} ${climber.y})`">
-                <g class="climber-fig">
-                  <path d="M0 4 V-100" stroke="url(#climbBeam)" stroke-width="22" />
-                  <ellipse cx="0" cy="26" rx="26" ry="10" fill="#5b8b68" opacity="0.16" />
-                  <circle cx="0" cy="2" r="24" fill="none" stroke="#247b68" stroke-width="1.6" opacity="0.5" />
-                  <path d="M-6-19-5 0m11-19L5 0" stroke="#5f7168" stroke-width="5" />
-                  <path d="M-10-33-14-16m24-17 5 17" stroke="#c5d9b6" stroke-width="5" />
-                  <path d="M-8-34h16l2 18h-20Z" fill="#247b68" />
-                  <circle cx="0" cy="-44" r="8" fill="#d2aa88" />
-                  <path d="M-8-45q0-12 10-8 8 2 6 9" fill="#495443" />
-                  <path d="M0-66v-9" stroke="#54826a" stroke-width="1.4" />
-                  <circle cx="0" cy="-79" r="4" fill="#247b68" />
+                <!-- 飞鸟 -->
+                <g class="birds" opacity="0.5">
+                  <path d="M262 208q7-7 14 0M280 200q6-6 12 0" class="w-bird" stroke-width="1.6" />
                 </g>
-              </g>
 
-              <!-- 峰顶旗帜 -->
-              <g transform="translate(350 118)">
-                <path d="M0 0 V-40" stroke="#7c8f6f" stroke-width="2" />
-                <path class="flag-cloth" d="M0-40h22l-6 7 6 7H0Z" fill="#247b68" />
-              </g>
+                <!-- 云带 -->
+                <g class="cloud cloud-a">
+                  <path d="M170 154q14-26 44-18 16-24 46-10 26-6 30 20 22 4 16 24H176q-24 0-6-16Z" class="w-cloud" opacity="0.92" />
+                </g>
+                <g class="cloud cloud-b">
+                  <path d="M414 190q12-22 38-15 14-20 40-8 22-5 26 17 18 4 13 20H418q-20 0-4-14Z" class="w-cloud" opacity="0.82" />
+                </g>
+                <g class="cloud cloud-c">
+                  <path d="M300 118q10-18 32-12 12-16 33-6 18-4 21 14 15 3 11 16H303q-17 0-3-12Z" class="w-cloud" opacity="0.7" />
+                </g>
 
-              <text x="350" y="978" text-anchor="middle" font-size="11" fill="#8b9a80">
-                山脚 · {{ gradeShort(1) }}起步 · 峰顶 {{ gradeShort(12) }}
-              </text>
-            </svg>
+                <!-- 主峰（多段山脊 + 雪顶 + 等高线） -->
+                <path :d="ridgePath" fill="url(#ridgeG)" />
+                <path v-for="(c, i) in contours" :key="'c' + i" :d="c" class="w-hill-line" stroke-width="1" opacity="0.65" />
+                <path :d="snowCap" class="w-snow" opacity="0.92" />
+                <circle cx="350" cy="150" r="60" fill="url(#peakG)" />
 
-            <!-- 每个知识域一个可动热点 -->
-            <button
-              v-for="(n, i) in nodes"
-              ref="hnButtons"
-              :key="n.code"
-              class="hn"
-              :class="[`hn-${n.state}`, { selected: selected && selected.code === n.code, here: n.here, mastered: n.mastered }]"
-              :style="{ left: n.left + '%', top: n.top + '%', '--d': ((i % 9) * 0.35) + 's' }"
-              :aria-label="`知识域 ${n.name}，状态：${stateLabel(n.state)}`"
-              @click="pick(n)" @click.native="createRipple($event)"
-            >
-              <span class="hn-badge">
-                <span v-if="n.here" class="hn-ring" />
-                <svg v-if="n.mastered" class="hn-glyph" viewBox="0 0 24 24">
-                  <path d="M7 21V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                  <path d="M7 4h10l-3 4 3 4H7Z" fill="currentColor" />
-                </svg>
-                <svg v-else-if="n.state === 'current'" class="hn-glyph" viewBox="0 0 24 24">
-                  <path d="M12 3 3 20h18Z" fill="currentColor" />
-                  <path d="M12 9 8 20h8Z" fill="#fff" opacity="0.7" />
-                </svg>
-                <svg v-else class="hn-glyph" viewBox="0 0 24 24">
-                  <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2" />
-                  <path d="M12 12v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                </svg>
-              </span>
-              <text v-if="n.here || (selected && selected.code === n.code)" class="hn-label">{{ n.name }}</text>
-              <text v-else-if="isVeryNear(n)" class="hn-label hn-label-full">{{ n.name }}</text>
-              <text v-else-if="isNear(n)" class="hn-label hn-label-short">{{ n.name.slice(0, 2) }}</text>
-              <text v-else-if="isMedium(n)" class="hn-label hn-label-one">{{ n.name.slice(0, 1) }}</text>
-              <text v-else class="hn-label hn-label-dot">●</text>
-            </button>
-          </view>
-        </view>
-      </view>
+                <!-- 分层台地 -->
+                <polygon
+                  v-for="t in terraces"
+                  :key="t.g"
+                  :points="t.points"
+                  :class="['w-terrace', 'w-terrace-' + t.state]"
+                />
 
-      <!-- 侧栏 -->
-      <view class="col-side">
-        <view class="side-card">
-          <text class="side-title">图例</text>
-          <view class="legend-list">
-            <view class="lg-row"><view class="lg-dot here-dot" /><text>当前位置（脉冲环）</text></view>
-            <view class="lg-row"><view class="lg-dot won-dot" /><text>已登顶营地</text></view>
-            <view class="lg-row"><view class="lg-dot ahead-dot" /><text>未至营地</text></view>
-            <view class="lg-row"><view class="lg-route" /><text>攀爬轨迹（会生长）</text></view>
-          </view>
-          <text class="side-hint">点任意营地 → 看从山脚攀到它的路径</text>
-        </view>
+                <!-- 植被与岩石（与人本世界同一套植被四阶 / 落影 / 木色） -->
+                <g
+                  v-for="(f, i) in flora"
+                  :key="'f' + i"
+                  :class="{ flora: f.sway }"
+                  :style="f.sway ? { '--td': (i * 0.37) + 's' } : {}"
+                  :transform="`translate(${f.x} ${f.y}) scale(${f.s})`"
+                >
+                  <!-- 针叶 -->
+                  <template v-if="f.type === 'pine'">
+                    <ellipse cx="0" cy="6" rx="15" ry="6" class="w-shadow-soft" />
+                    <g :class="{ sway: f.sway }"><path d="M0-17v23" class="w-trunk" stroke-width="4" /><path d="M0-52 14-14H-14Z" class="w-leaf-3" /><path d="M0-64 11-30H-11Z" class="w-leaf-2" /><path d="M0-74 8-46H-8Z" class="w-leaf-4" /></g>
+                  </template>
+                  <!-- 阔叶 -->
+                  <template v-else-if="f.type === 'oak'">
+                    <ellipse cx="0" cy="6" rx="17" ry="7" class="w-shadow-soft" />
+                    <g :class="{ sway: f.sway }"><path d="M0-8v-18" class="w-trunk" stroke-width="4" /><ellipse cx="-8" cy="-34" rx="15" ry="13" class="w-leaf-3" /><ellipse cx="9" cy="-33" rx="14" ry="12" class="w-leaf-2" /><ellipse cx="0" cy="-44" rx="14" ry="12" class="w-leaf-1" /></g>
+                  </template>
+                  <!-- 灌木 -->
+                  <template v-else-if="f.type === 'shrub'">
+                    <ellipse cx="0" cy="4" rx="14" ry="5" class="w-shadow-soft" />
+                    <g :class="{ sway: f.sway }"><ellipse cx="-7" cy="-6" rx="11" ry="8" class="w-leaf-2" /><ellipse cx="7" cy="-5" rx="10" ry="7" class="w-leaf-1" /></g>
+                  </template>
+                  <!-- 岩石 -->
+                  <template v-else>
+                    <polygon points="-12,4 -7,-9 4,-12 12,-3 8,5" class="w-rock" />
+                    <polygon points="-7,-9 4,-12 2,-4 -5,-3" class="w-rock-light" />
+                  </template>
+                </g>
 
-        <view class="side-card" v-if="twinStore.recentEvents.length">
-          <view class="side-head">
-            <text class="side-title">世界里的最近经历</text>
-            <button class="tbtn ghost sm" @click="goMemory">全部 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
-          </view>
-          <view class="mini-events">
-            <view v-for="ev in twinStore.recentEvents.slice(0, 4)" :key="ev.id" class="mini-event">
-              <text class="me-icon"><svg class="twin-ico sm"><use href="#i-spark" /></svg></text>
-              <view class="me-text">
-                <text class="me-title">{{ ev.title }}</text>
-                <text class="me-sub">{{ ev.source || '系统' }}</text>
-              </view>
-              <text class="me-time">{{ relTime(ev.at) }}</text>
+                <!-- 登山路：路基 + 流动导向虚线 -->
+                <polyline :points="trailPoints" class="w-trail" stroke-width="9" opacity="0.55" />
+                <polyline class="w-trail-dash trail-dash" :points="trailPoints" stroke-width="1.7" stroke-dasharray="3 7" opacity="0.85" />
+
+                <!-- 攀爬轨迹（点击营地后逐段生长） -->
+                <polyline :points="climbedPoints" class="w-climb" stroke-width="3.4" filter="url(#glow)" opacity="0.9" />
+
+                <!-- 孪生人物（外层定位，内层浮动）：画法取共享原语 personMarker，
+                     与人本世界里的「我」是同一套画法与同一个人的外观 -->
+                <g v-if="climber" :transform="`translate(${climber.x} ${climber.y}) scale(1.15)`" data-climber>
+                  <path d="M0 4 V-100" stroke="url(#climbBeam)" stroke-width="22" />
+                  <g class="climber-fig">
+                    <template v-for="(p, i) in climberPrims" :key="'cp' + i">
+                      <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+                      <path
+                        v-else-if="p.k === 'path'"
+                        :class="p.c"
+                        :d="p.d"
+                        :opacity="p.o"
+                        :stroke-width="p.w"
+                        :stroke-dasharray="p.dash"
+                      />
+                      <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+                      <ellipse v-else :class="p.c" :cx="p.cx" :cy="p.cy" :rx="p.rx" :ry="p.ry" :opacity="p.o" />
+                    </template>
+                  </g>
+                </g>
+
+                <!-- 峰顶旗帜 -->
+                <g transform="translate(350 118)">
+                  <path d="M0 0 V-40" class="w-lamp-pole" stroke-width="2" />
+                  <path class="flag-cloth w-flag" d="M0-40h22l-6 7 6 7H0Z" />
+                </g>
+
+                <text x="350" y="978" text-anchor="middle" font-size="11" class="w-map-note">
+                  山脚 · {{ gradeShort(1) }}起步 · 峰顶 {{ gradeShort(12) }}
+                </text>
+              </svg>
+
+              <!-- 每个知识域一个可动热点 -->
+              <button
+                v-for="(n, i) in nodes"
+                ref="hnButtons"
+                :key="n.code"
+                class="hn"
+                :class="[`hn-${n.state}`, { selected: selected && selected.code === n.code, here: n.here, mastered: n.mastered }]"
+                :style="{ left: n.left + '%', top: n.top + '%', '--d': ((i % 9) * 0.35) + 's' }"
+                :data-camp="n.code"
+                :data-camp-state="n.state"
+                :data-camp-mastered="n.mastered ? 'yes' : 'no'"
+                :aria-label="`知识域 ${n.name}，状态：${stateLabel(n.state)}`"
+                @click="pick(n)" @click.native="createRipple($event)"
+              >
+                <span class="hn-badge">
+                  <span v-if="n.here" class="hn-ring" />
+                  <svg v-if="n.mastered" class="hn-glyph" viewBox="0 0 24 24">
+                    <path d="M7 21V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <path d="M7 4h10l-3 4 3 4H7Z" fill="currentColor" />
+                  </svg>
+                  <svg v-else-if="n.state === 'current'" class="hn-glyph" viewBox="0 0 24 24">
+                    <path d="M12 3 3 20h18Z" fill="currentColor" />
+                    <path d="M12 9 8 20h8Z" class="w-glyph-cut" opacity="0.7" />
+                  </svg>
+                  <svg v-else class="hn-glyph" viewBox="0 0 24 24">
+                    <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2" />
+                    <path d="M12 12v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <text v-if="n.here || (selected && selected.code === n.code)" class="hn-label">{{ n.name }}</text>
+                <text v-else-if="isVeryNear(n)" class="hn-label hn-label-full">{{ n.name }}</text>
+                <text v-else-if="isNear(n)" class="hn-label hn-label-short">{{ n.name.slice(0, 2) }}</text>
+                <text v-else-if="isMedium(n)" class="hn-label hn-label-one">{{ n.name.slice(0, 1) }}</text>
+                <text v-else class="hn-label hn-label-dot">●</text>
+              </button>
             </view>
           </view>
         </view>
 
-        <text class="world-notice">
-          地图为学科版图的示意——每个营地是一处知识域，沿登山路由山脚向峰顶排布；掌握度来自答题记录，为近似值。
-        </text>
+        <!-- 侧栏 -->
+        <view class="col-side">
+          <view class="side-card" data-legend>
+            <text class="side-title">图例</text>
+            <view class="legend-list">
+              <view class="lg-row"><view class="lg-dot here-dot" /><text>当前位置（脉冲环）</text></view>
+              <view class="lg-row"><view class="lg-dot won-dot" /><text>已登顶营地</text></view>
+              <view class="lg-row"><view class="lg-dot ahead-dot" /><text>未至营地</text></view>
+              <view class="lg-row"><view class="lg-route" /><text>攀爬轨迹（会生长）</text></view>
+            </view>
+            <text class="side-hint">点任意营地 → 看从山脚攀到它的路径</text>
+          </view>
+
+          <view class="side-card" v-if="twinStore.recentEvents.length" data-events>
+            <view class="side-head">
+              <text class="side-title">世界里的最近经历</text>
+              <button class="tbtn ghost sm" @click="goMemory">全部 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
+            </view>
+            <view class="mini-events">
+              <view v-for="ev in twinStore.recentEvents.slice(0, 4)" :key="ev.id" class="mini-event">
+                <text class="me-icon"><svg class="twin-ico sm"><use href="#i-spark" /></svg></text>
+                <view class="me-text">
+                  <text class="me-title">{{ ev.title }}</text>
+                  <text class="me-sub">{{ ev.source || '系统' }}</text>
+                </view>
+                <text class="me-time">{{ relTime(ev.at) }}</text>
+              </view>
+            </view>
+          </view>
+
+          <text class="world-notice">
+            地图为学科版图的示意——每个营地是一处知识域，沿登山路由山脚向峰顶排布；掌握度来自答题记录，为近似值。
+          </text>
+        </view>
+      </view>
+
+      <view class="safe-area" />
+
+      <!-- 详情面板 -->
+      <view class="detail-mask" v-if="selected" @click="selected = null">
+        <view class="detail-card" data-camp-detail @click.stop>
+          <!-- 峰外 -->
+          <template v-if="selected.code === '__frontier__'">
+            <view class="detail-head">
+              <text class="detail-title">峰外地带</text>
+              <text class="tag">峰外</text>
+              <text class="detail-close" @click="selected = null">✕</text>
+            </view>
+            <text class="detail-desc">越过 K12 峰顶之后的学科前沿——不是终点，而是更高的山脊。</text>
+            <view class="camp-list">
+              <view v-for="a in frontierAreas" :key="a.code" class="camp-chip" @click="openArea(a)">
+                <view class="camp-main">
+                  <text class="camp-name">{{ a.name }}</text>
+                  <view class="camp-bar" v-if="a.mastery != null"><view class="camp-fill" :style="{ width: Math.min(100, a.mastery) + '%' }" /></view>
+                </view>
+                <text class="camp-val" v-if="a.mastery != null">{{ Math.round(a.mastery) }}%</text>
+                <svg class="twin-ico sm"><use href="#i-arrow" /></svg>
+              </view>
+            </view>
+          </template>
+
+          <!-- 营地详情 -->
+          <template v-else-if="selected.code">
+            <view class="detail-head">
+              <text class="detail-title">{{ selected.name }}</text>
+              <text class="tag" :class="selected.scope === 'frontier' ? '' : 'green'">{{ selected.scope === 'frontier' ? '峰外' : '营地' }}</text>
+              <text class="detail-close" @click="selected = null">✕</text>
+            </view>
+
+            <!-- 主信息：掌握度 -->
+            <view class="hero-metric" v-if="selected.mastery != null">
+              <view class="hm-head">
+                <text class="hm-label">掌握度</text>
+                <text class="hm-val num">{{ Math.round(selected.mastery) }}<text class="hm-pct">%</text></text>
+              </view>
+              <view class="hm-bar"><view class="hm-fill" :style="{ width: Math.min(100, selected.mastery) + '%' }" /></view>
+              <text class="hm-note">{{ masteryWord(selected.mastery) }}（近似值）</text>
+            </view>
+
+            <text class="detail-desc" v-if="selected.description">{{ selected.description }}</text>
+
+            <view class="route">
+              <text class="route-label">航线（前置依赖）</text>
+              <view class="route-chain" v-if="routeSteps.length">
+                <text v-for="(r, i) in routeSteps" :key="i" class="route-node">
+                  <text v-if="i > 0" class="route-arrow">→ </text>{{ r }}
+                </text>
+                <text class="route-node current"><text class="route-arrow">→ </text>{{ selected.name }}</text>
+              </view>
+              <text class="route-none" v-else>起点营地 —— 无前置依赖，可直接挑战</text>
+            </view>
+
+            <!-- 次要信息 -->
+            <view class="detail-rows">
+              <view class="detail-row" v-if="selected.scope === 'k12'">
+                <text class="row-key">落位年级</text>
+                <text class="row-val">{{ gradeName(selected.gradeLevel) }}</text>
+              </view>
+              <view class="detail-row" v-else>
+                <text class="row-key">地带</text>
+                <text class="row-val">峰外 · K12 之后的学科前沿</text>
+              </view>
+              <view class="detail-row">
+                <text class="row-key">所属领域</text>
+                <text class="row-val">{{ fieldName(selected.fieldCode) }}</text>
+              </view>
+              <view class="detail-row" v-if="selected.kpCount > 0">
+                <text class="row-key">已入库知识点</text>
+                <text class="row-val">{{ selected.kpCount }} 个（可在知识图谱页展开）</text>
+              </view>
+            </view>
+
+            <view class="action-list">
+              <view class="action-item">
+                <text class="ai-title">🏋 练一练</text>
+                <text class="ai-desc">按该营地开一次练习，答题记录会写入你的经历。</text>
+                <button class="tbtn primary block" data-practice @click="practiceHere(selected.code)">开始练习 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
+              </view>
+              <view class="action-item">
+                <text class="ai-title">💬 请教 AI 教师</text>
+                <text class="ai-desc">就这个知识域向你的 AI 教师提问。</text>
+                <button class="tbtn soft block" data-ask-teacher @click="askTeacher()">去求教 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
+              </view>
+              <view class="action-item">
+                <text class="ai-title">🧠 知识图谱</text>
+                <text class="ai-desc">展开该领域的知识点与前置关系。</text>
+                <button class="tbtn block" data-graph @click="goGraph">展开图谱 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
+              </view>
+            </view>
+          </template>
+        </view>
       </view>
     </view>
-
-    <view class="safe-area" />
-
-    <!-- 详情面板 -->
-    <view class="detail-mask" v-if="selected" @click="selected = null">
-      <view class="detail-card" @click.stop>
-        <!-- 峰外 -->
-        <template v-if="selected.code === '__frontier__'">
-          <view class="detail-head">
-            <text class="detail-title">峰外地带</text>
-            <text class="tag">峰外</text>
-            <text class="detail-close" @click="selected = null">✕</text>
-          </view>
-          <text class="detail-desc">越过 K12 峰顶之后的学科前沿——不是终点，而是更高的山脊。</text>
-          <view class="camp-list">
-            <view v-for="a in frontierAreas" :key="a.code" class="camp-chip" @click="openArea(a)">
-              <view class="camp-main">
-                <text class="camp-name">{{ a.name }}</text>
-                <view class="camp-bar" v-if="a.mastery != null"><view class="camp-fill" :style="{ width: Math.min(100, a.mastery) + '%' }" /></view>
-              </view>
-              <text class="camp-val" v-if="a.mastery != null">{{ Math.round(a.mastery) }}%</text>
-              <svg class="twin-ico sm"><use href="#i-arrow" /></svg>
-            </view>
-          </view>
-        </template>
-
-        <!-- 营地详情 -->
-        <template v-else-if="selected.code">
-          <view class="detail-head">
-            <text class="detail-title">{{ selected.name }}</text>
-            <text class="tag" :class="selected.scope === 'frontier' ? '' : 'green'">{{ selected.scope === 'frontier' ? '峰外' : '营地' }}</text>
-            <text class="detail-close" @click="selected = null">✕</text>
-          </view>
-
-          <!-- 主信息：掌握度 -->
-          <view class="hero-metric" v-if="selected.mastery != null">
-            <view class="hm-head">
-              <text class="hm-label">掌握度</text>
-              <text class="hm-val num">{{ Math.round(selected.mastery) }}<text class="hm-pct">%</text></text>
-            </view>
-            <view class="hm-bar"><view class="hm-fill" :style="{ width: Math.min(100, selected.mastery) + '%' }" /></view>
-            <text class="hm-note">{{ masteryWord(selected.mastery) }}（近似值）</text>
-          </view>
-
-          <text class="detail-desc" v-if="selected.description">{{ selected.description }}</text>
-
-          <view class="route">
-            <text class="route-label">航线（前置依赖）</text>
-            <view class="route-chain" v-if="routeSteps.length">
-              <text v-for="(r, i) in routeSteps" :key="i" class="route-node">
-                <text v-if="i > 0" class="route-arrow">→ </text>{{ r }}
-              </text>
-              <text class="route-node current"><text class="route-arrow">→ </text>{{ selected.name }}</text>
-            </view>
-            <text class="route-none" v-else>起点营地 —— 无前置依赖，可直接挑战</text>
-          </view>
-
-          <!-- 次要信息 -->
-          <view class="detail-rows">
-            <view class="detail-row" v-if="selected.scope === 'k12'">
-              <text class="row-key">落位年级</text>
-              <text class="row-val">{{ gradeName(selected.gradeLevel) }}</text>
-            </view>
-            <view class="detail-row" v-else>
-              <text class="row-key">地带</text>
-              <text class="row-val">峰外 · K12 之后的学科前沿</text>
-            </view>
-            <view class="detail-row">
-              <text class="row-key">所属领域</text>
-              <text class="row-val">{{ fieldName(selected.fieldCode) }}</text>
-            </view>
-            <view class="detail-row" v-if="selected.kpCount > 0">
-              <text class="row-key">已入库知识点</text>
-              <text class="row-val">{{ selected.kpCount }} 个（可在知识图谱页展开）</text>
-            </view>
-          </view>
-
-          <view class="action-list">
-            <view class="action-item">
-              <text class="ai-title">🏋 练一练</text>
-              <text class="ai-desc">按该营地开一次练习，答题记录会写入你的经历。</text>
-              <button class="tbtn primary block" @click="practiceHere(selected.code)">开始练习 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
-            </view>
-            <view class="action-item">
-              <text class="ai-title">💬 请教 AI 教师</text>
-              <text class="ai-desc">就这个知识域向你的 AI 教师提问。</text>
-              <button class="tbtn soft block" @click="askTeacher()">去求教 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
-            </view>
-            <view class="action-item">
-              <text class="ai-title">🧠 知识图谱</text>
-              <text class="ai-desc">展开该领域的知识点与前置关系。</text>
-              <button class="tbtn block" @click="goGraph">展开图谱 <svg class="twin-ico sm"><use href="#i-arrow" /></svg></button>
-            </view>
-          </view>
-        </template>
-      </view>
-    </view>
-  </view>
+  </WorldShell>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useKnowledgeStore } from '@/store/knowledge'
 import { usePracticeStore } from '@/store/practice'
 import { useTwinStore } from '@/store/twin'
 import { useUserStore } from '@/store/user'
+import { useAuthStore } from '@gri/auth-client'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
+import { getActivationContext } from '@/api/index.js'
+// 世界语言共享件（W3 · N1/N2）：外壳（世界顶栏 + 过关式过场）与人物画法都从同一份取，
+// 与门户人本世界不是「两套像的皮肤」，而是同一套世界语言。
+import WorldShell from '@world-art/WorldShell.vue'
+import { personMarker } from '@world-art'
 
 const knowledgeStore = useKnowledgeStore()
 const practiceStore = usePracticeStore()
 const twinStore = useTwinStore()
 const userStore = useUserStore()
+const auth = useAuthStore()
+auth.restore()
+
 const showSubjectBar = ref(true)
 const selected = ref(null)
 const climbFrac = ref(0)
 const focusedNodeIndex = ref(-1)
 const hnButtons = ref([])
+
+/** 从人本世界走来（门户「学习」意向带 `?from=world`）→ 承接开场过场，过关式不中断（N5）。 */
+const entering = ref(false)
+onLoad((options) => {
+  entering.value = options && options.from === 'world'
+})
+
+/** 世界里的「我」：取人本世界同一身份真源（W1 `GET /api/context/me`），失败退化为登录态本身。 */
+const activation = ref(null)
+const selfProfile = computed(() => {
+  const p = activation.value && activation.value.profile
+  if (p) return p
+  const u = auth.user || {}
+  return { id: u.externalId || u.id || '', name: u.name || u.username || userStore.name, role: u.role || 'student' }
+})
+/** 孪生人物的几何：共享原语 personMarker（与人本世界地图上的人物标记同一份画法）。 */
+const climberPrims = computed(() => personMarker(selfProfile.value))
+async function loadSelf() {
+  activation.value = await getActivationContext()
+}
 
 const GRADE_NAMES = {
   1: '一年级', 2: '二年级', 3: '三年级', 4: '四年级', 5: '五年级', 6: '六年级',
@@ -406,6 +463,15 @@ const gradeName = (g) => GRADE_NAMES[g] ?? `G${g}`
 const gradeShort = (g) => GRADE_SHORT[g] ?? `G${g}`
 function stateLabel(s) {
   return s === 'current' ? '当前学习' : s === 'passed' ? '已翻越' : '待抵达'
+}
+
+/**
+ * 学科条的当前项：学科码有两制——课程注册表给的是 `MATH`，页面默认态是 `math`，
+ * 后端两者都收（实测知识版图接口两制同源）。故按码归一比较：
+ * 原严格全等（`currentSubject === s.id`）在两制并存下永远不亮，学科条看不出「现在在哪一门」。
+ */
+function isCurrentSubject(s) {
+  return String(s?.id || '').toLowerCase() === String(knowledgeStore.currentSubject || '').toLowerCase()
 }
 
 function handleKeyDown(event, index, node) {
@@ -829,6 +895,7 @@ watch(focusedNodeIndex, (idx) => {
 })
 onMounted(async () => {
   await knowledgeStore.loadCatalog()
+  await loadSelf()
   await loadMap()
   if (!twinStore.loaded) twinStore.loadOverview(knowledgeStore.currentSubject || 'math')
   setTimeout(() => animateClimb(currentF.value), 260)
@@ -862,30 +929,17 @@ function isMedium(n) {
 </script>
 
 <style scoped>
+/* 世界面（页面内层）：颜色一律取世界令牌 —— 与人本世界同一套色（N1） */
 .twin-page {
-  min-height: 100vh;
-  background: var(--twin-bg, #f3f5f2);
-  color: var(--twin-ink, #203e3a);
-  padding: 14px 0 40px;
+  color: var(--color-text-primary);
+  padding-bottom: 40px;
   box-sizing: border-box;
 }
 
 .num { font-variant-numeric: tabular-nums; }
 
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin: 0 14px 16px;
-}
-.ph-title { display: block; font-size: 24px; font-weight: 650; letter-spacing: -0.6px; }
-.ph-sub { display: block; font-size: 12px; color: var(--twin-sub, #74857f); margin-top: 6px; max-width: 560px; }
-.ph-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
 /* 布局：桌面双栏，移动单栏 */
-.world-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin: 0 14px; align-items: start; }
+.world-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (min-width: 900px) {
   .world-layout { grid-template-columns: minmax(0, 1fr) 296px; }
 }
@@ -893,70 +947,70 @@ function isMedium(n) {
 .col-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
 .side-card {
-  background: var(--twin-paper, #fff);
-  border: 1px solid var(--twin-line, #e2e9e3);
+  background: var(--world-panel);
+  border: 1px solid var(--world-node-border);
   border-radius: 14px;
   padding: 16px;
-  box-shadow: var(--twin-shadow, 0 6px 24px rgba(41, 73, 59, 0.06));
+  box-shadow: var(--shadow-card);
 }
 .side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-.side-title { display: block; font-size: 13px; font-weight: 650; color: var(--twin-ink, #203e3a); }
+.side-title { display: block; font-size: 13px; font-weight: 650; color: var(--world-node-text); }
 .side-head .side-title { margin: 0; }
-.side-hint { display: block; font-size: 10px; color: #8b9a80; margin-top: 10px; line-height: 1.7; }
+.side-hint { display: block; font-size: 10px; color: var(--world-node-sub); margin-top: 10px; line-height: 1.7; }
 
 .legend-list { display: flex; flex-direction: column; gap: 11px; margin-top: 12px; }
-.lg-row { display: flex; align-items: center; gap: 9px; font-size: 11px; color: #66796e; }
+.lg-row { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--world-node-sub); }
 .lg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.here-dot { background: var(--twin-teal, #247b68); box-shadow: 0 0 0 3px rgba(36, 123, 104, 0.18); }
-.won-dot { background: #6f9c5c; }
-.ahead-dot { background: #cdddbc; border: 1px solid #b7cba0; }
-.lg-route { width: 20px; border-top: 2px dashed var(--twin-teal, #247b68); flex-shrink: 0; }
+.here-dot { background: var(--world-node-on-bg); box-shadow: 0 0 0 3px var(--world-portrait-ring); }
+.won-dot { background: var(--world-ring-mastered); }
+.ahead-dot { background: var(--world-terrace-ahead); border: 1px solid var(--world-terrace-line); }
+.lg-route { width: 20px; border-top: 2px dashed var(--world-node-on-bg); flex-shrink: 0; }
 
 .tag {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; padding: 3px 8px; border-radius: 5px;
-  background: #f0f4ef; color: #566f63; white-space: nowrap;
+  background: var(--world-node-bg); color: var(--world-node-sub); white-space: nowrap;
 }
-.tag.green { background: #dcefe2; color: #1d6a58; }
+.tag.green { background: var(--color-primary-light); color: var(--color-primary); }
 
 .tbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  border: 1px solid var(--twin-line, #e2e9e3); border-radius: 9px;
-  padding: 9px 14px; background: var(--twin-paper, #fff);
-  color: var(--twin-ink, #203e3a); font-size: 12px; font-weight: 550;
+  border: 1px solid var(--world-node-border); border-radius: 9px;
+  padding: 9px 14px; background: var(--world-node-bg);
+  color: var(--world-node-text); font-size: 12px; font-weight: 550;
 }
-.tbtn.primary { background: var(--twin-teal, #247b68); color: #fff; border-color: var(--twin-teal, #247b68); }
-.tbtn.soft { background: #dcefe2; border-color: transparent; color: #1d6a58; }
+.tbtn.primary { background: var(--world-node-on-bg); color: var(--world-node-on-text); border-color: var(--world-node-on-bg); }
+.tbtn.soft { background: var(--color-primary-light); border-color: transparent; color: var(--color-primary); }
 .tbtn.ghost { background: transparent; border-color: transparent; padding: 6px 9px; }
 .tbtn.sm { padding: 6px 10px; font-size: 12px; }
 .tbtn.block { width: 100%; margin-top: 8px; }
 
-.subject-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 14px 16px; }
+.subject-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .s-tab {
-  border: 1px solid #dfe8da; background: #fff; border-radius: 999px;
-  padding: 7px 14px; font-size: 12px; color: #5f7a49;
+  border: 1px solid var(--world-node-border); background: var(--world-node-bg); border-radius: 999px;
+  padding: 7px 14px; font-size: 12px; color: var(--world-node-text);
 }
-.s-tab.active { background: var(--twin-teal, #247b68); color: #fff; border-color: var(--twin-teal, #247b68); }
+.s-tab.active { background: var(--world-node-on-bg); color: var(--world-node-on-text); border-color: var(--world-node-on-bg); }
 
 /* 世界状态 */
 .world-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
 .ws-cell {
-  background: #fff; border: 1px solid var(--twin-line, #e2e9e3); border-radius: 12px; padding: 13px 15px;
-  box-shadow: var(--twin-shadow, 0 6px 24px rgba(41, 73, 59, 0.06));
+  background: var(--world-panel); border: 1px solid var(--world-node-border); border-radius: 12px; padding: 13px 15px;
+  box-shadow: var(--shadow-card);
 }
-.ws-label { display: block; font-size: 10px; color: var(--twin-sub, #74857f); }
-.ws-value { display: block; font-size: 18px; font-weight: 650; margin-top: 4px; }
-.ws-unit { font-size: 11px; color: #8b9a80; font-weight: 400; }
-.ws-bar { height: 4px; margin-top: 8px; border-radius: 4px; background: #e6ede0; overflow: hidden; }
-.ws-fill { height: 100%; border-radius: 4px; background: var(--twin-teal, #247b68); transition: width 0.5s ease; }
-.ws-fill.amber { background: var(--twin-amber, #b78140); }
+.ws-label { display: block; font-size: 10px; color: var(--world-node-sub); }
+.ws-value { display: block; font-size: 18px; font-weight: 650; margin-top: 4px; color: var(--world-node-text); }
+.ws-unit { font-size: 11px; color: var(--world-node-sub); font-weight: 400; }
+.ws-bar { height: 4px; margin-top: 8px; border-radius: 4px; background: var(--world-ring-track); overflow: hidden; }
+.ws-fill { height: 100%; border-radius: 4px; background: var(--world-node-on-bg); transition: width 0.5s ease; }
+.ws-fill.amber { background: var(--world-ring-learning); }
 
-/* ── 登峰地图 ── */
+/* ── 登峰地图（面板沿用世界纸面/边线）── */
 .map-panel {
-  background: var(--twin-paper, #fff);
-  border: 1px solid var(--twin-line, #e2e9e3);
+  background: var(--world-panel);
+  border: 1px solid var(--world-node-border);
   border-radius: 16px;
-  box-shadow: var(--twin-shadow, 0 6px 24px rgba(41, 73, 59, 0.06));
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 .map-scene {
@@ -970,10 +1024,8 @@ function isMedium(n) {
 }
 .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-.terrace { stroke: #cfdcbf; stroke-width: 0.8; transition: fill 0.35s ease; }
-.terrace-passed { fill: #c6dbb1; }
-.terrace-current { fill: #a6cda8; }
-.terrace-ahead { fill: #e9efdd; }
+/* 台地：三态色取自世界令牌（已翻越 / 当前 / 未至） */
+.w-terrace { stroke-width: 0.8; transition: fill 0.35s ease; }
 
 /* 风景动效 */
 .cloud { will-change: transform; }
@@ -1007,63 +1059,63 @@ function isMedium(n) {
   position: relative;
   display: flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(252, 255, 249, 0.96);
-  border: 1.5px solid #cdddbc;
-  box-shadow: 0 3px 10px rgba(71, 103, 48, 0.14);
+  background: var(--world-node-bg);
+  border: 1.5px solid var(--world-node-border);
+  box-shadow: var(--world-node-shadow);
   will-change: transform;
   animation: hn-bob 5s ease-in-out infinite;
   animation-delay: var(--d, 0s);
   transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.hn-glyph { width: 13px; height: 13px; color: #5f8a53; }
+.hn-glyph { width: 13px; height: 13px; color: var(--world-leaf-4); }
 
-.hn-passed .hn-badge { background: #e6f2d9; border-color: #b6d4aa; }
-.hn-passed .hn-glyph { color: #5f8a53; }
-.hn-current .hn-badge { background: #d3eadf; border-color: var(--twin-teal, #247b68); }
-.hn-current .hn-glyph { color: var(--twin-teal, #247b68); }
-.hn-ahead .hn-badge { background: rgba(250, 252, 247, 0.9); border-color: #d6e2ca; }
-.hn-ahead .hn-glyph { color: #9db08c; }
-.hn.mastered .hn-badge { box-shadow: 0 0 0 3px rgba(111, 156, 92, 0.2), 0 3px 10px rgba(71, 103, 48, 0.14); }
+.hn-passed .hn-badge { background: var(--world-node-bg); border-color: var(--world-leaf-1); }
+.hn-passed .hn-glyph { color: var(--world-leaf-3); }
+.hn-current .hn-badge { background: var(--world-terrace-current); border-color: var(--world-node-on-bg); }
+.hn-current .hn-glyph { color: var(--world-node-on-bg); }
+.hn-ahead .hn-badge { background: var(--world-node-bg); border-color: var(--world-terrace-line); }
+.hn-ahead .hn-glyph { color: var(--world-node-sub); }
+.hn.mastered .hn-badge { box-shadow: 0 0 0 3px var(--world-portrait-ring), var(--world-node-shadow); }
 
-.hn:hover .hn-badge { transform: translateY(-3px) scale(1.06); border-color: #6f9c5c; }
+.hn:hover .hn-badge { transform: translateY(-3px) scale(1.06); border-color: var(--world-ring-mastered); }
 .hn:active .hn-badge { transform: scale(0.9); }
 .hn:focus-visible {
-  outline: 2px solid var(--twin-teal, #247b68);
+  outline: 2px solid var(--world-node-on-bg);
   outline-offset: 2px;
 }
 
 .hn.selected { z-index: 6; }
 .hn.selected .hn-badge {
-  background: var(--twin-teal, #247b68);
-  border-color: var(--twin-teal, #247b68);
-  box-shadow: 0 0 0 4px rgba(36, 123, 104, 0.22), 0 6px 16px rgba(36, 123, 104, 0.32);
+  background: var(--world-node-on-bg);
+  border-color: var(--world-node-on-bg);
+  box-shadow: 0 0 0 4px var(--world-node-border), var(--world-node-shadow);
   animation: hn-bob 5s ease-in-out infinite, sel-pulse 1.6s ease-in-out infinite;
 }
-.hn.selected .hn-glyph { color: #fff; }
+.hn.selected .hn-glyph { color: var(--world-node-on-text); }
 
 .hn-ring {
   position: absolute; inset: -5px; border-radius: 50%;
-  border: 1.5px solid var(--twin-teal, #247b68);
+  border: 1.5px solid var(--world-node-on-bg);
   animation: hn-pulse 2.4s ease-out infinite;
 }
 
 .hn-label {
   margin-top: 3px; max-width: 96px; padding: 2px 6px;
-  font-size: 9px; color: #33513f;
-  background: rgba(252, 255, 249, 0.96);
-  border: 1px solid #dbe6d0; border-radius: 5px;
+  font-size: 9px; color: var(--world-node-text);
+  background: var(--world-node-bg);
+  border: 1px solid var(--world-node-border); border-radius: 5px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  box-shadow: 0 2px 6px rgba(71, 103, 48, 0.1);
+  box-shadow: var(--world-node-shadow);
 }
 .hn-label-short { font-size: 8px; opacity: 0.82; padding: 1px 5px; }
 
-.hn-frontier .hn-badge { border-style: dashed; border-color: #8fb8cf; background: rgba(238, 247, 252, 0.96); }
-.hn-frontier .hn-glyph { color: #3f7796; }
-.hn-frontier .hn-label { color: #3f7796; }
+.hn-frontier .hn-badge { border-style: dashed; border-color: var(--world-accent-cool); background: var(--world-node-bg); }
+.hn-frontier .hn-glyph { color: var(--world-accent-cool); }
+.hn-frontier .hn-label { color: var(--world-accent-cool); }
 
 @keyframes hn-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
 @keyframes hn-pulse { 0% { transform: scale(0.85); opacity: 0.7; } 100% { transform: scale(1.7); opacity: 0; } }
-@keyframes sel-pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(36, 123, 104, 0.22), 0 6px 16px rgba(36, 123, 104, 0.32); } 50% { box-shadow: 0 0 0 7px rgba(36, 123, 104, 0.1), 0 6px 16px rgba(36, 123, 104, 0.32); } }
+@keyframes sel-pulse { 0%, 100% { box-shadow: 0 0 0 4px var(--world-node-border), var(--world-node-shadow); } 50% { box-shadow: 0 0 0 7px var(--world-portrait-ring-2), var(--world-node-shadow); } }
 @keyframes cloud-drift { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(22px); } }
 @keyframes bird-glide { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(26px, -14px); } }
 @keyframes sway { 0%, 100% { transform: rotate(-2.2deg); } 50% { transform: rotate(2.2deg); } }
@@ -1076,70 +1128,70 @@ function isMedium(n) {
 .mini-event { display: flex; gap: 11px; align-items: center; }
 .me-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; background: #eef4e9; border-radius: 9px; color: #748f62; flex-shrink: 0;
+  width: 30px; height: 30px; background: var(--color-primary-light); border-radius: 9px; color: var(--color-primary); flex-shrink: 0;
 }
 .me-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.me-title { font-size: 12px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.me-sub { font-size: 10px; color: #93a086; }
-.me-time { font-size: 10px; color: #a0aa97; white-space: nowrap; }
+.me-title { font-size: 12px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--world-node-text); }
+.me-sub { font-size: 10px; color: var(--world-node-sub); }
+.me-time { font-size: 10px; color: var(--world-node-sub); white-space: nowrap; }
 
-.world-notice { font-size: 10px; color: #93a086; line-height: 1.9; padding: 0 4px; }
+.world-notice { font-size: 10px; color: var(--world-node-sub); line-height: 1.9; padding: 0 4px; }
 
 /* 详情 */
 .detail-mask {
-  position: fixed; inset: 0; background: rgba(35, 60, 54, 0.42);
-  display: flex; align-items: flex-end; justify-content: center; z-index: 100;
+  position: fixed; inset: 0; background: var(--world-scrim);
+  display: flex; align-items: flex-end; justify-content: center; z-index: var(--z-modal);
 }
 .detail-card {
   width: 100%; max-width: 560px; max-height: 82vh; overflow-y: auto;
-  padding: 20px 20px 28px; background: #fff;
+  padding: 20px 20px 28px; background: var(--world-panel);
   border-radius: 22px 22px 0 0; box-sizing: border-box;
 }
 .detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.detail-title { font-size: 19px; font-weight: 650; flex: 1; }
-.detail-close { font-size: 18px; color: #9caa93; padding: 4px 8px; }
-.detail-desc { display: block; font-size: 12px; color: var(--twin-sub, #74857f); line-height: 1.9; margin-bottom: 16px; }
+.detail-title { font-size: 19px; font-weight: 650; flex: 1; color: var(--world-node-text); }
+.detail-close { font-size: 18px; color: var(--world-node-sub); padding: 4px 8px; }
+.detail-desc { display: block; font-size: 12px; color: var(--world-node-sub); line-height: 1.9; margin-bottom: 16px; }
 
 /* 主信息：掌握度 */
-.hero-metric { padding: 14px 16px; background: #f2f8ee; border: 1px solid #dfead4; border-radius: 13px; margin-bottom: 14px; }
+.hero-metric { padding: 14px 16px; background: var(--world-node-bg); border: 1px solid var(--world-node-border); border-radius: 13px; margin-bottom: 14px; }
 .hm-head { display: flex; align-items: baseline; justify-content: space-between; }
-.hm-label { font-size: 12px; color: #5b7669; }
-.hm-val { font-size: 26px; font-weight: 700; color: var(--twin-teal, #247b68); }
+.hm-label { font-size: 12px; color: var(--world-node-sub); }
+.hm-val { font-size: 26px; font-weight: 700; color: var(--world-node-on-bg); }
 .hm-pct { font-size: 13px; font-weight: 500; margin-left: 1px; }
-.hm-bar { height: 8px; margin-top: 8px; border-radius: 8px; background: #e0ebd7; overflow: hidden; }
-.hm-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #3d9a7f, #6f9c5c); transition: width 0.5s ease; }
-.hm-note { display: block; font-size: 10px; color: #809071; margin-top: 7px; }
+.hm-bar { height: 8px; margin-top: 8px; border-radius: 8px; background: var(--world-ring-track); overflow: hidden; }
+.hm-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--world-ring-mastered), var(--world-leaf-3)); transition: width 0.5s ease; }
+.hm-note { display: block; font-size: 10px; color: var(--world-node-sub); margin-top: 7px; }
 
 .camp-list { display: flex; flex-direction: column; gap: 8px; }
 .camp-chip {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 14px; border-radius: 11px;
-  background: #f6f9f3; border: 1px solid #e5edde;
+  background: var(--world-node-bg); border: 1px solid var(--world-node-border);
 }
 .camp-main { flex: 1; min-width: 0; }
-.camp-name { display: block; font-size: 13px; font-weight: 550; color: #33513f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.camp-bar { height: 4px; margin-top: 6px; border-radius: 4px; background: #e2ebd9; overflow: hidden; }
-.camp-fill { height: 100%; border-radius: 4px; background: #6f9c5c; }
-.camp-val { font-size: 11px; color: #6f9c5c; font-weight: 600; }
-.camp-chip .twin-ico { color: #9bb182; }
+.camp-name { display: block; font-size: 13px; font-weight: 550; color: var(--world-node-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.camp-bar { height: 4px; margin-top: 6px; border-radius: 4px; background: var(--world-ring-track); overflow: hidden; }
+.camp-fill { height: 100%; border-radius: 4px; background: var(--world-ring-mastered); }
+.camp-val { font-size: 11px; color: var(--world-ring-mastered); font-weight: 600; }
+.camp-chip .twin-ico { color: var(--world-node-sub); }
 
 .route { margin-bottom: 16px; }
-.route-label { display: block; font-size: 10px; color: #9caa93; margin-bottom: 7px; }
+.route-label { display: block; font-size: 10px; color: var(--world-node-sub); margin-bottom: 7px; }
 .route-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.route-node { font-size: 12px; color: #5b7669; }
-.route-node.current { color: var(--twin-teal, #247b68); font-weight: 700; }
-.route-arrow { color: #b3c2a8; }
-.route-none { font-size: 12px; color: #9caa93; }
+.route-node { font-size: 12px; color: var(--world-node-sub); }
+.route-node.current { color: var(--world-node-on-bg); font-weight: 700; }
+.route-arrow { color: var(--world-node-border); }
+.route-none { font-size: 12px; color: var(--world-node-sub); }
 
 .detail-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
 .detail-row { display: flex; gap: 12px; font-size: 12px; }
-.row-key { flex-shrink: 0; width: 90px; color: #93a086; }
-.row-val { color: var(--twin-ink, #203e3a); }
+.row-key { flex-shrink: 0; width: 90px; color: var(--world-node-sub); }
+.row-val { color: var(--world-node-text); }
 
 .action-list { display: flex; flex-direction: column; gap: 12px; }
-.action-item { background: #f6f9f3; border: 1px solid #e5edde; border-radius: 11px; padding: 14px; }
-.ai-title { display: block; font-size: 13px; font-weight: 600; }
-.ai-desc { display: block; font-size: 11px; color: #849477; margin: 6px 0 0; line-height: 1.7; }
+.action-item { background: var(--world-node-bg); border: 1px solid var(--world-node-border); border-radius: 11px; padding: 14px; }
+.ai-title { display: block; font-size: 13px; font-weight: 600; color: var(--world-node-text); }
+.ai-desc { display: block; font-size: 11px; color: var(--world-node-sub); margin: 6px 0 0; line-height: 1.7; }
 
 .safe-area { height: 30px; }
 
@@ -1157,7 +1209,7 @@ function isMedium(n) {
 
 .ripple {
   position: absolute;
-  background: rgba(36, 123, 104, 0.4);
+  background: var(--world-marker-ring);
   border-radius: 50%;
   transform: scale(0);
   animation: ripple-effect 0.6s ease-out;

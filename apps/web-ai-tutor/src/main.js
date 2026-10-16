@@ -11,6 +11,10 @@ import { setupGlobalErrorHandler } from './utils/errorHandler.js'
 import '@styles/tokens/global.css'
 import '@styles/tokens/themes/ai-tutor.css'
 import '@styles/base/typography.css'
+// 世界语言（W3 · N1）：学习世界与门户人本世界同一观感 —— 同一组 --world-* 令牌
+// （persona-world.css 为世界色唯一真源）＋ 同一份几何类映射（styles/world.css，共享单份）。
+import '@styles/tokens/themes/persona-world.css'
+import '@styles/world.css'
 
 export function createApp() {
   const app = createSSRApp(App)

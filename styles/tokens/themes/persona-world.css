@@ -1,6 +1,7 @@
 /* ── GRI 人本世界（Persona World）视觉令牌 ──
  *
- * 用途：apps/portal 人本世界（生活全景 SVG + 人物卡 + 场景/意向）的唯一色源。
+ * 用途：世界语言的唯一色源——apps/portal 人本世界（生活全景 / 人物卡 / 组织徽记 / 过场）
+ *       与各模块内容世界（W3 首接 apps/web-ai-tutor「学习世界」）。
  * 口径：W2 的零裸色红线要求「世界里的每一笔颜色都来自令牌」；SVG 拟真需要
  *       分层受光（天光/地面三层/建筑三面/植被三阶/材质暖冷），故在此显式立一组
  *       世界语义令牌，而不是在组件里写死色值。
@@ -205,4 +206,22 @@
   --world-portrait-halo: rgba(255, 255, 255, 0.5);
   --world-portrait-ring: rgba(47, 125, 92, 0.16);
   --world-portrait-ring-2: rgba(47, 125, 92, 0.08);
+
+  /* ═══════════════════════════════════════════
+     ⛰ 学科山（W3 模块内容世界：登峰版图）
+     天光/云/鸟/植被/落影/人物一律复用上面的世界令牌，此处只补山体这一层。
+     ═══════════════════════════════════════════ */
+  --world-hill-body: #e9f1df;
+  --world-hill-body-deep: #d4e2c5;
+  --world-hill-line: #c8d8b2;
+  --world-snow: #fbfdf8;
+  --world-grid-dot: #9fbf94;
+  --world-terrace-passed: #c6dbb1;
+  --world-terrace-current: #a6cda8;
+  --world-terrace-ahead: #e9efdd;
+  --world-terrace-line: #cfdcbf;
+  --world-trail: #e7ded0;
+  --world-trail-dash: #a9c095;
+  --world-rock: #b9b09c;
+  --world-rock-light: #cbc3b0;
 }

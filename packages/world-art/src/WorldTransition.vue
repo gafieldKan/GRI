@@ -1,4 +1,5 @@
 <template>
+  <!-- 过关式过场：门户「走进模块」与模块世界「从人本世界走来」共用同一道门（N1/N3） -->
   <view v-if="open" class="world-transition" :class="{ 'is-ready': ready }" role="status" aria-live="polite">
     <view class="wt-veil" aria-hidden="true" />
 
@@ -27,7 +28,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -45,8 +46,10 @@ const ready = ref(false)
 let timer = null
 let readied = null
 
-const sceneLabel = props.from ? `从 ${props.from} 出发` : '世界之门'
-const title = props.label ? `走进 ${props.label}` : '回到世界'
+// 随 open 重算：同一次会话里可能连走两趟（门户 → 模块 → 回门户 → 再走），
+// 目的地/出发地是每趟的（写成 setup 常量会永远念第一趟的词）。
+const sceneLabel = computed(() => (props.from ? `从 ${props.from} 出发` : '世界之门'))
+const title = computed(() => (props.label ? `走进 ${props.label}` : '回到世界'))
 
 function clear() {
   if (timer) clearTimeout(timer)

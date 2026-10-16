@@ -133,10 +133,15 @@ LW="$SRC_DIR/components/world/LifeWorld.vue"
 PC="$SRC_DIR/components/world/PersonaCard.vue"
 OC="$SRC_DIR/components/world/OrgCard.vue"
 IS="$SRC_DIR/components/world/IntentSheet.vue"
-WT="$SRC_DIR/components/world/WorldTransition.vue"
-ART="$SRC_DIR/utils/world-art.js"
+# W3 起过场/画法/几何类是共享件（门户与模块内容世界复用同一份）。
+# 这三件从 apps/portal/src 搬到共享位，路径随之下移——验收口径不变，只是取件处变了：
+#   src/components/world/WorldTransition.vue → packages/world-art/src/WorldTransition.vue
+#   src/utils/world-art.js                   → packages/world-art/src/art.js
+#   src/styles/world.css                     → styles/world.css
+WT="$ROOT_DIR/packages/world-art/src/WorldTransition.vue"
+ART="$ROOT_DIR/packages/world-art/src/art.js"
 PERSONA_UTIL="$SRC_DIR/utils/persona.js"
-WORLD_CSS="$SRC_DIR/styles/world.css"
+WORLD_CSS="$ROOT_DIR/styles/world.css"
 PAGES_JSON="$SRC_DIR/pages.json"
 API_JS="$SRC_DIR/api/index.js"
 APP_VUE="$SRC_DIR/App.vue"
@@ -739,13 +744,17 @@ echo
 echo "== §13. 改动范围（不 commit / 不 checkout）=="
 BRANCH_NOW="$(cd "$ROOT_DIR" && git rev-parse --abbrev-ref HEAD)"
 ok_if "$BRANCH_NOW" "feat/stage-c-unified-auth-shell" "仍在原分支（未 checkout 别处）"
-HEAD_SUBJECT="$(cd "$ROOT_DIR" && git log -1 --format='%s')"
-ok_has "$HEAD_SUBJECT" "feat(persona-world): W1" "HEAD 仍是 W1 内核提交（W2 未 commit）"
+HEADS_WORLD_VUE="$(cd "$ROOT_DIR" && git show HEAD:apps/portal/src/pages/world/index.vue 2>/dev/null | wc -l | tr -d ' ')"
+ok_ge "$HEADS_WORLD_VUE" 100 "人本世界页已在 HEAD（W2 已落库，落的是人本世界那版）"
 STAGED="$(cd "$ROOT_DIR" && git diff --cached --name-only | wc -l | tr -d ' ')"
 ok_if "$STAGED" "0" "暂存区为空（未 git add）"
-ALLOW='^( M| D|\?\?) (apps/portal/src/(App\.vue|api/index\.js|main\.js|pages\.json|pages/login/login\.vue|pages/register/index\.vue|pages/workbench/index\.vue|pages/world/|pages/org-twin/|components/world/|styles/|utils/(persona|world-art)\.js)|styles/tokens/themes/persona-world\.css|\.agents/claude/outputs/w2-)'
+# W2 白名单只覆盖 W2 的改动面；W3（模块内容世界外壳 + 学习世界接入）把共享件下移到
+# packages/world-art 与 styles/，并改了智学慧眼侧——那部分算进「已交代的改动面」，不算越界。
+ALLOW_W2='apps/portal/src/(App\.vue|api/index\.js|main\.js|pages\.json|pages/login/login\.vue|pages/register/index\.vue|pages/workbench/index\.vue|pages/world/|pages/org-twin/|components/world/|styles/|utils/(persona|world-art)\.js)'
+ALLOW_W3='apps/portal/vite\.config\.js|apps/web-ai-tutor/(src/(api/index\.js|main\.js|pages\.json|pages/twin/world\.vue)|vite\.config\.js)|packages/world-art/|styles/(world\.css|tokens/themes/persona-world\.css)|package-lock\.json'
+ALLOW="^( M| D|\?\?) ($ALLOW_W2|$ALLOW_W3|\.agents/claude/outputs/w[23]-)"
 OUT_OF_SCOPE="$(cd "$ROOT_DIR" && git status --porcelain | grep -vE "$ALLOW" | grep -vE '^\?\? (apps/portal/(dist|node_modules)/|\.agents/claude/tasks/)' || true)"
-ok_if "$OUT_OF_SCOPE" "" "改动全部落在白名单内（无越界文件）"
+ok_if "$OUT_OF_SCOPE" "" "改动全部落在白名单内（W2 面 + W3 已交代面，无越界文件）"
 [ -n "$OUT_OF_SCOPE" ] && echo "$OUT_OF_SCOPE" | sed 's/^/      /'
 CHANGED_N="$(cd "$ROOT_DIR" && git status --porcelain | wc -l | tr -d ' ')"
 echo "      改动条目：$CHANGED_N（详见 w2-file-list.md）"

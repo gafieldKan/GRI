@@ -22,7 +22,9 @@ export default defineConfig(({ mode }) => {
         '@api': fileURLToPath(new URL('./src/api', import.meta.url)),
         '@utils': fileURLToPath(new URL('./src/utils', import.meta.url)),
         '@components/ui': fileURLToPath(new URL('./src/components/ui', import.meta.url)),
-        '@styles': path.resolve(__dirname, '../../styles')
+        '@styles': path.resolve(__dirname, '../../styles'),
+        // 世界语言共享件（W3 · N2）：与 apps/web-ai-tutor 复用同一份画法原语与外壳
+        '@world-art': path.resolve(__dirname, '../../packages/world-art/src')
       }
     },
     build: {
@@ -53,6 +55,7 @@ export default defineConfig(({ mode }) => {
         allow: [
           path.resolve(__dirname, '.'),
           path.resolve(__dirname, '../../styles'),
+          path.resolve(__dirname, '../../packages/world-art'),
         ]
       },
       proxy: {

@@ -27,7 +27,9 @@ export default defineConfig(({ mode }) => {
         '@utils': fileURLToPath(new URL('./src/utils', import.meta.url)),
         '@pages': fileURLToPath(new URL('./src/pages', import.meta.url)),
         '@components/ui': fileURLToPath(new URL('./src/components/ui', import.meta.url)),
-        '@styles': path.resolve(__dirname, '../../styles')
+        '@styles': path.resolve(__dirname, '../../styles'),
+        // 世界语言共享件（W3 · N2）：与 apps/portal 复用同一份画法原语与外壳
+        '@world-art': path.resolve(__dirname, '../../packages/world-art/src')
       }
     },
     build: {
@@ -56,10 +58,11 @@ export default defineConfig(({ mode }) => {
       open: false,
       host: true,
       fs: {
-        // Allow serving files from the monorepo root (for shared styles)
+        // Allow serving files from the monorepo root (for shared styles / 世界语言共享件)
         allow: [
           path.resolve(__dirname, '.'),
           path.resolve(__dirname, '../../styles'),
+          path.resolve(__dirname, '../../packages/world-art'),
         ]
       },
       proxy: {
