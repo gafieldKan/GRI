@@ -168,3 +168,30 @@ export async function lookupUsers(q) {
 export async function ontologyStats() {
   try { return await api.get('/api/ontology/stats') } catch (e) { return toError(e) }
 }
+
+// ===== 人本世界（W1 内核读面，人本世界的唯一真源）=====
+//
+// 四个读端点分工：
+//   /api/world               世界本体（7 生活场景 + 意向 + 场景→模块映射），匿名可读
+//   /api/context/me          人物激活上下文（profile/组织/权限/孪生锚点），Redis 物化
+//   /api/organizations/mine  我的全部有效组织归属
+//   /api/twin/me             孪生状态与经历时间线（状态环 / 最近经历的真源）
+//
+// 这里**不做错误吞并**：失败即抛出，由页面按来源分别降级（哪个源断了就说哪个源），
+// 避免「空数据」与「取不到」被混为一谈。
+
+export async function worldScenes() {
+  return api.get('/api/world')
+}
+
+export async function activationContext() {
+  return api.get('/api/context/me')
+}
+
+export async function myOrganizations() {
+  return api.get('/api/organizations/mine')
+}
+
+export async function twinMe() {
+  return api.get('/api/twin/me')
+}

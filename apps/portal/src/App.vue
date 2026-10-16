@@ -31,7 +31,7 @@ export default {
     }
 
     if (auth.isAuthenticated && isPublicRoute) {
-      uni.reLaunch({ url: '/pages/workbench/index' })
+      uni.reLaunch({ url: '/pages/world/index' })
     }
   },
   onHide() {

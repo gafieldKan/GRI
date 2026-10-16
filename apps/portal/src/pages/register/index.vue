@@ -133,7 +133,7 @@ export default {
           name: this.name.trim() || undefined
         })
         await auth.login(this.email.trim(), this.password)
-        uni.reLaunch({ url: '/pages/workbench/index' })
+        uni.reLaunch({ url: '/pages/world/index' })
       } catch (err) {
         this.error = err?.message || '注册失败，请稍后重试'
       } finally {

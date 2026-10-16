@@ -10,7 +10,10 @@ import { setupGlobalErrorHandler } from './utils/errorHandler.js'
 // 设计令牌真源（与其它前端统一 @styles/tokens）
 import '@styles/tokens/global.css'
 import '@styles/tokens/themes/ai-tutor.css'
+import '@styles/tokens/themes/persona-world.css'
 import '@styles/base/typography.css'
+// 人本世界几何类 → 令牌映射（全局：生活全景 / 人物肖像 / 组织地台共用一套世界色）
+import './styles/world.css'
 
 export function createApp() {
   const app = createSSRApp(App)

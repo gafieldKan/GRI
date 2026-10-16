@@ -1,9 +1,9 @@
 {
   "pages": [
     {
-      "path": "pages/workbench/index",
+      "path": "pages/world/index",
       "style": {
-        "navigationBarTitleText": "GRI 工作台",
+        "navigationBarTitleText": "GRI 人本世界",
         "enablePullDownRefresh": true
       }
     },
@@ -18,6 +18,13 @@
       "path": "pages/register/index",
       "style": {
         "navigationBarTitleText": "注册",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/org-twin/index",
+      "style": {
+        "navigationBarTitleText": "组织孪生",
         "enablePullDownRefresh": false
       }
     },

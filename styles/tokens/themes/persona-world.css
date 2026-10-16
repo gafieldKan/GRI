@@ -1,0 +1,208 @@
+/* ── GRI 人本世界（Persona World）视觉令牌 ──
+ *
+ * 用途：apps/portal 人本世界（生活全景 SVG + 人物卡 + 场景/意向）的唯一色源。
+ * 口径：W2 的零裸色红线要求「世界里的每一笔颜色都来自令牌」；SVG 拟真需要
+ *       分层受光（天光/地面三层/建筑三面/植被三阶/材质暖冷），故在此显式立一组
+ *       世界语义令牌，而不是在组件里写死色值。
+ * 关系：只定义「世界」语义；品牌色、间距、圆角、阴影仍取 styles/tokens/global.css。
+ * 覆盖：各子模块主题文件可覆盖同名变量（与 food.css / ai-tutor.css 同机制）。
+ */
+
+:root {
+  /* ═══════════════════════════════════════════
+     🌤 天光与大气（远景色阶：冷 → 暖 → 近地雾）
+     ═══════════════════════════════════════════ */
+  --world-sky-top: #bcd9e6;
+  --world-sky-mid: #d9ecf0;
+  --world-sky-low: #f2f0e2;
+  --world-haze: #f8faf1;
+  --world-sun-glow: #fdf3d8;
+
+  /* ═══════════════════════════════════════════
+     🟩 地面（等距厚土三层 + 草坪两阶）
+     ═══════════════════════════════════════════ */
+  --world-ground-top: #d7e5c4;
+  --world-ground-left: #b9cfa5;
+  --world-ground-right: #a3bc8e;
+  --world-ground-deep: #8fa87b;
+  --world-lawn: #c3d9a5;
+  --world-lawn-deep: #a9c48c;
+  --world-soil: #b0977a;
+
+  /* ═══════════════════════════════════════════
+     💧 水面（本体 + 高光 + 深槽）
+     ═══════════════════════════════════════════ */
+  --world-water: #a9ced9;
+  --world-water-light: #cfe7ec;
+  --world-water-deep: #85b3c2;
+
+  /* ═══════════════════════════════════════════
+     🛤 路径（路面 + 路缘 + 虚线中线）
+     ═══════════════════════════════════════════ */
+  --world-path: #f1eddd;
+  --world-path-edge: #d5cfb9;
+  --world-path-dash: #b7b096;
+
+  /* ═══════════════════════════════════════════
+     🏛 建筑体（受光顶面 / 半侧光左面 / 背光右面 + 描边）
+     ═══════════════════════════════════════════ */
+  --world-wall-top: #f3f2e7;
+  --world-wall-left: #dcdcc8;
+  --world-wall-right: #bcbda4;
+  --world-wall-line: #a3a48c;
+
+  /* 屋顶瓦（暖陶三阶） */
+  --world-roof-top: #cfa47c;
+  --world-roof-left: #b4855f;
+  --world-roof-right: #956b4b;
+
+  /* 玻璃幕墙（冷三阶） */
+  --world-glass-top: #c3dde2;
+  --world-glass-left: #a2c4cc;
+  --world-glass-right: #7fa4b0;
+
+  /* 木质构件（栈道/桌椅/梁柱） */
+  --world-wood-top: #cbab84;
+  --world-wood-left: #ad8b64;
+  --world-wood-right: #8c6d4c;
+
+  /* 窗与灯（培育出「亮着灯」的拟真感） */
+  --world-window-lit: #f0dca6;
+  --world-window-dark: #90a49e;
+
+  /* ═══════════════════════════════════════════
+     🌳 植被（树冠四阶 + 树干）
+     ═══════════════════════════════════════════ */
+  --world-leaf-1: #b3cd91;
+  --world-leaf-2: #97b877;
+  --world-leaf-3: #789e5f;
+  --world-leaf-4: #5d8250;
+  --world-trunk: #9a8470;
+  --world-bench: #b99a72;
+
+  /* ═══════════════════════════════════════════
+     ✨ 点缀（招牌暖光 / 水域冷光 / 健康十字）
+     ═══════════════════════════════════════════ */
+  --world-sign-warm: #d9a35f;
+  --world-sign-soft: #f4dfba;
+  --world-accent-cool: #6fa0b2;
+  --world-accent-leaf: #5f9a6a;
+
+  /* ═══════════════════════════════════════════
+     🧍 人物（标记：本体 / 光环 / 落影 / 衣色四选 / 肤发）
+     ═══════════════════════════════════════════ */
+  --world-marker: #2f7d5c;
+  --world-marker-ring: rgba(47, 125, 92, 0.32);
+  --world-marker-halo: rgba(255, 255, 255, 0.6);
+  --world-shadow: rgba(56, 80, 54, 0.15);
+  --world-shadow-soft: rgba(56, 80, 54, 0.08);
+  --world-hair-1: #4a4436;
+  --world-hair-2: #6b5a45;
+  --world-hair-3: #3a3730;
+  --world-skin-1: #e6c3a5;
+  --world-skin-2: #d2aa88;
+  --world-skin-3: #b1895f;
+  --world-wear-1: #4f8a74;
+  --world-wear-2: #6f7ba4;
+  --world-wear-3: #b08a5c;
+  --world-wear-4: #5b89a4;
+
+  /* ═══════════════════════════════════════════
+     🧭 场景标签（血区底 / 边 / 选中态）
+     ═══════════════════════════════════════════ */
+  --world-node-bg: rgba(255, 255, 255, 0.88);
+  --world-node-border: rgba(112, 134, 104, 0.42);
+  --world-node-text: #4c6a53;
+  --world-node-sub: #8a9c84;
+  --world-node-on-bg: #2f7d5c;
+  --world-node-on-text: #ffffff;
+  --world-node-shadow: rgba(56, 80, 54, 0.12);
+  --world-hot: rgba(255, 255, 255, 0);
+  --world-hot-glow: rgba(255, 255, 255, 0.34);
+
+  /* ═══════════════════════════════════════════
+     🌫 幕布 / 过场（意向面板背板、过关式过场）
+     ═══════════════════════════════════════════ */
+  --world-scrim: rgba(22, 40, 32, 0.46);
+  --world-scrim-soft: rgba(22, 40, 32, 0.18);
+  --world-panel: #fdfefb;
+  --world-panel-edge: rgba(112, 134, 104, 0.28);
+  --world-transition-veil: rgba(255, 255, 255, 0.72);
+
+  /* ═══════════════════════════════════════════
+     📊 状态环（掌握 / 学习中 / 薄弱 三分）
+     ═══════════════════════════════════════════ */
+  --world-ring-track: #e6eddd;
+  --world-ring-mastered: #4e9a6d;
+  --world-ring-learning: #c9a95e;
+  --world-ring-weak: #c98f6a;
+
+  /* ═══════════════════════════════════════════
+     🏗 建筑细部（门 / 拱窗 / 幕墙分隔 / 台阶 / 台地站台）
+     ═══════════════════════════════════════════ */
+  --world-door: #8c6d4c;
+  --world-window-arch: #cfe3e6;
+  --world-mullion: #6f8b93;
+  --world-step: #e4dfcc;
+  --world-step-deep: #cbc5ad;
+  --world-terrace: #e8ead8;
+  --world-platform: #e2ddc9;
+  --world-canopy: #e9e6d6;
+  --world-flag: #d98b6a;
+
+  /* ═══════════════════════════════════════════
+     🪑 场所小品（遮阳篷 / 桌椅 / 喷泉 / 步道 / 帆船 / 十字）
+     ═══════════════════════════════════════════ */
+  --world-awning-a: #c98168;
+  --world-awning-b: #f2e6d2;
+  --world-table-top: #cbb08a;
+  --world-parasol: #e6ddc6;
+  --world-chair: #a98a63;
+  --world-fountain-jet: #bcdbe4;
+  --world-plaza-outer: #ded8c2;
+  --world-plaza-mid: #e9e4d0;
+  --world-track: #c79a7c;
+  --world-cross: #7fb08c;
+  --world-sail: #fbfaf4;
+  --world-hull: #a8794f;
+  --world-clock: #f3efe0;
+  --world-clock-hand: #6b6142;
+
+  /* ═══════════════════════════════════════════
+     ⛰ 远山 / 云 / 鸟（大气透视：越远越冷越淡）
+     ═══════════════════════════════════════════ */
+  --world-ridge-far: #b9cfd6;
+  --world-ridge-near: #a6c2b4;
+  --world-cloud: #ffffff;
+  --world-bird: #7d8e94;
+
+  /* ═══════════════════════════════════════════
+     💡 路灯（杆 / 灯头 / 光晕）
+     ═══════════════════════════════════════════ */
+  --world-lamp-pole: #8a8b7a;
+  --world-lamp-head: #fbf3d8;
+  --world-lamp-glow: #fff6d8;
+
+  /* ═══════════════════════════════════════════
+     ➖ 描边类（木构梁柱 / 人物定位针）
+     ═══════════════════════════════════════════ */
+  --world-wood-line: #8c6d4c;
+  --world-marker-line: #2f7d5c;
+
+  /* ═══════════════════════════════════════════
+     🧍‍♂️ 人物细部（下装 / 鞋 / 领 / 门襟 / 五官 / 地台光环）
+     ═══════════════════════════════════════════ */
+  --world-trouser: #4d5568;
+  --world-trouser-line: #4d5568;
+  --world-shoe: #464b57;
+  --world-shoe-deep: #343843;
+  --world-collar: #f6f4ea;
+  --world-seam: rgba(56, 80, 54, 0.26);
+  --world-brow: #4a4436;
+  --world-eye: #37342c;
+  --world-nose: rgba(120, 86, 64, 0.55);
+  --world-mouth: #b4796a;
+  --world-portrait-halo: rgba(255, 255, 255, 0.5);
+  --world-portrait-ring: rgba(47, 125, 92, 0.16);
+  --world-portrait-ring-2: rgba(47, 125, 92, 0.08);
+}

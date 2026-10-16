@@ -1,0 +1,154 @@
+/* ── 人本世界 · 几何类 → 令牌映射（W2）────────────────────────────────────
+ *
+ * 为什么是全局样式而不是组件 scoped：
+ *   世界图形由多个组件分别绘制（LifeWorld 生活全景、PersonaCard 人物肖像、
+ *   组织孪生占位页的地台），但共用同一套 `w-*` 几何类名；把映射收在一处，
+ *   既避免三份重复，也保证「同一个世界只有一套颜色」。
+ *
+ * 口径（零裸色 / N7）：
+ *   本文件**只允许** `var(--world-*)` 取值，不得出现 hex / rgb / 具名色。
+ *   色值真源：styles/tokens/themes/persona-world.css。
+ *
+ * 约定：
+ *   几何 primitive 带 stroke-width 的走「描边类」（显式 fill: none）；
+ *   其余走「填充类」。二者不共用类名，避免一笔既是面又是线。
+ * ─────────────────────────────────────────────────────────────────────── */
+
+/* —— 天光 / 大气 / 远山 —— */
+.w-sky { fill: var(--world-sky-mid); }
+.w-haze { fill: var(--world-haze); }
+.w-sun-glow { fill: var(--world-sun-glow); }
+.w-ridge-far { fill: var(--world-ridge-far); }
+.w-ridge-near { fill: var(--world-ridge-near); }
+.w-cloud { fill: var(--world-cloud); }
+.w-bird { fill: none; stroke: var(--world-bird); stroke-linecap: round; }
+
+/* —— 地面（等距厚土三层 + 草坪 + 台地/站台）—— */
+.w-ground-top { fill: var(--world-ground-top); }
+.w-ground-left,
+.w-ground-side-l { fill: var(--world-ground-left); }
+.w-ground-right,
+.w-ground-side-r { fill: var(--world-ground-right); }
+.w-ground-far-l,
+.w-ground-far-r { fill: var(--world-ground-deep); }
+.w-lawn { fill: var(--world-lawn); }
+.w-lawn-deep { fill: var(--world-lawn-deep); }
+.w-terrace { fill: var(--world-terrace); }
+.w-platform { fill: var(--world-platform); }
+
+/* —— 水面 —— */
+.w-water { fill: var(--world-water); }
+.w-water-light { fill: var(--world-water-light); }
+.w-water-deep { fill: var(--world-water-deep); }
+.w-fountain-jet { fill: none; stroke: var(--world-fountain-jet); stroke-linecap: round; }
+
+/* —— 路径 —— */
+.w-path { fill: none; stroke: var(--world-path); stroke-linecap: round; stroke-linejoin: round; }
+.w-path-edge { fill: none; stroke: var(--world-path-edge); stroke-linecap: round; stroke-linejoin: round; }
+.w-path-dash { fill: none; stroke: var(--world-path-dash); stroke-linecap: butt; }
+
+/* —— 建筑体 —— */
+.w-wall-top { fill: var(--world-wall-top); }
+.w-wall-left { fill: var(--world-wall-left); }
+.w-wall-right { fill: var(--world-wall-right); }
+.w-roof-top { fill: var(--world-roof-top); }
+.w-roof-left { fill: var(--world-roof-left); }
+.w-roof-right { fill: var(--world-roof-right); }
+.w-glass-top { fill: var(--world-glass-top); }
+.w-glass-left { fill: var(--world-glass-left); }
+.w-glass-right { fill: var(--world-glass-right); }
+.w-door { fill: var(--world-door); }
+.w-window-lit { fill: var(--world-window-lit); }
+.w-window-dark { fill: var(--world-window-dark); }
+.w-window-arch { fill: var(--world-window-arch); }
+.w-mullion { fill: none; stroke: var(--world-mullion); stroke-linecap: round; }
+.w-canopy { fill: var(--world-canopy); }
+.w-step { fill: var(--world-step); }
+.w-step-deep { fill: var(--world-step-deep); }
+.w-flag { fill: var(--world-flag); }
+.w-clock { fill: var(--world-clock); }
+.w-clock-hand { fill: none; stroke: var(--world-clock-hand); stroke-linecap: round; }
+
+/* —— 场所小品 —— */
+.w-awning-a { fill: var(--world-awning-a); }
+.w-awning-b { fill: var(--world-awning-b); }
+.w-table-top { fill: var(--world-table-top); }
+.w-parasol { fill: var(--world-parasol); }
+.w-chair { fill: var(--world-chair); }
+.w-plaza-outer { fill: var(--world-plaza-outer); }
+.w-plaza-mid { fill: var(--world-plaza-mid); }
+.w-track { fill: var(--world-track); }
+.w-cross { fill: var(--world-cross); }
+.w-sail { fill: var(--world-sail); }
+.w-hull { fill: var(--world-hull); }
+.w-sign-warm { fill: var(--world-sign-warm); }
+.w-sign-soft { fill: var(--world-sign-soft); }
+.w-sign-pole { fill: none; stroke: var(--world-sign-warm); stroke-linecap: round; }
+
+/* —— 植被 / 木构 —— */
+.w-leaf-1 { fill: var(--world-leaf-1); }
+.w-leaf-2 { fill: var(--world-leaf-2); }
+.w-leaf-3 { fill: var(--world-leaf-3); }
+.w-leaf-4 { fill: var(--world-leaf-4); }
+.w-trunk { fill: none; stroke: var(--world-trunk); stroke-linecap: round; }
+.w-wood-line { fill: none; stroke: var(--world-wood-line); stroke-linecap: round; }
+.w-bench { fill: var(--world-bench); }
+
+/* —— 路灯 —— */
+.w-lamp-pole { fill: none; stroke: var(--world-lamp-pole); stroke-linecap: round; }
+.w-lamp-head { fill: var(--world-lamp-head); }
+.w-lamp-glow { fill: var(--world-lamp-glow); }
+
+/* —— 软阴影 —— */
+.w-shadow { fill: var(--world-shadow); }
+.w-shadow-soft { fill: var(--world-shadow-soft); }
+
+/* —— 人物：位置标记 —— */
+.w-marker { fill: var(--world-marker); }
+.w-marker-line { fill: none; stroke: var(--world-marker-line); stroke-linecap: round; }
+.w-marker-ring {
+  fill: var(--world-marker-ring);
+  animation: w-ring 2.8s ease-in-out infinite;
+}
+.w-marker-halo { fill: var(--world-marker-halo); }
+
+/* —— 人物：本体（衣 / 肤 / 发 / 细部）—— */
+.w-wear-1 { fill: var(--world-wear-1); }
+.w-wear-2 { fill: var(--world-wear-2); }
+.w-wear-3 { fill: var(--world-wear-3); }
+.w-wear-4 { fill: var(--world-wear-4); }
+.w-skin-1 { fill: var(--world-skin-1); }
+.w-skin-2 { fill: var(--world-skin-2); }
+.w-skin-3 { fill: var(--world-skin-3); }
+.w-hair-1 { fill: var(--world-hair-1); }
+.w-hair-2 { fill: var(--world-hair-2); }
+.w-hair-3 { fill: var(--world-hair-3); }
+.w-trouser { fill: var(--world-trouser); }
+.w-trouser-line { fill: none; stroke: var(--world-trouser-line); stroke-linecap: round; }
+.w-shoe { fill: var(--world-shoe); }
+.w-shoe-deep { fill: var(--world-shoe-deep); }
+.w-collar { fill: var(--world-collar); }
+.w-seam { fill: none; stroke: var(--world-seam); stroke-linecap: round; }
+.w-brow { fill: none; stroke: var(--world-brow); stroke-linecap: round; }
+.w-eye { fill: var(--world-eye); }
+.w-nose { fill: none; stroke: var(--world-nose); stroke-linecap: round; }
+.w-mouth { fill: none; stroke: var(--world-mouth); stroke-linecap: round; }
+.w-portrait-halo { fill: var(--world-portrait-halo); }
+.w-portrait-ring { fill: var(--world-portrait-ring); }
+.w-portrait-ring-2 { fill: var(--world-portrait-ring-2); }
+
+/* —— 状态环（掌握 / 学习中 / 薄弱 三分）—— */
+.w-ring-track { fill: none; stroke: var(--world-ring-track); }
+.w-ring-mastered { fill: none; stroke: var(--world-ring-mastered); stroke-linecap: round; }
+.w-ring-learning { fill: none; stroke: var(--world-ring-learning); stroke-linecap: round; }
+.w-ring-weak { fill: none; stroke: var(--world-ring-weak); stroke-linecap: round; }
+
+@keyframes w-ring {
+  0%,
+  100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .w-marker-ring { animation: none; }
+}

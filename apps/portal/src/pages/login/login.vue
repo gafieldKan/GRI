@@ -90,7 +90,7 @@ export default {
       try {
         const auth = useAuthStore()
         await auth.login(this.identifier.trim(), this.password)
-        uni.reLaunch({ url: '/pages/workbench/index' })
+        uni.reLaunch({ url: '/pages/world/index' })
       } catch (err) {
         this.error = err?.message || '登录失败，请检查账号和密码'
       } finally {
