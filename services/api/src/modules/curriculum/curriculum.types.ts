@@ -125,3 +125,94 @@ export interface LearningPathResult {
   } | null;
   steps: LearningPathStep[];
 }
+
+/** 学科知识体系分支（ontology.knowledge_branch，自引用树）。 */
+export interface KnowledgeBranchNode {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  clc: string;
+  curriculum: string | null;
+  sortOrder: number | null;
+  parentId: string | null;
+  k12GradeMin: number | null;
+  k12GradeMax: number | null;
+  kpCount: number;
+  mastery?: number;
+  reached: boolean;
+  isSummit: boolean;
+  children: KnowledgeBranchNode[];
+}
+
+/** 维度 A：学科知识体系全覆盖。 */
+export interface SummitBranchesResult {
+  subject: { id: string; code: string; name: string };
+  threshold: number;
+  peaks: KnowledgeBranchNode[];
+}
+
+/** 维度 B：章节所属分支摘要。 */
+export interface SummitBranchRef {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** 维度 B：人教版章节节点。 */
+export interface SummitGradeChapter {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number | null;
+  branch: SummitBranchRef | null;
+  kpCount: number;
+  mastery?: number;
+  reached: boolean;
+  children: SummitGradeChapter[];
+}
+
+/** 维度 B：人教版教材册。 */
+export interface SummitGradeTextbook {
+  id: string;
+  code: string;
+  name: string;
+  branches: SummitBranchRef[];
+  kpCount: number;
+  mastery?: number;
+  reached: boolean;
+  chapters: SummitGradeChapter[];
+}
+
+/** 维度 B：年级节点。 */
+export interface SummitGrade {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number | null;
+  branches: SummitBranchRef[];
+  kpCount: number;
+  mastery?: number;
+  reached: boolean;
+  textbooks: SummitGradeTextbook[];
+}
+
+/** 维度 B：学段节点。 */
+export interface SummitStage {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number | null;
+  branches: SummitBranchRef[];
+  kpCount: number;
+  mastery?: number;
+  reached: boolean;
+  grades: SummitGrade[];
+}
+
+/** 维度 B：K12 学段→年级→人教版册/章。 */
+export interface SummitGradesResult {
+  subject: { id: string; code: string; name: string };
+  threshold: number;
+  stages: SummitStage[];
+}

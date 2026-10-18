@@ -12,6 +12,14 @@ import {
   KnowledgeMapStats,
   LearningPathStep,
   LearningPathResult,
+  KnowledgeBranchNode,
+  SummitBranchesResult,
+  SummitBranchRef,
+  SummitGradeChapter,
+  SummitGradeTextbook,
+  SummitGrade,
+  SummitStage,
+  SummitGradesResult,
 } from './curriculum.types';
 
 /**
@@ -24,6 +32,38 @@ import {
 @Injectable()
 export class CurriculumService {
   constructor(private readonly db: DatabaseService) {}
+
+  private nodeCodeParent(rows: Array<Record<string, any>>, nodeId: string): string | null {
+    return rows.find((row) => row.id === nodeId)?.parent_id ?? null;
+  }
+
+  private aggregateMastery(rows: Array<Record<string, any>>): {
+    mastery?: number;
+  } {
+    const stats = rows.reduce(
+      (acc, row) => {
+        acc.sum += Number(row.mastery_sum ?? 0);
+        acc.count += Number(row.mastery_count ?? 0);
+        return acc;
+      },
+      { sum: 0, count: 0 },
+    );
+    if (stats.count === 0) return {};
+    return { mastery: Number((stats.sum / stats.count).toFixed(2)) };
+  }
+
+  private collectBranches(rows: Array<Record<string, any>>): SummitBranchRef[] {
+    const byId = new Map<string, SummitBranchRef>();
+    for (const row of rows) {
+      if (row.branch_id == null) continue;
+      byId.set(row.branch_id, {
+        id: row.branch_id,
+        code: row.branch_code,
+        name: row.branch_name,
+      });
+    }
+    return [...byId.values()].sort((a, b) => a.code.localeCompare(b.code));
+  }
 
   /** 学科清单（目录公开信息；状态机词表 active→published 已归一，见 013）。 */
   async listSubjects(): Promise<Subject[]> {
@@ -483,6 +523,283 @@ export class CurriculumService {
       }
     }
     return order;
+  }
+
+  /** 维度 A：学科知识体系分支树（匿名出结构，登录叠加分支子树掌握度）。 */
+  async summitBranches(subject: string, userId?: string): Promise<SummitBranchesResult> {
+    const subjectRow = (
+      await this.db.query(
+        `SELECT id, code, name FROM ontology.subject WHERE LOWER(code) = LOWER($1)`,
+        [subject],
+      )
+    ).rows[0];
+    if (!subjectRow) throw new NotFoundException(`学科不存在：${subject}`);
+
+    // 每个分支聚合完整子树：分支自身 + 全部子分支 → 章 → 已发布知识点。
+    // mastery_snapshots 是唯一掌握度真源；匿名传 NULL，不返回 mastery 字段。
+    const res = await this.db.query(
+      `WITH RECURSIVE branch_tree AS (
+         SELECT b.id AS root_id, b.id AS branch_id
+           FROM ontology.knowledge_branch b
+          WHERE b.subject_id = $1
+         UNION ALL
+         SELECT bt.root_id, child.id
+           FROM branch_tree bt
+           JOIN ontology.knowledge_branch child ON child.parent_id = bt.branch_id
+       ),
+       branch_agg AS (
+         SELECT bt.root_id AS branch_id,
+                COUNT(DISTINCT kp.id)::int AS kp_count,
+                SUM(ms.mastery_score) AS mastery_sum,
+                COUNT(ms.mastery_score)::int AS mastery_count
+           FROM branch_tree bt
+           LEFT JOIN ontology.textbook_chapter c ON c.branch_id = bt.branch_id
+           LEFT JOIN edu.knowledge_points kp
+             ON kp.chapter_id = c.id
+            AND (kp.status = 'published' OR kp.status IS NULL)
+           LEFT JOIN edu.mastery_snapshots ms
+             ON ms.knowledge_point_id = kp.id
+            AND ms.user_id = $2
+          GROUP BY bt.root_id
+       )
+       SELECT b.id, b.code, b.name, b.description, b.clc, b.curriculum,
+              b.sort_order, b.parent_id, b.k12_grade_min, b.k12_grade_max,
+              COALESCE(a.kp_count, 0)::int AS kp_count,
+              a.mastery_sum, COALESCE(a.mastery_count, 0)::int AS mastery_count
+         FROM ontology.knowledge_branch b
+         LEFT JOIN branch_agg a ON a.branch_id = b.id
+        WHERE b.subject_id = $1
+        ORDER BY b.sort_order NULLS LAST, b.code`,
+      [subjectRow.id, userId ?? null],
+    );
+
+    const byId = new Map<string, KnowledgeBranchNode>();
+    for (const r of res.rows as Array<Record<string, any>>) {
+      const masteryCount = Number(r.mastery_count ?? 0);
+      const mastery =
+        userId && masteryCount > 0 && r.mastery_sum != null
+          ? Number((Number(r.mastery_sum) / masteryCount).toFixed(2))
+          : undefined;
+      const node: KnowledgeBranchNode = {
+        id: r.id,
+        code: r.code,
+        name: r.name,
+        description: r.description ?? null,
+        clc: r.clc,
+        curriculum: r.curriculum ?? null,
+        sortOrder: r.sort_order != null ? Number(r.sort_order) : null,
+        parentId: r.parent_id ?? null,
+        k12GradeMin: r.k12_grade_min != null ? Number(r.k12_grade_min) : null,
+        k12GradeMax: r.k12_grade_max != null ? Number(r.k12_grade_max) : null,
+        kpCount: Number(r.kp_count ?? 0),
+        reached: mastery != null && mastery >= 80,
+        isSummit: r.parent_id == null,
+        children: [],
+      };
+      if (mastery != null) node.mastery = mastery;
+      byId.set(node.id, node);
+    }
+
+    const peaks: KnowledgeBranchNode[] = [];
+    for (const node of byId.values()) {
+      if (node.parentId && byId.has(node.parentId)) byId.get(node.parentId)!.children.push(node);
+      else if (!node.parentId) peaks.push(node);
+    }
+
+    return {
+      subject: { id: subjectRow.id, code: subjectRow.code, name: subjectRow.name },
+      threshold: 80,
+      peaks,
+    };
+  }
+
+  /** 维度 B：K12 学段→年级→人教版册/章（匿名出结构，登录叠加掌握度）。 */
+  async summitGrades(subject: string, userId?: string): Promise<SummitGradesResult> {
+    const subjectRow = (
+      await this.db.query(
+        `SELECT id, code, name FROM ontology.subject WHERE LOWER(code) = LOWER($1)`,
+        [subject],
+      )
+    ).rows[0];
+    if (!subjectRow) throw new NotFoundException(`学科不存在：${subject}`);
+
+    const stageRows = await this.db.query(
+      `SELECT st.id AS stage_id, st.code AS stage_code, st.name AS stage_name,
+              st.sort_order AS stage_sort,
+              g.id AS grade_id, g.code AS grade_code, g.name AS grade_name,
+              g.sort_order AS grade_sort
+         FROM ontology.school_stage st
+         JOIN ontology.grade g ON g.stage_id = st.id
+         JOIN ontology.textbook t ON t.grade_id = g.id
+         JOIN ontology.subject s ON s.id = t.subject_id
+        WHERE LOWER(s.code) = LOWER($1)
+          AND (t.status = 'published' OR t.status = 'active')
+         GROUP BY st.id, st.code, st.name, st.sort_order, g.id, g.code, g.name, g.sort_order
+        ORDER BY st.sort_order NULLS LAST, g.sort_order NULLS LAST`,
+      [subjectRow.code],
+    );
+    const textbookRows = await this.db.query(
+      `SELECT t.id, t.code, t.name, g.code AS grade_code, s.code AS subject_code
+         FROM ontology.textbook t
+         JOIN ontology.grade g ON g.id = t.grade_id
+         JOIN ontology.subject s ON s.id = t.subject_id
+        WHERE LOWER(s.code) = LOWER($1)
+          AND (t.status = 'published' OR t.status = 'active')
+        ORDER BY g.sort_order NULLS LAST, t.code`,
+      [subjectRow.code],
+    );
+    const chapterRows = await this.db.query(
+      `SELECT c.id, c.code, c.name, c.sort_order, c.textbook_id, c.parent_id,
+              b.id AS branch_id, b.code AS branch_code, b.name AS branch_name,
+              (
+                SELECT COUNT(*)::int
+                  FROM edu.knowledge_points kp
+                 WHERE kp.chapter_id = c.id
+                   AND (kp.status = 'published' OR kp.status IS NULL)
+              ) AS kp_count,
+              (
+                SELECT SUM(ms.mastery_score)
+                  FROM edu.mastery_snapshots ms
+                  JOIN edu.knowledge_points kp ON kp.id = ms.knowledge_point_id
+                 WHERE kp.chapter_id = c.id
+                   AND (kp.status = 'published' OR kp.status IS NULL)
+                   AND ms.user_id = $2
+              ) AS mastery_sum,
+              (
+                SELECT COUNT(*)
+                  FROM edu.mastery_snapshots ms
+                  JOIN edu.knowledge_points kp ON kp.id = ms.knowledge_point_id
+                 WHERE kp.chapter_id = c.id
+                   AND (kp.status = 'published' OR kp.status IS NULL)
+                   AND ms.user_id = $2
+              )::int AS mastery_count
+         FROM ontology.textbook_chapter c
+         JOIN ontology.textbook t ON t.id = c.textbook_id
+         JOIN ontology.subject s ON s.id = t.subject_id
+         LEFT JOIN ontology.knowledge_branch b ON b.id = c.branch_id
+        WHERE LOWER(s.code) = LOWER($1)
+        ORDER BY t.code, c.sort_order NULLS LAST, c.code`,
+      [subjectRow.code, userId ?? null],
+    );
+
+    const chaptersByTextbook = new Map<string, SummitGradeChapter[]>();
+    const chapterRowByTextbook = new Map<string, Array<Record<string, any>>>();
+    for (const r of chapterRows.rows as Array<Record<string, any>>) {
+      if (!chapterRowByTextbook.has(r.textbook_id)) chapterRowByTextbook.set(r.textbook_id, []);
+      chapterRowByTextbook.get(r.textbook_id)!.push(r);
+    }
+    for (const [textbookId, rows] of chapterRowByTextbook) {
+      const byId = new Map<string, SummitGradeChapter>();
+      for (const r of rows) {
+        const masteryCount = Number(r.mastery_count ?? 0);
+        const mastery =
+          userId && masteryCount > 0 && r.mastery_sum != null
+            ? Number((Number(r.mastery_sum) / masteryCount).toFixed(2))
+            : undefined;
+        const node: SummitGradeChapter = {
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          sortOrder: r.sort_order != null ? Number(r.sort_order) : null,
+          branch:
+            r.branch_id != null
+              ? { id: r.branch_id, code: r.branch_code, name: r.branch_name }
+              : null,
+          kpCount: Number(r.kp_count ?? 0),
+          reached: mastery != null && mastery >= 80,
+          children: [],
+        };
+        if (mastery != null) node.mastery = mastery;
+        byId.set(node.id, node);
+      }
+      const roots: SummitGradeChapter[] = [];
+      for (const node of byId.values()) {
+        const parentId = this.nodeCodeParent(rows, node.id);
+        if (parentId && byId.has(parentId)) {
+          byId.get(parentId)!.children.push(node);
+        } else {
+          roots.push(node);
+        }
+      }
+      chaptersByTextbook.set(textbookId, roots);
+    }
+
+    const textbooksByGrade = new Map<string, SummitGradeTextbook[]>();
+    for (const r of textbookRows.rows as Array<Record<string, any>>) {
+      const chapters = chaptersByTextbook.get(r.id) ?? [];
+      const flatChapters = chapterRowByTextbook.get(r.id) ?? [];
+      const aggregate = userId ? this.aggregateMastery(flatChapters) : {};
+      const textbook: SummitGradeTextbook = {
+        id: r.id,
+        code: r.code,
+        name: r.name,
+        branches: this.collectBranches(flatChapters),
+        kpCount: flatChapters.reduce((n, c) => n + Number(c.kp_count ?? 0), 0),
+        reached: aggregate.mastery != null && aggregate.mastery >= 80,
+        chapters,
+      };
+      if (aggregate.mastery != null) textbook.mastery = aggregate.mastery;
+      if (!textbooksByGrade.has(r.grade_code)) textbooksByGrade.set(r.grade_code, []);
+      textbooksByGrade.get(r.grade_code)!.push(textbook);
+    }
+
+    const gradesByStage = new Map<string, SummitGrade[]>();
+    const stageMeta = new Map<
+      string,
+      { id: string; code: string; name: string; sortOrder: number | null }
+    >();
+    for (const r of stageRows.rows as Array<Record<string, any>>) {
+      if (!stageMeta.has(r.stage_id)) {
+        stageMeta.set(r.stage_id, {
+          id: r.stage_id,
+          code: r.stage_code,
+          name: r.stage_name,
+          sortOrder: r.stage_sort != null ? Number(r.stage_sort) : null,
+        });
+      }
+      if (!gradesByStage.has(r.stage_id)) gradesByStage.set(r.stage_id, []);
+      const gradeRows = gradesByStage.get(r.stage_id)!;
+      if (gradeRows.some((g) => g.id === r.grade_id)) continue;
+      const textbooks = textbooksByGrade.get(r.grade_code) ?? [];
+      const flatChapters = textbooks.flatMap((t) => chapterRowByTextbook.get(t.id) ?? []);
+      const aggregate = userId ? this.aggregateMastery(flatChapters) : {};
+      const grade: SummitGrade = {
+        id: r.grade_id,
+        code: r.grade_code,
+        name: r.grade_name,
+        sortOrder: r.grade_sort != null ? Number(r.grade_sort) : null,
+        branches: this.collectBranches(flatChapters),
+        kpCount: flatChapters.reduce((n, c) => n + Number(c.kp_count ?? 0), 0),
+        reached: aggregate.mastery != null && aggregate.mastery >= 80,
+        textbooks,
+      };
+      if (aggregate.mastery != null) grade.mastery = aggregate.mastery;
+      gradeRows.push(grade);
+    }
+
+    const stages: SummitStage[] = [];
+    for (const [stageId, grades] of gradesByStage) {
+      const meta = stageMeta.get(stageId)!;
+      const chapterRowsForStage = grades.flatMap((g) =>
+        g.textbooks.flatMap((t) => chapterRowByTextbook.get(t.id) ?? []),
+      );
+      const aggregate = userId ? this.aggregateMastery(chapterRowsForStage) : {};
+      const stage: SummitStage = {
+        ...meta,
+        branches: this.collectBranches(chapterRowsForStage),
+        kpCount: chapterRowsForStage.reduce((n, c) => n + Number(c.kp_count ?? 0), 0),
+        reached: aggregate.mastery != null && aggregate.mastery >= 80,
+        grades,
+      };
+      if (aggregate.mastery != null) stage.mastery = aggregate.mastery;
+      stages.push(stage);
+    }
+
+    return {
+      subject: { id: subjectRow.id, code: subjectRow.code, name: subjectRow.name },
+      threshold: 80,
+      stages,
+    };
   }
 
   /** 单知识点（含前置依赖与状态）。 */

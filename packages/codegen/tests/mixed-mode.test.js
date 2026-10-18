@@ -17,13 +17,14 @@ import { loadOntologyFile, generateSQL } from '../src/index.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const K12_DSL = path.resolve(__dirname, '../../ontology/ontologies/k12-curriculum.ontology.yaml')
+const BRANCH_DSL = path.resolve(__dirname, '../../ontology/ontologies/knowledge-branch.ontology.yaml')
 const ORDERS_DSL = path.resolve(__dirname, '../../ontology/ontologies/orders.ontology.yaml')
 
 describe('混合模式：k12 教材单表继承 + 普通对象并存', () => {
-  it('k12 YAML 过 schema 门禁且继承体系完整（15 objects，0.4.0 版图层 +2）', async () => {
+  it('k12 YAML 过 schema 门禁且继承体系完整（16 objects，0.5.0 分支引用）', async () => {
     const r = await loadOntologyFile(K12_DSL)
     assert.equal(r.ok, true, JSON.stringify(r.errors))
-    assert.equal(r.ontology.objects.length, 15)
+    assert.equal(r.ontology.objects.length, 16)
     const tb = r.ontology.objects.find((o) => o.name === 'Textbook')
     assert.equal(tb.abstract, true)
     const subs = r.ontology.objects.filter((o) => o.extends === 'Textbook')
@@ -72,6 +73,15 @@ describe('混合模式：k12 教材单表继承 + 普通对象并存', () => {
     assert.match(sql, /grade_level INTEGER/)
   })
 
+  it('分支层（0.5.0）：chapter/area 真 FK 到 ontology.knowledge_branch', async () => {
+    const r = await loadOntologyFile(K12_DSL)
+    const sql = generateSQL(r.ontology)
+    assert.match(sql, /branch_id UUID/)
+    assert.match(sql, /FOREIGN KEY \(branch_id\) REFERENCES ontology\.knowledge_branch\(id\)/)
+    assert.match(sql, /CREATE INDEX IF NOT EXISTS idx_textbook_chapter_branch ON ontology\.textbook_chapter \(branch_id\)/)
+    assert.match(sql, /CREATE INDEX IF NOT EXISTS idx_knowledge_area_branch ON ontology\.knowledge_area \(branch_id\)/)
+  })
+
   it('关联类复合唯一与自引用树 FK 在混合模式下保留', async () => {
     const r = await loadOntologyFile(K12_DSL)
     const sql = generateSQL(r.ontology)
@@ -93,5 +103,32 @@ describe('混合模式：k12 教材单表继承 + 普通对象并存', () => {
   it('生成确定性：同源两次生成完全一致', async () => {
     const r = await loadOntologyFile(K12_DSL)
     assert.equal(generateSQL(r.ontology), generateSQL(r.ontology))
+  })
+})
+
+describe('学科分支本体：knowledge_branch 自引用树 + 学科引用', () => {
+  it('knowledge-branch YAML 过门禁并保留 SubjectRef 锚点', async () => {
+    const r = await loadOntologyFile(BRANCH_DSL)
+    assert.equal(r.ok, true, JSON.stringify(r.errors))
+    assert.equal(r.ontology.objects.length, 2)
+    const branch = r.ontology.objects.find((o) => o.name === 'KnowledgeBranch')
+    assert.ok(branch)
+    assert.equal(branch.table, 'ontology.knowledge_branch')
+    assert.equal(branch.fields.find((f) => f.name === 'clc').required, true)
+    assert.equal(branch.fields.find((f) => f.name === 'curriculum').required, false)
+  })
+
+  it('生成 knowledge_branch 表：学科 FK、自引用 FK 与验收索引', async () => {
+    const r = await loadOntologyFile(BRANCH_DSL)
+    const sql = generateSQL(r.ontology)
+    assert.match(sql, /CREATE TABLE IF NOT EXISTS ontology\.knowledge_branch \(/)
+    assert.match(sql, /clc VARCHAR\(255\) NOT NULL/)
+    assert.match(sql, /k12_grade_min INTEGER/)
+    assert.match(sql, /k12_grade_max INTEGER/)
+    assert.match(sql, /FOREIGN KEY \(subject_id\) REFERENCES ontology\.subject\(id\)/)
+    assert.match(sql, /FOREIGN KEY \(parent_id\) REFERENCES ontology\.knowledge_branch\(id\)/)
+    assert.match(sql, /CREATE INDEX IF NOT EXISTS idx_knowledge_branch_subject_sort ON ontology\.knowledge_branch \(subject_id, sort_order\)/)
+    assert.match(sql, /CREATE INDEX IF NOT EXISTS idx_knowledge_branch_parent ON ontology\.knowledge_branch \(parent_id\)/)
+    assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS ontology\.subject \(/)
   })
 })

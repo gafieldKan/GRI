@@ -2,6 +2,7 @@
 #
 # 施工方案：AI 辅导全学科改造（本体驱动 · K1–K12 知识图谱 · 因材施教）→ 旧资产改造（2026-09-25）
 # → 全学段知识图谱（0.4.0：KnowledgeArea 版图层 + 前置关联类，2026-09-26）
+# → 学科登顶（0.5.0：KnowledgeBranch 双维度分支引用，2026-10-17）
 # 承接核心思想：单一语义真源 / fail-fast 契约门禁 / 模块对齐领域 / 旧资产按底线修正。
 #
 # 本体四特性贯彻（基本底线：多态 · 可变 · 内外部关系复杂 · 有生命周期）：
@@ -30,7 +31,7 @@
 #
 # 红线：本体驱动、面向对象实现、设计模式应用（GoF 23 种；状态机/工厂/外观/适配器）。
 
-schemaVersion: 0.4.0
+schemaVersion: 0.5.0
 name: k12-curriculum
 description: K1–K12 全学科教学体系本体（学科/学段/年级/教材继承体系/章节/知识点 + 前置依赖 + 生命周期状态机）
 
@@ -218,6 +219,14 @@ objects:
         target: TextbookChapter
         cardinality: many
         foreignKey: parentId      # 自引用树（父章节有多个子节）
+      - name: branchOfChapter
+        source: TextbookChapter
+        target: KnowledgeBranchRef
+        cardinality: many
+        foreignKey: branchId
+    indexes:
+      - columns: [branchId]
+        name: idx_textbook_chapter_branch
     stateMachine:
       # 章节生命周期：随教材版本整理/上架/退役（archived 章节只读保留）
       field: status
@@ -329,6 +338,14 @@ objects:
         target: KnowledgeArea
         cardinality: many
         foreignKey: parentId      # 自引用两级树（领域 → 知识域；领域是知识域的父）
+      - name: branchOfArea
+        source: KnowledgeArea
+        target: KnowledgeBranchRef
+        cardinality: many
+        foreignKey: branchId
+    indexes:
+      - columns: [branchId]
+        name: idx_knowledge_area_branch
     stateMachine:
       # 版图生命周期：与 KnowledgePoint 同语义（LLM 生成 map 草案的审核状态机）
       field: status
@@ -359,3 +376,9 @@ objects:
         foreignKey: toArea        # many:1（一个知识域可有多条前置）
     uniqueConstraints:
       - [fromArea, toArea]        # 关联类幂等锚点
+
+  # 跨本体只读锚点：knowledge-branch.ontology.yaml 是 ontology.knowledge_branch 的结构真源。
+  - name: KnowledgeBranchRef
+    table: ontology.knowledge_branch
+    abstract: true
+    description: 学科分支表引用锚点

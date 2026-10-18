@@ -1,0 +1,70 @@
+# 学科知识体系分支本体 —— 学科登顶维度 A 的唯一结构真源
+#
+# 分支锚定《中国图书馆分类法》（CLC）与课程标准；顶层为学科峰，
+# 自引用 children 表达学科纵深。K12 年级区间由实际落位数据推导。
+#
+# 由 @gri/codegen 消费，产出 ontology.knowledge_branch 结构主体。
+
+schemaVersion: 0.1.0
+name: knowledge-branch
+description: 学科知识体系分支树（CLC 权威锚点 + K12 延续性区间）
+
+objects:
+  - name: KnowledgeBranch
+    table: ontology.knowledge_branch
+    description: 学科知识体系分支（顶层峰 + 学科纵深子节点）
+    fields:
+      - name: code
+        type: string
+        required: true
+        unique: true
+        description: 全局稳定编码（math.num / math.ds / ...）
+      - name: name
+        type: string
+        required: true
+        description: 分支展示名
+      - name: description
+        type: text
+        description: 分支覆盖范围说明
+      - name: clc
+        type: string
+        required: true
+        description: 中图法分类号锚点（对应 docs/SUBJECT_SUMMIT_AUTHORITY.md）
+      - name: curriculum
+        type: string
+        description: 课程标准主题锚点
+      - name: sortOrder
+        type: integer
+        description: 同学科展示排序
+      - name: status
+        type: string
+        dbDefault: "'active'"
+        description: 分支状态（active/archived）
+      - name: k12GradeMin
+        type: integer
+        description: 实际落位推导的 K12 起始年级；纯学科纵深为空
+      - name: k12GradeMax
+        type: integer
+        description: 实际落位推导的 K12 结束年级；纯学科纵深为空
+    links:
+      - name: branchOfSubject
+        source: KnowledgeBranch
+        target: SubjectRef
+        cardinality: many
+        foreignKey: subjectId
+      - name: parentBranch
+        source: KnowledgeBranch
+        target: KnowledgeBranch
+        cardinality: many
+        foreignKey: parentId
+    indexes:
+      - columns: [subjectId, sortOrder]
+        name: idx_knowledge_branch_subject_sort
+      - columns: [parentId]
+        name: idx_knowledge_branch_parent
+
+  # 已有 ontology.subject 的只读锚点，避免重复建表。
+  - name: SubjectRef
+    table: ontology.subject
+    abstract: true
+    description: 学科表引用锚点

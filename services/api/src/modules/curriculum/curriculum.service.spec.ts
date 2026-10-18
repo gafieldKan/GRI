@@ -405,4 +405,146 @@ describe('CurriculumService K12 课程体系门面', () => {
     const [, params] = query.mock.calls[0] as [string, unknown[]];
     expect(params[1]).toBe(5);
   });
+
+  // ---- 学科登顶双维度（summit-branches / summit-grades） ----
+
+  const SUMMIT_SUBJECT = { id: 'sub-math', code: 'MATH', name: '数学' };
+  const SUMMIT_BRANCHES = [
+    { id: 'b-num', code: 'math.num', name: '数与算术', description: '数的认识与运算', clc: 'O12', curriculum: '数与代数', sort_order: 10, parent_id: null, k12_grade_min: 1, k12_grade_max: 9, kp_count: 2, mastery_sum: '162', mastery_count: 2 },
+    { id: 'b-alg', code: 'math.alg', name: '代数', description: null, clc: 'O15', curriculum: '方程与不等式', sort_order: 20, parent_id: null, k12_grade_min: 7, k12_grade_max: 12, kp_count: 1, mastery_sum: '79', mastery_count: 1 },
+    { id: 'b-seq', code: 'math.seq', name: '数列', description: null, clc: 'O15', curriculum: null, sort_order: 30, parent_id: null, k12_grade_min: 11, k12_grade_max: 12, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+    { id: 'b-logic', code: 'math.logic', name: '数理逻辑', description: null, clc: 'O14', curriculum: null, sort_order: 40, parent_id: null, k12_grade_min: 10, k12_grade_max: 12, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+    { id: 'b-combi', code: 'math.combi', name: '计数与组合', description: null, clc: 'O15', curriculum: null, sort_order: 50, parent_id: null, k12_grade_min: 11, k12_grade_max: 12, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+    { id: 'b-analysis', code: 'math.analysis', name: '数学分析', description: null, clc: 'O17', curriculum: null, sort_order: 60, parent_id: null, k12_grade_min: 10, k12_grade_max: 12, kp_count: 1, mastery_sum: '80', mastery_count: 1 },
+    { id: 'b-ds', code: 'math.ds', name: '动力系统', description: '纯学科纵深', clc: 'O19', curriculum: null, sort_order: 61, parent_id: 'b-analysis', k12_grade_min: null, k12_grade_max: null, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+    { id: 'b-geometry', code: 'math.geometry', name: '几何', description: null, clc: 'O18', curriculum: null, sort_order: 70, parent_id: null, k12_grade_min: 1, k12_grade_max: 12, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+    { id: 'b-prosta', code: 'math.prosta', name: '概率统计', description: null, clc: 'O21', curriculum: null, sort_order: 80, parent_id: null, k12_grade_min: 5, k12_grade_max: 12, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+    { id: 'b-or', code: 'math.or', name: '运筹与决策', description: null, clc: 'O22/O23', curriculum: null, sort_order: 90, parent_id: null, k12_grade_min: 10, k12_grade_max: 12, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+    { id: 'b-comp', code: 'math.comp', name: '计算数学', description: null, clc: 'O24', curriculum: null, sort_order: 100, parent_id: null, k12_grade_min: 11, k12_grade_max: 12, kp_count: 0, mastery_sum: null, mastery_count: 0 },
+  ];
+
+  function mockSummitBranchesDb(branches: Array<Record<string, any>> = SUMMIT_BRANCHES) {
+    return jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [SUMMIT_SUBJECT] })
+      .mockResolvedValueOnce({ rows: branches });
+  }
+
+  it('summitBranches 匿名：MATH 10 座峰 + 子树 KP 聚合 + 深积分峰顶 + 无 mastery', async () => {
+    const query = mockSummitBranchesDb();
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.summitBranches('MATH');
+
+    expect(out.subject.code).toBe('MATH');
+    expect(out.peaks).toHaveLength(10);
+    expect(out.threshold).toBe(80);
+    const num: any = out.peaks.find((p: any) => p.code === 'math.num');
+    expect(num.kpCount).toBe(2);
+    expect(num.k12GradeMin).toBe(1);
+    expect(num.k12GradeMax).toBe(9);
+    expect(num.mastery).toBeUndefined();
+    expect(num.reached).toBe(false);
+    const analysis: any = out.peaks.find((p: any) => p.code === 'math.analysis');
+    expect(analysis.children).toHaveLength(1);
+    expect(analysis.children[0].code).toBe('math.ds');
+    expect(analysis.children[0].isSummit).toBe(false);
+    const [sql, params] = query.mock.calls[1] as [string, unknown[]];
+    expect(sql).toContain('ontology.knowledge_branch');
+    expect(sql).toContain('textbook_chapter');
+    expect(sql).toContain('mastery_snapshots');
+    expect(params[1]).toBeNull();
+  });
+
+  it('summitBranches 登录：按分支子树 KP 聚合 mastery，>=80 才 reached', async () => {
+    const branches = SUMMIT_BRANCHES.map((b) =>
+      b.code === 'math.num'
+        ? { ...b, kp_count: 3, mastery_sum: '240', mastery_count: 3 }
+        : b,
+    );
+    const query = mockSummitBranchesDb(branches);
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.summitBranches('math', 'user-1');
+
+    const num: any = out.peaks.find((p: any) => p.code === 'math.num');
+    expect(num.mastery).toBe(80);
+    expect(num.reached).toBe(true);
+    const alg: any = out.peaks.find((p: any) => p.code === 'math.alg');
+    expect(alg.mastery).toBe(79);
+    expect(alg.reached).toBe(false);
+    const [, params] = query.mock.calls[1] as [string, unknown[]];
+    expect(params[1]).toBe('user-1');
+  });
+
+  it('summitBranches 学科不存在 → NotFoundException', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+    const svc = new CurriculumService(mockDb(query));
+
+    await expect(svc.summitBranches('nosuch')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  const STAGE_ROWS = [
+    { stage_id: 'st1', stage_code: 'PRIMARY', stage_name: '小学', stage_sort: 1, grade_id: 'g1', grade_code: 'G1', grade_name: '一年级', grade_sort: 1 },
+    { stage_id: 'st1', stage_code: 'PRIMARY', stage_name: '小学', stage_sort: 1, grade_id: 'g2', grade_code: 'G2', grade_name: '二年级', grade_sort: 2 },
+    { stage_id: 'st2', stage_code: 'JUNIOR', stage_name: '初中', stage_sort: 2, grade_id: 'g7', grade_code: 'G7', grade_name: '七年级', grade_sort: 7 },
+    { stage_id: 'st3', stage_code: 'SENIOR', stage_name: '高中', stage_sort: 3, grade_id: 'g10', grade_code: 'G10', grade_name: '高一', grade_sort: 10 },
+  ];
+  const GRADE_TEXTBOOKS = [
+    { id: 't1', code: 'math.g1.pep', name: '人教版数学一年级上册', grade_code: 'G1', subject_code: 'MATH' },
+    { id: 't7', code: 'math.g7.pep', name: '人教版数学七年级上册', grade_code: 'G7', subject_code: 'MATH' },
+  ];
+  const GRADE_CHAPTERS = [
+    { id: 'c1', code: 'math.g1.pep.ch01', name: '准备课', sort_order: 1, textbook_id: 't1', parent_id: null, branch_id: 'b-num', branch_code: 'math.num', branch_name: '数与算术', kp_count: 2, mastery_sum: '162', mastery_count: 2 },
+    { id: 'c1s1', code: 'math.g1.pep.ch01.s01', name: '数一数', sort_order: 1, textbook_id: 't1', parent_id: 'c1', branch_id: 'b-num', branch_code: 'math.num', branch_name: '数与算术', kp_count: 1, mastery_sum: '90', mastery_count: 1 },
+    { id: 'c7', code: 'math.g7.pep.ch01', name: '有理数', sort_order: 1, textbook_id: 't7', parent_id: null, branch_id: 'b-num', branch_code: 'math.num', branch_name: '数与算术', kp_count: 1, mastery_sum: '72', mastery_count: 1 },
+  ];
+
+  function mockSummitGradesDb() {
+    return jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [SUMMIT_SUBJECT] })
+      .mockResolvedValueOnce({ rows: STAGE_ROWS })
+      .mockResolvedValueOnce({ rows: GRADE_TEXTBOOKS })
+      .mockResolvedValueOnce({ rows: GRADE_CHAPTERS });
+  }
+
+  it('summitGrades 匿名：学段→年级→人教版册/章 + 每章所属分支', async () => {
+    const query = mockSummitGradesDb();
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.summitGrades('MATH');
+
+    expect(out.subject.code).toBe('MATH');
+    expect(out.threshold).toBe(80);
+    expect(out.stages[0].code).toBe('PRIMARY');
+    expect(out.stages[0].grades.map((g: any) => g.code)).toEqual(['G1', 'G2']);
+    const g1: any = out.stages[0].grades.find((g: any) => g.code === 'G1');
+    expect(g1.textbooks).toHaveLength(1);
+    expect(g1.textbooks[0].chapters[0].branch.code).toBe('math.num');
+    expect(g1.textbooks[0].chapters[0].kpCount).toBe(2);
+    expect(g1.textbooks[0].chapters[0].mastery).toBeUndefined();
+    expect(g1.textbooks[0].chapters[0].reached).toBe(false);
+    const [sql, params] = query.mock.calls[3] as [string, unknown[]];
+    expect(sql).toContain('branch_id');
+    expect(sql).toContain('mastery_snapshots');
+    expect(params[1]).toBeNull();
+  });
+
+  it('summitGrades 登录：章/册/年级 mastery 聚合且 >=80 为 reached', async () => {
+    const query = mockSummitGradesDb();
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.summitGrades('math', 'user-1');
+
+    const g1: any = out.stages[0].grades.find((g: any) => g.code === 'G1');
+    expect(g1.mastery).toBe(84);
+    expect(g1.reached).toBe(true);
+    expect(g1.textbooks[0].mastery).toBe(84);
+    expect(g1.textbooks[0].reached).toBe(true);
+    expect(g1.textbooks[0].chapters[0].mastery).toBe(81);
+    expect(g1.textbooks[0].chapters[0].reached).toBe(true);
+    const [, params] = query.mock.calls[3] as [string, unknown[]];
+    expect(params[1]).toBe('user-1');
+  });
 });

@@ -3,7 +3,7 @@
   "w1-persona-world-foundation": "done_verified",
   "w2-portal-persona-world": "done_verified",
   "w3-module-world-shell": "done_verified",
-  "w4-a-summit-dimensions-data": "pending_dispatch",
+  "w4-a-summit-dimensions-data": "done_verified",
   "w4-b-summit-ui": "pending_dispatch_after_w4a",
   "p2-task-1": "done_and_committed",
   "p2-task-1b": "done_and_committed",
@@ -553,6 +553,36 @@
     },
     "order": [
       "P5-A2"
+    ]
+  },
+  "_waveW4_2026_10_18": {
+    "W4-a": {
+      "agent": "codex",
+      "status": "done_verified",
+      "card": ".agents/codex/tasks/w4-a-summit-dimensions-data.md",
+      "desc": "学科知识体系分支树（锚定中图法 CLC 权威）+ K12↔分支两层映射（100% 落位）+ 双维度只读 API（summit-branches/summit-grades）+ 人教版核对",
+      "commit": null,
+      "verification": {
+        "ontology": "knowledge-branch 本体过门禁；k12-curriculum 0.5.0（chapter/area branch FK 索引）",
+        "codegen": "结构块与 031 逐一致；K12 生成含两 FK；codegen 测试通过",
+        "migration": "031 登记；直跑幂等",
+        "tsc": "0 error",
+        "full_tests": "46 suites / 624 tests 全绿（基线 619，+5 不回归）",
+        "peaks": "53 顶层峰 MATH10/PHYS10/CHEM8/BIO9/CHN9/ENG7 + 4 纵深 = 57",
+        "clc": "全非空且可回溯 AUTHORITY 白名单（断言门禁）",
+        "placement": "textbook_chapter(622)/knowledge_area(331) branch_id 空值均=0（100%）",
+        "k12_span": "数据递归推导；math.analysis=10-12；纯纵深 NULL",
+        "api_anon": "summit-branches MATH=10峰/PHYS=10峰/无 mastery 泄漏；summit-grades MATH=PRIMARY6/JUNIOR3/SENIOR3",
+        "api_auth": "登录叠加掌握度，reached>=80 双向一致",
+        "pep_audit": "2873/2873 一致（100%）；35 空值单列不改",
+        "independent_extra": "跨学科错挂=0；verify.sh PASS=85 FAIL=0 SKIP=0；独立端口 3021 冒烟；清理遗留 3018 进程",
+        "independent": true
+      },
+      "notes": "未 commit/未 checkout（改动留工作树，由助手本次提交）。生物/化学部分顶层峰事实偏少（bio.micro/chem.inorg/chem.poly 面积=0），W4-b 可先以结构呈现。"
+    },
+    "order": [
+      "W4-a",
+      "W4-b"
     ]
   }
 }

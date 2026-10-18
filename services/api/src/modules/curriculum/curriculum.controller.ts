@@ -83,6 +83,24 @@ export class CurriculumController {
   }
 
   /**
+   * 维度 A：学科知识体系分支树。匿名出结构，登录叠加分支子树掌握度。
+   */
+  @Get('summit-branches')
+  summitBranches(@Query('subject') subject: string, @Req() req?: Request) {
+    const externalId = req ? this.auth(req)?.externalId ?? undefined : undefined;
+    return this.curriculumService.summitBranches(subject, externalId);
+  }
+
+  /**
+   * 维度 B：K12 学段→年级→人教版册/章。匿名出结构，登录叠加掌握度。
+   */
+  @Get('summit-grades')
+  summitGrades(@Query('subject') subject: string, @Req() req?: Request) {
+    const externalId = req ? this.auth(req)?.externalId ?? undefined : undefined;
+    return this.curriculumService.summitGrades(subject, externalId);
+  }
+
+  /**
    * 学习路径（目标驱动）：goalId 的全先修闭包，拓扑序去重（先修在前）。
    * OptionalAuth：匿名出结构、登录叠加各步骤掌握度。goalId 非法 → 400。
    */

@@ -69,6 +69,9 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   // 学科知识版图（0.4.0 版图层）：登峰视图数据——游客可看山体结构，
   // 登录后叠加个人掌握度（OptionalAuth 语义，同 knowledge-graph）。
   get('GET', /^\/curriculum\/knowledge-map\/?$/),
+  // 学科登顶双维度：匿名出结构，登录叠加掌握度；均为只读端点。
+  get('GET', /^\/curriculum\/summit-branches\/?$/),
+  get('GET', /^\/curriculum\/summit-grades\/?$/),
   // 学习路径（目标驱动先修闭包）：游客可看先修结构，登录叠加各步骤掌握度（OptionalAuth 语义）。
   get('GET', /^\/curriculum\/learning-path\/?$/),
   // Auth 代理端点（M1）：登录/注册/刷新/登出/当前用户/JWKS —— 必须公开，否则无法完成首次登录流程。

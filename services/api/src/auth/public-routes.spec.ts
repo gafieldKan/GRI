@@ -41,16 +41,20 @@ describe('public-routes 公开读白名单', () => {
   });
 
   describe('K12 课程体系公开目录（curriculum / OptionalAuth 读）', () => {
-    it('目录端点游客可读，含 knowledge-graph / knowledge-map / learning-path', () => {
+    it('目录端点游客可读，含 knowledge-graph / knowledge-map / learning-path / summit 双维度', () => {
       expect(isPublicRoute('GET', '/curriculum/subjects')).toBe(true);
       expect(isPublicRoute('GET', '/curriculum/knowledge-points')).toBe(true);
       expect(isPublicRoute('GET', '/curriculum/knowledge-graph')).toBe(true);
       expect(isPublicRoute('GET', '/curriculum/knowledge-map')).toBe(true);
       expect(isPublicRoute('GET', '/curriculum/learning-path')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/summit-branches')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/summit-grades')).toBe(true);
     });
 
-    it('学习路径非 GET 不放行，未定义路径保持保守', () => {
+    it('学习路径/登顶维度非 GET 不放行，未定义路径保持保守', () => {
       expect(isPublicRoute('POST', '/curriculum/learning-path')).toBe(false);
+      expect(isPublicRoute('POST', '/curriculum/summit-branches')).toBe(false);
+      expect(isPublicRoute('POST', '/curriculum/summit-grades')).toBe(false);
       expect(isPublicRoute('GET', '/curriculum/learning-path/extra')).toBe(false);
     });
 
