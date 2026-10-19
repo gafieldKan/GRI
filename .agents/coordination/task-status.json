@@ -5,7 +5,7 @@
   "w3-module-world-shell": "done_verified",
   "w4-a-summit-dimensions-data": "done_verified",
   "w4-b-summit-ui": "done_verified (2026-10-19 返工后复验通过)",
-  "w5-a-learning-chain-data": "planned (2026-10-19 落卡；待用户下达 Codex)",
+  "w5-a-learning-chain-data": "done_verified (2026-10-19 助手独立复验通过)",
   "w5-b-summit-v4-lightpath": "planned (2026-10-19 落卡；依赖 W5-a 复验后方可下达 Claude)",
   "p2-task-1": "done_and_committed",
   "p2-task-1b": "done_and_committed",
@@ -618,7 +618,7 @@
   "_waveW5_2026_10_19": {
     "W5-a": {
       "agent": "codex",
-      "status": "planned",
+      "status": "done_verified",
       "card": ".agents/codex/tasks/w5-a-learning-chain-data.md",
       "prompt": ".agents/codex/dispatch/w5-a-prompt.md",
       "desc": "学科登顶 v4 数据面：由课程序列推导学习链图（节点 + 分型边 explicit/seq/soft）+ 只读端点 learning-chain / kp-cave（洞窟聚合）；迁移 032（若建表）",
@@ -626,7 +626,15 @@
       "depends_on": [
         "W4-a"
       ],
-      "notes": "用户 2026-10-19 裁决：色彩=黎明破晓；引入光脉传导。prerequisites 仅 22/2908 → 链须由课程序列推导，显式前置最高优先；soft 边为引导性、非数据断言。"
+      "notes": "用户 2026-10-19 裁决：色彩=黎明破晓；引入光脉传导。prerequisites 仅 22/2908 → 链须由课程序列推导，显式前置最高优先；soft 边为引导性、非数据断言。",
+      "verification": {
+        "author_script": "助手亲自执行 .agents/codex/outputs/w5a-verify.sh → PASS=45 FAIL=0 SKIP=0；tsc 0；全量 API Jest 47 suites / 636 tests（基线 624，+12 不回归）",
+        "independent": "助手自起 API 实例（:3111）匿名探针：learning-chain?subject=MATH&branch=math.num 200；nodes=144 kps=915 edges=1456 kinds={explicit:1058,seq:392,soft:6}; summary={total:144,lit:0,next:\"math.g1.pep.ch01.s01\"}; unbounded →400；unknown subject→404；bad grade→400；kp-cave 只出公开字段；无 mastery / 个人字段泄漏",
+        "db_crosscheck": "edu.knowledge_points=2908；ontology.kp_prerequisite=3377（可解析 17/25 JSONB 引用均无 code/chapter_id → 不进链，仅供 kp-cave 显式返回）；math.num published KP 915 = 链中 kps 915；自环 2 条被过滤；无 materialized learning_edge",
+        "service_call": "直调 CurriculumService：登录叠加 mastery（hasMastery=true），litNodes=1/halfNodes=2/litKps=4；kpCave 登录输出 mastery/wrongQuestions/reviews/achievements，匿名仅公开",
+        "code_review": "身份取 externalId 未碰 req.auth.roles；subject+branch/grade 绑定；explicit 优先；seq 仅同年级；soft 仅跨年级邻点且 reason 含\"引导性\"+\"非精确前置\"; 白名单两条 OptionalAuth；diff 纯新增 780+2；HEAD 未动（ba9e07a）",
+        "notes": "非阻塞：未知分支 → 200 + nodes:0（W5-b 需空态兜底）；3 条 mastery 指向 code=NULL legacy KP → 永不出链（数据事实）"
+      }
     },
     "W5-b": {
       "agent": "claude",

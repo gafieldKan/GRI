@@ -110,6 +110,28 @@ export class CurriculumController {
     return this.curriculumService.learningPath(goalId, externalId);
   }
 
+  /**
+   * W5-a 学习链：subject 必填，branch 或 grade 至少一个作规模限定。
+   * OptionalAuth：匿名只出结构与 edge kind，登录叠加 mastery；anonymous 不含 mastery 字段。
+   */
+  @Get('learning-chain')
+  learningChain(
+    @Query('subject') subject?: string,
+    @Query('branch') branch?: string,
+    @Query('grade') grade?: string,
+    @Req() req?: Request,
+  ) {
+    const externalId = req ? this.auth(req)?.externalId ?? undefined : undefined;
+    return this.curriculumService.learningChain(subject, branch, grade, externalId);
+  }
+
+  /** W5-a 洞窟聚合：公开题入口/前置/下一节，登录叠加掌握度、错题、到期复习与成就。 */
+  @Get('kp-cave')
+  kpCave(@Query('kpId') kpId?: string, @Req() req?: Request) {
+    const externalId = req ? this.auth(req)?.externalId ?? undefined : undefined;
+    return this.curriculumService.kpCave(kpId, externalId);
+  }
+
   /** 知识点随堂练习（选择题含答案/解析，公开读）。须置于 knowledge-points/:id 之前。 */
   @Get('knowledge-points/:id/questions')
   knowledgePointQuestions(

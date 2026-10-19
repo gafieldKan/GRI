@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import {
   Subject,
@@ -20,7 +20,16 @@ import {
   SummitGrade,
   SummitStage,
   SummitGradesResult,
+  LearningChainResult,
+  KpCaveResult,
 } from './curriculum.types';
+import {
+  buildBranchChain,
+  buildSoftEdges,
+  resolveJsonbPrerequisites,
+  type ExplicitLearningEdge,
+  type LearningChainSourceRow,
+} from './learning-chain';
 
 /**
  * curriculum 切片：K12 课程体系只读门面（本体驱动的领域对齐）。
@@ -32,6 +41,9 @@ import {
 @Injectable()
 export class CurriculumService {
   constructor(private readonly db: DatabaseService) {}
+
+  private static readonly UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   private nodeCodeParent(rows: Array<Record<string, any>>, nodeId: string): string | null {
     return rows.find((row) => row.id === nodeId)?.parent_id ?? null;
@@ -800,6 +812,361 @@ export class CurriculumService {
       threshold: 80,
       stages,
     };
+  }
+
+  /**
+   * W5-a：加载一个受 subject + branch/grade 限定的课程切片。
+   * 该查询是学习链与洞窟“下一节”计算的共同底座；始终返回课程结构，
+   * 仅登录时 LEFT JOIN mastery_snapshots 叠加个人掌握度。
+   */
+  private async loadLearningChainSource(
+    subjectCode: string,
+    branchCode: string | null,
+    gradeLevel: number | null,
+    userId?: string,
+  ): Promise<LearningChainSourceRow[]> {
+    const params: unknown[] = [subjectCode, branchCode, gradeLevel];
+    const masteryJoin = userId
+      ? `LEFT JOIN edu.mastery_snapshots ms
+           ON ms.knowledge_point_id = kp.id AND ms.user_id = $4::uuid`
+      : '';
+    if (userId) params.push(userId);
+    const res = await this.db.query(
+      `SELECT kp.id AS "kpId", kp.code AS "kpCode", kp.name AS "kpName",
+              kp.legacy_id AS "legacyId", kp.prerequisites,
+              c.id AS "chapterId", c.code AS "chapterCode", c.name AS "chapterName",
+              c.parent_id AS "chapterParentId", c.sort_order AS "chapterSortOrder",
+              p.code AS "parentChapterCode", p.name AS "parentChapterName",
+              p.sort_order AS "parentChapterSortOrder",
+              t.id AS "textbookId", t.code AS "textbookCode",
+              NULL::int AS "textbookSortOrder",
+              g.id AS "gradeId", g.code AS "gradeCode", g.sort_order AS "gradeSortOrder",
+              COALESCE(kp.grade_level, g.sort_order) AS "gradeLevel",
+              b.id AS "branchId", b.code AS "branchCode", b.name AS "branchName",
+              ${userId ? 'ms.mastery_score' : 'NULL::numeric'} AS "masteryScore"
+         FROM edu.knowledge_points kp
+         JOIN ontology.subject s ON LOWER(s.code) = LOWER(kp.subject)
+         JOIN ontology.textbook_chapter c ON c.id = kp.chapter_id
+         LEFT JOIN ontology.textbook_chapter p ON p.id = c.parent_id
+         JOIN ontology.textbook t ON t.id = c.textbook_id
+         JOIN ontology.grade g ON g.id = t.grade_id
+         LEFT JOIN ontology.knowledge_branch b ON b.id = c.branch_id
+         ${masteryJoin}
+        WHERE LOWER(kp.subject) = LOWER($1)
+          AND (kp.status = 'published' OR kp.status IS NULL)
+          AND ($2::varchar IS NULL OR b.code = $2::varchar)
+          AND ($3::int IS NULL OR COALESCE(kp.grade_level, g.sort_order) = $3::int)
+        ORDER BY COALESCE(kp.grade_level, g.sort_order) NULLS LAST, g.sort_order NULLS LAST, t.code,
+                 p.sort_order NULLS LAST, c.sort_order NULLS LAST, c.code, kp.code`,
+      params,
+    );
+    return res.rows as LearningChainSourceRow[];
+  }
+
+  private dedupeExplicitEdges(edges: ExplicitLearningEdge[]): ExplicitLearningEdge[] {
+    const byEndpoints = new Map<string, ExplicitLearningEdge>();
+    for (const edge of edges) {
+      const key = `${edge.from}\u0000${edge.to}`;
+      if (!edge.from || !edge.to || edge.from === edge.to || byEndpoints.has(key)) continue;
+      byEndpoints.set(key, edge);
+    }
+    return [...byEndpoints.values()];
+  }
+
+  /**
+   * W5-a 学习链：纯服务内派生，不物化 ontology.learning_edge。
+   * explicit 来自 canonical kp_prerequisite 与 JSONB 精确引用；seq 由课程序列推导；
+   * soft 仅连接同分支跨年级骨架邻点，并在输出中明确标注“引导性、非精确前置”。
+   */
+  async learningChain(
+    subject?: string,
+    branch?: string,
+    grade?: string,
+    userId?: string,
+  ): Promise<LearningChainResult> {
+    const subjectCode = subject?.trim();
+    const branchCode = branch?.trim() || null;
+    if (!subjectCode) throw new BadRequestException('subject 必填');
+    if (!branchCode && !grade?.trim()) {
+      throw new BadRequestException('branch 或 grade 至少提供一个限定条件');
+    }
+
+    let gradeLevel: number | null = null;
+    if (grade?.trim()) {
+      const normalized = grade.trim().replace(/^G/i, '');
+      const parsed = Number(normalized);
+      if (
+        !/^\d+$/.test(normalized) ||
+        !Number.isFinite(parsed) ||
+        parsed < 1 ||
+        parsed > 12
+      ) {
+        throw new BadRequestException('grade 必须是 G1–G12 或 1–12');
+      }
+      gradeLevel = parsed;
+    }
+
+    const subjectRow = (
+      await this.db.query(
+        `SELECT id, code, name FROM ontology.subject WHERE LOWER(code) = LOWER($1)`,
+        [subjectCode],
+      )
+    ).rows[0];
+    if (!subjectRow) throw new NotFoundException(`学科不存在：${subjectCode}`);
+
+    const source = await this.loadLearningChainSource(
+      subjectRow.code,
+      branchCode,
+      gradeLevel,
+      userId,
+    );
+    const ids = source.map((row) => row.kpId);
+    const canonical = ids.length
+      ? (
+          await this.db.query(
+            `SELECT prerequisite.code AS "from", learner.code AS "to",
+                    prerequisite.name AS "fromName"
+               FROM ontology.kp_prerequisite edge
+               JOIN edu.knowledge_points prerequisite ON prerequisite.id = edge.to_kp
+               JOIN edu.knowledge_points learner ON learner.id = edge.from_kp
+              WHERE edge.from_kp = ANY($1::uuid[])
+                AND edge.to_kp = ANY($1::uuid[])`,
+            [ids],
+          )
+        ).rows.map((row: any) => ({
+          from: row.from,
+          to: row.to,
+          reason: `显式前置 ${row.fromName ?? row.from}`,
+        }))
+      : [];
+    const explicit = this.dedupeExplicitEdges([
+      ...canonical,
+      ...resolveJsonbPrerequisites(source),
+    ]);
+
+    const chain = buildBranchChain(source, explicit, { includeMastery: Boolean(userId) });
+    const soft = buildSoftEdges(chain.nodes, chain.edges);
+    return {
+      subject: subjectRow.code,
+      branch: branchCode ? (source[0]?.branchCode ?? branchCode) : null,
+      nodes: chain.nodes,
+      edges: [...chain.edges, ...soft],
+      summary: chain.summary,
+    };
+  }
+
+  /**
+   * W5-a 洞窟聚合：一次读取知识点、公开题入口/前置/下一节；
+   * 登录时再叠加个人掌握度、未解决错题、到期复习与成就。所有查询只读且有界。
+   */
+  async kpCave(kpId?: string, userId?: string): Promise<KpCaveResult> {
+    const id = kpId?.trim();
+    if (!id || !CurriculumService.UUID_RE.test(id)) {
+      throw new NotFoundException('知识点不存在');
+    }
+
+    const row = (
+      await this.db.query(
+        `SELECT kp.id, kp.code, kp.name, kp.subject,
+                kp.grade_level AS "gradeLevel",
+                c.id AS "chapterId", c.code AS "chapterCode", c.name AS "chapterName",
+                b.code AS "branchCode", b.name AS "branchName",
+                ${userId ? 'ms.mastery_score' : 'NULL::numeric'} AS "masteryScore"
+           FROM edu.knowledge_points kp
+           LEFT JOIN ontology.textbook_chapter c ON c.id = kp.chapter_id
+           LEFT JOIN ontology.knowledge_branch b ON b.id = c.branch_id
+           LEFT JOIN edu.mastery_snapshots ms
+             ON ms.knowledge_point_id = kp.id AND ms.user_id = $2::uuid
+          WHERE kp.id = $1::uuid
+            AND (kp.status = 'published' OR kp.status IS NULL)`,
+        [id, userId ?? null],
+      )
+    ).rows[0];
+    if (!row) throw new NotFoundException('知识点不存在');
+
+    const prerequisiteRows = await this.db.query(
+      `WITH refs AS (
+         SELECT DISTINCT ref.value #>> '{}' AS value
+           FROM edu.knowledge_points target
+           CROSS JOIN LATERAL jsonb_array_elements(
+             COALESCE(target.prerequisites, '[]'::jsonb)
+           ) AS ref(value)
+          WHERE target.id = $1::uuid
+            AND jsonb_typeof(ref.value) = 'string'
+       ),
+       matched AS (
+         SELECT matching.id, matching.code, matching.name
+           FROM refs
+           JOIN LATERAL (
+             SELECT kp.id, kp.code, kp.name, COUNT(*) OVER() AS match_count
+               FROM edu.knowledge_points kp
+              WHERE kp.legacy_id = refs.value OR kp.code = refs.value
+           ) matching ON matching.match_count = 1
+       ),
+       canonical AS (
+         SELECT prerequisite.id, prerequisite.code, prerequisite.name
+           FROM ontology.kp_prerequisite edge
+           JOIN edu.knowledge_points prerequisite ON prerequisite.id = edge.to_kp
+          WHERE edge.from_kp = $1::uuid
+       )
+       SELECT id, code, name FROM canonical
+       UNION
+       SELECT id, code, name FROM matched`,
+      [id],
+    );
+
+    const questionRows = await this.db.query(
+      `SELECT id, content, options, answer, COALESCE(explanation, analysis) AS analysis,
+              difficulty, type, COUNT(*) OVER()::int AS total
+         FROM edu.questions
+        WHERE knowledge_point_id = $1::uuid
+          AND jsonb_typeof(options) = 'array' AND jsonb_array_length(options) >= 2
+        ORDER BY difficulty NULLS FIRST, id
+        LIMIT $2`,
+      [id, 3],
+    );
+    const questionItems = questionRows.rows.map((question: any) => ({
+      id: question.id,
+      content: question.content,
+      options: question.options,
+      answer: question.answer,
+      analysis: question.analysis ?? null,
+      difficulty: question.difficulty != null ? Number(question.difficulty) : null,
+      type: question.type ?? null,
+    }));
+
+    const gradeLevel = row.gradeLevel != null ? Number(row.gradeLevel) : null;
+    const chainSource = await this.loadLearningChainSource(
+      String(row.subject ?? '').toUpperCase(),
+      row.branchCode ?? null,
+      row.branchCode ? null : gradeLevel,
+    );
+    const chain = buildBranchChain(chainSource);
+    const currentNodeIndex = chain.nodes.findIndex((node) =>
+      node.kps.some((kp) => kp.code === row.code),
+    );
+    const nextNode =
+      currentNodeIndex >= 0 && currentNodeIndex + 1 < chain.nodes.length
+        ? chain.nodes[currentNodeIndex + 1]
+        : null;
+
+    const mastery =
+      userId && row.masteryScore != null && Number.isFinite(Number(row.masteryScore))
+        ? Number(row.masteryScore)
+        : undefined;
+    const result: KpCaveResult = {
+      kp: {
+        id: row.id,
+        code: row.code ?? null,
+        name: row.name,
+        subject: row.subject ?? null,
+        gradeLevel,
+        chapter:
+          row.chapterId != null
+            ? { id: row.chapterId, code: row.chapterCode, name: row.chapterName }
+            : null,
+        branch:
+          row.branchCode != null ? { code: row.branchCode, name: row.branchName } : null,
+      },
+      state: mastery == null ? 'dim' : mastery >= 80 ? 'lit' : 'half',
+      prerequisites: prerequisiteRows.rows.map((prerequisite: any) => ({
+        id: prerequisite.id,
+        code: prerequisite.code,
+        name: prerequisite.name,
+        kind: 'explicit',
+        reason: `显式前置 ${prerequisite.name}`,
+      })),
+      questions: {
+        entry: `/api/curriculum/knowledge-points/${row.id}/questions`,
+        total: questionRows.rows.length
+          ? Number((questionRows.rows[0] as any).total ?? questionRows.rows.length)
+          : 0,
+        items: questionItems,
+      },
+      next: nextNode
+        ? {
+            code: nextNode.code,
+            name: nextNode.name,
+            unit: nextNode.unit,
+            firstKp: nextNode.kps[0]
+              ? { code: nextNode.kps[0].code, name: nextNode.kps[0].name }
+              : null,
+          }
+        : null,
+    };
+    if (mastery != null) result.mastery = mastery;
+
+    if (userId) {
+      const wrongRows = await this.db.query(
+        `SELECT wq.id, wq.question_id AS "questionId",
+                COALESCE(q.content, wq.question_text) AS content,
+                wq.wrong_count AS "wrongCount", wq.last_attempt_at AS "lastAttemptAt",
+                COUNT(*) OVER()::int AS total
+           FROM edu.wrong_questions wq
+           LEFT JOIN edu.questions q ON q.id = wq.question_id
+          WHERE wq.user_id = $1::uuid
+            AND q.knowledge_point_id = $2::uuid
+            AND wq.is_resolved = false
+          ORDER BY wq.last_attempt_at DESC NULLS LAST, wq.id
+          LIMIT $3`,
+        [userId, id, 20],
+      );
+      result.wrongQuestions = {
+        due: wrongRows.rows.length
+          ? Number((wrongRows.rows[0] as any).total ?? wrongRows.rows.length)
+          : 0,
+        items: wrongRows.rows.map((wrong: any) => ({
+          id: wrong.id,
+          questionId: wrong.questionId ?? null,
+          content: wrong.content ?? null,
+          wrongCount: Number(wrong.wrongCount ?? 0),
+          lastAttemptAt: wrong.lastAttemptAt ? new Date(wrong.lastAttemptAt) : null,
+        })),
+      };
+
+      const reviewRows = await this.db.query(
+        `SELECT sq.question_id AS "questionId", q.content,
+                sq.next_review AS "nextReview", COUNT(*) OVER()::int AS total
+           FROM edu.sr_queue sq
+           JOIN edu.questions q ON q.id = sq.question_id
+          WHERE sq.user_id = $1::uuid
+            AND q.knowledge_point_id = $2::uuid
+            AND sq.next_review IS NOT NULL
+            AND sq.next_review <= NOW()
+          ORDER BY sq.next_review ASC, sq.question_id
+          LIMIT $3`,
+        [userId, id, 20],
+      );
+      result.reviews = {
+        due: reviewRows.rows.length
+          ? Number((reviewRows.rows[0] as any).total ?? reviewRows.rows.length)
+          : 0,
+        items: reviewRows.rows.map((review: any) => ({
+          questionId: review.questionId,
+          content: review.content ?? null,
+          nextReview: review.nextReview ? new Date(review.nextReview) : null,
+        })),
+      };
+
+      const achievementRows = await this.db.query(
+        `SELECT code, name, description, unlocked_at AS "unlockedAt"
+           FROM edu.achievements
+          WHERE user_id = $1::uuid
+          ORDER BY unlocked_at DESC NULLS LAST, code`,
+        [userId],
+      );
+      result.achievements = {
+        count: achievementRows.rows.length,
+        items: achievementRows.rows.map((achievement: any) => ({
+          code: achievement.code,
+          name: achievement.name ?? null,
+          description: achievement.description ?? null,
+          unlockedAt: achievement.unlockedAt ? new Date(achievement.unlockedAt) : null,
+        })),
+      };
+    }
+
+    return result;
   }
 
   /** 单知识点（含前置依赖与状态）。 */

@@ -1,5 +1,11 @@
 /** curriculum 模块的领域模型（ontology 六表 + edu.knowledge_points）。 */
 
+import type {
+  LearningChainEdge,
+  LearningChainNode,
+  LearningState,
+} from './learning-chain';
+
 /** 学科（ontology.subject）。 */
 export interface Subject {
   id: string;
@@ -215,4 +221,97 @@ export interface SummitGradesResult {
   subject: { id: string; code: string; name: string };
   threshold: number;
   stages: SummitStage[];
+}
+
+/** W5-a 学习链只读数据面：节点 = 节（无子节时降级为章），边 = 先修/序列/软引导。 */
+export interface LearningChainResult {
+  subject: string;
+  branch: string | null;
+  nodes: LearningChainNode[];
+  edges: LearningChainEdge[];
+  summary: {
+    total: number;
+    lit: number;
+    next: string | null;
+  };
+}
+
+/** 洞窟前置知识入口（canonical 表或 JSONB 精确引用）。 */
+export interface CavePrerequisite {
+  id: string;
+  code: string;
+  name: string;
+  kind: 'explicit';
+  reason: string;
+}
+
+/** 洞内可立即进入的题目入口（答案/解析与既有公开题面同口径）。 */
+export interface CaveQuestion {
+  id: string;
+  content: string;
+  options: unknown;
+  answer: string;
+  analysis: string | null;
+  difficulty: number | null;
+  type: string | null;
+}
+
+export interface CaveWrongQuestion {
+  id: string;
+  questionId: string | null;
+  content: string | null;
+  wrongCount: number;
+  lastAttemptAt: Date | null;
+}
+
+export interface CaveReview {
+  questionId: string;
+  content: string | null;
+  nextReview: Date | null;
+}
+
+export interface CaveAchievement {
+  code: string;
+  name: string | null;
+  description: string | null;
+  unlockedAt: Date | null;
+}
+
+/** W5-a 洞窟聚合：公开结构与题目入口恒定；个人掌握度/错题/复习/成就仅登录叠加。 */
+export interface KpCaveResult {
+  kp: {
+    id: string;
+    code: string | null;
+    name: string;
+    subject: string | null;
+    gradeLevel: number | null;
+    chapter: { id: string; code: string; name: string } | null;
+    branch: { code: string; name: string } | null;
+  };
+  mastery?: number;
+  state: LearningState;
+  prerequisites: CavePrerequisite[];
+  questions: {
+    entry: string;
+    total: number;
+    items: CaveQuestion[];
+  };
+  next: {
+    code: string;
+    name: string;
+    unit: 'section' | 'chapter';
+    firstKp: { code: string; name: string } | null;
+  } | null;
+  wrongQuestions?: {
+    due: number;
+    items: CaveWrongQuestion[];
+  };
+  reviews?: {
+    due: number;
+    items: CaveReview[];
+  };
+  achievements?: {
+    count: number;
+    items: CaveAchievement[];
+  };
 }

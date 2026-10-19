@@ -1,6 +1,7 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CurriculumService } from './curriculum.service';
 import { DatabaseService } from '../../database/database.service';
+import type { LearningChainSourceRow } from './learning-chain';
 
 function mockDb(impl: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }>) {
   return { query: impl, getPool: jest.fn() } as unknown as DatabaseService;
@@ -546,5 +547,285 @@ describe('CurriculumService K12 课程体系门面', () => {
     expect(g1.textbooks[0].chapters[0].reached).toBe(true);
     const [, params] = query.mock.calls[3] as [string, unknown[]];
     expect(params[1]).toBe('user-1');
+  });
+
+  // ---- W5-a 学习链（learning-chain）与洞窟聚合（kp-cave） ----
+
+  const CHAIN_SOURCE: LearningChainSourceRow[] = [
+    {
+      kpId: 'kp-1',
+      kpCode: 'math.g1.pep.ch01.s01.kp01',
+      kpName: '数一数',
+      legacyId: 'math_count',
+      prerequisites: [],
+      chapterId: 's1',
+      chapterCode: 'math.g1.pep.ch01.s01',
+      chapterName: '1. 数一数',
+      chapterParentId: 'c1',
+      chapterSortOrder: 1,
+      parentChapterCode: 'math.g1.pep.ch01',
+      parentChapterName: '第一单元',
+      parentChapterSortOrder: 1,
+      textbookId: 't1',
+      textbookCode: 'math.g1.pep',
+      textbookSortOrder: 1,
+      gradeId: 'g1',
+      gradeCode: 'G1',
+      gradeLevel: 1,
+      gradeSortOrder: 1,
+      branchId: 'b-num',
+      branchCode: 'math.num',
+      branchName: '数与算术',
+      masteryScore: null,
+    },
+    {
+      kpId: 'kp-2',
+      kpCode: 'math.g1.pep.ch01.s01.kp02',
+      kpName: '比多少',
+      legacyId: 'math_compare',
+      prerequisites: ['math_count'],
+      chapterId: 's1',
+      chapterCode: 'math.g1.pep.ch01.s01',
+      chapterName: '1. 数一数',
+      chapterParentId: 'c1',
+      chapterSortOrder: 1,
+      parentChapterCode: 'math.g1.pep.ch01',
+      parentChapterName: '第一单元',
+      parentChapterSortOrder: 1,
+      textbookId: 't1',
+      textbookCode: 'math.g1.pep',
+      textbookSortOrder: 1,
+      gradeId: 'g1',
+      gradeCode: 'G1',
+      gradeLevel: 1,
+      gradeSortOrder: 1,
+      branchId: 'b-num',
+      branchCode: 'math.num',
+      branchName: '数与算术',
+      masteryScore: null,
+    },
+  ];
+
+  function mockLearningChainDb(source = CHAIN_SOURCE, explicit: any[] = []) {
+    return jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [SUMMIT_SUBJECT] })
+      .mockResolvedValueOnce({ rows: source })
+      .mockResolvedValueOnce({ rows: explicit });
+  }
+
+  it('learningChain 要求 subject 且有 branch/grade 限定，禁止全量请求', async () => {
+    const query = jest.fn();
+    const svc = new CurriculumService(mockDb(query));
+
+    await expect(svc.learningChain('MATH')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.learningChain('', 'math.num')).rejects.toBeInstanceOf(BadRequestException);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('learningChain 匿名按 branch 限定：无 mastery 键、显式优先、同节 seq、soft 标注引导', async () => {
+    const source = [
+      ...CHAIN_SOURCE,
+      {
+        ...CHAIN_SOURCE[0],
+        kpId: 'kp-2b',
+        kpCode: 'math.g1.pep.ch01.s01.kp03',
+        kpName: '几个和第几',
+        legacyId: 'math_ordinal',
+        prerequisites: [],
+        masteryScore: null,
+      },
+      {
+        ...CHAIN_SOURCE[0],
+        kpId: 'kp-3',
+        kpCode: 'math.g2.pep.ch01.s01.kp01',
+        kpName: '二年级数数',
+        legacyId: 'math_count_g2',
+        prerequisites: [],
+        ancestorChapterCode: undefined,
+        chapterId: 's2',
+        chapterCode: 'math.g2.pep.ch01.s01',
+        chapterName: '二年级第一节',
+        chapterParentId: 'c2',
+        parentChapterCode: 'math.g2.pep.ch01',
+        textbookId: 't2',
+        textbookCode: 'math.g2.pep',
+        textbookSortOrder: 2,
+        gradeId: 'g2',
+        gradeCode: 'G2',
+        gradeLevel: 2,
+        gradeSortOrder: 2,
+        masteryScore: null,
+      },
+    ];
+    const query = mockLearningChainDb(source);
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.learningChain('math', 'math.num');
+
+    expect(out.subject).toBe('MATH');
+    expect(out.branch).toBe('math.num');
+    expect(out.nodes).toHaveLength(2);
+    expect(out.nodes[0].unit).toBe('section');
+    expect(out.nodes[0].state).toBe('dim');
+    expect(Object.prototype.hasOwnProperty.call(out.nodes[0], 'mastery')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(out.nodes[0].kps[0], 'mastery')).toBe(false);
+    expect(out.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'explicit', from: 'math.g1.pep.ch01.s01.kp01' }),
+        expect.objectContaining({ kind: 'seq', reason: '同节序列' }),
+        expect.objectContaining({ kind: 'soft', reason: expect.stringContaining('引导') }),
+      ]),
+    );
+    expect(out.edges.every((edge: any) => edge.reason && edge.kind)).toBe(true);
+    const [sqlSubject, paramsSubject] = query.mock.calls[0] as [string, unknown[]];
+    expect(sqlSubject).toContain('ontology.subject');
+    expect(paramsSubject).toEqual(['math']);
+    const [sqlSource, paramsSource] = query.mock.calls[1] as [string, unknown[]];
+    expect(sqlSource).toContain('ontology.knowledge_branch');
+    expect(sqlSource).toContain('textbook_chapter');
+    expect(sqlSource).not.toContain('t.sort_order');
+    expect(sqlSource).toContain('NULL::numeric AS "masteryScore"');
+    expect(paramsSource).toEqual(['MATH', 'math.num', null]);
+  });
+
+  it('learningChain 登录叠加 mastery；grade 限定落在年级而非 branch', async () => {
+    const source = CHAIN_SOURCE.map((row, i) => ({
+      ...row,
+      masteryScore: i === 0 ? '90' : '70',
+    }));
+    const query = mockLearningChainDb(source);
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.learningChain('math', undefined, 'G1', 'user-1');
+
+    expect(out.branch).toBeNull();
+    expect(out.nodes[0].mastery).toBe(80);
+    expect(out.nodes[0].state).toBe('lit');
+    const [sqlSource, paramsSource] = query.mock.calls[1] as [string, unknown[]];
+    expect(sqlSource).toContain('mastery_snapshots');
+    expect(sqlSource).toContain('COALESCE(kp.grade_level, g.sort_order) = $3');
+    expect(paramsSource).toEqual(['MATH', null, 1, 'user-1']);
+  });
+
+  const CAVE_KP_ID = '10000000-0000-0000-0000-000000000001';
+  const CAVE_ROW = {
+    id: CAVE_KP_ID,
+    code: 'math.g1.pep.ch01.s01.kp01',
+    name: '数一数',
+    subject: 'math',
+    gradeLevel: 1,
+    chapterId: 's1',
+    chapterCode: 'math.g1.pep.ch01.s01',
+    chapterName: '1. 数一数',
+    branchCode: 'math.num',
+    masteryScore: null,
+  };
+  const CAVE_CHAIN_SOURCE: LearningChainSourceRow[] = [
+    ...CHAIN_SOURCE,
+    {
+      ...CHAIN_SOURCE[0],
+      kpId: 'kp-s2-1',
+      kpCode: 'math.g1.pep.ch01.s02.kp01',
+      kpName: '分一分',
+      legacyId: 'math_sort',
+      prerequisites: [],
+      chapterId: 's2',
+      chapterCode: 'math.g1.pep.ch01.s02',
+      chapterName: '2. 分一分',
+      chapterSortOrder: 2,
+    },
+  ];
+
+  it('kpCave 匿名：公开题目入口/前置/下一节点，strips mastery 与个人聚合', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [CAVE_ROW] })
+      .mockResolvedValueOnce({
+        rows: [{ id: 'pre-1', code: 'math.g1.pep.ch01.s01.pre', name: '前置', source: 'canonical' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ id: 'q1', content: '题', options: ['A', 'B'], answer: 'A', analysis: null, difficulty: 1, type: 'multiple-choice' }],
+      })
+      .mockResolvedValueOnce({ rows: CAVE_CHAIN_SOURCE });
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.kpCave(CAVE_KP_ID);
+
+    expect(out.kp.code).toBe(CAVE_ROW.code);
+    expect(out.state).toBe('dim');
+    expect(Object.prototype.hasOwnProperty.call(out, 'mastery')).toBe(false);
+    expect(out.prerequisites[0]).toMatchObject({ code: 'math.g1.pep.ch01.s01.pre', kind: 'explicit' });
+    expect(out.questions).toMatchObject({
+      total: 1,
+      entry: `/api/curriculum/knowledge-points/${CAVE_KP_ID}/questions`,
+    });
+    expect(out.next?.code).toBe('math.g1.pep.ch01.s02');
+    expect(out.wrongQuestions).toBeUndefined();
+    expect(out.reviews).toBeUndefined();
+    expect(out.achievements).toBeUndefined();
+    const [sqlMain, paramsMain] = query.mock.calls[0] as [string, unknown[]];
+    expect(sqlMain).toContain('NULL::numeric AS "masteryScore"');
+    expect(paramsMain).toEqual([CAVE_KP_ID, null]);
+    const [sqlPrerequisites] = query.mock.calls[1] as [string];
+    expect(sqlPrerequisites).toContain("jsonb_typeof(ref.value) = 'string'");
+    const [sqlQuestions] = query.mock.calls[2] as [string];
+    expect(sqlQuestions).toContain("jsonb_typeof(options) = 'array'");
+  });
+
+  it('kpCave 登录：mastery 三态 + 错题/复习/成就聚合', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ ...CAVE_ROW, masteryScore: '82' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: CAVE_CHAIN_SOURCE })
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 'wq-1',
+          questionId: 'q1',
+          content: '错题',
+          wrongCount: 2,
+          lastAttemptAt: '2026-10-18T00:00:00Z',
+          total: 23,
+        }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{
+          questionId: 'q1',
+          content: '复习题',
+          nextReview: '2026-10-19T00:00:00Z',
+          total: 25,
+        }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ code: 'cave_lit', name: '洞窟点亮', description: null, unlockedAt: '2026-10-19T00:00:00Z' }],
+      });
+    const svc = new CurriculumService(mockDb(query));
+
+    const out = await svc.kpCave(CAVE_KP_ID, 'user-1');
+
+    expect(out.mastery).toBe(82);
+    expect(out.state).toBe('lit');
+    expect(out.wrongQuestions?.due).toBe(23);
+    expect(out.reviews?.due).toBe(25);
+    expect(out.achievements?.count).toBe(1);
+    const [sqlWrong, paramsWrong] = query.mock.calls[4] as [string, unknown[]];
+    expect(sqlWrong).toContain('edu.wrong_questions');
+    expect(sqlWrong).toContain('COUNT(*) OVER()');
+    expect(paramsWrong).toEqual(['user-1', CAVE_KP_ID, 20]);
+    const [sqlReview, paramsReview] = query.mock.calls[5] as [string, unknown[]];
+    expect(sqlReview).toContain('sq.next_review <= NOW()');
+    expect(sqlReview).toContain('COUNT(*) OVER()');
+    expect(paramsReview).toEqual(['user-1', CAVE_KP_ID, 20]);
+  });
+
+  it('kpCave kpId 缺失/非法 → NotFoundException，且不查库', async () => {
+    const query = jest.fn();
+    const svc = new CurriculumService(mockDb(query));
+
+    await expect(svc.kpCave(undefined)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(svc.kpCave('not-a-uuid')).rejects.toBeInstanceOf(NotFoundException);
+    expect(query).not.toHaveBeenCalled();
   });
 });

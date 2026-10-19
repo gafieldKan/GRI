@@ -74,6 +74,9 @@ const PUBLIC_ROUTES: PublicRouteRule[] = [
   get('GET', /^\/curriculum\/summit-grades\/?$/),
   // 学习路径（目标驱动先修闭包）：游客可看先修结构，登录叠加各步骤掌握度（OptionalAuth 语义）。
   get('GET', /^\/curriculum\/learning-path\/?$/),
+  // W5-a 光脉学习链与洞窟聚合：只读；匿名出结构，登录叠加个人掌握度/错题/复习/成就。
+  get('GET', /^\/curriculum\/learning-chain\/?$/),
+  get('GET', /^\/curriculum\/kp-cave\/?$/),
   // Auth 代理端点（M1）：登录/注册/刷新/登出/当前用户/JWKS —— 必须公开，否则无法完成首次登录流程。
   // 这些端点仅作透传到 auth-center，不包含业务逻辑，安全由 auth-center 负责。
   get('POST', /^\/auth\/login\/?$/),

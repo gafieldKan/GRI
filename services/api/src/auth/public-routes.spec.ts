@@ -49,6 +49,8 @@ describe('public-routes 公开读白名单', () => {
       expect(isPublicRoute('GET', '/curriculum/learning-path')).toBe(true);
       expect(isPublicRoute('GET', '/curriculum/summit-branches')).toBe(true);
       expect(isPublicRoute('GET', '/curriculum/summit-grades')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/learning-chain')).toBe(true);
+      expect(isPublicRoute('GET', '/curriculum/kp-cave')).toBe(true);
     });
 
     it('学习路径/登顶维度非 GET 不放行，未定义路径保持保守', () => {
@@ -56,6 +58,10 @@ describe('public-routes 公开读白名单', () => {
       expect(isPublicRoute('POST', '/curriculum/summit-branches')).toBe(false);
       expect(isPublicRoute('POST', '/curriculum/summit-grades')).toBe(false);
       expect(isPublicRoute('GET', '/curriculum/learning-path/extra')).toBe(false);
+      expect(isPublicRoute('POST', '/curriculum/learning-chain')).toBe(false);
+      expect(isPublicRoute('GET', '/curriculum/learning-chain/extra')).toBe(false);
+      expect(isPublicRoute('POST', '/curriculum/kp-cave')).toBe(false);
+      expect(isPublicRoute('GET', '/curriculum/kp-cave/extra')).toBe(false);
     });
 
     it('知识点随堂练习题公开读（含答案/解析，学习材料）', () => {

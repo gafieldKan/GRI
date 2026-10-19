@@ -10,6 +10,7 @@
 - `edu.knowledge_points` **2908** 条：`grade_level` 覆盖 **2907**、`chapter_id` **2873**、`code`=`math.g1.pep.ch02.s01.kp03`（人教版+年级+章+节+kp 尾号）；`sort_order` 无此列→按 `code` 尾号 `kpNN` 排序。
 - `edu.knowledge_points.prerequisites`（jsonb）**仅 22/2908 有值** → **光脉链不能只靠此字段**，须由**课程序列推导**。
 - `ontology.textbook_chapter`：**两层**（163 顶层单元 `...ch01` / 459 子节 `...ch01.s01`）；有 `sort_order`、`parent_id`、`branch_id`（W4-a 已 100% 落位）。
+- **洞窟粒度（用户 2026-10-19 裁决）**：**1 洞 = 1 节（459）**，**洞内展开到知识点**（2908 kp 为洞内层级，不直接铺山面）。→ 学习链图的**节点 = 节**（unit=节），节点内带 `kps[]`（挂该节的知识点）；无子节的章**降级为以章为洞**（兜底，须在审计报告说明覆盖）。
 - `ontology.textbook` 26 册人教版（`subj.gN.pep`）；`ontology.knowledge_branch`（W4-a 建，53 顶层峰 + 纵深子节点，含 `clc`、`k12_grade_min/max`）。
 - 掌握度 `edu.mastery_snapshots`（唯一真源；登顶阈值 **≥80**）；`edu.achievements` **当前 0 条**。
 - 现有只读端点（**不得改签名**）：`/curriculum/summit-branches`、`/curriculum/summit-grades`、`/curriculum/knowledge-graph`、`/curriculum/knowledge-map`、`/curriculum/learning-path`。
@@ -47,8 +48,9 @@
    - `buildSoftEdges(...)`：跨年级软边（带 reason）；
    - 显式 `prerequisites` **最高优先**，覆盖推导边。
 3. **只读端点**（新增，入白名单）：
-   - `GET /api/curriculum/learning-chain?subject=&branch=&grade=` → `{ subject, branch, nodes:[{code,name,grade,chapter,chapterName,mastery?,state:'dim'|'half'|'lit'}], edges:[{from,to,kind:'explicit'|'seq'|'soft',reason}], summary:{total,lit,next} }`
-   - `GET /api/curriculum/kp-cave?kpId=` → `{ kp:{...}, mastery?, state, prereqEdges:[...], questionsEntry, wrongQuestionsDue, srDue, nextKp, achievementUnlocked }`（聚合**只读**入口，不替前端做题）
+   - `GET /api/curriculum/learning-chain?subject=&branch=&grade=` → `{ subject, branch, nodes:[{code,name,grade,chapter,chapterName,unit:'section'|'chapter',kps:[{code,name,mastery?,state}],mastery?,state:'dim'|'half'|'lit'}], edges:[{from,to,kind:'explicit'|'seq'|'soft',reason}], summary:{total,lit,next} }`
+     > **统一口径**：**node = 节（洞）**；节内知识点在 `kps[]`；节掌握度 = 其下 kp 聚合。`unit='chapter'` 仅用于无子节的章降级。
+   - `GET /api/curriculum/kp-cave?kpId=` → 洞内闭环聚合（掌握度/三态/前置边/题入口/错题due/复习due/下一节点/成就态），**只读**。
 4. 单测（推导正确性 + 边型 + 匿名不泄露 mastery + 分页/限定）。
 5. `.agents/codex/outputs/w5a-file-list.md`、`w5a-verify.sh`、`w5a-chain-audit.md`（边型统计、soft 占比、断链检查、样例链）。
 
