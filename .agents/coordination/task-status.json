@@ -4,7 +4,7 @@
   "w2-portal-persona-world": "done_verified",
   "w3-module-world-shell": "done_verified",
   "w4-a-summit-dimensions-data": "done_verified",
-  "w4-b-summit-ui": "pending_dispatch_after_w4a",
+  "w4-b-summit-ui": "done_verified (2026-10-19 返工后复验通过)",
   "p2-task-1": "done_and_committed",
   "p2-task-1b": "done_and_committed",
   "p2-task-4": "done_and_committed",
@@ -579,6 +579,34 @@
         "independent": true
       },
       "notes": "未 commit/未 checkout（改动留工作树，由助手本次提交）。生物/化学部分顶层峰事实偏少（bio.micro/chem.inorg/chem.poly 面积=0），W4-b 可先以结构呈现。"
+    },
+    "W4-b": {
+      "agent": "claude",
+      "status": "done_verified",
+      "card": ".agents/claude/tasks/w4-b-summit-ui.md",
+      "desc": "学科登顶双维度 UI（学科知识体系↔K12 阶段切换 + 多顶峰 + 延续性可视化 + 拟真形象 + 信息密度）",
+      "commit": null,
+      "verification": {
+        "author_script": "助手亲自执行 .agents/claude/outputs/w4b-verify.sh → PASS=231 FAIL=0 SKIP=5",
+        "build": "apps/web-ai-tutor build:h5 通过；产物带 W4-b 令牌/几何类/数据钩子",
+        "e2e_ok": "默认维度=学科知识体系；切维度不丢学科与当前峰；MATH 10 座独立峰各有态/径；K12 在读段+年级刻度；纵深子分支；空态兜底；键盘可达；其余 9 页 0 pageerror",
+        "no_naked_color": "三重 grep 空",
+        "scope": "改动全在白名单内；未 commit/未 checkout；暂存区空",
+        "blocking": "章详情（维度 B 的章）延续性误判为「纯学科纵深节点 / K12 之外」+ 「所属册」空白",
+        "root_cause": "world.vue:507 selectChapter(detail,c) 传的是派生详情对象（有 title/无 grade/gradeName/name），致 detail.bookX 取到 undefined；模板 v-if 落空走 else 纵深文案",
+        "repro": "助手自建同源双 App + Playwright 独立复现：CH_DETAIL 含「纯学科纵深节点」「K12 之外」；BOOK_ROW 值空。期望=承接 math.num K12 1–11",
+        "test_gap": "作者脚本 §7.11 仅断言章详情含「所属册」标签存在，未断言取值，也未断言章 K12 区间",
+        "independent": true
+      },
+      "rework": {
+        "fix": "world.vue:507 改 selectChapter(detail.rawBook, c)；kind==='book' 派生对象新增 rawBook:bk；chapter 分支延续性改取 ch.branch 对应分支峰的 k12GradeMin/Max（非册年级）",
+        "script_gap_closed": "w4b-verify.sh 新增 7.11b/c/d/e：章含「K12 承接」、不含「纯学科纵深节点」、所属册取值非空、K12 取值非空",
+        "author_script_rerun": "助手亲自复跑 → PASS=235 FAIL=0 SKIP=5",
+        "independent_repro": "助手自建同源双 App+Playwright 复现原路径：CH_DETAIL 现为「小一–高二（1–11 年级）」= math.num 区间；无纵深误判；所属册=人教版数学五年级上册；ASSERT want_k12=true wrongly_depth=false",
+        "cross_check": "API math.num k12GradeMin/Max=1/11 与章展示一致；深纵子分支 math.ds/math.classic k12=NULL（else 分支语义保留）；后端零改动；其它 select* 均传 code 无同类隐患"
+      },
+      "commit": null,
+      "notes": "返工仅限 W4-b 白名单内最小修复（传原始册对象 + 延续性取所属分支峰区间）；工作树由助手统一 commit。"
     },
     "order": [
       "W4-a",

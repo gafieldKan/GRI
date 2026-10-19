@@ -117,6 +117,26 @@ const TOPIC_KNOWLEDGE_MAP = {
   'chemistry_periodic': 'chemistry_periodic'
 }
 
+// 学科登顶 · 双维度（W4-a 读面，本体驱动）：
+//   维度 A（summit-branches）学科知识体系全覆盖 —— 一科 N 座分支峰，各含 K12 年级区间与中图法锚点；
+//   维度 B（summit-grades）K12 阶段 —— 学段→年级→人教版册→章，每册/章带所属体系分支。
+// 匿名出结构，登录态叠加各节点掌握度（mastery_snapshots 唯一真源）。
+export async function getSummitBranches(subject) {
+  try {
+    return await api.get('/api/curriculum/summit-branches', { params: { subject } })
+  } catch (e) {
+    return { subject: null, threshold: 80, peaks: [] }
+  }
+}
+
+export async function getSummitGrades(subject) {
+  try {
+    return await api.get('/api/curriculum/summit-grades', { params: { subject } })
+  } catch (e) {
+    return { subject: null, threshold: 80, stages: [] }
+  }
+}
+
 export async function createSession(data) {
   try {
     const topic = data.topic || data.knowledgePoint || ''

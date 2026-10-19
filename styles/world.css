@@ -174,6 +174,53 @@
 .w-rock { fill: var(--world-rock); }
 .w-rock-light { fill: var(--world-rock-light); }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⛰⛰ 学科登峰双维度（W4-b）：多峰群山 + K12／学科纵深延续带 + 年级海拔刻度
+     维度 A（学科知识体系）与维度 B（K12 阶段）共用同一条海拔轴与同一批类名，
+     故两维度是「同一座世界」的两面，而非两套皮肤。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* —— 分支峰：受光面 / 背光面 / 山脊 / 雪冠（复用学科山的山体令牌，不另立色） —— */
+.w-peak-face-l { fill: var(--world-hill-body); }
+.w-peak-face-r { fill: var(--world-hill-body-deep); }
+.w-peak-face-alt-l { fill: var(--world-peak-face-alt); }
+.w-peak-face-alt-r { fill: var(--world-peak-face-alt-deep); }
+.w-peak-ridge { fill: none; stroke: var(--world-hill-line); }
+.w-peak-edge { fill: none; stroke: var(--world-peak-edge); stroke-linejoin: round; }
+.w-peak-snow { fill: var(--world-peak-snow); }
+/* 纯学科纵深峰（K12 不含）：整座山体取纵深雾色，一眼区别于 K12 分支峰 */
+.w-peak-depth-l { fill: var(--world-band-depth); }
+.w-peak-depth-r { fill: var(--world-band-depth-edge); }
+
+/* —— 人教版册营地（维度 B 的木箱）—— */
+.w-book-left { fill: var(--world-wood-left); }
+.w-book-right { fill: var(--world-wood-right); }
+.w-book-top { fill: var(--world-wood-top); }
+
+/* —— 延续带（同海拔即同年级）：K12 在读段 / 更早未涉及段 / 学科纵深段 —— */
+.w-band-k12 { fill: var(--world-band-k12); }
+.w-band-k12-alt { fill: var(--world-band-k12-alt); }
+.w-band-idle { fill: var(--world-band-idle); }
+/* 起学线：横切山面的一道实线，落在「该分支 K12 从哪一年级开始」的海拔上 */
+.w-band-start { fill: none; stroke: var(--world-band-start); stroke-linecap: round; }
+.w-band-depth { fill: var(--world-band-depth); }
+.w-band-depth-light { fill: var(--world-band-depth-light); }
+.w-band-depth-edge { fill: none; stroke: var(--world-band-depth-edge); }
+
+/* —— 年级海拔刻度（格线 / 标尺 / 标签）—— */
+.w-axis-grid { fill: none; stroke: var(--world-axis-line); stroke-linecap: butt; }
+.w-axis-rail { fill: none; stroke: var(--world-axis-line); stroke-linecap: round; }
+.w-axis-label { fill: var(--world-axis-text); }
+
+/* —— 「我在这」年级海拔线（与 twin 人物同色：人在海拔上，不在别处）—— */
+.w-me-line { fill: none; stroke: var(--world-marker); stroke-dasharray: 5 7; }
+.w-me-label { fill: var(--world-marker); }
+
+/* —— 学段台地（维度 B：小/初/高三段）—— */
+.w-stage-1 { fill: var(--world-stage-1); }
+.w-stage-2 { fill: var(--world-stage-2); }
+.w-stage-3 { fill: var(--world-stage-3); }
+
 /* —— 地图注脚（SVG 文本）与热点内的镂空笔（用世界墨色，不用白）—— */
 .w-map-note { fill: var(--world-node-sub); }
 .w-glyph-cut { fill: var(--world-node-on-text); }

@@ -224,4 +224,25 @@
   --world-trail-dash: #a9c095;
   --world-rock: #b9b09c;
   --world-rock-light: #cbc3b0;
+
+  /* ═══════════════════════════════════════════
+     ⛰ 学科登峰双维度（W4-b）：多峰群山 + K12／学科纵深延续带 + 年级海拔刻度
+     两维度（学科知识体系 / K12 阶段）共用同一条海拔轴，故其色也共用一份。
+     ═══════════════════════════════════════════ */
+  --world-peak-snow: #fbfdf8; /* 登顶雪冠（同 --world-snow，独立语义便于他处覆盖） */
+  --world-band-k12: #a9cfae; /* K12 在读段（该分支在 K12 里的年级区间） */
+  --world-band-k12-alt: #c9ddb6; /* 相邻峰错开的一档（一列峰有节奏，不糊成一片） */
+  --world-peak-face-alt: #e3edd6; /* 相邻峰的受光面 */
+  --world-peak-face-alt-deep: #ccdcc0; /* 相邻峰的背光面 */
+  --world-peak-edge: #aec39a; /* 山形轮廓（重叠的群峰靠它分开） */
+  --world-band-idle: #dee5d5; /* K12 起点之下：该分支更早年级尚未涉及 */
+  --world-band-start: #8ab078; /* 起学线：该分支在 K12 里从哪一年级开始 */
+  --world-band-depth: #d9e9f1; /* 学科纵深段：K12 之上的分支纵深（冷雾） */
+  --world-band-depth-light: #eef6fa;
+  --world-band-depth-edge: #b6d1dd;
+  --world-axis-line: #ccd9c3; /* 年级海拔格线与左缘标尺 */
+  --world-axis-text: #7f9377;
+  --world-stage-1: #eaf2dc; /* 小学段台地 */
+  --world-stage-2: #dfe9ce; /* 初中段台地 */
+  --world-stage-3: #d6e6e4; /* 高中段台地（更高更冷） */
 }

@@ -451,3 +451,233 @@ export function buildWorldScenes(scenes) {
 
 /** 人物当前位置（W2 口径：登录激活即「在居所出发」，随用户进入场景而移动）。 */
 export const HOME_SCENE = 'home'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⛰ 学科登峰世界（W4-b）：年级海拔轴 + 多峰群山 + K12／学科纵深延续带
+//
+//  维度 A（学科知识体系：一科 N 峰）与维度 B（K12 阶段：学段→年级→册/章）
+//  共用同一条「年级海拔轴」——同一海拔即同一年级，故两维度可互相照应（延续性）。
+//  一座峰 = 一个学科分支：山脚落在它的 K12 起始年级、峰顶即它的 K12 终止年级；
+//  峰顶之上再起一段「学科纵深」雾脊 —— K12 之外仍属该分支，通向学科之巅。
+//  口径与前文一致：只产几何，颜色一律 `w-*` 类名，**本文件零色值**。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 登峰世界画布与海拔真源（两维度共用；改此一处即两维度同步）。 */
+export const SUMMIT = {
+  w: 1200,
+  h: 820,
+  groundTopY: 772, // 山脚落点（地面台顶）
+  gradeY1: 726, // 一年级海拔
+  gradeY12: 212, // 高三年级海拔
+  zenithY: 100 // 学科纵深之巅
+}
+
+/** 年级（1–12）→ 海拔 y（越小越高）。 */
+export function gradeY(g) {
+  const gg = Math.max(1, Math.min(12, Number(g) || 1))
+  return Math.round(SUMMIT.gradeY1 - ((gg - 1) / 11) * (SUMMIT.gradeY1 - SUMMIT.gradeY12))
+}
+
+/** 学段划分（维度 B 的分段带；与 ontology.school_stage 同口径）。 */
+export const STAGE_SPANS = [
+  { code: 'PRIMARY', name: '小学', min: 1, max: 6 },
+  { code: 'JUNIOR', name: '初中', min: 7, max: 9 },
+  { code: 'SENIOR', name: '高中', min: 10, max: 12 }
+]
+
+/** 山体在海拔 y 处的半宽（峰顶尖 → 山脚宽；与山体轮廓同一收窄律，带/径据此贴合山面）。 */
+function halfWidthAt(y, apexY, baseY, halfW) {
+  const span = baseY - apexY
+  if (span <= 0) return halfW
+  const t = Math.max(0, Math.min(1, (baseY - y) / span)) // 山脚 0 → 峰顶 1
+  return halfW * (1 - t)
+}
+
+/** 峰顶小旗（登顶标记；旗布由 .w-flag 升势摆动）。 */
+export function summitFlag(x, y, s = 1) {
+  return [
+    { k: 'path', c: 'w-lamp-pole', d: `M${x} ${y}V${y - 32 * s}`, w: 2 },
+    { k: 'poly', c: 'w-flag', points: `${pt(x, y - 32 * s)} ${pt(x + 22 * s, y - 25 * s)} ${pt(x, y - 18 * s)}` }
+  ]
+}
+
+/**
+ * 一座学科分支峰：受光面 / 背光面 / 山脊 + 延续带（未开始段｜K12 在读段）+ 雪冠。
+ * @returns {{prims, trail, apex}} trail 为登山径折点串（供攀爬动画）；apex 为峰顶坐标。
+ */
+export function peakMassif(x, apexY, baseY, halfW, opts = {}) {
+  const { k12Min = null, k12Max = null, reached = false, depth = false, alt = false } = opts
+  const faceL = depth ? 'w-peak-depth-l' : alt ? 'w-peak-face-alt-l' : 'w-peak-face-l'
+  const faceR = depth ? 'w-peak-depth-r' : alt ? 'w-peak-face-alt-r' : 'w-peak-face-r'
+  const out = []
+  const N = 16
+  const leftEdge = []
+  const rightEdge = []
+  for (let i = 0; i <= N; i += 1) {
+    const t = i / N
+    const y = baseY - (baseY - apexY) * t
+    const hw = halfW * (1 - t)
+    const wobble = (Math.sin(t * Math.PI * 2.6) * 0.15 + Math.sin(t * Math.PI * 5.1) * 0.06) * (1 - t)
+    leftEdge.push([x - hw * (1 + wobble), y])
+    rightEdge.push([x + hw * (1 - wobble), y])
+  }
+  // 山脚落影（拟真：山也有软阴影落地）
+  out.push({ k: 'ellipse', c: 'w-shadow', cx: x, cy: baseY + 8, rx: halfW * 1.22, ry: halfW * 0.34, o: 0.4 })
+  // 两面山体（先立山形：受光面 → 一侧边缘 → 山脚中点；重叠的群山因此各有立体感）
+  const leftPts = [`${x},${apexY}`, ...leftEdge.slice(1).map(([a, b]) => pt(a, b)), `${x},${baseY}`].join(' ')
+  const rightPts = [`${x},${apexY}`, ...rightEdge.slice(1).map(([a, b]) => pt(a, b)), `${x},${baseY}`].join(' ')
+  out.push({ k: 'poly', c: faceL, points: leftPts })
+  out.push({ k: 'poly', c: faceR, points: rightPts })
+
+  // 延续带（半透明色层压在受光/背光**之上**：既读得出「哪一段在 K12 里」，
+  // 又看得见山体自身的明暗。同海拔即同年级——两维度据此互相对照）
+  // 带沿山面内收 12%：两侧留出一线山体本色，相邻峰因此各见受光/背光，重叠也不糊成一片。
+  const INSET = 0.88
+  if (k12Max != null) {
+    const yTop = gradeY(k12Max)
+    const yBot = gradeY(k12Min != null ? k12Min : 1)
+    const hwTop = halfWidthAt(yTop, apexY, baseY, halfW) * INSET
+    const hwBot = halfWidthAt(yBot, apexY, baseY, halfW) * INSET
+    const hwFoot = halfWidthAt(baseY, apexY, baseY, halfW) * INSET
+    // ① K12 起点之下的「未开始」段（该分支在 K12 里更早的年级尚未涉及）
+    if (yBot < baseY - 2) {
+      out.push({
+        k: 'poly',
+        c: 'w-band-idle',
+        o: 0.62,
+        points: `${pt(x - hwFoot, baseY)} ${pt(x + hwFoot, baseY)} ${pt(x + hwBot, yBot)} ${pt(x - hwBot, yBot)}`
+      })
+    }
+    // ② K12 在读段（起始年级 → 终止年级）。跨度不足约半个年级刻度时保底 7px：
+    //    否则「这门学科 K12 学在哪一段」会缩成一条线读不出来（只保可见，不放大数据）。
+    const yTopD = Math.min(yTop, yBot - 7)
+    if (yTopD < yBot - 1) {
+      const hwTopD = halfWidthAt(yTopD, apexY, baseY, halfW) * INSET || hwTop
+      out.push({
+        k: 'poly',
+        c: alt ? 'w-band-k12-alt' : 'w-band-k12',
+        o: 0.88,
+        points: `${pt(x - hwBot, yBot)} ${pt(x + hwBot, yBot)} ${pt(x + hwTopD, yTopD)} ${pt(x - hwTopD, yTopD)}`
+      })
+    }
+    // ③ 起学线：该分支在 K12 里「从哪一年级开始」的横切线。
+    //    它必落在某条年级格线上——不是装饰，是把「从几年级开始」钉在海拔轴上给读数。
+    const hwLine = halfWidthAt(yBot, apexY, baseY, halfW)
+    out.push({ k: 'path', c: 'w-band-start', d: `M${(x - hwLine).toFixed(1)} ${yBot}H${(x + hwLine).toFixed(1)}`, w: 2 })
+  }
+
+  // 山脊 + 山形轮廓（压在色层之上：山不被带吃掉；群峰重叠时也一眼分得开）
+  out.push({ k: 'path', c: 'w-peak-ridge', d: `M${x} ${apexY}Q${x + halfW * 0.06} ${(apexY + baseY) / 2} ${x} ${baseY}`, w: 1 })
+  out.push({
+    k: 'path',
+    c: 'w-peak-edge',
+    w: 1.2,
+    o: 0.5,
+    d: `M${pt(leftEdge[0][0], leftEdge[0][1])}${leftEdge
+      .slice(1)
+      .map(([a, b]) => `L${pt(a, b)}`)
+      .join('')}${rightEdge
+      .slice()
+      .reverse()
+      .map(([a, b]) => `L${pt(a, b)}`)
+      .join('')}Z`
+  })
+
+  // 雪冠（登顶态：峰顶覆雪）
+  if (reached) {
+    const capY = apexY + Math.max(24, (baseY - apexY) * 0.16)
+    const hwCap = halfWidthAt(capY, apexY, baseY, halfW) * 0.92
+    out.push({ k: 'poly', c: 'w-peak-snow', points: `${pt(x - hwCap, capY)} ${pt(x, apexY - 2)} ${pt(x + hwCap, capY)}` })
+  }
+  // 之字登山径（沿正面向上；同一条路每一座峰都有）
+  const sweeps = 5
+  const trail = []
+  for (let k = 0; k <= sweeps; k += 1) {
+    const y = baseY - (k / sweeps) * (baseY - apexY)
+    const hw = halfWidthAt(y, apexY, baseY, halfW) * 0.72
+    const x1 = k % 2 === 0 ? x - hw : x + hw
+    const x2 = k % 2 === 0 ? x + hw : x - hw
+    trail.push({ x: x1, y })
+    if (Math.abs(x2 - x1) > 1) trail.push({ x: x2, y })
+  }
+  return { prims: out, trail, apex: { x, y: apexY } }
+}
+
+/** 学科纵深雾脊：峰顶之上延伸至天顶的一段（K12 之外仍属该分支）。 */
+export function depthSpire(x, fromY, toY, halfW) {
+  const w = Math.max(8, halfW)
+  return [
+    { k: 'poly', c: 'w-band-depth', points: `${pt(x, toY)} ${pt(x + w, fromY)} ${pt(x - w, fromY)}` },
+    { k: 'poly', c: 'w-band-depth-light', points: `${pt(x, toY + 10)} ${pt(x + w * 0.42, fromY)} ${pt(x - w * 0.5, fromY)}` },
+    { k: 'path', c: 'w-band-depth-edge', d: `M${x - w} ${fromY}L${x} ${toY}L${x + w} ${fromY}`, w: 1 }
+  ]
+}
+
+/** 人教版册（维度 B 的「营地」）：等距木箱营地 + 软阴影。x/y 为落点（底面中心）。 */
+export function bookCamp(x, y, s = 1) {
+  const f = isoBox(x - 18 * s, y - 30 * s, 36 * s, 28 * s, 24 * s)
+  return [
+    { k: 'ellipse', c: 'w-shadow-soft', cx: x, cy: y + 2, rx: 22 * s, ry: 8 * s },
+    { k: 'poly', c: 'w-book-left', points: f.left },
+    { k: 'poly', c: 'w-book-right', points: f.right },
+    { k: 'poly', c: 'w-book-top', points: f.top }
+  ]
+}
+
+/**
+ * 登峰世界的天光与地景（两维度共用底图；山峰/营地由上层叠加）。
+ * @param {{sky?: boolean}} opts `sky:false` = 天空交由调用方以渐变绘制（见 world.vue 的 #sky），
+ *        其余天光/远山/云鸟/地景/海拔刻度照旧——渐变只能由调用方给 id，故此处让出一层。
+ */
+export function summitScaffold(opts = {}) {
+  const { sky = true } = opts
+  const W = SUMMIT.w
+  const out = []
+  // 天光四阶 + 暖阳 + 近地雾（与人本世界同一天空）
+  if (sky) out.push({ k: 'rect', c: 'w-sky', x: 0, y: 0, w: W, h: SUMMIT.h })
+  out.push({ k: 'ellipse', c: 'w-sun-glow', cx: 1018, cy: 130, rx: 178, ry: 120, o: 0.8 })
+  out.push({ k: 'circle', c: 'w-sun-glow', cx: 1018, cy: 130, r: 26, o: 0.9 })
+  out.push({ k: 'rect', c: 'w-haze', x: 0, y: 110, w: W, h: 250, o: 0.5 })
+  // 远山两道（大气透视：越远越冷越淡）
+  out.push({ k: 'path', c: 'w-ridge-far', d: 'M0 268 96 176 208 240 330 150 470 236 604 160 742 232 880 158 1010 236 1120 178 1200 224V330H0Z', o: 0.75 })
+  out.push({ k: 'path', c: 'w-ridge-near', d: 'M0 300 120 236 236 296 372 226 512 292 648 232 792 296 918 240 1052 292 1200 244V372H0Z', o: 0.85 })
+  // 云带三组
+  out.push({ k: 'path', c: 'w-cloud', d: 'M198 176q20-32 56-22 22-28 58-13 32-9 37 26 28 6 19 30H214q-30 0-16-21Z', o: 0.9 })
+  out.push({ k: 'path', c: 'w-cloud', d: 'M742 128q16-26 46-17 18-22 48-10 26-7 30 21 23 5 15 24H754q-24 0-12-18Z', o: 0.78 })
+  out.push({ k: 'path', c: 'w-cloud', d: 'M420 96q12-20 36-13 14-18 37-7 20-4 23 15 16 4 12 18H432q-18 0-12-13Z', o: 0.62 })
+  // 飞鸟
+  out.push({ k: 'path', c: 'w-bird', d: 'M300 196q8-8 16 0M322 186q7-7 14 0M900 168q7-7 14 0', w: 1.5 })
+  // 厚土台原（等距地块：顶面 + 左右断面）
+  out.push({ k: 'poly', c: 'w-ground-side-l', points: '0,772 600,772 600,820 0,820' })
+  out.push({ k: 'poly', c: 'w-ground-side-r', points: '600,772 1200,772 1200,820 600,820' })
+  out.push({ k: 'rect', c: 'w-ground-top', x: 0, y: 744, w: W, h: 30 })
+  out.push({ k: 'rect', c: 'w-lawn', x: 0, y: 744, w: W, h: 12, o: 0.5 })
+  // 年级海拔格线 + 左缘标尺（延续性刻度的共用真源）
+  for (let g = 1; g <= 12; g += 1) {
+    const y = gradeY(g)
+    const major = g % 3 === 0
+    out.push({ k: 'path', c: 'w-axis-grid', d: `M104 ${y}H1188`, w: 1, dash: major ? '' : '3 10', o: major ? 0.85 : 0.5 })
+  }
+  out.push({ k: 'path', c: 'w-axis-grid', d: `M104 ${SUMMIT.zenithY}H1188`, w: 1, dash: '2 8', o: 0.7 })
+  out.push({ k: 'path', c: 'w-axis-rail', d: `M80 ${SUMMIT.zenithY}V${gradeY(1) + 6}`, w: 2 })
+  for (let g = 1; g <= 12; g += 1) {
+    out.push({ k: 'path', c: 'w-axis-rail', d: `M72 ${gradeY(g)}H88`, w: 2 })
+  }
+  return out
+}
+
+/** 海拔刻度标签（供页面渲染为 SVG 文本；与 gradeY 同一点位真源）。 */
+export const GRADE_TICKS = [
+  { g: 1, y: gradeY(1), short: '小一' },
+  { g: 2, y: gradeY(2), short: '小二' },
+  { g: 3, y: gradeY(3), short: '小三' },
+  { g: 4, y: gradeY(4), short: '小四' },
+  { g: 5, y: gradeY(5), short: '小五' },
+  { g: 6, y: gradeY(6), short: '小六' },
+  { g: 7, y: gradeY(7), short: '初一' },
+  { g: 8, y: gradeY(8), short: '初二' },
+  { g: 9, y: gradeY(9), short: '初三' },
+  { g: 10, y: gradeY(10), short: '高一' },
+  { g: 11, y: gradeY(11), short: '高二' },
+  { g: 12, y: gradeY(12), short: '高三' }
+]
