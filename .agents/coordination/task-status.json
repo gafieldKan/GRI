@@ -5,6 +5,8 @@
   "w3-module-world-shell": "done_verified",
   "w4-a-summit-dimensions-data": "done_verified",
   "w4-b-summit-ui": "done_verified (2026-10-19 返工后复验通过)",
+  "w5-a-learning-chain-data": "planned (2026-10-19 落卡；待用户下达 Codex)",
+  "w5-b-summit-v4-lightpath": "planned (2026-10-19 落卡；依赖 W5-a 复验后方可下达 Claude)",
   "p2-task-1": "done_and_committed",
   "p2-task-1b": "done_and_committed",
   "p2-task-4": "done_and_committed",
@@ -611,6 +613,36 @@
     "order": [
       "W4-a",
       "W4-b"
+    ]
+  },
+  "_waveW5_2026_10_19": {
+    "W5-a": {
+      "agent": "codex",
+      "status": "planned",
+      "card": ".agents/codex/tasks/w5-a-learning-chain-data.md",
+      "prompt": ".agents/codex/dispatch/w5-a-prompt.md",
+      "desc": "学科登顶 v4 数据面：由课程序列推导学习链图（节点 + 分型边 explicit/seq/soft）+ 只读端点 learning-chain / kp-cave（洞窟聚合）；迁移 032（若建表）",
+      "design": "docs/SUBJECT_SUMMIT_DESIGN_V4.md",
+      "depends_on": [
+        "W4-a"
+      ],
+      "notes": "用户 2026-10-19 裁决：色彩=黎明破晓；引入光脉传导。prerequisites 仅 22/2908 → 链须由课程序列推导，显式前置最高优先；soft 边为引导性、非数据断言。"
+    },
+    "W5-b": {
+      "agent": "claude",
+      "status": "planned",
+      "card": ".agents/claude/tasks/w5-b-summit-v4-lightpath.md",
+      "prompt": ".agents/claude/dispatch/w5-b-prompt.md",
+      "desc": "学科登顶 v4 表现面：黎明破晓晨雾（M1）+ 光脉传导（M2，灵魂）+ 洞窟探入接智学慧眼闭环（M3）+ 引导四件套 + 信息密度；山保留为宏观骨架，双维度不回归",
+      "design": "docs/SUBJECT_SUMMIT_DESIGN_V4.md",
+      "depends_on": [
+        "W5-a"
+      ],
+      "notes": "**必须等 W5-a 完成并助手复验后方可下达**（串行铁律）。黎明令牌已就绪（persona-world.css），无需暗色主题前置。"
+    },
+    "order": [
+      "W5-a",
+      "W5-b"
     ]
   }
 }
