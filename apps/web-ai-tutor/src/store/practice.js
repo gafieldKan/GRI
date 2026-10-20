@@ -52,6 +52,33 @@ export function normalizeQuestion(raw) {
   }
 }
 
+/**
+ * 判题（与题面归一化同源）：判定必须只有一条口径——练习页与洞窟闭环共用本函数，
+ * 任何第二套判定都会让「掌握度 / 光脉」撒谎。纯函数（不依赖 store 状态），故提到模块层导出。
+ *  - 选择：下标直比；字母 A/B/C… → 下标；否则退回选项文本 / 答案文本比对
+ *  - 填空/简答：关键词包含
+ */
+export function checkAnswer(question, answer) {
+  if (!question) return false
+  if (question.type === 'choice') {
+    // 前端以选项「下标」作答；归一化后 answerIndex 由字母答案推导而来
+    if (typeof answer === 'number') return answer === question.answerIndex
+    const norm = String(answer ?? '').trim().toUpperCase()
+    if (question.answerIndex >= 0) {
+      if (/^[A-Z]$/.test(norm)) return norm.charCodeAt(0) - 65 === question.answerIndex
+      return answer === question.options?.[question.answerIndex]
+    }
+    return norm === String(question.answer).trim().toUpperCase()
+  }
+  // 填空/简答 - 模糊匹配或关键词
+  if (question.type === 'fill' || question.type === 'short') {
+    const keywords = question.keywords || [question.answer]
+    const userText = String(answer).toLowerCase()
+    return keywords.some(k => userText.includes(String(k).toLowerCase()))
+  }
+  return String(answer).trim() === String(question.answer).trim()
+}
+
 // 练习模式
 const PRACTICE_MODES = {
   quick: { name: '快速练习', desc: '5-10道随机题目', icon: '⚡', questions: 10 },
@@ -279,26 +306,6 @@ export const usePracticeStore = defineStore('practice', () => {
     }
 
     return answerRecord
-  }
-
-  function checkAnswer(question, answer) {
-    if (question.type === 'choice') {
-      // 前端以选项「下标」作答；归一化后 answerIndex 由字母答案推导而来
-      if (typeof answer === 'number') return answer === question.answerIndex
-      const norm = String(answer ?? '').trim().toUpperCase()
-      if (question.answerIndex >= 0) {
-        if (/^[A-Z]$/.test(norm)) return norm.charCodeAt(0) - 65 === question.answerIndex
-        return answer === question.options?.[question.answerIndex]
-      }
-      return norm === String(question.answer).trim().toUpperCase()
-    }
-    // 填空/简答 - 模糊匹配或关键词
-    if (question.type === 'fill' || question.type === 'short') {
-      const keywords = question.keywords || [question.answer]
-      const userText = String(answer).toLowerCase()
-      return keywords.some(k => userText.includes(String(k).toLowerCase()))
-    }
-    return String(answer).trim() === String(question.answer).trim()
   }
 
   function nextQuestion() {

@@ -96,6 +96,30 @@
             </view>
           </view>
 
+          <!-- ── v4 光脉读数（N9 信息密度：点亮 / 下一目标 / 光脉前沿 / 当前洞门）── -->
+          <view v-if="dim === 'branches' && chainNodes.length" class="v4-strip" data-v4-strip>
+            <view class="vs-item" data-v4="lit">
+              <text class="vs-key">光脉点亮</text>
+              <text class="vs-val num" data-lit-count>{{ chainProgress.lit }}<text class="vs-sub"> / {{ chainProgress.total }} 节</text></text>
+              <text class="vs-note">微光 {{ chainProgress.half }} 节（够得着 · 尚未掌握）</text>
+            </view>
+            <view class="vs-item is-next" data-v4="next">
+              <text class="vs-key">下一个最佳目标</text>
+              <text class="vs-val" data-next-target>{{ nextHintText }}</text>
+              <text class="vs-note">顺着光走 · 目标在呼吸</text>
+            </view>
+            <view class="vs-item" data-v4="frontier">
+              <text class="vs-key">光脉前沿</text>
+              <text class="vs-val" data-frontier>{{ gradeShort(revealGradeNum) }}<text class="vs-sub"> · 雾退到此</text></text>
+              <text class="vs-note">晨雾只被相邻的光驱散</text>
+            </view>
+            <view class="vs-item" data-v4="door">
+              <text class="vs-key">当前洞门</text>
+              <text class="vs-val" data-door-word>{{ doorWord }}</text>
+              <text class="vs-note">{{ activeGrade ? gradeShort(activeGrade.gradeNum) + ' · ' + activeGrade.total + ' 节' : '未选洞门' }}</text>
+            </view>
+          </view>
+
           <!-- ── 登峰地图（两维度同屏一张画布：同一条海拔轴）── -->
           <view class="map-panel">
             <view class="map-scroll">
@@ -122,6 +146,17 @@
                     <radialGradient id="sunG" cx="0.5" cy="0.5">
                       <stop offset="0" class="w-gg-sun" stop-opacity="0.95" />
                       <stop offset="1" class="w-gg-sun" stop-opacity="0" />
+                    </radialGradient>
+                    <!-- v4 晨雾（M1）：上实下虚的黎明幕——雾退到「光脉前沿」为止 -->
+                    <linearGradient id="fogVeil" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" class="w-gg-fog" stop-opacity="0.88" />
+                      <stop offset="0.62" class="w-gg-fog" stop-opacity="0.84" />
+                      <stop offset="1" class="w-gg-fog" stop-opacity="0" />
+                    </linearGradient>
+                    <!-- v4 曙光（M2/M3）：洞口亮灯时从洞里漫出的一团黎明 -->
+                    <radialGradient id="dawnG" cx="0.5" cy="0.5">
+                      <stop offset="0" class="w-gg-dawn" stop-opacity="0.8" />
+                      <stop offset="1" class="w-gg-dawn" stop-opacity="0" />
                     </radialGradient>
                     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                       <feGaussianBlur stdDeviation="2.4" result="b" />
@@ -237,6 +272,8 @@
                   :data-branch="h.kind === 'peak' ? h.code : undefined"
                   :data-branch-depth="h.kind === 'depth' ? h.code : undefined"
                   :data-book="h.kind === 'book' ? h.code : undefined"
+                  :data-grade-door="h.kind === 'grade' ? h.code : undefined"
+                  :data-door-state="h.kind === 'grade' ? h.state : undefined"
                   :data-hot-index="i"
                   :data-hot-state="h.state"
                   :aria-label="h.aria"
@@ -258,6 +295,11 @@
                     <svg v-else-if="h.kind === 'depth'" class="hot-glyph" viewBox="0 0 24 24">
                       <path d="M12 4 4 19h16Z" fill="none" stroke="currentColor" stroke-width="1.8" />
                       <path d="M12 4v15" stroke="currentColor" stroke-width="1.4" opacity="0.7" />
+                    </svg>
+                    <!-- v4 年级洞门：岩拱 + 洞腔（洞腔的色随三态走，即 N6③ 暗门/半亮/亮灯） -->
+                    <svg v-else-if="h.kind === 'grade'" class="hot-glyph" viewBox="0 0 24 24">
+                      <path d="M4.5 20v-8.4a7.5 7.5 0 0 1 15 0V20Z" fill="none" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M8.4 20v-7.6a3.6 3.6 0 0 1 7.2 0V20Z" fill="currentColor" opacity="0.85" />
                     </svg>
                     <svg v-else class="hot-glyph" viewBox="0 0 24 24">
                       <path d="M12 3 3 20h18Z" fill="currentColor" />
@@ -281,7 +323,85 @@
               <text class="ml-item"><text class="ml-dot is-summit" />已登顶（旗 / 雪冠）</text>
               <text class="ml-item"><text class="ml-swatch is-k12" />K12 在读段</text>
               <text class="ml-item"><text class="ml-swatch is-depth" />学科纵深段</text>
-              <text class="ml-note">{{ dim === 'branches' ? '点一座峰 → 看它的延续性与三件事' : '点一册书 → 看它属于哪些体系分支' }}</text>
+              <text v-if="dim === 'branches'" class="ml-item"><text class="ml-swatch is-fog" />晨雾（未明）</text>
+              <text v-if="dim === 'branches'" class="ml-item"><text class="ml-swatch is-light" />光脉（已亮的路）</text>
+              <text v-if="dim === 'branches'" class="ml-item"><text class="ml-dot is-door" />年级洞门（暗 / 半亮 / 亮灯）</text>
+              <text class="ml-note">{{ dim === 'branches' ? '点一座峰 → 点峰上的年级洞门 → 进洞走闭环' : '点一册书 → 看它属于哪些体系分支' }}</text>
+            </view>
+          </view>
+
+          <!-- ── v4 节洞带（M3 第一步）：点年级洞门 → 这一年级的节铺成一条山径 ── -->
+          <view v-if="dim === 'branches' && activeGrade" class="band-panel" data-band>
+            <view class="band-head">
+              <view class="band-title">
+                <text class="bt-main">{{ selectedPeakLayout ? selectedPeakLayout.peak.name : '' }} · {{ gradeShort(activeGrade.gradeNum) }} 洞带</text>
+                <text class="bt-sub" data-band-sub>
+                  {{ activeGrade.nodes[0] ? activeGrade.nodes[0].chapterName : '' }} 等 {{ activeGrade.total }} 节 · 已亮 {{ activeGrade.lit }} · 微光 {{ activeGrade.half }}
+                </text>
+              </view>
+              <text class="band-door" :data-band-door="activeGrade.door">{{ doorStateWord(activeGrade.door) }}</text>
+              <button class="tbtn ghost sm" data-band-close @click="closeBand">收起 ✕</button>
+            </view>
+
+            <view class="band-scroll" data-band-scroll>
+              <view class="band-scene" :style="{ width: bandW + 'px', height: bandH + 'px' }">
+                <svg
+                  class="band-svg"
+                  :viewBox="`0 0 ${bandW} ${bandH}`"
+                  :width="bandW"
+                  :height="bandH"
+                  preserveAspectRatio="xMinYMid meet"
+                  role="img"
+                  :aria-label="`${gradeShort(activeGrade.gradeNum)} 节洞带：共 ${activeGrade.total} 节，已亮 ${activeGrade.lit} 节`"
+                >
+                  <template v-for="(p, i) in bandPrims" :key="'bp' + i">
+                    <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+                    <path
+                      v-else-if="p.k === 'path'"
+                      :class="p.c"
+                      :d="p.d"
+                      :opacity="p.o"
+                      :stroke-width="p.w"
+                      :stroke-dasharray="p.dash"
+                    />
+                    <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+                    <ellipse
+                      v-else-if="p.k === 'ellipse'"
+                      :class="p.c"
+                      :cx="p.cx"
+                      :cy="p.cy"
+                      :rx="p.rx"
+                      :ry="p.ry"
+                      :opacity="p.o"
+                    />
+                    <rect v-else :class="p.c" :x="p.x" :y="p.y" :width="p.w" :height="p.h" :rx="p.rx" :opacity="p.o" />
+                  </template>
+                </svg>
+
+                <!-- 洞位（HTML 叠层，与 SVG 同一坐标真源）：点了就进洞 -->
+                <button
+                  v-for="p in bandLayout.points"
+                  :key="'bn' + p.node.code"
+                  class="band-node"
+                  :class="[`is-${p.node.light}`, { 'is-next': nextNode && nextNode.code === p.node.code }]"
+                  :style="{ left: p.x + 'px', top: p.y + 'px' }"
+                  :data-cave="p.node.code"
+                  :data-cave-state="p.node.light"
+                  :data-cave-next="nextNode && nextNode.code === p.node.code ? 'yes' : undefined"
+                  :aria-label="`节 ${p.node.name}，${doorStateWord(p.node.light)}，${p.node.kps.length} 个知识点，所属章 ${p.node.chapterName}，回车进洞`"
+                  @click="openCave(p.node)"
+                >
+                  <span class="bn-name">{{ p.node.name }}</span>
+                  <span class="bn-sub">{{ p.node.kps.length }} 知识点 · {{ p.node.chapterName }}</span>
+                </button>
+              </view>
+            </view>
+
+            <view class="band-legend">
+              <text class="bl-item"><text class="bl-line is-explicit" />显式前置</text>
+              <text class="bl-item"><text class="bl-line is-seq" />课程序列</text>
+              <text class="bl-item"><text class="bl-line is-soft" />引导路径（非精确前置，仅供引导）</text>
+              <text class="bl-note">点一个洞 → 进洞走完智学慧眼闭环（讲解 → 练 → 判 → 错题/复习 → 掌握 ≥ 80），答对即点亮，光顺着链流向下一节</text>
             </view>
           </view>
         </view>
@@ -368,6 +488,21 @@
           </text>
         </view>
       </view>
+
+      <!-- ── v4 洞内（M3）：平铺生活场景 + 智学慧眼闭环（复用能力，不重造）── -->
+      <CaveScene
+        :open="!!caveTarget"
+        :node="caveTarget ? caveTarget.node : null"
+        :kps="caveKps"
+        :cave="caveTarget ? caveTarget.cave : null"
+        :active-code="caveTarget ? caveTarget.kpCode : ''"
+        :logged-in="isLoggedIn"
+        @close="closeCave"
+        @lit="onCaveLit"
+        @lit-kp="onCaveLitKp"
+        @pick-kp="onPickCaveKp"
+        @goto-review="gotoReview"
+      />
 
       <view class="safe-area" />
 
@@ -540,7 +675,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, h, defineComponent } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, h, defineComponent } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useKnowledgeStore } from '@/store/knowledge'
 import { usePracticeStore } from '@/store/practice'
@@ -549,9 +684,17 @@ import { useUserStore } from '@/store/user'
 import { useAuthStore } from '@gri/auth-client'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton.vue'
-import { getActivationContext, getSummitBranches, getSummitGrades } from '@/api/index.js'
-// 世界语言共享件（W3/W4-b）：外壳、人物画法、登峰世界的地形与峰/册/刻度画法都从同一份取——
-// 峰、营地、海拔刻度一律出自 @gri/world-art，本页只做排布与状态，不另写一套画法。
+import {
+  getActivationContext,
+  getSummitBranches,
+  getSummitGrades,
+  getLearningChain,
+  getKpCave,
+  getKnowledgePoints
+} from '@/api/index.js'
+import CaveScene from '@/components/world/CaveScene.vue'
+// 世界语言共享件（W3/W4-b/W5-b）：外壳、人物画法、登峰世界的地形与峰/册/刻度画法、
+// v4 的雾/光脉/洞窟画法都从同一份取——本页只做排布与状态，不另写一套画法。
 import WorldShell from '@world-art/WorldShell.vue'
 import {
   personMarker,
@@ -563,7 +706,25 @@ import {
   gradeY,
   SUMMIT,
   STAGE_SPANS,
-  GRADE_TICKS
+  GRADE_TICKS,
+  // v4（W5-b）黎明破晓 × 光脉传导：态推导 / 洞带排布 / 雾 / 光 / 洞，全为纯函数
+  deriveLightState,
+  gradeGroups,
+  gradeDoorState,
+  doorStateWord,
+  lightProgress,
+  caveTrailLayout,
+  caveDoor,
+  caveNode,
+  caveEdge,
+  fogBank,
+  fogPuff,
+  ridgeGlow,
+  lightBeam,
+  lightHint,
+  edgeToneClass,
+  edgeKindWord,
+  CAVE_BAND
 } from '@world-art'
 
 const knowledgeStore = useKnowledgeStore()
@@ -815,6 +976,354 @@ const climbedD = computed(() => {
   return trailD([...pts, end])
 })
 
+// ═══════════════════════════════════════════════════════════════════════════
+// v4（W5-b）黎明破晓 × 光脉传导
+//   M1 晨雾即未知：未走到的一段罩在黎明的雾里，只有山脚（K12 起点）与走过的路可见；
+//   M2 光脉传导（魂）：答对 → 该节点亮 → 光顺链流向其后继（未明 → 微光）→ 雾退、山脊露出；
+//   M3 洞窟即闭环：点洞 → 洞内平铺场景 → 走完智学慧眼闭环（讲解→练→判→错题/复习→掌握≥80）→ 出洞亮灯。
+// 数据**只**来自 W5-a 两个读面（learning-chain / kp-cave）与既有 curriculum 读面；
+// 「微光」是端上纯函数推导（deriveLightState），不臆造掌握度（半亮只代表够得着，不等于已掌握）。
+// ═══════════════════════════════════════════════════════════════════════════
+const chainData = ref({ subject: null, branch: null, nodes: [], edges: [], summary: { total: 0, lit: 0, next: null } })
+const loadingChain = ref(false)
+const chainNodes = computed(() => chainData.value.nodes || [])
+const chainSummary = computed(() => chainData.value.summary || { total: 0, lit: 0, next: null })
+/** 洞内闭环要 kpId（uuid），而链上给的是 kp code —— code→id 由既有点表读面按年级补齐并缓存。 */
+const kpIdByCode = ref({})
+const kpIdsLoaded = {}
+const bandGrade = ref(null)
+const caveTarget = ref(null)
+const caveLoading = ref(false)
+/** 已取到链的分支（同一分支不重复取；onShow / 出洞亮灯时显式 force 重取）。 */
+let chainBranchLoaded = null
+
+/**
+ * 边在 W5-a 真源里是 **kp 级**的（from/to 都是 kp code），而洞带画在「节」这一层，
+ * 故把 kp 边收成节边：同一对节取最强的一类（显式前置 > 课程序列 > 引导路径），
+ * 避免同一对节叠出三条线、也避免把「引导」画得比「显式」还重（N5）。
+ */
+const EDGE_RANK = { explicit: 0, seq: 1, soft: 2 }
+const nodeEdges = computed(() => {
+  const kpToNode = new Map()
+  for (const n of chainNodes.value) for (const kp of n.kps || []) kpToNode.set(kp.code, n.code)
+  const byPair = new Map()
+  for (const e of chainData.value.edges || []) {
+    const from = kpToNode.get(e.from)
+    const to = kpToNode.get(e.to)
+    if (!from || !to || from === to) continue
+    const key = from + '@@' + to
+    const cur = byPair.get(key)
+    if (!cur || EDGE_RANK[e.kind] < EDGE_RANK[cur.kind]) byPair.set(key, { from, to, kind: e.kind, reason: e.reason })
+  }
+  return [...byPair.values()]
+})
+
+/**
+ * N5 引导去向：soft 边实测**全部跨年级**（这本书学完接下一本，如「小六末 → 初一初」），
+ * 而节带一次只铺一个年级 —— 光靠带内边画不出来，引导路径会在世界里整个消失。
+ * 故在带内给「有引导去向」的节画一条去向桩（最淡虚线的旁支 + 端点小点）：
+ * 「引导」真的可见，且明摆着弱于显式/课程序列（虚线 + 最淡一档 + 图例注记「非精确前置，仅供引导」）。
+ */
+const softOut = computed(() => {
+  const kpToNode = new Map()
+  for (const n of chainNodes.value) for (const kp of n.kps || []) kpToNode.set(kp.code, n.code)
+  const m = new Map()
+  for (const e of chainData.value.edges || []) {
+    if (e.kind !== 'soft') continue
+    const from = kpToNode.get(e.from)
+    const to = kpToNode.get(e.to)
+    if (!from || !to || from === to) continue
+    if (!m.has(from)) m.set(from, [])
+    m.get(from).push(to)
+  }
+  return m
+})
+
+/** M2 光脉传导：已亮的节把「相邻未明」照成微光（雾只被相邻的光驱散，N6①）。 */
+const lightStates = computed(() => deriveLightState(chainNodes.value, nodeEdges.value))
+const chainProgress = computed(() => lightProgress(lightStates.value))
+const chainReady = computed(() => dim.value === 'branches' && chainNodes.value.length > 0)
+function stateOf(code) {
+  return lightStates.value[code] || 'dim'
+}
+function edgeKindBetween(from, to) {
+  const hit = nodeEdges.value.find((e) => e.from === from && e.to === to)
+  return hit ? hit.kind : 'seq'
+}
+
+/** N11：一次只铺一个年级的洞带（同年级节数 ≤ 40；整支几百节靠按年级分段 + 横向滚动保持流畅）。 */
+const gradeList = computed(() =>
+  gradeGroups(chainNodes.value).map((g) => {
+    const states = {}
+    for (const n of g.nodes) states[n.code] = stateOf(n.code)
+    const vals = Object.values(states)
+    return {
+      grade: g.grade,
+      gradeNum: gradeOf(g.grade),
+      nodes: g.nodes,
+      states,
+      door: gradeDoorState(states),
+      lit: vals.filter((s) => s === 'lit').length,
+      half: vals.filter((s) => s === 'half').length,
+      total: vals.length
+    }
+  })
+)
+const activeGrade = computed(() => {
+  const want = bandGrade.value || (gradeList.value[0] ? gradeList.value[0].grade : null)
+  return gradeList.value.find((g) => g.grade === want) || null
+})
+/** 洞带上的节（附有效态）：→ 洞位三态。 */
+const bandNodes = computed(() => (activeGrade.value ? activeGrade.value.nodes : []).map((n) => ({ ...n, light: stateOf(n.code) })))
+const bandLayout = computed(() => caveTrailLayout(bandNodes.value))
+const bandPos = computed(() => {
+  const m = new Map()
+  for (const p of bandLayout.value.points) m.set(p.node.code, p)
+  return m
+})
+const bandEdges = computed(() =>
+  nodeEdges.value
+    .filter((e) => bandPos.value.has(e.from) && bandPos.value.has(e.to))
+    .map((e) => ({ ...e, a: bandPos.value.get(e.from), b: bandPos.value.get(e.to) }))
+)
+
+/** 下一个最佳目标（N6②）：W5-a summary.next 是节 code。 */
+const nextNode = computed(() => chainNodes.value.find((n) => n.code === chainSummary.value.next) || null)
+
+/** 洞带绘制（一整条渲染链，几何一次算完；动画全在 CSS，不逐帧重建 DOM —— N11）。 */
+const bandPrims = computed(() => {
+  const out = []
+  const pts = bandLayout.value.points
+  if (pts.length > 1) {
+    const d = trailD(pts)
+    out.push({ k: 'path', c: 'w-trail', d, w: 7, o: 0.32 })
+    out.push({ k: 'path', c: 'w-trail-dash', d, w: 1.2, dash: '3 9', o: 0.7 })
+  }
+  for (const e of bandEdges.value) {
+    const { wide, core } = caveEdge(e.a, e.b, e.kind)
+    out.push(wide, core)
+  }
+  // N5：跨年级的「引导去向」画成带内旁支（最淡虚线 + 端点小点），并有图例注记——不是必修前置
+  for (const p of pts) {
+    if (!softOut.value.has(p.node.code)) continue
+    const dy = p.y < CAVE_BAND.yMid ? 24 : -24 // 往两排之间的空档去，不压到下一排的洞位
+    const x2 = p.x + 34
+    const y2 = p.y + dy
+    const { wide, core } = caveEdge({ x: p.x, y: p.y }, { x: x2, y: y2 }, 'soft')
+    out.push(wide, core)
+    out.push({ k: 'circle', c: 'w-edge-soft', cx: x2, cy: y2, r: 2.6, o: 0.75 })
+  }
+  // M2：上一节已亮 → 这一段被光脉照亮（只沿课程序列向前流，不跳节）
+  for (let i = 1; i < pts.length; i += 1) {
+    const a = pts[i - 1]
+    const b = pts[i]
+    if (a.node.light !== 'lit') continue
+    const kind = edgeKindBetween(a.node.code, b.node.code)
+    out.push(...lightBeam(`M${a.x} ${a.y}L${b.x} ${b.y}`, { w: kind === 'soft' ? 2 : 3 }))
+  }
+  for (const p of pts) out.push(...caveNode(p.x, p.y, 1, p.node.light))
+  return out
+})
+const bandW = computed(() => bandLayout.value.w)
+const bandH = computed(() => bandLayout.value.h)
+
+// ── M1 晨雾：雾退到「光脉前沿」之上，走过的路永远看得见 ──────────────────
+/** K12 起点：链上最早的年级；链未就绪时退回该分支的 K12 起学年级。 */
+const baseGradeNum = computed(() => {
+  const nums = chainNodes.value.map((n) => gradeOf(n.grade))
+  if (nums.length) return Math.min(...nums)
+  const pl = selectedPeakLayout.value
+  return pl && pl.peak.k12GradeMin != null ? clampGrade(pl.peak.k12GradeMin) : 1
+})
+/** 光脉前沿：已亮或微光所在的最靠上的年级（雾退到它之上）——雾只被相邻的光驱散。 */
+const revealGradeNum = computed(() => {
+  let top = baseGradeNum.value
+  for (const g of gradeList.value) {
+    if (Object.values(g.states).some((s) => s !== 'dim')) top = Math.max(top, g.gradeNum)
+  }
+  return top
+})
+const fogFrontierY = computed(() => (revealGradeNum.value >= 12 ? 0 : gradeY(revealGradeNum.value + 1)))
+const fogActive = computed(() => dim.value === 'branches' && fogFrontierY.value > 12)
+
+/** 雾层：整层黎明幕（上实下虚）+ 前沿雾带 + 雾中山脊轮廓微光（「山还在，只是还没亮」）。 */
+const fogPrims = computed(() => {
+  if (!fogActive.value) return []
+  const fy = fogFrontierY.value
+  const out = [{ k: 'rect', c: 'w-fog-veil', x: 104, y: 0, w: 1084, h: fy, o: 1, f: 'url(#fogVeil)' }]
+  out.push(...fogBank(fy, 118, 1174, 30))
+  const pl = selectedPeakLayout.value
+  if (pl) {
+    const veil = pl.massif.trail.filter((p) => p.y <= fy)
+    if (veil.length > 1) out.push(...ridgeGlow(trailD(veil), 1.3))
+    spawnPuffs(out, pl.x, fy)
+  } else {
+    for (const pl2 of peakLayout.value) spawnPuffs(out, pl2.x, fy)
+  }
+  return out
+})
+function spawnPuffs(out, x, fy) {
+  for (let i = 0; i < 3; i += 1) {
+    out.push(...fogPuff(x + (i - 1) * 46, fy - 18 - i * 22, 1 + i * 0.16, i === 2 ? 'far' : 'near'))
+  }
+}
+
+/** 雾之上的东西：走过的路（M1）与光脉（M2）——已走过的、已点亮的，雾压不住。 */
+const overFogPrims = computed(() => {
+  if (dim.value !== 'branches') return []
+  const out = []
+  if (climbedD.value) out.push({ k: 'path', c: 'w-climb', d: climbedD.value, w: 3.4, f: 'url(#glow)', o: 0.95 })
+  const pl = selectedPeakLayout.value
+  if (!pl || !chainReady.value) return out
+  // 光脉：沿选中峰的登山径，从山脚亮到「光脉前沿」所在的海拔
+  const yLit = gradeY(revealGradeNum.value)
+  const litPts = pl.massif.trail.filter((p) => p.y >= yLit)
+  if (litPts.length > 1) out.push(...lightBeam(trailD(litPts), { w: 4 }))
+  // 下一个最佳目标：往上一段的路口呼吸提示（N6②）
+  if (revealGradeNum.value < 12) {
+    const yA = gradeY(revealGradeNum.value)
+    const yB = gradeY(Math.min(12, revealGradeNum.value + 1))
+    const hintPts = pl.massif.trail.filter((p) => p.y >= yB && p.y <= yA)
+    if (hintPts.length > 1) out.push(...lightHint(trailD(hintPts), 2.4))
+  }
+  return out
+})
+
+/** 选中峰上的年级洞门（N6③ 三态：暗门 / 半亮 / 亮灯）：开在每条线上该年级的海拔处。 */
+const gradeDoors = computed(() => {
+  const pl = selectedPeakLayout.value
+  if (dim.value !== 'branches' || !pl || !chainReady.value) return []
+  return gradeList.value.map((g) => {
+    const yWant = gradeY(g.gradeNum)
+    const at = pl.massif.trail.reduce((best, p) => (Math.abs(p.y - yWant) < Math.abs(best.y - yWant) ? p : best), pl.massif.trail[0])
+    const x = Math.round(at.x)
+    const y = Math.round(at.y)
+    return { ...g, x, y, prims: caveDoor(x, y, 0.82, g.door) }
+  })
+})
+
+/** 洞门/洞带的健康读数：整体进度（N9 信息密度；口径 = 节点亮占比，非掌握度）。 */
+const doorWord = computed(() => doorStateWord(activeGrade.value ? activeGrade.value.door : 'dim'))
+const nextHintText = computed(() => {
+  const n = nextNode.value
+  if (!chainNodes.value.length) return '待取学习链'
+  if (!n) return '本支已全部点亮'
+  const g = gradeOf(n.grade)
+  return `${n.name}（${gradeShort(g)}）`
+})
+
+// ── M3 洞内闭环：kpId 补齐 + kp-cave 聚合 + 走完回写 ──────────────────────
+async function ensureKpIds(gradeNum) {
+  const subj = knowledgeStore.currentSubject || 'math'
+  const key = `${subj}#${gradeNum}`
+  if (kpIdsLoaded[key]) return
+  kpIdsLoaded[key] = true
+  const rows = await getKnowledgePoints({ subject: subj, gradeLevel: gradeNum })
+  const next = { ...kpIdByCode.value }
+  if (Array.isArray(rows)) for (const r of rows) if (r && r.code && r.id) next[r.code] = r.id
+  kpIdByCode.value = next
+}
+
+/** 洞内展开的知识点（HTML 标签与 CAVE 组件共用；未落题的知识点标 dim 且不可练）。 */
+const caveKps = computed(() => {
+  const t = caveTarget.value
+  if (!t) return []
+  return (t.node.kps || []).map((k) => ({
+    code: k.code,
+    name: k.name,
+    state: stateOf(k.code),
+    mastery: k.mastery,
+    id: kpIdByCode.value[k.code]
+  }))
+})
+
+/** 登录态：洞内闭环走个人作答与错题/复习，故只有登录后才开课；匿名进洞只出场景与说明。 */
+const isLoggedIn = computed(() => !!(auth && auth.accessToken))
+
+/** 洞内换一个知识点灯位：重新取这一点的 kp-cave 聚合（错题/复习/下一节都跟着换）。 */
+async function onPickCaveKp(code) {
+  const t = caveTarget.value
+  if (!t || !code) return
+  const id = kpIdByCode.value[code]
+  const cave = id ? await getKpCave(id) : null
+  caveTarget.value = { ...t, kpCode: code, cave: cave || null }
+}
+
+async function openGradeDoor(grade) {
+  bandGrade.value = grade
+  const g = gradeList.value.find((x) => x.grade === grade)
+  if (g) await ensureKpIds(g.gradeNum)
+}
+
+async function openCave(node) {
+  if (!node || caveLoading.value) return
+  const kps = node.kps || []
+  // 洞里跑的是知识点级闭环：优先取这一节「还没亮」的第一个知识点（都亮了就取第一个，允许再练）
+  const pick = kps.find((k) => stateOf(k.code) !== 'lit') || kps[0]
+  if (!pick) return
+  caveLoading.value = true
+  try {
+    await ensureKpIds(gradeOf(node.grade))
+    const id = kpIdByCode.value[pick.code]
+    const cave = id ? await getKpCave(id) : null
+    caveTarget.value = { node, kpCode: pick.code, cave: cave || null }
+  } finally {
+    caveLoading.value = false
+  }
+}
+
+/** 出洞亮灯：强制重取链（真源回落），让这一节与它的后继在新数据上重新推导光脉与雾界。 */
+const caveLitAny = ref(false)
+function onCaveLitKp() {
+  caveLitAny.value = true
+}
+async function onCaveLit() {
+  caveLitAny.value = false // 这一拍已经重取过，closeCave 不必再取一次
+  await loadChain(selectedPeakCode.value, true)
+  uni.showToast({ title: '洞口亮灯 · 光脉向前', icon: 'none' })
+}
+
+/**
+ * 关洞。若本次进洞点亮过灯位（哪怕没走完「亮灯出洞」、从「先出洞」离开），
+ * 也必须回落一次真源——否则世界停在旧读数上，M2 的「光自动向前传导」就断了。
+ */
+async function closeCave() {
+  const need = caveLitAny.value
+  caveTarget.value = null
+  caveLitAny.value = false
+  if (need) await loadChain(selectedPeakCode.value, true)
+}
+
+function gotoReview(kind) {
+  caveTarget.value = null
+  if (kind === 'wrong') uni.navigateTo({ url: '/pages/wrong-questions/index' })
+  else uni.switchTab({ url: '/pages/practice/index' })
+}
+
+async function loadChain(branch, force = false) {
+  const b = branch || selectedPeakCode.value
+  if (!b) return
+  if (!force && b === chainBranchLoaded && chainNodes.value.length) return
+  loadingChain.value = true
+  try {
+    const subj = knowledgeStore.currentSubject || 'math'
+    let data = await getLearningChain(subj, b, null)
+    if (!(data.nodes || []).length && String(subj).toUpperCase() !== subj) {
+      data = await getLearningChain(String(subj).toUpperCase(), b, null)
+    }
+    chainData.value = data && Array.isArray(data.nodes) ? data : { subject: null, branch: b, nodes: [], edges: [], summary: { total: 0, lit: 0, next: null } }
+    chainBranchLoaded = b
+  } finally {
+    loadingChain.value = false
+  }
+  // 洞带默认落在「光脉前沿」（或第一个年级）：一进来就站在光到过的地方
+  if (!gradeList.value.some((g) => g.grade === bandGrade.value)) {
+    const front = gradeList.value.find((g) => g.gradeNum === revealGradeNum.value) || gradeList.value[0]
+    bandGrade.value = front ? front.grade : null
+  }
+  lightToastArmed = true
+}
+
 // ── 维度 B 排布：学段台地 + 人教版册营地 ─────────────────────────────────
 const stageBands = computed(() => {
   const have = new Set((gradesData.value.stages || []).map((s) => s.code))
@@ -895,8 +1404,6 @@ const scenePrims = computed(() => {
   const out = [...SCAFFOLD]
   if (dim.value === 'grades') for (const sb of stageBands.value) out.push(sb.prim)
   if (dim.value === 'branches') {
-    // 先画「我走过的路」再画山体，让高亮压在路基层之上、山体之下
-    if (climbedD.value) out.push({ k: 'path', c: 'w-climb', d: climbedD.value, w: 3.4, f: 'url(#glow)', o: 0.95 })
     for (const pl of peakLayout.value) {
       for (const p of pl.spire) out.push(p)
       for (const p of pl.massif.prims) out.push(p)
@@ -907,6 +1414,11 @@ const scenePrims = computed(() => {
   } else {
     for (const bk of books.value) for (const p of bk.prims) out.push(p)
   }
+  // v4 渲染序（层序即语义）：群山 → 晨雾（M1，罩住未明）→ 年级洞门（M3，雾里也找得到）
+  // → 走过/已亮的路（M1/M2，雾压不住）。
+  for (const p of fogPrims.value) out.push(p)
+  for (const gd of gradeDoors.value) for (const p of gd.prims) out.push(p)
+  for (const p of overFogPrims.value) out.push(p)
   return out
 })
 
@@ -967,6 +1479,22 @@ const hotspots = computed(() => {
         })
       }
     })
+    // v4：选中峰上的年级洞门（点进去展开这一年级的节洞带 → 洞内闭环）
+    for (const gd of gradeDoors.value) {
+      out.push({
+        key: 'gd' + gd.grade,
+        kind: 'grade',
+        code: gd.grade,
+        branch: selectedPeakCode.value,
+        name: `${gradeShort(gd.gradeNum)} 年级洞门`,
+        short: `${gradeShort(gd.gradeNum)} · ${gd.total} 节`,
+        left: (gd.x / MAPW) * 100,
+        top: (gd.y / MAPH) * 100,
+        state: gd.door,
+        isHere: nav.value.kind === 'grade' && nav.value.code === gd.grade,
+        aria: `${gradeShort(gd.gradeNum)} 年级洞门，${doorStateWord(gd.door)}，共 ${gd.total} 节，已亮 ${gd.lit} 节`
+      })
+    }
     return out
   }
   for (const bk of books.value) {
@@ -988,7 +1516,7 @@ const hotspots = computed(() => {
 })
 
 const labelClass = (h) => ({
-  'is-short': h.kind === 'book' || h.kind === 'depth',
+  'is-short': h.kind === 'book' || h.kind === 'depth' || h.kind === 'grade',
   'is-full': h.isHere || (nav.value.code === h.code)
 })
 
@@ -1037,8 +1565,35 @@ function focusHot(i) {
 
 // ── 选中与详情 ───────────────────────────────────────────────────────────
 function pickHot(h) {
+  if (h.kind === 'grade') {
+    pickGradeDoor(h.code)
+    return
+  }
   if (h.kind === 'peak' || h.kind === 'depth') selectPeak(h.branch, h.kind === 'depth' ? h.code : null)
   else selectBook(h.code)
+}
+
+/**
+ * 点年级洞门（≤2 步进洞的第一步）：展开这一年级的节洞带，并把视野带到洞带。
+ * nav 只标「当前洞门」，不换峰——「我在这」仍钉在同一座峰上（N1 不丢当前峰）。
+ */
+function pickGradeDoor(grade) {
+  nav.value = { kind: 'grade', code: grade, branch: selectedPeakCode.value, peakOf: null }
+  detailFor.value = null
+  openGradeDoor(grade)
+  if (typeof document !== 'undefined') {
+    nextTick(() => {
+      const el = document.querySelector('[data-band]')
+      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+}
+
+/** 关掉节洞带（回到「群山 → 一座峰」的宏观骨架）。 */
+function closeBand() {
+  bandGrade.value = null
+  caveTarget.value = null
+  if (nav.value.kind === 'grade') nav.value = { kind: null, code: null, branch: keptBranch.value, peakOf: null }
 }
 
 function selectPeak(code, depthCode) {
@@ -1235,7 +1790,9 @@ const mapAria = computed(() =>
 )
 const mapNote = computed(() =>
   dim.value === 'branches'
-    ? `山脚 = 该分支 K12 起点 · 峰顶 = K12 终点 · 峰顶之上 = 学科纵深（共 ${peaks.value.length} 座峰）`
+    ? chainReady.value
+      ? `晨雾罩住未走到的一段 · 光脉已到 ${gradeShort(revealGradeNum.value)} · 走过与点亮的看得见（共 ${peaks.value.length} 座峰）`
+      : `山脚 = 该分支 K12 起点 · 峰顶 = K12 终点 · 峰顶之上 = 学科纵深（共 ${peaks.value.length} 座峰）`
     : `营地 = 人教版册（共 ${books.value.length} 册）· 纵向是年级，横向是册与章`
 )
 
@@ -1243,6 +1800,9 @@ const mapNote = computed(() =>
 function switchDim(code) {
   if (dim.value === code) return
   detailFor.value = null
+  // v4：切维度收起洞带与洞内（洞是「学科知识体系」维度里的事）
+  bandGrade.value = null
+  caveTarget.value = null
   dim.value = code
   // N1：切维度不丢当前学科，也不丢当前峰——回到维度 A 时仍站在原来那座峰上。
   if (code === 'grades') {
@@ -1251,6 +1811,7 @@ function switchDim(code) {
     const code0 = keptBranch.value
     const hit = code0 && peakLayout.value.some((pl) => pl.peak.code === code0)
     nav.value = hit ? { kind: 'peak', code: code0, branch: code0, peakOf: null } : { kind: null, code: null, branch: null, peakOf: null }
+    if (hit) loadChain(code0)
   }
 }
 
@@ -1259,6 +1820,9 @@ function switchSubject(subj) {
   nav.value = { kind: null, code: null, branch: null, peakOf: null }
   detailFor.value = null
   keptBranch.value = null
+  bandGrade.value = null
+  caveTarget.value = null
+  chainBranchLoaded = null
   loadMap(subj)
   loadSummit(subj)
 }
@@ -1290,9 +1854,13 @@ watch(masteryAvg, (nv, ov) => {
   const hit = [25, 50, 75, 90].find((m) => ov < m && nv >= m)
   if (hit) uni.showToast({ title: `掌握度突破 ${hit}%！`, icon: 'none' })
 })
-// 切维度后重建焦点（热点集合变了）
-watch(dim, () => {
+// 切维度后重建焦点（热点集合变了）；洞带/洞内只属于「学科知识体系」维度
+watch(dim, (d) => {
   focusedIndex.value = -1
+  if (d !== 'branches') {
+    bandGrade.value = null
+    caveTarget.value = null
+  }
 })
 // 峰集合就绪/换学科后：保证「我在这」永远钉在一座实际上存在的峰上（默认第一座）。
 watch(peakLayout, (list) => {
@@ -1303,18 +1871,35 @@ watch(peakLayout, (list) => {
     ? keptBranch.value
     : list[0].peak.code
   keptBranch.value = next
-  nav.value = { ...nav.value, branch: next }
+  nav.value = { kind: null, code: null, branch: next, peakOf: null }
+  bandGrade.value = null
+  caveTarget.value = null
+})
+// v4：换峰 → 取这一支的学习链（光脉/雾/洞门都从它来）
+watch(selectedPeakCode, (code) => {
+  bandGrade.value = null
+  caveTarget.value = null
+  if (code && dim.value === 'branches') loadChain(code)
+})
+// 光脉前沿抬升（雾退）时，给一次「雾散了一程」的正反馈（首帧取链不算推进，故先武装再报）
+let lightToastArmed = false
+watch(revealGradeNum, (nv, ov) => {
+  if (!lightToastArmed || !ov || nv <= ov) return
+  uni.showToast({ title: `光脉推进到 ${gradeShort(nv)} · 雾退一程`, icon: 'none' })
 })
 
 onMounted(async () => {
   await knowledgeStore.loadCatalog()
   await loadSelf()
   await Promise.all([loadMap(), loadSummit()])
+  await nextTick()
+  if (selectedPeakCode.value) await loadChain(selectedPeakCode.value)
   if (!twinStore.loaded) twinStore.loadOverview(knowledgeStore.currentSubject || 'math')
 })
 
 onShow(() => {
   loadSummit()
+  if (selectedPeakCode.value) loadChain(selectedPeakCode.value, true)
   twinStore.loadOverview(knowledgeStore.currentSubject || 'math')
 })
 
@@ -1492,6 +2077,111 @@ onBeforeUnmount(() => {
   50% { box-shadow: 0 0 0 7px var(--world-portrait-ring-2), var(--world-node-shadow); }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v4（W5-b）黎明破晓 × 光脉传导：光脉读数 / 晨雾图注 / 洞门三态 / 节洞带
+   颜色一律取世界令牌（零裸色，N2）；动效一律 CSS（不逐帧重建 DOM，N11）。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* —— 光脉读数（N9 信息密度；口径诚实：点亮 ≠ 掌握度）—— */
+.v4-strip {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;
+}
+@media (min-width: 720px) { .v4-strip { grid-template-columns: repeat(4, 1fr); } }
+.vs-item {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 12px 15px; border-radius: 12px;
+  background: var(--world-panel); border: 1px solid var(--world-node-border);
+  box-shadow: var(--shadow-card);
+}
+.vs-key { font-size: 10px; color: var(--world-node-sub); }
+.vs-val { font-size: 15px; font-weight: 650; color: var(--world-node-text); line-height: 1.5; }
+.vs-sub { font-size: 11px; font-weight: 400; color: var(--world-node-sub); }
+.vs-note { font-size: 10px; color: var(--world-node-sub); opacity: 0.85; line-height: 1.6; }
+/* N6② 下一个最佳目标：呼吸提示（不是必须，只是「顺光走的那一段」） */
+.vs-item.is-next {
+  border-color: var(--world-edge-explicit);
+  background: var(--world-cave-glow-half);
+  animation: band-breathe 3.2s ease-in-out infinite;
+}
+@keyframes band-breathe {
+  0%, 100% { box-shadow: var(--shadow-card); }
+  50% { box-shadow: 0 0 0 3px var(--world-cave-glow-lit), var(--shadow-card); }
+}
+
+/* —— 图注新增项（雾 / 光脉 / 洞门）—— */
+.ml-swatch.is-fog { background: var(--world-fog-near); border: 1px solid var(--world-node-border); }
+.ml-swatch.is-light { background: var(--world-light-trail); }
+.ml-dot.is-door { background: var(--world-cave-inner-half); box-shadow: 0 0 0 3px var(--world-cave-glow-half); }
+
+/* —— 年级洞门三态（N6③ 暗门 / 半亮 / 亮灯）：与节洞位同一套三态语义 —— */
+.hot-dim .hot-badge { border-style: dashed; border-color: var(--world-cave-step); background: var(--world-node-bg); }
+.hot-dim .hot-glyph { color: var(--world-cave-inner-dim); }
+.hot-half .hot-badge { background: var(--world-cave-glow-half); border-color: var(--world-node-half); }
+.hot-half .hot-glyph { color: var(--world-band-start); }
+.hot-lit .hot-badge {
+  background: var(--world-cave-glow-lit); border-color: var(--world-node-lit);
+  box-shadow: 0 0 0 3px var(--world-cave-glow-lit), var(--world-node-shadow);
+}
+.hot-lit .hot-glyph { color: var(--world-node-on-bg); }
+
+/* —— 节洞带（M3 第一步：一节的洞位与节间的边）—— */
+.band-panel {
+  margin-top: 16px; background: var(--world-panel);
+  border: 1px solid var(--world-node-border); border-radius: 16px;
+  box-shadow: var(--shadow-card); overflow: hidden;
+}
+.band-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 13px 16px; border-bottom: 1px solid var(--world-node-border);
+}
+.band-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.bt-main { font-size: 14px; font-weight: 650; color: var(--world-node-text); }
+.bt-sub { font-size: 10px; color: var(--world-node-sub); line-height: 1.6; }
+.band-door {
+  font-size: 11px; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  background: var(--world-node-bg); color: var(--world-node-sub); border: 1px solid var(--world-node-border);
+}
+.band-door[data-band-door="lit"] { background: var(--world-cave-glow-lit); color: var(--world-node-text); border-color: var(--world-node-lit); }
+.band-door[data-band-door="half"] { background: var(--world-cave-glow-half); border-color: var(--world-node-half); }
+
+.band-scroll { width: 100%; overflow-x: auto; overflow-y: hidden; padding: 6px 0; }
+.band-scene { position: relative; }
+.band-svg { position: absolute; inset: 0; display: block; }
+
+/* 洞位（HTML 叠层）：名字在洞位下方，三态随有效态走 */
+.band-node {
+  position: absolute; transform: translate(-50%, 26px); z-index: 3;
+  display: flex; flex-direction: column; gap: 1px; align-items: center;
+  width: 124px; padding: 4px 6px; margin: 0; line-height: 1.3;
+  background: var(--world-node-bg); border: 1px solid var(--world-node-border);
+  border-radius: 9px; box-shadow: var(--world-node-shadow);
+}
+.band-node::after { border: none; }
+.bn-name { font-size: 10px; font-weight: 600; color: var(--world-node-text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bn-sub { font-size: 8px; color: var(--world-node-sub); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.band-node.is-lit { border-color: var(--world-node-lit); background: var(--world-cave-glow-lit); }
+.band-node.is-half { border-color: var(--world-node-half); }
+.band-node:hover { transform: translate(-50%, 24px); border-color: var(--world-ring-mastered); }
+.band-node:focus-visible { outline: 2px solid var(--world-node-on-bg); outline-offset: 2px; }
+/* N6② 下一目标：呼吸，不闪烁 */
+.band-node.is-next { border-color: var(--world-node-lit); animation: band-next 2.4s ease-in-out infinite; }
+@keyframes band-next {
+  0%, 100% { box-shadow: var(--world-node-shadow); }
+  50% { box-shadow: 0 0 0 4px var(--world-node-halo-lit), var(--world-node-shadow); }
+}
+
+.band-legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 11px 16px; border-top: 1px solid var(--world-node-border);
+  background: var(--world-node-bg);
+}
+.bl-item { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--world-node-sub); }
+.bl-line { width: 22px; height: 0; border-top-width: 2px; border-top-style: solid; flex-shrink: 0; }
+.bl-line.is-explicit { border-top-color: var(--world-edge-explicit); }
+.bl-line.is-seq { border-top-color: var(--world-edge-seq); }
+.bl-line.is-soft { border-top-style: dashed; border-top-color: var(--world-edge-soft); }
+.bl-note { flex: 1 1 100%; font-size: 10px; color: var(--world-node-sub); line-height: 1.7; }
+
 /* 风景动效 */
 .climber-fig { will-change: transform; animation: climber-bob 3.2s ease-in-out infinite; }
 @keyframes climber-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
@@ -1651,9 +2341,13 @@ onBeforeUnmount(() => {
   .hot-label { font-size: 8px; max-width: 78px; }
   .dim-name { font-size: 13px; }
   .dim-sub { font-size: 9px; }
+  .vs-item { padding: 10px 12px; }
+  .vs-val { font-size: 13px; }
+  .band-node { width: 108px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hot-badge, .hot-ring, .climber-fig { animation: none !important; }
+  .hot-badge, .hot-ring, .climber-fig,
+  .vs-item.is-next, .band-node.is-next { animation: none !important; }
 }
 </style>

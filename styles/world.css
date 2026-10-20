@@ -235,6 +235,89 @@
 .w-gg-climb { stop-color: var(--world-marker); }
 .w-gg-hill { stop-color: var(--world-hill-body); }
 .w-gg-hill-deep { stop-color: var(--world-hill-body-deep); }
+.w-gg-fog { stop-color: var(--world-fog-veil); }
+.w-gg-dawn { stop-color: var(--world-dawn-glow); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌅 学科登顶 v4（W5-b）：黎明破晓 × 光脉传导
+   同一套世界语言只添「雾 / 光 / 洞」这一层新语义；色一律取上面的 v4 令牌。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* —— 晨雾（M1）：罩住未明，近实远虚 —— */
+.w-fog-near { fill: var(--world-fog-near); }
+.w-fog-far { fill: var(--world-fog-far); }
+.w-fog-veil { fill: var(--world-fog-veil); }
+
+/* —— 雾中轮廓微光 + 曙光扩散 —— */
+.w-ridge-glow { fill: none; stroke: var(--world-ridge-glow); stroke-linecap: round; }
+.w-dawn-glow { fill: var(--world-dawn-glow); }
+
+/* —— 光脉（M2）：已亮路径辉光 / 行进亮束 / 下一目标提示光 —— */
+.w-light-trail { fill: none; stroke: var(--world-light-trail); stroke-linecap: round; stroke-linejoin: round; }
+.w-light-pulse {
+  fill: none; stroke: var(--world-light-pulse);
+  stroke-linecap: round; stroke-linejoin: round;
+  animation: w-flow 1.5s linear infinite;
+}
+.w-light-hint {
+  fill: none; stroke: var(--world-light-hint);
+  stroke-linecap: round; stroke-linejoin: round;
+  animation: w-hint 2.4s ease-in-out infinite;
+}
+
+/* —— 节洞带的洞位三态（暗 / 半亮 / 亮灯）—— */
+.w-node-track { fill: var(--world-node-track); }
+.w-node-lit { fill: var(--world-node-lit); }
+.w-node-half { fill: var(--world-node-half); }
+.w-node-dim { fill: var(--world-node-dim); }
+.w-node-spark { fill: var(--world-node-spark); }
+.w-node-halo-lit { fill: var(--world-node-halo-lit); animation: w-breathe 3.4s ease-in-out infinite; }
+.w-node-halo-half { fill: var(--world-node-halo-half); }
+.w-node-halo-dim { fill: var(--world-node-halo-dim); }
+
+/* —— 节洞带的边：显式 / 序列实，引导虚且淡（N5：soft 不误导）—— */
+.w-edge-explicit { fill: none; stroke: var(--world-edge-explicit); stroke-linecap: round; }
+.w-edge-seq { fill: none; stroke: var(--world-edge-seq); stroke-linecap: round; }
+.w-edge-soft { fill: none; stroke: var(--world-edge-soft); stroke-linecap: round; stroke-dasharray: 4 8; }
+
+/* —— 洞窟：洞门（岩拱 / 洞腔三态 / 洞口辉光）—— */
+.w-cave-rock { fill: var(--world-cave-rock); }
+.w-cave-inner-dim { fill: var(--world-cave-inner-dim); }
+.w-cave-inner-half { fill: var(--world-cave-inner-half); }
+.w-cave-inner-lit { fill: var(--world-cave-inner-lit); }
+.w-cave-glow-dim { fill: var(--world-cave-glow-dim); }
+.w-cave-glow-half { fill: var(--world-cave-glow-half); }
+.w-cave-glow-lit { fill: var(--world-cave-glow-lit); animation: w-breathe 3s ease-in-out infinite; }
+.w-cave-step { fill: none; stroke: var(--world-cave-step); stroke-linecap: round; }
+
+/* —— 洞窟：洞内平铺生活场景 —— */
+.w-cave-wall-1 { fill: var(--world-cave-wall-1); }
+.w-cave-wall-2 { fill: var(--world-cave-wall-2); }
+.w-cave-wall-3 { fill: var(--world-cave-wall-3); }
+.w-cave-floor { fill: var(--world-cave-floor); }
+.w-cave-stalactite { fill: var(--world-cave-stalactite); }
+.w-cave-stalactite-light { fill: var(--world-cave-stalactite-light); }
+.w-cave-drip { fill: none; stroke: var(--world-cave-drip); stroke-linecap: round; }
+.w-cave-pool { fill: var(--world-cave-pool); }
+.w-cave-pool-light { fill: var(--world-cave-pool-light); }
+.w-cave-moss { fill: var(--world-cave-moss); }
+.w-cave-book { fill: var(--world-cave-book); }
+.w-cave-book-page { fill: var(--world-cave-book-page); }
+.w-cave-shaft { fill: var(--world-cave-shaft); }
+.w-cave-shaft-light { fill: var(--world-cave-shaft-light); }
+.w-cave-altar-top { fill: var(--world-cave-altar-top); }
+.w-cave-altar-left { fill: var(--world-cave-altar-left); }
+.w-cave-altar-right { fill: var(--world-cave-altar-right); }
+
+@keyframes w-flow { to { stroke-dashoffset: -44; } }
+@keyframes w-hint {
+  0%, 100% { opacity: 0.35; stroke-width: 1.6; }
+  50% { opacity: 1; stroke-width: 2.6; }
+}
+@keyframes w-breathe {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 0.9; }
+}
 
 @keyframes w-ring {
   0%,
@@ -243,5 +326,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .w-marker-ring { animation: none; }
+  .w-marker-ring,
+  .w-light-pulse,
+  .w-light-hint,
+  .w-node-halo-lit,
+  .w-cave-glow-lit { animation: none; }
 }

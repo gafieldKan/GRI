@@ -137,6 +137,33 @@ export async function getSummitGrades(subject) {
   }
 }
 
+// 学科登顶 v4 · 学习链（W5-a 读面）：一分支内的节 + 先修/序列/引导三类边 + summary{total,lit,next}。
+// OptionalAuth：匿名只出结构与 edge kind（不含 mastery），登录叠加各节/知识点掌握度。
+// branch 或 grade 至少一个（后端限定规模，避免无界请求）；本页一次取整支、按年级在端上分段。
+export async function getLearningChain(subject, branch, grade) {
+  const EMPTY = { subject: null, branch: branch || null, nodes: [], edges: [], summary: { total: 0, lit: 0, next: null } }
+  const params = { subject }
+  if (branch) params.branch = branch
+  if (grade) params.grade = grade
+  try {
+    const data = await api.get('/api/curriculum/learning-chain', { params })
+    if (data && Array.isArray(data.nodes)) return data
+    return EMPTY
+  } catch (e) {
+    return EMPTY
+  }
+}
+
+// 学科登顶 v4 · 洞窟聚合（W5-a 读面）：洞内闭环所需的单点聚合——掌握度/态/前置边/
+// 题入口/下一节；登录再叠加错题 due、复习 due、成就 count（匿名无这三项，不得臆造）。
+export async function getKpCave(kpId) {
+  try {
+    return await api.get('/api/curriculum/kp-cave', { params: { kpId } })
+  } catch (e) {
+    return null
+  }
+}
+
 export async function createSession(data) {
   try {
     const topic = data.topic || data.knowledgePoint || ''

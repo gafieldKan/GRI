@@ -681,3 +681,271 @@ export const GRADE_TICKS = [
   { g: 11, y: gradeY(11), short: '高二' },
   { g: 12, y: gradeY(12), short: '高三' }
 ]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌅 学科登顶 v4（W5-b）：黎明破晓 × 光脉传导
+//
+//   三大机制：M1 晨雾即未知 / M2 光脉传导即因果（灵魂）/ M3 洞窟即闭环。
+//   本段与前文同口径：**只产几何**，颜色一律 `w-*` 类名（styles/world.css 映射到
+//   `--world-*` 令牌），**本文件零色值**；另附一组**纯派生函数**（有效状态 / 传导后继 /
+//   年级聚合 / 节洞排布），不触 DOM、不猜数据——只在 API 真值（state/mastery）之上做
+//   一层「相邻点亮」的可见性推导，故可被脚本直接断言。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 学习态三分（与 W5-a 端点同口径）。 */
+export const LIGHT_STATES = ['dim', 'half', 'lit']
+
+/**
+ * M2 光脉传导的有效态（纯函数）：在 API 给出的 `node.state` 之上叠加「相邻点亮」——
+ * `dim` 节点若经任一入边（from 已点亮）被照到，则升为 `half`（微光可进，即 N6①
+ * 「晨雾只被相邻的光驱散」）。**不推定掌握度**：`half` 只是「够得着」，不等于已掌握。
+ * @param {Array<{code:string,state:string}>} nodes
+ * @param {Array<{from:string,to:string,kind?:string}>} edges
+ * @returns {Record<string,'dim'|'half'|'lit'>} code → 有效态
+ */
+export function deriveLightState(nodes, edges) {
+  const lit = new Set((nodes || []).filter((n) => n && n.state === 'lit').map((n) => n.code))
+  const indirect = new Set()
+  for (const e of edges || []) {
+    if (e && lit.has(e.from)) indirect.add(e.to)
+  }
+  const out = {}
+  for (const n of nodes || []) {
+    if (!n || !n.code) continue
+    out[n.code] = n.state === 'lit' ? 'lit' : indirect.has(n.code) ? 'half' : n.state === 'half' ? 'half' : 'dim'
+  }
+  return out
+}
+
+/** 入边表（to → [from…]）：光脉只顺「前 → 后」传导，故按边方向建索引。 */
+export function predecessorMap(edges) {
+  const map = new Map()
+  for (const e of edges || []) {
+    if (!e) continue
+    const list = map.get(e.to) || []
+    list.push(e.from)
+    map.set(e.to, list)
+  }
+  return map
+}
+
+/** 某点的后继（沿链向前的一个个点）：光脉答对后要流向这些点。 */
+export function successorsOf(code, edges) {
+  return (edges || []).filter((e) => e && e.from === code).map((e) => e.to)
+}
+
+/** 边型 → 视觉类（N5：soft 弱化为「引导路径」，与 explicit/seq 一眼可辨）。 */
+export function edgeToneClass(kind) {
+  if (kind === 'explicit') return 'w-edge-explicit'
+  if (kind === 'seq') return 'w-edge-seq'
+  return 'w-edge-soft'
+}
+
+/** 边型 → 中文口径（UI 可读处引用；soft 明说「引导性·非精确前置」）。 */
+export function edgeKindWord(kind) {
+  if (kind === 'explicit') return '显式前置'
+  if (kind === 'seq') return '课程序列'
+  return '引导路径'
+}
+
+/** 态统计（掌握/微光/未明）→ 进度读数（N9 信息密度的诚实口径）。 */
+export function lightProgress(states) {
+  const list = Object.values(states || {})
+  const lit = list.filter((s) => s === 'lit').length
+  const half = list.filter((s) => s === 'half').length
+  return { total: list.length, lit, half, dim: list.length - lit - half, ratio: list.length ? lit / list.length : 0 }
+}
+
+/** 按年级分组（升序）；同年级内保持输入的课程序列次序（N11：大分支按年级分段渲染）。 */
+export function gradeGroups(nodes) {
+  const map = new Map()
+  for (const n of nodes || []) {
+    if (!n) continue
+    if (!map.has(n.grade)) map.set(n.grade, [])
+    map.get(n.grade).push(n)
+  }
+  return [...map.entries()]
+    .map(([grade, list]) => ({ grade, nodes: list }))
+    .sort((a, b) => (Number(String(a.grade).replace(/\D/g, '')) || 99) - (Number(String(b.grade).replace(/\D/g, '')) || 99))
+}
+
+/**
+ * N6③ 洞门三态聚合：把一个年级下的节态收成「年级洞口」的三态。
+ * 点亮占比 ≥ threshold → `lit`（亮灯）／有任一点亮或微光 → `half`（半亮）／全暗 → `dim`（暗门）。
+ */
+export function gradeDoorState(states, threshold = 0.8) {
+  const list = Object.values(states || {})
+  if (!list.length) return 'dim'
+  const lit = list.filter((s) => s === 'lit').length
+  if (lit / list.length >= threshold) return 'lit'
+  return list.some((s) => s !== 'dim') ? 'half' : 'dim'
+}
+
+/** 洞门三态 → 中文（洞内文案与 aria 共用，口径一致）。 */
+export function doorStateWord(state) {
+  if (state === 'lit') return '已亮灯'
+  if (state === 'half') return '半亮'
+  return '暗门'
+}
+
+/** 登峰径带（节洞带）画布常量：洞带单独成画（各峰各带，横向可滚，不动宏观群山）。 */
+export const CAVE_BAND = { h: 260, yMid: 118, amp: 46, nodeW: 132, padX: 64 }
+
+/**
+ * 节洞带排布（纯几何）：把一节一节按课程序列自左向右排成一条上下起伏的山径
+ * （隔一节换一侧，读者一眼看出「沿链向前」的方向）。超出画布宽时由调用方横向滚动。
+ * @returns {{w:number,h:number,points:Array<{node:object,x:number,y:number,index:number}>}}
+ */
+export function caveTrailLayout(nodes, opts = {}) {
+  const nodeW = opts.nodeW ?? CAVE_BAND.nodeW
+  const padX = opts.padX ?? CAVE_BAND.padX
+  const yMid = opts.yMid ?? CAVE_BAND.yMid
+  const amp = opts.amp ?? CAVE_BAND.amp
+  const list = nodes || []
+  const w = padX * 2 + Math.max(0, list.length - 1) * nodeW
+  const points = list.map((node, index) => ({
+    node,
+    index,
+    x: padX + index * nodeW,
+    y: Math.round(yMid + (index % 2 === 0 ? -amp : amp))
+  }))
+  return { w, h: opts.h ?? CAVE_BAND.h, points }
+}
+
+/** M1 晨雾一团（覆盖未明的点；雾色分近实/远虚两层，同一世界语言）。 */
+export function fogPuff(x, y, s = 1, tone = 'near') {
+  const c = tone === 'far' ? 'w-fog-far' : 'w-fog-near'
+  return [
+    { k: 'ellipse', c, cx: x - 12 * s, cy: y + 5 * s, rx: 42 * s, ry: 22 * s, o: 0.5 },
+    { k: 'ellipse', c, cx: x + 14 * s, cy: y - 3 * s, rx: 36 * s, ry: 19 * s, o: 0.55 },
+    { k: 'ellipse', c, cx: x + 2 * s, cy: y + 11 * s, rx: 30 * s, ry: 15 * s, o: 0.42 }
+  ]
+}
+
+/** M1 晨雾带（某一海拔上横铺的一道雾，罩住「这一段还没走到」）。 */
+export function fogBank(y, fromX, toX, thickness = 34) {
+  const out = []
+  const steps = 7
+  for (let i = 0; i < steps; i += 1) {
+    const t = i / (steps - 1)
+    const x = fromX + (toX - fromX) * t
+    out.push({ k: 'ellipse', c: i % 2 ? 'w-fog-far' : 'w-fog-near', cx: Math.round(x), cy: y + (i % 3 ? 4 : -5), rx: 96, ry: thickness, o: 0.34 })
+  }
+  return out
+}
+
+/** M1 山脊轮廓微光：雾中仍隐约可辨的一道脊线（「山还在，只是还没亮」）。 */
+export function ridgeGlow(d, w = 1.4) {
+  return [
+    { k: 'path', c: 'w-ridge-glow', d, w: w + 1.8, o: 0.4 },
+    { k: 'path', c: 'w-ridge-glow', d, w, o: 0.85 }
+  ]
+}
+
+/** M2 光脉：一条沿链行进的亮束（底色辉光 + 流动虚线，动画在 CSS 里跑，不逐帧重建 DOM）。 */
+export function lightBeam(d, opts = {}) {
+  const w = opts.w ?? 3
+  return [
+    { k: 'path', c: 'w-light-trail', d, w: w + 3.4, o: 0.4 },
+    { k: 'path', c: 'w-light-pulse', d, w, dash: opts.dash || '10 12', o: 0.95 }
+  ]
+}
+
+/** M2 路口提示光（该往上走的那一段）：细亮束 + 呼吸（CSS），即「下一个最佳目标」。 */
+export function lightHint(d, w = 2) {
+  return [{ k: 'path', c: 'w-light-hint', d, w }]
+}
+
+/** 山洞洞口（三态）：岩拱 + 洞腔 + 洞口辉光 + 门前石阶。state ∈ dim|half|lit。 */
+export function caveDoor(x, y, s = 1, state = 'dim') {
+  const w = 13 * s
+  const h = 19 * s
+  const arch = (ww, hh) => {
+    const r = ww
+    return `M${(x - ww).toFixed(1)} ${y}V${(y - hh + r).toFixed(1)}A${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${(x + ww).toFixed(1)} ${(y - hh + r).toFixed(1)}V${y}Z`
+  }
+  const inner = state === 'lit' ? 'w-cave-inner-lit' : state === 'half' ? 'w-cave-inner-half' : 'w-cave-inner-dim'
+  const glow = state === 'lit' ? 'w-cave-glow-lit' : state === 'half' ? 'w-cave-glow-half' : 'w-cave-glow-dim'
+  return [
+    { k: 'ellipse', c: glow, cx: x, cy: y - h * 0.34, rx: w * 2.1, ry: h * 0.72, o: state === 'dim' ? 0.16 : 0.34 },
+    { k: 'ellipse', c: 'w-shadow-soft', cx: x, cy: y + 1.5 * s, rx: 17 * s, ry: 5 * s },
+    { k: 'path', c: 'w-cave-rock', d: arch(w * 1.5, h) },
+    { k: 'path', c: inner, d: arch(w, h * 0.86) },
+    { k: 'path', c: 'w-cave-step', d: `M${(x - w * 1.8).toFixed(1)} ${(y + 2 * s).toFixed(1)}H${(x + w * 1.8).toFixed(1)}`, w: 2.4 * s }
+  ]
+}
+
+/** 节洞带上的一个「洞位」（点）：外环 + 内芯 + 点亮时的光尘。state ∈ dim|half|lit。 */
+export function caveNode(x, y, s = 1, state = 'dim') {
+  const core = state === 'lit' ? 'w-node-lit' : state === 'half' ? 'w-node-half' : 'w-node-dim'
+  const halo = state === 'lit' ? 'w-node-halo-lit' : state === 'half' ? 'w-node-halo-half' : 'w-node-halo-dim'
+  const out = [
+    { k: 'circle', c: 'w-node-track', cx: x, cy: y, r: 17 * s },
+    { k: 'circle', c: halo, cx: x, cy: y, r: 24 * s, o: state === 'lit' ? 0.5 : 0.26 },
+    { k: 'circle', c: core, cx: x, cy: y, r: 11 * s }
+  ]
+  if (state === 'lit') out.push({ k: 'circle', c: 'w-node-spark', cx: x, cy: y - 2 * s, r: 4.2 * s, o: 0.9 })
+  return out
+}
+
+/** 节洞带上的边（相邻洞位之间）：explicit/seq 实，soft 虚且淡（N5 不误导）。 */
+export function caveEdge(a, b, kind) {
+  const cls = edgeToneClass(kind)
+  const d = `M${a.x} ${a.y}L${b.x} ${b.y}`
+  const soft = kind === 'soft'
+  return {
+    wide: { k: 'path', c: cls, d, w: soft ? 1.2 : 5, dash: soft ? '4 8' : '', o: soft ? 0.5 : 0.22 },
+    core: { k: 'path', c: cls, d, w: soft ? 1.2 : 2.2, dash: soft ? '4 8' : '', o: soft ? 0.75 : 0.95 }
+  }
+}
+
+/**
+ * M3 洞内平铺生活场景（承接 LifeWorld 语言：同一套令牌、同一批体块/植被/水/灯画法）。
+ * 平铺（平面层叠）表达纵深：洞壁三环退晕 → 洞顶垂石 → 石台书案 → 水潭 → 洞门光柱。
+ * 只产几何；颜色仍走 `w-*` 类。w/h 为洞内画布尺寸。
+ */
+export function caveScene(w = 900, h = 520) {
+  const cx = Math.round(w / 2)
+  const baseY = h - 92
+  const out = []
+  // 洞壁三环（平面退晕 = 视差纵深，非 3D）
+  out.push({ k: 'ellipse', c: 'w-cave-wall-1', cx, cy: baseY - 40, rx: w * 0.46, ry: 200 })
+  out.push({ k: 'ellipse', c: 'w-cave-wall-2', cx, cy: baseY - 26, rx: w * 0.38, ry: 168 })
+  out.push({ k: 'ellipse', c: 'w-cave-wall-3', cx, cy: baseY - 12, rx: w * 0.30, ry: 136 })
+  // 洞顶垂石（stalactites）
+  for (let i = 0; i < 9; i += 1) {
+    const x = 90 + i * ((w - 180) / 8)
+    const len = 26 + ((i * 37) % 40)
+    out.push({ k: 'poly', c: 'w-cave-stalactite', points: `${pt(x - 13, 0)} ${pt(x + 13, 0)} ${pt(x, len)}` })
+    out.push({ k: 'poly', c: 'w-cave-stalactite-light', points: `${pt(x - 5, 0)} ${pt(x + 4, 0)} ${pt(x, len * 0.68)}` })
+  }
+  // 洞地面 + 苔痕
+  out.push({ k: 'rect', c: 'w-cave-floor', x: 0, y: baseY, w, h: h - baseY })
+  out.push({ k: 'ellipse', c: 'w-cave-moss', cx: cx - 210, cy: baseY + 26, rx: 96, ry: 18, o: 0.6 })
+  out.push({ k: 'ellipse', c: 'w-cave-moss', cx: cx + 240, cy: baseY + 40, rx: 120, ry: 22, o: 0.5 })
+  // 石台（书案）：等距体块三面 + 摊开的书
+  out.push(...block(cx - 34, baseY - 44, 68, 54, 30, 'w-cave-altar'))
+  out.push({ k: 'poly', c: 'w-cave-book', points: `${pt(cx - 30, baseY - 44)} ${pt(cx - 2, baseY - 30)} ${pt(cx - 2, baseY - 40)} ${pt(cx - 30, baseY - 54)}` })
+  out.push({ k: 'poly', c: 'w-cave-book-page', points: `${pt(cx - 2, baseY - 40)} ${pt(cx + 28, baseY - 54)} ${pt(cx + 28, baseY - 44)} ${pt(cx - 2, baseY - 30)}` })
+  // 水潭（洞中滴水成潭）
+  out.push({ k: 'ellipse', c: 'w-cave-pool', cx: cx + 250, cy: baseY + 30, rx: 92, ry: 26, o: 0.85 })
+  out.push({ k: 'ellipse', c: 'w-cave-pool-light', cx: cx + 244, cy: baseY + 24, rx: 58, ry: 15, o: 0.7 })
+  // 石笋小灯三盏（复用世界路灯画法：细杆 + 发光头）
+  out.push(...lamp(cx - 280, baseY + 6, 1.05))
+  out.push(...lamp(cx + 330, baseY - 6, 0.95))
+  out.push({ k: 'path', c: 'w-cave-drip', d: `M${cx + 250} 0v120`, w: 1.2, dash: '3 9', o: 0.5 })
+  // 洞门光柱（出口：掌握之后从这里出去）
+  out.push({ k: 'poly', c: 'w-cave-shaft', points: `${pt(cx - 210, 0)} ${pt(cx - 96, 0)} ${pt(cx + 40, baseY)} ${pt(cx - 300, baseY)}`, o: 0.34 })
+  out.push({ k: 'poly', c: 'w-cave-shaft-light', points: `${pt(cx - 176, 0)} ${pt(cx - 140, 0)} ${pt(cx - 24, baseY)} ${pt(cx - 120, baseY)}`, o: 0.34 })
+  return out
+}
+
+/** 洞内「灯位」（洞内展开到的知识点位）：小圆座 + 态芯；页面在其上叠 HTML 标签。 */
+export function caveSeed(x, y, s = 1, state = 'dim') {
+  const core = state === 'lit' ? 'w-node-lit' : state === 'half' ? 'w-node-half' : 'w-node-dim'
+  return [
+    { k: 'ellipse', c: 'w-shadow-soft', cx: x, cy: y + 3 * s, rx: 12 * s, ry: 4 * s },
+    { k: 'circle', c: 'w-node-track', cx: x, cy: y, r: 10 * s },
+    { k: 'circle', c: core, cx: x, cy: y, r: 6 * s }
+  ]
+}

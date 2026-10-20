@@ -245,4 +245,65 @@
   --world-stage-1: #eaf2dc; /* 小学段台地 */
   --world-stage-2: #dfe9ce; /* 初中段台地 */
   --world-stage-3: #d6e6e4; /* 高中段台地（更高更冷） */
+
+  /* ═══════════════════════════════════════════
+     🌅 学科登顶 v4（W5-b）：黎明破晓 × 光脉传导
+     同一份世界色源、同一个黎明色域：雾是黎明的雾，光是黎明的光，洞是黎明照进来的洞
+     （「未点亮」也不用纯黑——仍是黎明色域里的暗调，山只是还没被照亮）。
+     ═══════════════════════════════════════════ */
+
+  /* —— 晨雾（M1：近实 / 远虚 / 整层幕）—— */
+  --world-fog-near: #eef2ea;
+  --world-fog-far: #f7faf4;
+  --world-fog-veil: #f4f7ef;
+
+  /* —— 光脉（M2：曙光扩散 / 行进亮束 / 已亮路径辉光 / 下一目标提示光）—— */
+  --world-dawn-glow: #fdeec2;
+  --world-light-pulse: #ffdf9e;
+  --world-light-trail: #f7d894;
+  --world-light-hint: #f0c586;
+
+  /* —— 未明（未点亮）：黎明色域里的暗调，不是纯黑 —— */
+  --world-dim-node: #c4cbbd;
+  --world-ridge-glow: #fff4cf;
+
+  /* —— 节洞带：洞位三态（暗 / 半亮 / 亮灯）与洞间边（显式 / 序列 / 引导）—— */
+  --world-node-track: #e8ecdf;
+  --world-node-lit: #f2b955;
+  --world-node-half: #e6cf9a;
+  --world-node-dim: #c6ccbe;
+  --world-node-spark: #fff3cf;
+  --world-node-halo-lit: #ffe6a8;
+  --world-node-halo-half: #f0e2c2;
+  --world-node-halo-dim: #dfe4d7;
+  --world-edge-explicit: #e7bd72;
+  --world-edge-seq: #dcc9a0;
+  --world-edge-soft: #cfd6c8; /* 引导路径：最淡的一档（N5 不误导） */
+
+  /* —— 洞窟（M3：洞门三态 + 洞内平铺生活场景）—— */
+  --world-cave-rock: #cbbfa8;
+  --world-cave-inner-dim: #b6ab97;
+  --world-cave-inner-half: #d8c8a6;
+  --world-cave-inner-lit: #ffe6ac;
+  --world-cave-glow-dim: #e7e0cc;
+  --world-cave-glow-half: #f6e3b4;
+  --world-cave-glow-lit: #ffe08f;
+  --world-cave-step: #b9ad97;
+  --world-cave-wall-1: #cdc3ad;
+  --world-cave-wall-2: #d8cfba;
+  --world-cave-wall-3: #e2dac7;
+  --world-cave-floor: #c8bda6;
+  --world-cave-stalactite: #b3a793;
+  --world-cave-stalactite-light: #d5cbb6;
+  --world-cave-drip: #cfe0e6;
+  --world-cave-pool: #a9c9d4;
+  --world-cave-pool-light: #cfe6ec;
+  --world-cave-moss: #a8c69a;
+  --world-cave-book: #fbf3dd;
+  --world-cave-book-page: #fdfaf0;
+  --world-cave-shaft: #fff0c8;
+  --world-cave-shaft-light: #fff8e2;
+  --world-cave-altar-top: #d9d0bb;
+  --world-cave-altar-left: #b8ac95;
+  --world-cave-altar-right: #9b8f78;
 }

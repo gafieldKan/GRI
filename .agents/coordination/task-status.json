@@ -6,7 +6,7 @@
   "w4-a-summit-dimensions-data": "done_verified",
   "w4-b-summit-ui": "done_verified (2026-10-19 返工后复验通过)",
   "w5-a-learning-chain-data": "done_verified (2026-10-19 助手独立复验通过)",
-  "w5-b-summit-v4-lightpath": "planned (2026-10-19 落卡；依赖 W5-a 复验后方可下达 Claude)",
+  "w5-b-summit-v4-lightpath": "done_verified (2026-10-20 用户报完成，助手独立复验通过；作者脚本 2 处 FAIL 为助手补提交造成的过期断言)",
   "p2-task-1": "done_and_committed",
   "p2-task-1b": "done_and_committed",
   "p2-task-4": "done_and_committed",
@@ -638,7 +638,7 @@
     },
     "W5-b": {
       "agent": "claude",
-      "status": "planned",
+      "status": "done_verified",
       "card": ".agents/claude/tasks/w5-b-summit-v4-lightpath.md",
       "prompt": ".agents/claude/dispatch/w5-b-prompt.md",
       "desc": "学科登顶 v4 表现面：黎明破晓晨雾（M1）+ 光脉传导（M2，灵魂）+ 洞窟探入接智学慧眼闭环（M3）+ 引导四件套 + 信息密度；山保留为宏观骨架，双维度不回归",
@@ -646,7 +646,13 @@
       "depends_on": [
         "W5-a"
       ],
-      "notes": "**必须等 W5-a 完成并助手复验后方可下达**（串行铁律）。黎明令牌已就绪（persona-world.css），无需暗色主题前置。"
+      "notes": "用户报完成；助手独立复验通过（2026-10-20）。",
+      "verification": {
+        "author_script": "助手亲自执行 .agents/claude/outputs/w5b-verify.sh → PASS=215 SKIP=5 FAIL=2；2 处 FAIL 均为**助手补提交 380c3d3** 造成的过期断言（HEAD 前移 + learning-chain.ts 已在册），非 W5-b 缺陷",
+        "independent_e2e": "助手自写同源托管器 + 三轮自写探针（真实 Chromium·登录 testuser·真作答）：轮一 骨架/机制——v4 读数条在、雾 near10/far6/ridgeGlow2、光脉 pulse1/hint1/trail1、洞门 7 个(dim,half)、三档边 SVG 各异(soft dash4/8 w1.2 / seq 实线 w5)；轮二 空分支 math.comp 不崩回落 + 真闭环：6 灯位答对即时亮灯、出洞链上 state=lit mastery=100、全链 2→3(+1)；轮三 reduced-motion animationName=none、热点 UNI-BUTTON tabindex0+aria focusable、进洞≤2 步。三轮 pageerror/console.error 全 0",
+        "static": "N2 三重 grep 零裸色（world.vue 'green' 系类名且非新增）；N3 非 3D；N4 前端零硬编码 code、services/ 零改、explorer 零改；一份画法仅 art.js；diff 无凭据字面量；关键帧 CSS 非逐帧重建 DOM",
+        "notes": "非阻塞遗留：空链分支无显式空态话术（math 1/10、phys 4/10、chem 8/8、bio 9/9；均不崩但缺文案）；作者脚本重跑会再现 2 条过期断言（预期）"
+      }
     },
     "order": [
       "W5-a",
