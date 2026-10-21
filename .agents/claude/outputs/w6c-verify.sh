@@ -943,9 +943,22 @@ ok_not_has "$(printf '%s\n' "$STATUS" | awk '{print $2}' | tr '\n' ' ')" "apps/e
 ok_if "$(printf '%s\n' "$STATUS" | awk '$1=="M" && $2 ~ /^services\//{c++} END{print c+0}')" "0" "后端既有文件零修改（N4：只新增只读面，不改既有契约）"
 ok_if "$(printf '%s\n' "$STATUS" | awk '$1=="M" && $2 ~ /^packages\// && $2 != "packages/world-art/src/art.js"{c++} END{print c+0}')" "0" "既有包只动了共享画法 art.js（白名单内的世界语言唯一真源，N2 一份画法）"
 ok_if "$(cd "$ROOT_DIR" && git diff --cached --name-only | wc -l | tr -d ' ')" "0" "暂存区为空（未 add）"
-CHANGED="$(printf '%s\n' "$STATUS" | awk '{print $2}' | sort | tr '\n' ',')"
+# 「在册」看的是**本卡的改动集**。它必须跟 `git status` 与「最近一次提交」取并集：
+#   工作区有改动时（卡未提交）→ status 就是全集，照旧；
+#   已提交后（卡收口、独立复验时）→ status 是空的，只靠它会让这五条**全数假红**
+#   （真踩过：提交后复验 FAIL=5，五条都是「未含 xxx；实得『,』」，产品一行没坏）。
+# 故这里把 `git show --name-only` 的最近提交文件并进来；提交未含的文件仍由 status 兜住。
+# 只并一次（不是全历史）：一旦把全历史都算进来，「越界文件」就永远为空，那条断言会失效。
+CHANGED_STATUS="$(printf '%s\n' "$STATUS" | awk '{print $2}' | sort)"
+CHANGED_HEAD="$(cd "$ROOT_DIR" && git show --name-only --pretty=format: HEAD 2>/dev/null | sed '/^$/d' | sort)"
+CHANGED="$(printf '%s\n%s\n' "$CHANGED_STATUS" "$CHANGED_HEAD" | sed '/^$/d' | sort -u | tr '\n' ',')"
+ok_ne "$CHANGED" "" "改动集非空（本卡确实动了文件；status 空且 HEAD 无文件 = 找错仓库/基线）"
+# 越界检查仍只看**工作区**（作者这一轮真正在改的），不看 HEAD 并集：
+# 越界判的是「有没有动手动到不该动的地方」，并进 HEAD 只会把历史文件也算成越界候选。
+# 两条断言的真源不同：在册 = status ∪ HEAD，越界 = status。
+CHANGED_WT="$(printf '%s\n' "$CHANGED_STATUS" | sed '/^$/d' | tr '\n' ',')"
 # 白名单按 glob 逐项匹配（前缀写法是错的：'*"$f"*' 要求整串出现在清单里）
-OUT_OF="$(printf '%s' "$CHANGED" | tr ',' '\n' | sed '/^$/d' | while read -r f; do
+OUT_OF="$(printf '%s' "$CHANGED_WT" | tr ',' '\n' | sed '/^$/d' | while read -r f; do
   case "$f" in
     apps/web-ai-tutor/src/pages/twin/world.vue|apps/web-ai-tutor/src/components/world/*|apps/web-ai-tutor/src/api/index.js|apps/web-ai-tutor/src/store/practice.js|packages/world-art/src/art.js|styles/world.css|styles/tokens/themes/persona-world.css|docs/SUBJECT_SUMMIT_DESIGN_V6.md|apps/web-ai-tutor/src/__tests__/world-art-city.test.js|apps/web-ai-tutor/vitest.config.ts|.agents/claude/outputs/w6c-verify.sh|.agents/claude/outputs/w6c-file-list.md) continue ;;
     .agents/codex/outputs/*) continue ;;
