@@ -280,6 +280,38 @@
 .w-edge-seq { fill: none; stroke: var(--world-edge-seq); stroke-linecap: round; }
 .w-edge-soft { fill: none; stroke: var(--world-edge-soft); stroke-linecap: round; stroke-dasharray: 4 8; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   🏙️ 学科城区 v5（W6-a）——因果物理化为「路通不通」，双体系改为横纵两个正交方向
+   路 = 前置链：seq 实线连续（未学的段仍是一条路，只是灯没亮）；explicit 粗；
+   soft 虚且淡（沿用 N5 口径）。楼体三面复用 block 画法，橱窗三态与洞门三态同语义。
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* —— 年级大道 —— */
+.w-road { fill: var(--world-road); }
+.w-road-edge { fill: var(--world-road-edge); }
+.w-curb { fill: var(--world-curb); }
+.w-road-dash { fill: none; stroke: var(--world-road-dash); stroke-linecap: butt; stroke-dasharray: 10 12; }
+
+/* —— 一间店 = 一 节：楼体三面 + 橱窗三态 —— */
+.w-storefront-top { fill: var(--world-storefront-top); }
+.w-storefront-left { fill: var(--world-storefront-left); }
+.w-storefront-right { fill: var(--world-storefront-right); }
+.w-storefront-lit { fill: var(--world-storefront-lit); }
+.w-storefront-dark { fill: var(--world-storefront-dark); }
+
+/* —— 施工围挡（P2 接入：前置未满足 → 门前那段路是封的）—— */
+.w-barricade-a { fill: var(--world-barricade-a); }
+.w-barricade-b { fill: var(--world-barricade-b); }
+.w-barricade-lamp { fill: none; stroke: var(--world-barricade-lamp); stroke-linecap: round; }
+
+/* —— 楼内日间生活场景（主 surface；平面退晕 = 纵深，非 3D）—— */
+.w-room-wall-1 { fill: var(--world-room-wall-1); }
+.w-room-wall-2 { fill: var(--world-room-wall-2); }
+.w-room-wall-3 { fill: var(--world-room-wall-3); }
+.w-room-floor { fill: var(--world-room-floor); }
+.w-room-window { fill: var(--world-room-window); }
+.w-room-rug { fill: none; stroke: var(--world-room-rug); stroke-linecap: round; }
+.w-room-rug-plain { fill: var(--world-room-rug-plain); }
+
 /* —— 洞窟：洞门（岩拱 / 洞腔三态 / 洞口辉光）—— */
 .w-cave-rock { fill: var(--world-cave-rock); }
 .w-cave-inner-dim { fill: var(--world-cave-inner-dim); }

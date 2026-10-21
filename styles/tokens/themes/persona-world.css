@@ -306,4 +306,39 @@
   --world-cave-altar-top: #d9d0bb;
   --world-cave-altar-left: #b8ac95;
   --world-cave-altar-right: #9b8f78;
+
+  /* ═══════════════════════════════════════════
+     🏙️ 学科城区 v5（W6-a）：打破「登顶」，逛一座会长大的城
+     同一份世界色源、同一个黎明色域。因果物理化为「路通不通」——未学的段仍是
+     连续的同一条路，只是灯还没亮；半亮 = 有作答未到 80；**没有难度轴**。
+     色值一律取现有令牌族同档（wall-* / window-* / awning-* / lamp-* / plaza-* /
+     table-* / cave-wall-*），不从零调色，只为「城区语义」立可独立覆盖的名字。
+     ═══════════════════════════════════════════ */
+
+  /* —— 年级大道（K12 体系的物理化：路基 / 缘石 / 中线 / 里程碑）—— */
+  --world-road: #f1eddd; /* = --world-path 同档 */
+  --world-road-edge: #d5cfb9; /* = --world-path-edge */
+  --world-road-dash: #bcbda4; /* = --world-wall-right（中线比路基重一档） */
+  --world-curb: #e4dfcc; /* = --world-step */
+
+  /* —— 一间店 = 一 节：楼体三面 + 橱窗三态（dim 暗窗 / half 半亮 / lit 亮灯）—— */
+  --world-storefront-top: #f3f2e7; /* = --world-wall-top */
+  --world-storefront-left: #dcdcc8; /* = --world-wall-left */
+  --world-storefront-right: #bcbda4; /* = --world-wall-right */
+  --world-storefront-lit: #f0dca6; /* = --world-window-lit */
+  --world-storefront-dark: #90a49e; /* = --world-window-dark */
+
+  /* —— 施工围挡（P2 铺满时接入：前置未满足 → 门前那段路是封的）—— */
+  --world-barricade-a: #c98168; /* = --world-awning-a */
+  --world-barricade-b: #f2e6d2; /* = --world-awning-b */
+  --world-barricade-lamp: #fbf3d8; /* = --world-lamp-head */
+
+  /* —— 楼内日间生活场景（主 surface；退晕三层 = cave-wall-* 的日间版）—— */
+  --world-room-wall-1: #e6e4d6; /* = cave-wall-1 的日间档 */
+  --world-room-wall-2: #eeecdf; /* = cave-wall-2 的日间档 */
+  --world-room-wall-3: #f5f3ea; /* = cave-wall-3 的日间档 */
+  --world-room-floor: #cbb08a; /* 木地板 = --world-table-top */
+  --world-room-window: #fdf3d8; /* 窗光 = --world-sun-glow */
+  --world-room-rug: #ded8c2; /* 地毯描边 / 分格线 = --world-plaza-outer */
+  --world-room-rug-plain: #e9e4d0; /* 地毯面 = --world-plaza-mid */
 }

@@ -949,3 +949,202 @@ export function caveSeed(x, y, s = 1, state = 'dim') {
     { k: 'circle', c: core, cx: x, cy: y, r: 6 * s }
   ]
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v5（W6-a）学科城区 —— 宏观叙事从「登山」换成「逛城」
+//   因果 = 道路通断（M2 的物理化）：打通一间，门前那段路铺点亮，光顺路流向下一间；
+//   连续 = 路是按课程序列铺的**同一条路**（未学的段仍连续，只是灯还没亮）；
+//   双体系 = 横轴年级大道（K12）↔ 纵轴街区车道（学科完整体系），不再共用一根海拔轴。
+//   画法仍只用本文件的 isoBox / block / tree / shrub / lamp / groundShadow 与
+//   caveScene 的平面退晕手法——**不引进第二种画法**；本文件依旧零色值。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 城区尺寸常量（与 CAVE_BAND 同属几何真源；P2 起多车道也只用这一处）。 */
+export const DISTRICT = {
+  avenueH: 220, // 大道带（路面 + 缘石 + 里程桩）的纵向占位
+  laneW: 168, // 一条街区的车道宽（P1 只画一条）
+  buildingW: 132, // 一间店（= 一 节）的进深
+  roadW: 26, // 楼间路的宽
+  blockH: 104, // 楼体在车道里立起的高度
+  groundY: 430 // 街道地面基线（画布坐标系）
+}
+
+/**
+ * 年级大道（K12 体系的物理化）：路基 + 两条路缘 + 虚线中线 + 里程碑。
+ * marks 由页面的 `GRADE_TICKS` 同源派生（[{g,x,short}]），**不新建刻度表**。
+ * @param {number} x0 大道左端
+ * @param {number} x1 大道右端
+ * @param {number} y  路面中线
+ * @param {Array<{g:number|string,x:number,short:string}>} marks
+ * @returns {object[]} primitives（几何零色值，颜色走 w-* 类）
+ */
+export function gradeAvenue(x0, x1, y, marks) {
+  const out = []
+  const w = Math.max(0, x1 - x0)
+  // 路基（薄条，压在路面中线上）+ 双缘石
+  out.push({ k: 'rect', c: 'w-road', x: x0, y: y - 7, w, h: 14, rx: 7 })
+  out.push({ k: 'path', c: 'w-curb', d: `M${x0} ${y - 9}H${x1}`, w: 1.2 })
+  out.push({ k: 'path', c: 'w-curb', d: `M${x0} ${y + 9}H${x1}`, w: 1.2 })
+  // 虚线中线（同 caveEdge 的 dash 语气，保持同一套「路」的语言）
+  out.push({ k: 'path', c: 'w-road-dash', d: `M${x0} ${y}H${x1}`, w: 1.4, dash: '10 12', o: 0.55 })
+  // 里程碑：小石桩 + 短横（页面在其上叠 HTML 年级标签）
+  for (const m of marks || []) {
+    const mx = Math.round(m.x)
+    out.push({ k: 'rect', c: 'w-curb', x: mx - 1.5, y: y - 16, w: 3, h: 32, rx: 1.5 })
+    out.push({ k: 'rect', c: 'w-road-edge', x: mx - 7, y: y - 17, w: 14, h: 3, rx: 1.5 })
+  }
+  return out
+}
+
+/**
+ * 一间「店」= 一 节（section）：楼体 + 屋顶 + 橱窗（明暗随 state）+ 门阶 + 落影。
+ * 橱窗三态与洞门三态同一组语义：dim=暗窗 / half=半亮（有作答未到 80）/ lit=亮灯。
+ *
+ * **刻意不调** `structureFor`/`STRUCTURES['academy']`：那是含钟塔 + 三排拱窗 + 旗杆 +
+ * 三棵树的**全场景**画法（约 190 个 primitive），一间店面会挤爆画布；这里的正确粒度
+ * 就是 block + 屋顶 poly + 单个橱窗——与 `isoBox`/`block` 是同一套画法、同一批令牌。
+ *
+ * @param {number} x 落点（楼底面前角中线）
+ * @param {number} y 楼底基线
+ * @param {number} w 进深
+ * @param {number} h 楼体高
+ * @param {'dim'|'half'|'lit'} state 学习态
+ * @returns {object[]} primitives
+ */
+export function storefront(x, y, w, h, state = 'dim') {
+  const d = w * 0.7
+  const out = []
+  out.push(...groundShadow(x, y, w * 0.62, w * 0.2, 'w-shadow-soft'))
+  // 楼体三面（同一 block 画法）
+  out.push(...block(x - w / 2, y, w, d, h, 'w-storefront'))
+  // 双坡屋顶（承接 home()/dining() 的坡顶画法，收窄到铺面尺度）
+  out.push({ k: 'poly', c: 'w-storefront-top', points: `${pt(x - w / 2 - 3, y - h)} ${pt(x + 3, y - h - 16)} ${pt(x + 3, y - h - 6)} ${pt(x - w / 2 - 3, y - h + 10)}` })
+  out.push({ k: 'poly', c: 'w-roof-right', points: `${pt(x + 3, y - h - 16)} ${pt(x + w / 2 + 3, y - h)} ${pt(x + w / 2 + 3, y - h + 10)} ${pt(x + 3, y - h - 6)}` })
+  out.push({ k: 'poly', c: 'w-storefront-top', points: `${pt(x - w / 2 - 3, y - h + 10)} ${pt(x + 3, y - h - 6)} ${pt(x + w / 2 + 3, y - h + 10)} ${pt(x + 3, y)}` })
+  // 门阶
+  out.push({ k: 'poly', c: 'w-step', points: `${pt(x - 13, y + 2)} ${pt(x + 5, y + 12)} ${pt(x + 17, y + 4)} ${pt(x - 1, y - 6)}` })
+  // 橱窗（亮灯与否即 M2 的可读态）：半亮给描边、亮灯给发光芯
+  const win = state === 'lit' ? 'w-storefront-lit' : 'w-storefront-dark'
+  out.push({ k: 'poly', c: win, points: `${pt(x - 30, y - 26)} ${pt(x - 18, y - 19)} ${pt(x - 18, y - 37)} ${pt(x - 30, y - 44)}` })
+  out.push({ k: 'poly', c: win, points: `${pt(x + 12, y - 30)} ${pt(x + 24, y - 23)} ${pt(x + 24, y - 41)} ${pt(x + 12, y - 48)}` })
+  if (state === 'half') {
+    out.push({ k: 'poly', c: 'w-window-lit', o: 0.5, points: `${pt(x - 30, y - 26)} ${pt(x - 18, y - 19)} ${pt(x - 18, y - 37)} ${pt(x - 30, y - 44)}` })
+  }
+  // 亮灯时楼前一盏路灯（复用世界路灯画法，光从这盏开始顺路走）
+  if (state !== 'dim') out.push(...lamp(x + w / 2 + 14, y + 8, 0.72))
+  return out
+}
+
+/**
+ * 楼间的路段（前置链的物理化）。kind 决定语气，与 `caveEdge` 同一分级：
+ *   seq      → 实线主路（课程序列；**未学段仍连续**，只是灯没亮）
+ *   explicit → 粗实线（显式前置；实测全部落在同一节内 → 街道层很少出现）
+ *   soft     → 虚线最淡（引导路径，非精确前置，不误导）
+ * @param {{x:number,y:number}} a 前一间店的门阶落点
+ * @param {{x:number,y:number}} b 后一间店的门阶落点
+ * @param {'seq'|'explicit'|'soft'} kind
+ * @returns {{wide:object,core:object}}
+ */
+export function roadSegment(a, b, kind) {
+  const soft = kind === 'soft'
+  const explicit = kind === 'explicit'
+  const cls = edgeToneClass(kind)
+  const d = `M${a.x} ${a.y}L${b.x} ${b.y}`
+  return {
+    wide: { k: 'path', c: cls, d, w: soft ? 1.2 : explicit ? 7 : 5, dash: soft ? '4 8' : '', o: soft ? 0.4 : 0.2 },
+    core: { k: 'path', c: cls, d, w: soft ? 1.2 : explicit ? 3.6 : 2.4, dash: soft ? '4 8' : '', o: soft ? 0.7 : 0.92 }
+  }
+}
+
+/**
+ * 施工围挡（因果的负面态）：前置未满足时，门前那段路是封的。
+ * 斜纹围挡带 + 一盏警示灯 + 两团晨雾。P1 不启用，P2 铺满时接入。
+ * @param {number} x 路段左端
+ * @param {number} y 路段中线
+ * @param {number} w 路段宽
+ * @returns {object[]}
+ */
+export function barricade(x, y, w) {
+  const out = []
+  // 斜纹围挡（两阶令牌相间，承接遮阳篷的双色手法）
+  const stripes = Math.max(2, Math.round(w / 14))
+  for (let i = 0; i < stripes; i += 1) {
+    const sx = x + (i * w) / stripes
+    out.push({
+      k: 'poly',
+      c: i % 2 ? 'w-barricade-b' : 'w-barricade-a',
+      points: `${pt(sx, y + 8)} ${pt(sx + w / stripes, y + 8)} ${pt(sx + w / stripes + 7, y - 8)} ${pt(sx + 7, y - 8)}`
+    })
+  }
+  out.push({ k: 'path', c: 'w-barricade-lamp', d: `M${x - 4} ${y - 8}V${y - 26}`, w: 2.2 })
+  out.push({ k: 'circle', c: 'w-barricade-lamp', cx: x, cy: y - 30, r: 3.6 })
+  out.push(...fogPuff(x + w * 0.5, y - 12, 1.1, 'near'))
+  out.push(...fogPuff(x + w * 0.5, y - 4, 0.8, 'far'))
+  return out
+}
+
+/**
+ * 楼内平面生活场景（**主 surface**；承接 `caveScene` 的平铺退晕手法，只是换成日间室内）。
+ * theme ∈ 'study'|'studio'|'lab'|'library'；P1 只实现 'study'（书房）。
+ * 平面层叠表达纵深：墙面三环退晕 → 地板 → 书柜 → 书桌椅 → 台灯 → 窗光。
+ * @param {number} w 画布宽
+ * @param {number} h 画布高
+ * @param {'study'} theme 主题（P1 仅 study）
+ * @returns {object[]} primitives（几何零色值）
+ */
+export function lifeScene(w = 900, h = 520, theme = 'study') {
+  const cx = Math.round(w / 2)
+  const floorY = h - 96
+  const out = []
+  // 墙面三环退晕（= caveScene 的同一手法：平面退晕即纵深，非 3D）
+  out.push({ k: 'ellipse', c: 'w-room-wall-1', cx, cy: floorY - 120, rx: w * 0.44, ry: 210 })
+  out.push({ k: 'ellipse', c: 'w-room-wall-2', cx, cy: floorY - 96, rx: w * 0.36, ry: 176 })
+  out.push({ k: 'ellipse', c: 'w-room-wall-3', cx, cy: floorY - 70, rx: w * 0.28, ry: 142 })
+  // 木地板
+  out.push({ k: 'rect', c: 'w-room-floor', x: 0, y: floorY, w, h: h - floorY })
+  // 地板缝（维持「同一套路的语言」：用 dash 表达分格）
+  for (let i = 1; i < 6; i += 1) {
+    const gx = (i * w) / 6
+    out.push({ k: 'path', c: 'w-room-rug', d: `M${gx} ${floorY}V${h}`, w: 1, o: 0.25 })
+  }
+  // 窗（右侧，把外面的天光引进来）
+  out.push({ k: 'rect', c: 'w-room-window', x: w - 190, y: 92, w: 120, h: 150, rx: 6, o: 0.5 })
+  out.push({ k: 'rect', c: 'w-room-floor', x: w - 186, y: 98, w: 112, h: 138, rx: 4, o: 0.35 })
+  out.push({ k: 'path', c: 'w-room-window', d: `M${w - 130} 92V242`, w: 1.6 })
+  out.push({ k: 'path', c: 'w-room-window', d: `M${w - 190} 167H${w - 70}`, w: 1.6 })
+  // 书柜（左侧：等距体块三面 + 分格）
+  out.push(...block(84, floorY - 40, 150, 96, 150, 'w-storefront'))
+  for (let i = 0; i < 4; i += 1) {
+    const sy = floorY - 52 - i * 34
+    out.push({ k: 'path', c: 'w-room-rug', d: `M${96} ${sy}H${222}`, w: 1, o: 0.3 })
+  }
+  // 书桌（工作台 = 智学慧眼闭环的落点）+ 台灯
+  out.push(...block(cx - 20, floorY - 30, 190, 128, 26, 'w-storefront'))
+  out.push({ k: 'poly', c: 'w-cave-book', points: `${pt(cx - 24, floorY - 30)} ${pt(cx + 6, floorY - 18)} ${pt(cx + 6, floorY - 27)} ${pt(cx - 24, floorY - 39)}` })
+  out.push({ k: 'poly', c: 'w-cave-book-page', points: `${pt(cx + 6, floorY - 27)} ${pt(cx + 34, floorY - 39)} ${pt(cx + 34, floorY - 30)} ${pt(cx + 6, floorY - 18)}` })
+  out.push({ k: 'path', c: 'w-room-rug', d: `M${cx - 78} ${floorY - 64}V${floorY - 96}`, w: 2.4 })
+  out.push({ k: 'circle', c: 'w-room-window', cx: cx - 78, cy: floorY - 102, r: 8, o: 0.9 })
+  // 地毯（给灯位一个共同的落座面）：面用 plaza-mid，与地板缝的线条用地毯描边分开类，
+  // 否则同一类既当 stroke 又当 fill，两种形态必有一者不可见
+  out.push({ k: 'ellipse', c: 'w-room-rug-plain', cx, cy: floorY + 46, rx: w * 0.3, ry: 40, o: 0.55 })
+  // 门（= 出楼的门；也是「下地下室」暗门的位置）
+  out.push({ k: 'poly', c: 'w-door', points: `${pt(66, floorY - 26)} ${pt(74, floorY - 20)} ${pt(74, floorY - 40)} ${pt(66, floorY - 46)}` })
+  return out
+}
+
+/**
+ * 楼内暗门（= 地下室入口钥孔）：地板上的一处暗门 + 两级台阶。
+ * 用户裁决的两个 surface（楼上书房 / 楼下溶洞）由它衔接。
+ * @param {number} x 落点
+ * @param {number} y 地板线
+ * @param {number} s 尺度
+ * @returns {object[]}
+ */
+export function basementHatch(x, y, s = 1) {
+  return [
+    { k: 'ellipse', c: 'w-shadow-soft', cx: x, cy: y + 4 * s, rx: 22 * s, ry: 8 * s },
+    { k: 'ellipse', c: 'w-cave-rock', cx: x, cy: y, rx: 20 * s, ry: 7 * s },
+    { k: 'ellipse', c: 'w-cave-inner-dim', cx: x, cy: y, rx: 12 * s, ry: 4 * s },
+    { k: 'poly', c: 'w-step', points: `${pt(x - 20, y + 2)} ${pt(x + 20, y + 2)} ${pt(x + 14, y + 12)} ${pt(x - 14, y + 12)}` }
+  ]
+}

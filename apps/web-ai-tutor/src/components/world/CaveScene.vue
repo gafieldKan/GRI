@@ -17,6 +17,17 @@
         <text class="cave-close" data-cave-close @click="$emit('close')">✕</text>
       </view>
 
+      <!-- v5 学科城区：主 surface 为学科书房，岩洞降为楼内可选地下室。
+           两个 surface 走**同一条闭环**、同一批 data-cave-* 选择器；此处只换观感。
+           v5-N5 口径逐字：地下室是同一间店的岩洞探索室，走同一条闭环；楼上楼下不改变掌握度真源 -->
+      <view v-if="canGoBasement" class="cave-surface">
+        <text class="cs-now">{{ inBasement ? '地下室 · 岩洞探索室' : '楼上 · 学科书房' }}</text>
+        <text class="cs-go" data-cave-basement @click="inBasement = !inBasement">{{ inBasement ? '回楼上' : '下地下室看看' }}</text>
+        <!-- 口径逐字可断言：切换只换观感，闭环与掌握度真源不变（V5-N5） -->
+        <text class="cs-honest">地下室是同一间店的岩洞探索室，走的是同一条闭环；楼上楼下不改变掌握度真源</text>
+      </view>
+      <text v-else class="cs-honest">地下室是同一间店的岩洞探索室，走的是同一条闭环；楼上楼下不改变掌握度真源</text>
+
       <view class="cave-meta">
         <text class="cm-item" data-cave-node>{{ node ? node.name : '' }}</text>
         <text class="cm-item">{{ gradeShort(node && node.grade) }} · {{ (node && node.chapterName) || '—' }}</text>
@@ -24,7 +35,7 @@
       </view>
 
       <!-- 平铺洞内生活场景（画法 = 共享件 caveScene，零色值） -->
-      <view class="cave-stage">
+      <view class="cave-stage" :class="{ 'is-room': activeScene === 'study' }" :data-cave-surface-state="activeScene" data-cave-surface>
         <svg
           class="cave-svg"
           data-cave-scene-svg
@@ -157,6 +168,11 @@
           <button class="tbtn primary block" data-cave-exit @click="exitLit">
             带着这点亮光出洞<text class="arr">→</text>
           </button>
+          <!-- 整合智学慧眼（V5-N7）：闭环走通后接「排计划」与「监督」两个既有能力 -->
+          <view class="fix-row">
+            <button class="tbtn sm" data-cave-plan @click="$emit('goto-review', 'plan')">按这个水平排计划</button>
+            <button class="tbtn soft sm" data-cave-supervise @click="$emit('goto-review', 'supervise')">去看计划执行</button>
+          </view>
         </view>
 
         <!-- 答对但未满 80：光前移了一格（不谎报「亮灯」） -->
@@ -182,6 +198,11 @@
             <button v-if="reviewRefs.length" class="tbtn soft sm" data-cave-review-list @click="$emit('goto-review', 'review')">去复习（间隔）· {{ reviewRefs.length }}</button>
             <button class="tbtn sm" data-cave-retry @click="startTeach">再讲一次</button>
           </view>
+          <!-- 整合智学慧眼（V5-N7）：答错也接「排计划」——按评估水平安排后面的学习 -->
+          <view class="fix-row">
+            <button class="tbtn sm" data-cave-plan @click="$emit('goto-review', 'plan')">按这个水平排计划</button>
+            <button class="tbtn soft sm" data-cave-supervise @click="$emit('goto-review', 'supervise')">去看计划执行</button>
+          </view>
         </view>
       </view>
     </view>
@@ -190,7 +211,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { caveScene, caveSeed, GRADE_TICKS } from '@world-art'
+import { caveScene, caveSeed, lifeScene, GRADE_TICKS } from '@world-art'
 import { getAgentLesson, getKpQuestions, getKpCave, getAgentDiagnosis, submitPracticeAnswer } from '@/api/index.js'
 // 判题口径与「练一练」页同一条（normalizeQuestion 抹平题型/选项/答案字母→下标），不另写一套判定。
 import { normalizeQuestion, checkAnswer } from '@/store/practice'
@@ -201,7 +222,14 @@ const props = defineProps({
   kps: { type: Array, default: () => [] }, // 洞内知识点：[{code,name,state,mastery,id?}]
   cave: { type: Object, default: null }, // W5-a kp-cave 聚合（掌握度/态/前置边/题入口/下一节）
   activeCode: { type: String, default: '' },
-  loggedIn: { type: Boolean, default: false }
+  loggedIn: { type: Boolean, default: false },
+  /**
+   * 场景主题（v5 学科城区）：`study`=楼内学科书房（**主 surface**）·
+   * `cave`=岩洞（降为楼下「探索地下室」）。默认 cave —— 旧入口观感零变化。
+   * 换皮只换 `scenePrims` 的数据来源：循环面板 / 七态状态机 / data-cave-* 全链
+   * 选择器 / emit 契约一行不动，故 E2E 的闭环断言原样命中。
+   */
+  theme: { type: String, default: 'cave' }
 })
 const emit = defineEmits(['close', 'lit', 'lit-kp', 'pick-kp', 'goto-review'])
 
@@ -274,8 +302,18 @@ function gradeShort(g) {
   return GRADE_TICKS.find((t) => t.g === Number(g))?.short ?? (g ? `G${g}` : 'K12')
 }
 
-/** 洞内底景（共享画法；常量几何，随洞展开一次）。 */
-const scenePrims = computed(() => caveScene(W, H))
+/**
+ * 底景（v5 学科城区换皮）：默认仍是岩洞；主入口 `theme==='study'` 时为楼内学科书房，
+ * 并可在「下地下室看看 / 回楼上」之间切（岩洞降级为楼下探索室，闭环不变）。
+ * **只换这一处数据来源**——灯位（kpSeeds）沿同一条地面基线（H-96）铺开，书房与岩洞的
+ * 灯位坐标完全一致，故循环面板、判定、data-cave-* 选择器全部不受影响（E2E 原样命中）。
+ */
+const activeScene = computed(() => (props.theme !== 'study' || inBasement.value ? 'cave' : 'study'))
+const scenePrims = computed(() => (activeScene.value === 'study' ? lifeScene(W, H, 'study') : caveScene(W, H)))
+/** 地下室开关仅在主 surface 为书房时才有意义。 */
+const canGoBasement = computed(() => props.theme === 'study')
+const inBasement = ref(false)
+watch(() => props.open, (v) => { if (!v) inBasement.value = false })
 /** 洞内知识点灯位（按知识点数沿洞地面铺开）。 */
 const kpSeeds = computed(() => {
   const list = seeds.value
@@ -284,7 +322,11 @@ const kpSeeds = computed(() => {
   return list.map((s, i) => {
     const x = n > 1 ? 150 + (i * (W - 300)) / (n - 1) : W / 2
     const m = caveData.value && localActive.value === s.code ? mastery.value : s.mastery
-    let state = m != null && m >= 80 ? 'lit' : m != null && m > 0 ? 'half' : (s.state || 'dim')
+    // 口径与后端 learning-chain 的 stateFor() 逐字对齐：
+    // `mastery == null ? 'dim' : mastery >= 80 ? 'lit' : 'half'`。
+    // 别写成 `m > 0` 才算 half——刚答错过的知识点 mastery 就是 0，那是有作答史，属半亮，
+    // 写成 dim 会让「进洞前楼门 vs 洞内灯位」两个面不一致（world.vue 的 kpLightOf 同一个口径）。
+    let state = m == null ? (s.state || 'dim') : m >= 80 ? 'lit' : 'half'
     // 本次进洞即时点亮的灯位：不等链重取就先亮起来（灯随作答走，不拖到出洞）
     if (litCodes.value.includes(s.code)) state = 'lit'
     return { ...s, x: Math.round(x), y: baseY, state }
@@ -443,10 +485,22 @@ function onMask(event) {
 .cave-door-word[data-cave-door-state="half"] { background: var(--world-cave-glow-half); }
 .cave-close { font-size: 18px; color: var(--world-node-sub); padding: 4px 8px; }
 .cave-meta { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 12px; }
+/* —— v5 双 surface（楼上书房 / 楼下岩洞）：仅观感，闭环与掌握度真源不变 —— */
+.cave-surface { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 10px; }
+.cs-now {
+  flex: 1; min-width: 140px; font-size: 11px; color: var(--world-node-sub);
+  padding: 3px 10px; border-radius: 999px; border: 1px solid var(--world-node-border); background: var(--world-node-bg);
+}
+.cs-go {
+  font-size: 11px; color: var(--world-node-on-bg); padding: 4px 10px;
+  border-radius: 999px; border: 1px solid var(--world-node-border); background: var(--world-node-track);
+}
+.cs-honest { display: block; font-size: 11px; color: var(--world-node-sub); margin: 0 0 10px; }
 .cm-item { font-size: 11px; color: var(--world-node-sub); }
 .cm-item .num { color: var(--world-node-on-bg); font-weight: 650; }
 
 .cave-stage { position: relative; width: 100%; aspect-ratio: 900 / 520; border-radius: 14px; overflow: hidden; background: var(--world-cave-wall-3); }
+.cave-stage.is-room { background: var(--world-room-wall-3); }
 .cave-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .kp-seed {
   position: absolute; transform: translate(-50%, 0); padding: 3px 8px; margin: 0;
