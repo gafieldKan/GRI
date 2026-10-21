@@ -658,5 +658,43 @@
       "W5-a",
       "W5-b"
     ]
+  },
+  "_waveW6_2026_10_20": {
+    "W6-a": {
+      "agent": "claude",
+      "status": "done_verified",
+      "desc": "学科登峰 v5「学科城区」（方案 A）：宏观从「山峰登顶」换成城区——一间店 = 一节、一扇门 = 一个 KP、横轴年级大道（K12 12 里程碑）+ 纵轴学科街区；楼内主 surface = 书房平面，原岩洞降为地下室（同一闭环）；只默认铺 math，其余空态明示。",
+      "design": "docs/SUBJECT_SUMMIT_DESIGN_V5.md",
+      "delivery": ".agents/claude/outputs/w6a-file-list.md",
+      "author_script": ".agents/claude/outputs/w6a-verify.sh",
+      "depends_on": [
+        "W5-a",
+        "W5-b"
+      ],
+      "verify_report": ".agents/coordination/w6a-verify-report.md",
+      "author_script_result": "助手自跑 PASS=270 SKIP=5 FAIL=1；唯一 FAIL「洞位三态：未明（w-node-dim）期望≥1 实得0」为**账号状态伪像**（脚本只取 G1，testuser 的 G1 已学满故 dim=0），非缺陷",
+      "independent_e2e": "助手自建探针遍历 7 个年级洞门：bands_with_dim 6、pageerrors 0（G1 lit19/half15/dim0、G2 dim1、G3 dim22、G4 dim20、G5 dim23、G6 dim15、G7 dim8）→ 未明态机制确在画。修复 gri-api 陈旧镜像后端到端复跑：登录态/testuser，dim_opts branches,grades,district、默认 branches、D_shops 76、D_kpdoor 6、D_marks 1..12、D_storefront_states dim,half,lit、pageerrors 0",
+      "notes": "期间发现并修复部署根因：gri-api 为 2026-10-18 烘焙镜像，缺 W5-a(380c3d3) 的 learning-chain/kp-cave → 城区 404 不铺楼。已 rebuild api；并拆 W0-b 部署新鲜度守卫固化。诚实缺口：多数 KP 无 mastery（半亮稀薄）、仅 1/2908 有难度（无难度轴）、chem/chn/eng 无 code 不铺、成就数据不在册。"
+    },
+    "order": [
+      "W6-a"
+    ]
+  },
+  "_waveW0_2026_10_21": {
+    "W0-b": {
+      "agent": "codex",
+      "status": "done_verified_restored",
+      "card": ".agents/codex/tasks/w0-b-deploy-freshness-guard.md",
+      "prompt": ".agents/codex/dispatch/w0-b-prompt.md",
+      "desc": "部署新鲜度守卫：一条命令列出烘焙镜像/前端 dist 的 STALE/FRESH + 修复命令；health-check 增 curriculum 路由存在性探针",
+      "trigger": "W6-a 用户看不到「学科城区」——gri-api 容器镜像停在 2026-10-18，缺 W5-a(380c3d3,10-20) 的 /api/curriculum/learning-chain 与 kp-cave → 城区唯一数据源 404 → 0 店 0 门",
+      "hotfix_done": "已手工 docker compose -f docker-compose.yml build api && up -d --no-deps api；复验 learning-chain 200/323689 bytes；城区 UI 76 店/6 门/12 里程碑/dim,half,lit/pageerror=0",
+      "author_script": "PASS=19 FAIL=0（Codex 自跑）",
+      "independent_verify": "助手独立复验通过（2026-10-21）：默认只读（api StartedAt 不变）；未提交改动→STALE+FIX；git 提交时间晚于镜像→STALE（exit 1）；--fix 后归零；health-check learning-chain 探针两态 PASS/FAIL 正确；语法 OK；无 token 字面量",
+      "notes": "非功能波次（部署健壮性）。安全事件：助手复验中用 git reset --hard 误删工作树（W6-a 5 文件 + health-check 探针 + 账本），已从 .claude/file-history 完整恢复并逐一核验 diff --stat 与文档一致。"
+    },
+    "order": [
+      "W0-b"
+    ]
   }
 }

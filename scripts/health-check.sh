@@ -187,6 +187,25 @@ else
     fail "GET /api/tuition/questions -> HTTP ${HTTP_CODE} (expected 200 JSON array)"
   fi
 
+  # Route-existence gate for the W5-a curriculum read surface. A 404 means the
+  # running baked api image predates learning-chain, even if older routes pass.
+  http_get "/api/curriculum/learning-chain?subject=math&branch=math.num" "$HEALTHCHECK_AUTH_TOKEN"
+  if [ -n "$HEALTHCHECK_AUTH_TOKEN" ]; then
+    if [ "$HTTP_CODE" = "200" ]; then
+      pass "GET /api/curriculum/learning-chain (authenticated) -> 200"
+    elif [ "$HTTP_CODE" = "404" ]; then
+      fail "GET /api/curriculum/learning-chain -> HTTP 404 api image stale: missing learning-chain route"
+    else
+      fail "GET /api/curriculum/learning-chain (authenticated) -> HTTP ${HTTP_CODE} (expected 200)"
+    fi
+  elif [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ]; then
+    pass "GET /api/curriculum/learning-chain -> HTTP ${HTTP_CODE} (route exists)"
+  elif [ "$HTTP_CODE" = "404" ]; then
+    fail "GET /api/curriculum/learning-chain -> HTTP 404 api image stale: missing learning-chain route"
+  else
+    fail "GET /api/curriculum/learning-chain -> HTTP ${HTTP_CODE} (expected 200 or 401)"
+  fi
+
   http_get "/auth/jwks"
   if [ "$HTTP_CODE" = "200" ] &&
     printf '%s' "$HTTP_BODY" | grep -Eq '"keys"[[:space:]]*:' &&
