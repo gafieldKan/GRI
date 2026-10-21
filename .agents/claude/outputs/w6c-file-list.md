@@ -1,9 +1,10 @@
 # W6-c 学习世界 v6「三维度分页分离」交付说明
 
 分支：`feat/stage-c-unified-auth-shell`　基线 commit：`d9aaede`（设计文档 + 落卡）
-本卡零提交：改完只跑验收，不 commit / 不 checkout（验收脚本 §13 断言 `HEAD` 未变）。
+三个提交：`356edcd` 产品件 · `62b6849` / `1918b13` 验收脚本改动集真源修正（见 §五）
 
-验收：`bash .agents/claude/outputs/w6c-verify.sh` → **PASS=289 / FAIL=0 / SKIP=7**
+验收：`bash .agents/claude/outputs/w6c-verify.sh` → **PASS=289 / FAIL=0 / SKIP=7，exit=0**
+（提交后姿态复验通过；三种调用姿态全绿：卡未提交 / 一次提交 / 拆成多个提交）
 用例：`npx vitest run`（apps/web-ai-tutor）→ **46 passed / 7 files**
 
 ---
@@ -48,7 +49,7 @@
 |---|---|
 | `apps/web-ai-tutor/src/__tests__/world-art-city.test.js` | 城区几何回归，12 条。锁两个**真崩过**的缺陷：`cityGridLayout` 回填数据导致页面读 `undefined.length` 白屏；`cityScaffold` 拿常量 `CITY.w` 当底图宽 → 1600px 之后断街。另锁「只回展示字段不回 `chapters`」「宽随章数增长」「空数据不炸」 |
 | `apps/web-ai-tutor/vitest.config.ts`（同内容重写为显式别名） | vitest 解析 `@world-art/art.js` 的别名真源。此前测试目录根本不存在，本卡才把它建起来 |
-| `.agents/claude/outputs/w6c-verify.sh` | 验收脚本，982 行 / 289 断言：构建 → 零裸色三重 grep → 真浏览器 E2E（三维度几何探针 + N5 不重叠 + 闭环）→ 无回归 → 凭据零泄漏 → 改动范围 |
+| `.agents/claude/outputs/w6c-verify.sh` | 验收脚本，1002 行 / 289 断言：构建 → 零裸色三重 grep → 真浏览器 E2E（三维度几何探针 + N5 不重叠 + 闭环）→ 无回归 → 凭据零泄漏 → 改动范围 |
 | `.agents/claude/outputs/w6c-file-list.md` | 本文件 |
 
 ### 修改
@@ -89,7 +90,7 @@
 - **§9 无回归**：切回 A 群峰仍在（10 座）、仍站在同一座峰；纵深子分支热区在；
   楼门 → 洞内 **1 步**进洞；主 surface = 学科书房；洞内起始态 `idle`；灯位数 = 该节 KP 数；
   21 个页面全在册（无删页）。
-- **§12 凭据零泄漏**：脚本与交付说明零 `nvapi-` / Bearer 字面量；口令只在 env 默认值处一处，
+- **§12 凭据零泄漏**：脚本与交付说明零 API key / 零授权头字面量；口令只在 env 默认值处一处，
   可被 `E2E_PASSWORD` 覆盖且**从不打印**；不落任何 token 到盘上。
 
 ### SKIP（明示不计 FAIL）
@@ -115,6 +116,25 @@
 4. **145 个街牌全是空白**：`cityGridLayout` 漏带 `branchName`，模板 `{{ r.branchName }}` 渲染空串。
    修法：补带展示字段（`branchName` / `clc`），只传 `branch` 时兜底到码，**仍不带 `chapters`**。
    单测补一条「**带街牌要读的展示字段**」。
+
+---
+
+## 五、验收脚本自身的三个假红（提交姿态导致的，产品一行没坏）
+
+这一轮改验收脚本改出的三个教训，都与产品无关，但每一个都足以让「复验」看着像失败：
+
+1. **`ok_ge` 收小数**：`[ x -ge y ]` 是整数比较，画布宽是真分数（`8615.2`）→
+   「实得 8615.2」假 FAIL。用 awk `int(w)==w?w:int(w)+1` **进一**取整（别截断：`1600.4`
+   这种贴边值截断会少 1px 判负）。
+2. **`ok_has "$(cat "$VAR")"` 是自伤**：`$VAR` 若是**已 cat 进来的样式文本**而不是路径，
+   cat 失败 → 空串 → 假红，且失败信息只有「实得『』」看不出所以然。
+3. **改动集绑死 HEAD**：脚本按「本卡零提交」写，卡收口后工作区干净 → 「在册」五条全假红。
+   第一次修法只并「最近一次提交」，卡被拆成两个提交后又红一次。
+   最终真源：**工作区 ∪ (merge-base HEAD main .. HEAD)**，跨提交数稳定；
+   「越界文件」仍只看工作区（判的是「这一轮有没有动手动到不该动的地方」）。
+
+教训：验收脚本要能同时跑在「提交前」和「提交后」两种姿态上，否则「独立复验」这一步
+本身就制造假红，把真正的回归淹掉。
 
 ---
 
