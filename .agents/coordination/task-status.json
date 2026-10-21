@@ -699,5 +699,10 @@
   "_waveW6_2026_10_21": {
     "W6-c": "carded_pending_dispatch",
     "W6-c_note": "学习世界 v6 三维度分页分离（K12 升学阶梯｜城区街区网格）；设计 docs/SUBJECT_SUMMIT_DESIGN_V6.md；卡 .agents/claude/tasks/w6-c-dimension-scene-separation.md；提示词 .agents/claude/dispatch/w6-c-prompt.md"
+  },
+  "_program_2026_10_21": {
+    "slimming": "plan_drafted_pending_decision",
+    "plugin-arch": "principle_drafted_pending_review",
+    "note": "用户提出「项目瘦身 + 一切皆插件（松耦合可插拔，AI 可定制）」；已出 docs/PLUGIN_ARCHITECTURE.md + docs/PROJECT_SLIMMING_PLAN.md + scripts/size-report.sh（只读体检）。等用户裁决执行顺序。"
   }
 }

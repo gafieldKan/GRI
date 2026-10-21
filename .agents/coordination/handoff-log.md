@@ -120,3 +120,4 @@
 
 2026-10-21T08:42:00+08:00 | 提交 | **W6-a + W0-b 落库**。W6-a「学科城区」（Claude 产出，5 文件 + 设计文档 v5 + 验收脚本）：独立复验 **done_verified**（唯一 FAIL 为账号状态伪像；7 年级遍历 bands_with_dim=6；登录态端到端 76 店/6 门/12 里程碑/dim,half,lit/0 pageerror）。报告：`.agents/coordination/w6a-verify-report.md`。W0-b 部署新鲜度守卫（Codex 产出）：独立复验通过。两卡分两个提交落库（feat(w6a) / chore(w0b)）。
 2026-10-21T10:12:00+08:00 | 设计 | **v6 设计落地**（用户裁决「彻底分页分离」）：docs/SUBJECT_SUMMIT_DESIGN_V6.md + 卡 w6-c-dimension-scene-separation.md + 提示词 w6-c-prompt.md。根因=三维度共用一张画布硬缩（实测 K12 23 册叠在 115×65px、城区仅占画布下 1/4）。等用户下达 W6-c。
+2026-10-21T21:15:00+08:00 | 架构 | **项目瘦身 + 插件化原则落地（草案）**：docs/PLUGIN_ARCHITECTURE.md（插件总则：契约/注册表/6 类插件/AI 可读清单）+ docs/PROJECT_SLIMMING_PLAN.md（实测体检：Docker 可回收 ≥19GB、70M geo 为运行时依赖、explorer 生产在用）+ scripts/size-report.sh（只读体检）。等 gateway-owner 裁决执行顺序（建议先 S-1）。
