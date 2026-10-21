@@ -607,7 +607,6 @@
         "independent_repro": "助手自建同源双 App+Playwright 复现原路径：CH_DETAIL 现为「小一–高二（1–11 年级）」= math.num 区间；无纵深误判；所属册=人教版数学五年级上册；ASSERT want_k12=true wrongly_depth=false",
         "cross_check": "API math.num k12GradeMin/Max=1/11 与章展示一致；深纵子分支 math.ds/math.classic k12=NULL（else 分支语义保留）；后端零改动；其它 select* 均传 code 无同类隐患"
       },
-      "commit": null,
       "notes": "返工仅限 W4-b 白名单内最小修复（传原始册对象 + 延续性取所属分支峰区间）；工作树由助手统一 commit。"
     },
     "order": [
@@ -696,5 +695,9 @@
     "order": [
       "W0-b"
     ]
+  },
+  "_waveW6_2026_10_21": {
+    "W6-c": "carded_pending_dispatch",
+    "W6-c_note": "学习世界 v6 三维度分页分离（K12 升学阶梯｜城区街区网格）；设计 docs/SUBJECT_SUMMIT_DESIGN_V6.md；卡 .agents/claude/tasks/w6-c-dimension-scene-separation.md；提示词 .agents/claude/dispatch/w6-c-prompt.md"
   }
 }
