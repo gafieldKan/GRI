@@ -1148,3 +1148,400 @@ export function basementHatch(x, y, s = 1) {
     { k: 'poly', c: 'w-step', points: `${pt(x - 20, y + 2)} ${pt(x + 20, y + 2)} ${pt(x + 14, y + 12)} ${pt(x - 14, y + 12)}` }
   ]
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v6（W6-c）三维度分页分离 —— 三个维度各一张自洽画布，切维度 = 换世界
+//
+//   维度 A「学科知识体系」：沿用 SUMMIT 1200×820 群峰（v4/v5 已验收，不回归）；
+//   维度 B「K12 阶段」   ：新 STAIR 画布 —— 升学阶梯（横向 12 年级 × 人教版册卡）；
+//   维度 C「学科城区」   ：新 CITY 画布 —— 街区网格（行=街区/分支，列=楼栋/章，
+//                            门=知识点底商），**整条删除年级大道**（v5 的根因）。
+//
+// 这里只补「几何原点」（常量 + 排布纯函数 + 新体块画法），颜色仍一律走 w-* 类：
+//   · 台阶断面 / 楼体 / 街面 / 门面 复用本文件既有的 block / isoBox / groundShadow /
+//     tree / shrub / lamp / fogPuff —— **不引进第二种画法**（N2 同一世界语言）。
+//   · 依旧零 SVG <text>：uni-app H5 的 SVG text 不渲染（W4-b 老坑），文本全走 HTML 叠层。
+//   · 依旧零色值：色值唯一真源在 styles/tokens/themes/persona-world.css。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * STAIR 画布（K12 升学阶梯）。横向 12 年级列等距铺开 → **画布横向可滚**
+ * （调用方 `overflow-x:auto` + `min-width`，不硬缩：v5 糊的根因就是 1200 宽压进 838px）。
+ * 纵向 = 学段台阶：小学 / 初中 / 高中 三段逐级抬升，段与段之间有台阶断面（视觉分隔）。
+ */
+export const STAIR = {
+  w: 1600, // 画布宽（12 列 × 112 + 左右留白）
+  h: 760, // 画布高（台阶 + 册卡 + 段名带）
+  padX: 92, // 左留白（段名竖排 / 学段标牌占位；HTML 叠层定位同源）
+  colW: 112, // 一年级列宽（设计文档 §3：列宽 ~110px）
+  cardW: 92, // 一册卡宽（≤2 张/列，两卡不重叠：92 < 112 有 20px 列间距）
+  cardH: 74, // 一册卡高
+  cardGap: 12, // 同列两卡（上/下册）的纵向间距
+  cardLift: 52, // 卡底面相对踏面的抬升（册卡站在台阶上，不埋进踏板）
+  baseY: 700, // 小学段台阶底线（最下一级）
+  riser: 58, // 每个学段台阶抬升（小学 → 初中 → 高中）
+  stepH: 96, // 一级学段台阶的厚度（台阶断面看得见）
+  topPad: 150 // 顶部留白（段名 + 天光）
+}
+
+/**
+ * 一个年级列的 x（列中心）。12 列等距，横向上不叠字（列宽 112 > 册卡 92 + 间距）。
+ * 「我在读」标记与空态话术仍由页面按同一函数定位（坐标真源单点）。
+ * @param {number} grade 1–12
+ * @returns {number} 列中心 x
+ */
+export function stairColX(grade) {
+  const g = Math.max(1, Math.min(12, Number(grade) || 1))
+  return Math.round(STAIR.padX + STAIR.colW * (g - 1) + STAIR.colW / 2)
+}
+
+/**
+ * 学段台阶的三级踏面 y（越小越高）。小学在最下一级，逐级抬升到高中。
+ * @param {string} stageCode 'PRIMARY' | 'JUNIOR' | 'SENIOR'
+ * @returns {number} 该学段踏面 y（册卡与人物都落在它上面）
+ */
+export function stairTreadY(stageCode) {
+  const map = { PRIMARY: 0, JUNIOR: 1, SENIOR: 2 }
+  const i = map[stageCode] ?? 0
+  return STAIR.baseY - i * STAIR.riser
+}
+
+/**
+ * 升学阶梯底图（STAIR 画布）：天空 + 三级台阶踏面/断面 + 学段标牌座 + 踏步线。
+ * **刻意不含峰、山体、城区楼门**（N1：K12 页不得出现维度 A/C 元素）。
+ * @returns {object[]} primitives
+ */
+export function stairScaffold() {
+  const out = []
+  const right = STAIR.w - STAIR.padX
+  // 三级台阶：踏面（水平面）+ 竖断面（台阶的「立面」，视觉分隔学段）
+  for (const sp of STAGE_SPANS) {
+    const ty = stairTreadY(sp.code)
+    const x0 = stairColX(sp.min) - STAIR.colW / 2
+    const x1 = stairColX(sp.max) + STAIR.colW / 2
+    // 踏面板（等距体块的顶面语言；一段学段一整块踏板）
+    out.push({ k: 'rect', c: 'w-stair-tread', x: x0, y: ty, w: x1 - x0, h: 10, rx: 4 })
+    // 竖断面（踏板之下的台阶立面——「学段有高低」就是从这里读出来的）
+    out.push({ k: 'rect', c: 'w-stair-riser', x: x0, y: ty + 10, w: x1 - x0, h: 22, rx: 2 })
+    // 踏板前沿的受光线（一等高一等低，读出「这是一级一级的台阶」）
+    out.push({ k: 'path', c: 'w-stair-edge', d: `M${x0} ${ty + 10}H${x1}`, w: 1.2 })
+  }
+  // 学段之间的过渡坡（台阶断面之间的小坡面：不是断裂，是「往上走」）
+  const jy = stairTreadY('PRIMARY')
+  const sy = stairTreadY('SENIOR')
+  out.push({ k: 'poly', c: 'w-stair-slope', points: `${stairColX(7) - STAIR.colW / 2},${jy} ${stairColX(7) - STAIR.colW / 2},${jy - STAIR.riser} ${stairColX(7) - STAIR.colW / 2 - 26},${jy}` })
+  out.push({ k: 'poly', c: 'w-stair-slope', points: `${stairColX(10) - STAIR.colW / 2},${jy - STAIR.riser} ${stairColX(10) - STAIR.colW / 2},${sy} ${stairColX(10) - STAIR.colW / 2 - 26},${jy - STAIR.riser}` })
+  // 地面厚土（最下一级台阶之下仍是土：台阶长在这片土地上）
+  out.push({ k: 'rect', c: 'w-ground-top', x: 0, y: stairTreadY('PRIMARY') + 32, w: STAIR.w, h: STAIR.h - stairTreadY('PRIMARY') - 32 })
+  out.push({ k: 'rect', c: 'w-ground-left', x: 0, y: stairTreadY('PRIMARY') + 32, w: STAIR.w, h: 4, o: 0.5 })
+  // 天光（同一片天空；与人本世界的天光同一组令牌）
+  out.push({ k: 'ellipse', c: 'w-sun-glow', cx: STAIR.w - 130, cy: 108, rx: 168, ry: 112, o: 0.8 })
+  out.push({ k: 'circle', c: 'w-sun-glow', cx: STAIR.w - 130, cy: 108, r: 24, o: 0.9 })
+  out.push({ k: 'rect', c: 'w-haze', x: 0, y: 92, w: STAIR.w, h: 180, o: 0.5 })
+  // 远山两道只是「天边的一线」（K12 页允许天光与远山地平线，**不允许峰/山体当主体**）
+  out.push({ k: 'path', c: 'w-ridge-far', d: 'M0 236 96 168 208 224 330 142 470 220 604 152 742 216 880 150 1010 220 1120 170 1290 210 1450 158 1600 214V300H0Z', o: 0.7 })
+  return out
+}
+
+/**
+ * 一册卡在年级列里的**唯一**纵坐标（卡底面中心的 y）。列内两卡（上/下册）纵向排布：
+ * 单册列把唯一的卡放在踏面之上 `STAIR.cardLift`；双册列两卡分别落在这条基线的上下两侧。
+ * **页面与几何断言共用这一个函数**（坐标真源单点，避免「画的地方」与「量的地方」两套数）。
+ * 两卡不重叠（N5）：竖向中心距 = cardH + cardGap = 86 > cardH = 74。
+ * @param {number} grade 1–12
+ * @param {number} slot 第几张卡（0 = 上，1 = 下）
+ * @param {number} total 该列共几张卡（1 或 2）
+ * @returns {number} 卡底面中心 y
+ */
+export function stairCardSlot(grade, slot, total) {
+  const stageCode = STAGE_SPANS.find((s) => grade >= s.min && grade <= s.max)?.code || 'PRIMARY'
+  const ty = stairTreadY(stageCode)
+  const n = Math.max(1, Math.min(2, total || 1))
+  const base = ty - STAIR.cardLift
+  if (n === 1) return base
+  return slot === 0 ? base + (STAIR.cardH + STAIR.cardGap) / 2 : base - (STAIR.cardH + STAIR.cardGap) / 2
+}
+
+/**
+ * 一册卡（人教版上/下册）= 阶梯上的一级台阶物件：等距书箱 + 册脊题名区 + 落影。
+ * 「我在读」的册给书签带；未收录的学科给空卡（页面另出空态话术，不在画法上造假）。
+ * @param {number} x 列中心 x
+ * @param {number} y 卡底面中心 y（取 `stairCardSlot(grade, slot, total)`，保证卡不重叠）
+ * @param {'up'|'down'} term 上/下册
+ * @param {{reading?: boolean, empty?: boolean}} opts
+ * @returns {object[]} primitives
+ */
+export function stairCard(x, y, term, opts = {}) {
+  const w = STAIR.cardW
+  const h = STAIR.cardH
+  const out = []
+  out.push(...groundShadow(x, y + 3, w * 0.56, 9, 'w-shadow-soft'))
+  const tone = opts.empty ? 'w-stair-card-empty' : 'w-stair-card'
+  // 卡体（等距扁箱：一面朝读者）
+  out.push(...block(x - w / 2, y, w, w * 0.5, h, tone))
+  // 册脊（书脊中线：读出「这是一册」）
+  out.push({ k: 'path', c: 'w-stair-card-spine', d: `M${x} ${y - h}V${y + w * 0.25 - h}`, w: 1.4, o: 0.9 })
+  // 上/下册的角标（上册一横、下册两横：不靠颜色也分得清）
+  const notches = term === 'up' ? 1 : 2
+  for (let i = 0; i < notches; i += 1) {
+    out.push({ k: 'path', c: 'w-stair-card-notch', d: `M${x - 12} ${y - 12 - i * 7}H${x + 12}`, w: 2.2 })
+  }
+  // 「我在读」的书签带（这根带子的有无 = 我在读的唯一真源，页面另叠 HTML 标记）
+  if (opts.reading) {
+    out.push({ k: 'poly', c: 'w-world-banner', points: `${pt(x + w / 2 - 6, y - h + 10)} ${pt(x + w / 2 + 12, y - h + 10)} ${pt(x + w / 2 + 12, y - 10)} ${pt(x + w / 2 - 6, y - 10)}` })
+    out.push({ k: 'poly', c: 'w-world-banner-cut', points: `${pt(x + w / 2 - 6, y - 10)} ${pt(x + w / 2 + 3, y - 4)} ${pt(x + w / 2 + 12, y - 10)}` })
+  }
+  return out
+}
+
+/** 阶梯上的「我」（站在学段踏面上、我的年级列上）：复用世界人物画法，页面只定坐标。 */
+
+/**
+ * CITY 画布（学科城区 · 街区网格）。行 = 街区（学科分支），列 = 楼栋（章），
+ * 门 = 知识点底商。**没有年级大道、没有海拔轴、没有册热区**（N1）。
+ * 建议 1600×900，横向可滚。
+ */
+export const CITY = {
+  w: 1600, // 画布宽
+  h: 900, // 画布高
+  padX: 148, // 左留白：街区名牌（分支名）竖排的位置
+  rowH: 168, // 一条街区带的行高（楼体 104 + 街道 + 留白）
+  rowGap: 26, // 行间距（街区之间的留白——N6 可读性）
+  colW: 168, // 一列（楼栋）的占位宽（楼 132 + 步道 36）
+  buildingW: 132, // 楼体进深（= DISTRICT.buildingW 同源）
+  blockH: 104, // 楼体高（= DISTRICT.blockH 同源）
+  streetY: 0, // 街道基线由排布函数给（楼底落在街面上）
+  topPad: 74, // 顶部留白（城区抬头 + 图例在面板里）
+  maxRows: 10 // 一屏最多几条街区（math 恰好 10 条分支；超出由滚动兜住）
+}
+
+/** 第 i 条街区（行）的街面 y（行间距均等；楼层从街面往上长）。 */
+export function cityRowY(i) {
+  return CITY.topPad + i * (CITY.rowH + CITY.rowGap) + CITY.rowH
+}
+
+/** 第 j 栋楼（列）的 x（左缘）；街区名牌占左留白，楼从 padX 起等距排。 */
+export function cityColX(j) {
+  return CITY.padX + j * CITY.colW
+}
+
+/**
+ * 街区网格排布（纯几何，页面只渲染与状态）：行 = 街区（分支），列 = 楼栋（章）。
+ * @param {Array<{branch:string, chapters:Array<{code:string, name:string, kpCount:number, state?:string, kps?:Array}>}>} rows
+ * @returns {{w:number,h:number,rows:Array<{key:string,branch:string,buildings:Array<{code:string,name:string,index:number,x:number,y:number,kpCount:number,state:string}>}>}}
+ */
+export function cityGridLayout(rows) {
+  const out = []
+  let maxCols = 0
+  ;(rows || []).forEach((r, i) => {
+    const y = cityRowY(i)
+    const buildings = (r.chapters || []).map((ch, j) => ({
+      code: ch.code,
+      name: ch.name,
+      index: j,
+      x: cityColX(j) + CITY.buildingW / 2,
+      y,
+      kpCount: ch.kpCount || 0,
+      state: ch.state || 'dim'
+    }))
+    maxCols = Math.max(maxCols, buildings.length)
+    // 只带**显示要用的展示字段**（街牌读 branchName / kpCount），不带 `chapters`——
+    // 楼的数据（章→门、章态）真源是页面的 `cityRows`；layout 回填数据会让页面读到两份真源，
+    // 且选楼/图例去读 `layout.rows[i].chapters` 时拿到 undefined（W6-c 白屏根因）。
+    out.push({
+      key: r.branch,
+      branch: r.branch,
+      branchName: r.branchName || r.branch,
+      clc: r.clc,
+      y,
+      buildings
+    })
+  })
+  const w = CITY.padX + Math.max(1, maxCols) * CITY.colW + CITY.colW * 0.4
+  const h = out.length ? cityRowY(out.length - 1) + 40 : CITY.h
+  return { w: Math.max(CITY.w, w), h: Math.max(CITY.h, h), rows: out }
+}
+
+/**
+ * 街区网格底图（CITY 画布）：天际线 + 街区带（一条分支一条街）+ 楼间街道 + 街名牌座。
+ * **整条删除年级大道**（v5 §2 塞进城区的横轴 = K12 阶段维度混进城区页的根因，N1）。
+ *
+ * `w` 必须是**排布算出来的真实画布宽**（`cityGridLayout` 的返回值），不能拿 `CITY.w`
+ * 这个 1600 常量顶——一支跨 G1–G12 的分支有 ~50 章，画布真宽 ~8600px；用常量铺底图
+ * 会让 2000px 之后只剩楼、没有街面/路灯/绿化（街区断成几截）。
+ * @param {{rows:number}} rowCount 街区行数（= 分支数；`cityGridLayout().rows.length`）
+ * @param {{w?:number, h?:number}} opts `w` = 真实画布宽（默认 CITY.w）
+ * @returns {object[]} primitives
+ */
+export function cityScaffold(rowCount, opts = {}) {
+  const out = []
+  const rows = Math.max(1, rowCount || 1)
+  const h = Math.max(CITY.h, cityRowY(rows - 1) + 40)
+  const w = Math.max(CITY.w, opts.w || CITY.w)
+  // 天光（同一片天空）
+  out.push({ k: 'ellipse', c: 'w-sun-glow', cx: w - 140, cy: 76, rx: 158, ry: 100, o: 0.75 })
+  out.push({ k: 'rect', c: 'w-haze', x: 0, y: 40, w, h: 60, o: 0.45 })
+  // 天际线（远处建筑剪影：城市轮廓，不是山——N1 不得画峰/山体）。
+  // 用「楼块节奏表」程序化铺到真实画布宽：城区再宽也不许露出没有天际线的空白，
+  // 也不拿 regex 去改 path 数字（那种平铺脆弱且不可读）。
+  {
+    const cohort = [ // [宽, 高]：天际线楼块剪影的节奏（宽 40–160，高 16–44）
+      [60, 30], [48, 38], [82, 40], [42, 42], [100, 18], [42, 40],
+      [98, 34], [42, 20], [88, 44], [42, 16], [114, 40], [42, 26],
+      [100, 40], [130, 34], [44, 42], [96, 28]
+    ]
+    const gy = 60 // 天际线脚线（楼块立在它上面，往下填到 96 = 视平线）
+    let x = 0
+    let d = `M0 ${gy}`
+    let i = 0
+    while (x < w) {
+      const [bw, bh] = cohort[i % cohort.length]
+      const x1 = Math.min(w, x + bw)
+      d += `L${x} ${bh} L${x1} ${bh} L${x1} ${gy}`
+      x = x1
+      i += 1
+      if (x1 >= w) break
+    }
+    d += `L${w} ${gy}V96H0Z`
+    out.push({ k: 'path', c: 'w-city-skyline-far', d, o: 0.5 })
+  }
+  // 每条街区：街面（车道）+ 街沿（缘石线）+ 楼间街道（楼与楼之间铺出来的路）
+  for (let i = 0; i < rows; i += 1) {
+    const y = cityRowY(i)
+    // 街面（一条街区一整块路面；车道语言 = v5 的 road 同档）
+    out.push({ k: 'rect', c: 'w-city-street', x: 0, y, w, h: 10, rx: 4 })
+    out.push({ k: 'path', c: 'w-city-curb', d: `M0 ${y + 10}H${w}`, w: 1.2 })
+    // 楼间街道（横向虚线路网：把这一行的楼连成「一条街」）
+    out.push({ k: 'path', c: 'w-city-street-dash', d: `M0 ${y}H${w}`, w: 1.4, dash: '12 14', o: 0.5 })
+    // 街名牌座（左留白的竖牌；名字由页面 HTML 叠层给）
+    out.push({ k: 'rect', c: 'w-city-sign-post', x: 34, y: y - CITY.blockH - 26, w: 3, h: CITY.blockH + 26, rx: 1.5 })
+    out.push({ k: 'rect', c: 'w-city-sign-board', x: 18, y: y - CITY.blockH - 44, w: 30, h: 34, rx: 4 })
+    // 街区绿化（一排小灌木：一条街有树才像街区；树 = 世界语言现有件）
+    for (let j = 0; j < Math.floor((w - CITY.padX) / CITY.colW); j += 2) {
+      out.push(...shrub(cityColX(j) + CITY.buildingW / 2 + 8, y + 2, 0.62))
+    }
+  }
+  return out
+}
+
+/**
+ * 一栋楼 = 一章（街区网格的「列」）。楼体三面 + 屋顶 + 章号招牌 + 楼前台阶。
+ * `state` 是**楼的门面三态聚合**（这一章的知识点亮占比 ≥80 → lit；有作答 → half；未开始 → dim）。
+ * @param {number} x 楼底面前角中线
+ * @param {number} y 街面 y
+ * @param {'dim'|'half'|'lit'} state
+ * @returns {object[]} primitives
+ */
+export function cityBuilding(x, y, state = 'dim') {
+  const w = CITY.buildingW
+  const h = CITY.blockH
+  const out = []
+  out.push(...groundShadow(x, y + 3, w * 0.6, 11, 'w-shadow-soft'))
+  out.push(...block(x - w / 2, y, w, w * 0.7, h, 'w-storefront'))
+  // 屋顶（双坡，与 storefront 同一屋顶语言，只是收到楼栋尺度）
+  out.push({ k: 'poly', c: 'w-roof-top', points: `${pt(x - w / 2 - 3, y - h)} ${pt(x + 3, y - h - 14)} ${pt(x + w / 2 + 3, y - h)} ${pt(x - w / 2 - 3, y - h + 10)}` })
+  out.push({ k: 'poly', c: 'w-roof-right', points: `${pt(x + 3, y - h - 14)} ${pt(x + w / 2 + 3, y - h)} ${pt(x + w / 2 + 3, y - h + 10)} ${pt(x + 3, y - h)}` })
+  // 章号招牌（楼门楣：这一楼是第几章）
+  out.push({ k: 'rect', c: 'w-city-sign-cap', x: x - 16, y: y - h + 8, w: 32, h: 9, rx: 2 })
+  // 窗户网格（楼上的窗：亮不亮 = 这栋楼里有没有点亮的知识点）
+  // 只用 2×2 四扇（不是 3×3）：一屏上百栋楼，每栋省 5 个 primitive 就是几百个节点；
+  // 「楼有没有亮」四扇窗已足够读，多的窗只增加 SVG 体积（N11 不逐帧重建 DOM 的另一半：少建节点）。
+  const winLit = state === 'lit'
+  const winHalf = state === 'half'
+  for (let c = 0; c < 2; c += 1) {
+    for (let r = 0; r < 2; r += 1) {
+      const wx = x - 26 + c * 30
+      const wy = y - h + 28 + r * 26
+      const litWin = winLit ? (r + c) % 2 === 0 : winHalf ? (r + c) % 2 === 1 : false
+      out.push({
+        k: 'rect',
+        c: litWin ? 'w-storefront-lit' : 'w-window-dark',
+        x: wx,
+        y: wy,
+        w: 14,
+        h: 18,
+        rx: 2,
+        o: litWin ? 0.92 : 0.45
+      })
+    }
+  }
+  // 门（楼门 = 知识点的入口所在的那扇总门）
+  out.push({ k: 'poly', c: 'w-door', points: `${pt(x - 13, y - 30)} ${pt(x + 1, y - 23)} ${pt(x + 1, y - 5)} ${pt(x - 13, y - 12)}` })
+  // 楼前台阶（两级：迈进去）
+  out.push({ k: 'poly', c: 'w-step', points: `${pt(x - 18, y + 2)} ${pt(x + 10, y + 12)} ${pt(x + 22, y + 4)} ${pt(x - 6, y - 6)}` })
+  // 亮灯楼前的一盏路灯（光从这盏开始顺街流向下一栋）
+  if (state !== 'dim') out.push(...lamp(x + w / 2 + 14, y + 8, 0.7))
+  return out
+}
+
+/**
+ * 楼前底商的一扇门 = 一个知识点。门面三态与洞门/楼门三态同一组语义：
+ *   lit  = 掌握度 ≥ 80
+ *   half = 有作答且未到 80（**不是「会了一半」**）
+ *   dim  = 从没学过（虚线门框 = 还没开门）
+ * @param {number} x 门中心
+ * @param {number} y 街面 y
+ * @param {'dim'|'half'|'lit'} state
+ * @param {number} s 尺度
+ * @returns {object[]} primitives
+ */
+export function cityDoor(x, y, state = 'dim', s = 1) {
+  const w = 13 * s
+  const h = 19 * s
+  const arch = (ww, hh) => {
+    const r = ww
+    return `M${(x - ww).toFixed(1)} ${y}V${(y - hh + r).toFixed(1)}A${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${(x + ww).toFixed(1)} ${(y - hh + r).toFixed(1)}V${y}Z`
+  }
+  const inner = state === 'lit' ? 'w-storefront-lit' : state === 'half' ? 'w-cave-inner-half' : 'w-cave-inner-dim'
+  const glow = state === 'lit' ? 'w-cave-glow-lit' : state === 'half' ? 'w-cave-glow-half' : 'w-cave-glow-dim'
+  return [
+    { k: 'ellipse', c: glow, cx: x, cy: y - h * 0.34, rx: w * 2.1, ry: h * 0.72, o: state === 'dim' ? 0.16 : 0.34 },
+    { k: 'ellipse', c: 'w-shadow-soft', cx: x, cy: y + 1.5 * s, rx: 17 * s, ry: 5 * s },
+    { k: 'path', c: 'w-cave-rock', d: arch(w * 1.5, h), w: state === 'dim' ? 1.2 : 0 },
+    { k: 'path', c: inner, d: arch(w, h * 0.86) },
+    { k: 'path', c: 'w-cave-step', d: `M${(x - w * 1.8).toFixed(1)} ${(y + 2 * s).toFixed(1)}H${(x + w * 1.8).toFixed(1)}`, w: 2.4 * s }
+  ]
+}
+
+/**
+ * 一栋楼的**楼前底商门面排**（门 = 知识点）：沿楼前一条街等距排开。
+ * 复用 `caveTrailLayout` 的同一常量 `CAVE_BAND.nodeW` → 相邻门间距一致
+ * （验收判据「kp_path_contiguous」：一条连续路径，不是散点）。
+ * @param {Array<object>} kps 该楼（章）下的知识点（带 state/mastery，页面已派生 light）
+ * @param {{x:number,y:number}} anchor 楼前一点（排的门以此为中心向两侧展开）
+ * @param {{fromX?:number,toX?:number}} bounds 街道可排范围（不越出这条街）
+ * @returns {{n:number,points:Array<{x:number,y:number,kp:object,index:number}>}}
+ */
+export function cityDoorRow(kps, anchor, bounds = {}) {
+  const list = kps || []
+  if (!list.length) return { n: 0, points: [] }
+  const step = CAVE_BAND.nodeW
+  const span = (list.length - 1) * step
+  const fromX = bounds.fromX == null ? anchor.x - span / 2 : bounds.fromX
+  const toX = bounds.toX == null ? anchor.x + span / 2 : bounds.toX
+  let left = anchor.x - span / 2
+  // 夹在街道范围内（超出时贴边：门仍等距连续，只是整排平移，不改间距）
+  if (left < fromX) left = fromX
+  if (left + span > toX) left = Math.max(fromX, toX - span)
+  const points = list.map((kp, index) => ({
+    kp,
+    index,
+    x: Math.round(left + index * step),
+    y: Math.round(anchor.y)
+  }))
+  return { n: points.length, points }
+}
+
+/**
+ * 楼间街道的一段（街区网格里楼与楼之间的路）。kind 与 `roadSegment` 同一分级：
+ *   seq/explicit → 实线主路（课的先后；**未学段仍连续**，只是灯没亮）
+ *   soft         → 虚线最淡（引导路径，非精确前置，不误导）
+ * 未打通前置的路段调用方另叠 `barricade`（施工围挡）+ `fogPuff`（晨雾）——v5 M2 因果口径不变。
+ * @param {{x:number,y:number}} a 前一段路起点（街面上）
+ * @param {{x:number,y:number}} b 后一段路终点
+ * @param {'seq'|'explicit'|'soft'} kind
+ * @returns {{wide:object,core:object}}
+ */
+export function cityRoad(a, b, kind) {
+  return roadSegment(a, b, kind)
+}

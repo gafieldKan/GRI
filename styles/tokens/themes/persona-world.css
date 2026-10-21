@@ -341,4 +341,43 @@
   --world-room-window: #fdf3d8; /* 窗光 = --world-sun-glow */
   --world-room-rug: #ded8c2; /* 地毯描边 / 分格线 = --world-plaza-outer */
   --world-room-rug-plain: #e9e4d0; /* 地毯面 = --world-plaza-mid */
+
+  /* ═══════════════════════════════════════════
+     🪜 K12 升学阶梯 v6（W6-c）：三维度分页分离的维度 B 画布
+     独立画布、独立坐标（N1）：**不含峰、山体剪影、城区楼门**。
+     三级台阶 = 小学/初中/高中三个学段，册卡站在踏面上（一列 ≤2 张，两卡不重叠）。
+     色值一律取既有档（terrace-* 台阶 / wood-* 册卡 / ramp 坡面），不为新场景另调色。
+     ═══════════════════════════════════════════ */
+
+  /* —— 三级学段台阶（踏面 / 竖断面 / 前沿受光线 / 段间过渡坡）—— */
+  --world-stair-tread: #e8ead8; /* 踏面 = --world-terrace */
+  --world-stair-riser: #d6dcc4; /* 竖断面（比踏面暗一档：台阶有立面） */
+  --world-stair-edge: #cfdcbf; /* 前沿受光线 = --world-terrace-line */
+  --world-stair-slope: #dfe7cd; /* 段间过渡坡（小学 → 初中 → 高中的一坡） */
+
+  /* —— 人教版册卡（一列 ≤2 张；上/下册同族、深浅分档）—— */
+  --world-stair-card-top: #cbab84; /* 册卡顶 = --world-wood-top */
+  --world-stair-card-left: #ad8b64; /* 册卡半侧光面 = --world-wood-left */
+  --world-stair-card-right: #8c6d4c; /* 册卡背光面 = --world-wood-right */
+  --world-stair-card-spine: #7d5f42; /* 册脊中线（读出「这是一册」） */
+  --world-stair-card-notch: #f3efe0; /* 上/下册角标（上册一横、下册两横，不靠色也分得清） */
+  --world-stair-card-empty: #e6eadc; /* 空卡（该年级这一科的册还没收录 → 明示空位，不造假册） */
+
+  /* ═══════════════════════════════════════════
+     🏙 学科城区 v6（W6-c）街区网格：行 = 街区（分支）· 列 = 楼栋（章）· 门 = 知识点
+     相对 v5 的三处根因修复：**整条删除年级大道**（那把 K12 维度混进了城区页）、
+     **删除山体/峰/海拔轴**（属维度 A）、楼改等距网格（不再沿峰散点挤成一排）。
+     楼体三面 / 橱窗三态 / 施工围挡 / 楼内场景一律沿用 v5 既有令牌（同一世界语言）。
+     ═══════════════════════════════════════════ */
+
+  /* —— 天际线与街面（楼间街道 + 街沿 + 虚线路网）—— */
+  --world-city-skyline-far: #b9cfd6; /* 远天际线 = --world-ridge-far（城市轮廓，不是山） */
+  --world-city-street: #f1eddd; /* 街面 = --world-path */
+  --world-city-curb: #e4dfcc; /* 街沿 = --world-step */
+  --world-city-street-dash: #bcbda4; /* 楼间虚线路网 = --world-wall-right */
+
+  /* —— 街名牌（左留白的竖牌：街区名牌 + 楼门楣章号牌）—— */
+  --world-city-sign-post: #8a8b7a; /* 牌杆 = --world-lamp-pole */
+  --world-city-sign-board: #f4dfba; /* 牌面 = --world-sign-soft */
+  --world-city-sign-cap: #d9a35f; /* 楼门楣章号牌 = --world-sign-warm */
 }

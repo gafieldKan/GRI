@@ -212,6 +212,15 @@
 .w-axis-rail { fill: none; stroke: var(--world-axis-line); stroke-linecap: round; }
 .w-axis-label { fill: var(--world-axis-text); }
 
+/* —— 城区街区名牌（维度 C 自己的街牌：街名 = 分支名）——
+   不借用 .w-axis-label：那类是维度 A 海拔轴的刻度标签。城区**没有海拔轴**（N1），
+   两界共用一类会让「城区内有几节海拔刻度」这种互斥断言永远扫不干净。 */
+.w-city-street-label { fill: var(--world-axis-text); font-weight: 600; }
+
+/* —— K12 学段台阶名（维度 B 自己的学段标牌：小学段 / 初中段 / 高中段）——
+   同理不借 .w-axis-label：「K12 页内海拔轴刻度 = 0」这条互斥断言要能扫干净。 */
+.w-stair-stage-label { fill: var(--world-axis-text); font-weight: 600; }
+
 /* —— 「我在这」年级海拔线（与 twin 人物同色：人在海拔上，不在别处）—— */
 .w-me-line { fill: none; stroke: var(--world-marker); stroke-dasharray: 5 7; }
 .w-me-label { fill: var(--world-marker); }
@@ -279,6 +288,45 @@
 .w-edge-explicit { fill: none; stroke: var(--world-edge-explicit); stroke-linecap: round; }
 .w-edge-seq { fill: none; stroke: var(--world-edge-seq); stroke-linecap: round; }
 .w-edge-soft { fill: none; stroke: var(--world-edge-soft); stroke-linecap: round; stroke-dasharray: 4 8; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🧭 三维度分页分离 v6（W6-c）——每个维度一块自洽画布，切维度 = 换世界
+   维度 A 沿用上面的 SUMMIT 群峰；本段只补维度 B（K12 升学阶梯）与
+   维度 C（学科城区街区网格）两张新画布的几何类。
+   N1 场景互斥的**物理基础就在这里**：三张画布各有自己的底图类族——
+     · `w-stair-*` 只出现在 K12 页（其 DOM 内零 `w-road*` / `w-storefront*` / 峰类）；
+     · `w-city-*` / `w-storefront*` 只出现在城区页（其 DOM 内零 `w-axis-*` / 册类）。
+   仍只允许 var(--world-*)：色值真源 styles/tokens/themes/persona-world.css。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* —— K12 升学阶梯：三级学段台阶（踏面 / 竖断面 / 前沿线 / 段间坡）—— */
+.w-stair-tread { fill: var(--world-stair-tread); }
+.w-stair-riser { fill: var(--world-stair-riser); }
+.w-stair-edge { fill: none; stroke: var(--world-stair-edge); stroke-linecap: butt; }
+.w-stair-slope { fill: var(--world-stair-slope); }
+
+/* —— 人教版册卡（一列 ≤2 张，两卡不重叠）—— */
+.w-stair-card-top { fill: var(--world-stair-card-top); }
+.w-stair-card-left { fill: var(--world-stair-card-left); }
+.w-stair-card-right { fill: var(--world-stair-card-right); }
+.w-stair-card-empty-top { fill: var(--world-stair-card-empty); }
+.w-stair-card-empty-left { fill: var(--world-stair-card-empty); }
+.w-stair-card-empty-right { fill: var(--world-stair-card-empty); }
+.w-stair-card-spine { fill: none; stroke: var(--world-stair-card-spine); stroke-linecap: round; }
+.w-stair-card-notch { fill: none; stroke: var(--world-stair-card-notch); stroke-linecap: round; }
+
+/* —— 我在读的书签带（同一世界语言里的「旗」：旗布 = flag，剪口 = 暗一档）—— */
+.w-world-banner { fill: var(--world-flag); }
+.w-world-banner-cut { fill: var(--world-stair-card-notch); }
+
+/* —— 学科城区街区网格：天际线 + 街面 + 街沿 + 楼间虚线路网 + 街名牌 —— */
+.w-city-skyline-far { fill: var(--world-city-skyline-far); }
+.w-city-street { fill: var(--world-city-street); }
+.w-city-curb { fill: none; stroke: var(--world-city-curb); stroke-linecap: butt; }
+.w-city-street-dash { fill: none; stroke: var(--world-city-street-dash); stroke-linecap: butt; stroke-dasharray: 12 14; }
+.w-city-sign-post { fill: var(--world-city-sign-post); }
+.w-city-sign-board { fill: var(--world-city-sign-board); }
+.w-city-sign-cap { fill: var(--world-city-sign-cap); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    🏙️ 学科城区 v5（W6-a）——因果物理化为「路通不通」，双体系改为横纵两个正交方向

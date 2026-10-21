@@ -1,9 +1,11 @@
 <template>
   <!--
-    学习世界 · 登峰（W4-b）：学科登顶双维度。
-    维度 A「学科知识体系」= 一科 N 座分支峰（各含中图法权威锚点与 K12 年级区间）；
-    维度 B「K12 阶段」= 学段 → 年级 → 人教版册 → 章（每册/章反向标注所属体系分支）。
-    两维度共用同一条「年级海拔轴」（同一海拔即同一年级），故可互相对照——这就是延续性。
+    学习世界 · v6（W6-c）三维度分页分离：一个维度 = 一块自洽画布。
+    维度 A「学科知识体系」= 一科 N 座分支峰（各含中图法权威锚点与 K12 年级区间，共用同一条年级海拔轴）；
+    维度 B「K12 阶段」= 升学阶梯（横向 12 年级一列 · 三级学段台阶抬升 · 每列 ≤2 张人教版册卡）；
+    维度 C「学科城区」= 街区网格（行 = 街区(分支) · 列 = 楼栋(章) · 门 = 知识点）。
+    **三块画布同一时刻只挂一张**（v-if 顶层收口）：K12 页里零城区元素、零峰；城区页里零年级大道、零册热区。
+    这就是「K12 界面被错误放进城区页面」的根治（v5 的根因 = 三维度共用一块画布 + 城区里塞了一条年级大道）。
     世界语言复用 W3 外壳与 --world-* 令牌 / w-* 几何类，画法一律取共享件 @gri/world-art。
   -->
   <WorldShell
@@ -44,7 +46,7 @@
           <text class="dim-name">{{ d.name }}</text>
           <text class="dim-sub">{{ d.sub }}</text>
         </button>
-        <text class="dim-note">三个维度共用同一个世界——切换不丢当前学科与当前峰；「学科城区」里横是年级大道、纵是街区</text>
+        <text class="dim-note">三个维度各有一块画布（切维度 = 换世界）：学科峰 / 升学阶梯 / 城区街区——切换不丢当前学科与当前峰</text>
       </view>
 
       <!-- 学科切换条 -->
@@ -120,59 +122,48 @@
             </view>
           </view>
 
-          <!-- ── 登峰地图（两维度同屏一张画布：同一条海拔轴）── -->
+          <!-- ── v6（W6-c）三维度分页分离：一个维度 = 一张自洽画布 ──
+               N1 场景互斥的物理基础：三块画布各有自己的 viewBox、自己的底图类族、
+               自己的 HTML 叠层，而且**同一时刻只挂一张**（v-if 顶层收口）。
+               切维度 = 换世界，不再是「同一座山上换叠加层」——那正是
+               「K12 界面被错误放进城区页面」「城区页面混进年级大道」的根因。
+               三块画布的最小宽度各由 STAIR/CITY/SUMMIT 定，横向滚动不硬缩（N10）。 -->
           <view class="map-panel">
-            <view class="map-scroll">
-              <view class="map-scene" :data-dim-current="dim">
+            <view class="map-scroll" data-map-scroll>
+              <!-- ═══════════ 维度 A：学科知识体系（群峰，W4-b 原样不回归）═══════════ -->
+              <view v-if="dim === 'branches'" class="map-scene" data-scene="summit" :data-dim-current="dim">
                 <svg
                   class="map-svg"
-                  data-map
+                  data-map="summit"
                   :viewBox="`0 0 ${MAPW} ${MAPH}`"
                   preserveAspectRatio="xMidYMid meet"
                   role="img"
                   :aria-label="mapAria"
                 >
-                  <defs>
-                    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
-                      <circle cx="2" cy="2" r="0.8" class="w-grid-dot" />
-                    </pattern>
-                    <!-- 天光四阶：与人本世界的天光同一组令牌（同一天空） -->
-                    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0" class="w-gg-sky-top" />
-                      <stop offset="0.3" class="w-gg-sky-mid" />
-                      <stop offset="0.7" class="w-gg-sky-low" />
-                      <stop offset="1" class="w-gg-sky-haze" />
-                    </linearGradient>
-                    <radialGradient id="sunG" cx="0.5" cy="0.5">
-                      <stop offset="0" class="w-gg-sun" stop-opacity="0.95" />
-                      <stop offset="1" class="w-gg-sun" stop-opacity="0" />
-                    </radialGradient>
-                    <!-- v4 晨雾（M1）：上实下虚的黎明幕——雾退到「光脉前沿」为止 -->
-                    <linearGradient id="fogVeil" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0" class="w-gg-fog" stop-opacity="0.88" />
-                      <stop offset="0.62" class="w-gg-fog" stop-opacity="0.84" />
-                      <stop offset="1" class="w-gg-fog" stop-opacity="0" />
-                    </linearGradient>
-                    <!-- v4 曙光（M2/M3）：洞口亮灯时从洞里漫出的一团黎明 -->
-                    <radialGradient id="dawnG" cx="0.5" cy="0.5">
-                      <stop offset="0" class="w-gg-dawn" stop-opacity="0.8" />
-                      <stop offset="1" class="w-gg-dawn" stop-opacity="0" />
-                    </radialGradient>
-                    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur stdDeviation="2.4" result="b" />
-                      <feMerge>
-                        <feMergeNode in="b" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                  </defs>
-
-                  <!-- 天空（渐变）+ 版图点阵：scaffold 的纯色天空让位给本页渐变 -->
-                  <rect :width="MAPW" :height="MAPH" fill="url(#sky)" />
-                  <rect :width="MAPW" :height="MAPH" fill="url(#grid)" opacity="0.13" />
-                  <circle :cx="MAPW - 104" cy="112" r="86" fill="url(#sunG)" />
-
-                  <!-- 世界底图（共享画法）：远山 / 云鸟 / 地景 / 年级海拔刻度 -->
+                  <path class="w-me-line" :d="`M104 ${meY}H1188`" stroke-width="1.6" />
+                  <SvgText x="1188" :y="meY - 7" text-anchor="end" font-size="11" class="w-me-label">
+                    我在这 · {{ gradeShort(meGrade) }}
+                  </SvgText>
+                  <SvgText
+                    v-for="tk in GRADE_TICKS"
+                    :key="'ax' + tk.g"
+                    x="66"
+                    :y="tk.y + 3.5"
+                    text-anchor="end"
+                    font-size="11"
+                    class="w-axis-label"
+                  >{{ tk.short }}</SvgText>
+                  <SvgText x="66" :y="SUMMIT.zenithY + 4" text-anchor="end" font-size="11" class="w-axis-label">纵深</SvgText>
+                  <SvgText
+                    v-for="sb in stageBands"
+                    :key="'sn' + sb.code"
+                    x="1188"
+                    :y="sb.labelY"
+                    text-anchor="end"
+                    font-size="13"
+                    class="w-axis-label"
+                    :opacity="sb.has ? 1 : 0.45"
+                  >{{ sb.name }}</SvgText>
                   <template v-for="(p, i) in scenePrims" :key="'sc' + i">
                     <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" :filter="p.f" />
                     <path
@@ -205,37 +196,6 @@
                       :opacity="p.o"
                     />
                   </template>
-
-                  <!-- 海拔读数（刻度标签取共享真源 GRADE_TICKS） -->
-                  <SvgText
-                    v-for="tk in GRADE_TICKS"
-                    :key="'ax' + tk.g"
-                    x="66"
-                    :y="tk.y + 3.5"
-                    text-anchor="end"
-                    font-size="11"
-                    class="w-axis-label"
-                  >{{ tk.short }}</SvgText>
-                  <SvgText x="66" :y="SUMMIT.zenithY + 4" text-anchor="end" font-size="11" class="w-axis-label">纵深</SvgText>
-
-                  <!-- 学段名（维度 B 的段带读数，两维度都画：它属于海拔轴本身） -->
-                  <SvgText
-                    v-for="sb in stageBands"
-                    :key="'sn' + sb.code"
-                    x="1188"
-                    :y="sb.labelY"
-                    text-anchor="end"
-                    font-size="13"
-                    class="w-axis-label"
-                    :opacity="sb.has ? 1 : 0.45"
-                  >{{ sb.name }}</SvgText>
-
-                  <!-- 「我在这」年级海拔线 -->
-                  <path class="w-me-line" :d="`M104 ${meY}H1188`" stroke-width="1.6" />
-                  <SvgText x="1188" :y="meY - 7" text-anchor="end" font-size="11" class="w-me-label">
-                    我在这 · {{ gradeShort(meGrade) }}
-                  </SvgText>
-
                   <!-- 孪生人物（外层定位，内层浮动）：画法 = 共享原语 personMarker -->
                   <g v-if="mePos" :transform="`translate(${mePos.x} ${mePos.y}) scale(1.18)`" data-me>
                     <g class="climber-fig">
@@ -254,14 +214,12 @@
                       </template>
                     </g>
                   </g>
-
-                  <!-- 图注 -->
                   <SvgText :x="MAPW / 2" :y="MAPH - 8" text-anchor="middle" font-size="11" class="w-map-note">
                     {{ mapNote }}
                   </SvgText>
                 </svg>
 
-                <!-- 可动热点（唯一可点区域）：分支峰 / 纵深子分支 / 人教版册 -->
+                <!-- 可动热点（唯一可点区域）：分支峰 / 纵深子分支 / 年级洞门 -->
                 <button
                   v-for="(h, i) in hotspots"
                   :key="h.key"
@@ -271,7 +229,6 @@
                   :style="{ left: h.left + '%', top: h.top + '%', '--d': ((i % 9) * 0.35) + 's' }"
                   :data-branch="h.kind === 'peak' ? h.code : undefined"
                   :data-branch-depth="h.kind === 'depth' ? h.code : undefined"
-                  :data-book="h.kind === 'book' ? h.code : undefined"
                   :data-grade-door="h.kind === 'grade' ? h.code : undefined"
                   :data-door-state="h.kind === 'grade' ? h.state : undefined"
                   :data-hot-index="i"
@@ -288,10 +245,6 @@
                       <path d="M7 21V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                       <path d="M7 4h10l-3 4 3 4H7Z" fill="currentColor" />
                     </svg>
-                    <svg v-else-if="h.kind === 'book'" class="hot-glyph" viewBox="0 0 24 24">
-                      <path d="M4 5h7v14H4Zm9 0h7v14h-7Z" fill="none" stroke="currentColor" stroke-width="1.8" />
-                      <path d="M11 5v14" stroke="currentColor" stroke-width="1.8" />
-                    </svg>
                     <svg v-else-if="h.kind === 'depth'" class="hot-glyph" viewBox="0 0 24 24">
                       <path d="M12 4 4 19h16Z" fill="none" stroke="currentColor" stroke-width="1.8" />
                       <path d="M12 4v15" stroke="currentColor" stroke-width="1.4" opacity="0.7" />
@@ -303,44 +256,238 @@
                     </svg>
                     <svg v-else class="hot-glyph" viewBox="0 0 24 24">
                       <path d="M12 3 3 20h18Z" fill="currentColor" />
-                      <path d="M12 9 8 20h8Z" class="w-glyph-cut" opacity="0.7" />
                     </svg>
                   </span>
                   <text class="hot-label" :class="labelClass(h)">{{ h.short }}</text>
                 </button>
+              </view>
 
-                <!-- v5 一间店 = 一节（只读热点：点它把这间的楼门带到楼前一条街上） -->
+              <!-- ═══════════ 维度 B：K12 阶段 = 升学阶梯（v6 新画布，N1）═══════════
+                   横向 12 年级一列 · 三级学段台阶抬升 · 每列 ≤2 张人教版册卡。
+                   **这块画布里零城区元素、零峰**（探针按 data-scene="stair" 断言）。 -->
+              <view v-else-if="dim === 'grades'" class="map-scene is-stair" data-scene="stair" :data-dim-current="dim" :style="{ width: STAIR.w + 'px', minWidth: STAIR.w + 'px', height: STAIR.h + 'px', aspectRatio: 'auto' }">
+                <svg
+                  class="map-svg"
+                  data-map="stair"
+                  :viewBox="`0 0 ${STAIR.w} ${STAIR.h}`"
+                  preserveAspectRatio="xMinYMid meet"
+                  role="img"
+                  :aria-label="mapAria"
+                >
+                  <!-- 底图：三级台阶 + 段间坡 + 天际（无山体、无海拔轴、无楼门） -->
+                  <template v-for="(p, i) in stairPrims" :key="'sr' + i">
+                    <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+                    <path
+                      v-else-if="p.k === 'path'"
+                      :class="p.c"
+                      :d="p.d"
+                      :opacity="p.o"
+                      :stroke-width="p.w"
+                      :stroke-dasharray="p.dash"
+                    />
+                    <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+                    <ellipse
+                      v-else-if="p.k === 'ellipse'"
+                      :class="p.c"
+                      :cx="p.cx"
+                      :cy="p.cy"
+                      :rx="p.rx"
+                      :ry="p.ry"
+                      :opacity="p.o"
+                    />
+                    <rect v-else :class="p.c" :x="p.x" :y="p.y" :width="p.w" :height="p.h" :rx="p.rx" :opacity="p.o" />
+                  </template>
+
+                  <!-- 空位卡（该年级这一科还没收录人教版册）：明示空位，不造假册 -->
+                  <template v-for="(e, i) in stairEmptySlots" :key="'se' + i">
+                    <template v-for="(p, j) in stairCard(e.x, e.y, null, { empty: true })" :key="'sep' + j">
+                      <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+                      <path
+                        v-else-if="p.k === 'path'"
+                        :class="p.c"
+                        :d="p.d"
+                        :opacity="p.o"
+                        :stroke-width="p.w"
+                      />
+                      <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+                      <ellipse v-else :class="p.c" :cx="p.cx" :cy="p.cy" :rx="p.rx" :ry="p.ry" :opacity="p.o" />
+                    </template>
+                  </template>
+
+                  <!-- 人教版册卡（一列 ≤2 张；两卡纵向分开 ≥ 卡片高度，故绝不重叠） -->
+                  <template v-for="(c, i) in stairCards" :key="'sc' + i">
+                    <template v-for="(p, j) in c.prims" :key="'scp' + j">
+                      <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+                      <path
+                        v-else-if="p.k === 'path'"
+                        :class="p.c"
+                        :d="p.d"
+                        :opacity="p.o"
+                        :stroke-width="p.w"
+                      />
+                      <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+                      <ellipse v-else :class="p.c" :cx="p.cx" :cy="p.cy" :rx="p.rx" :ry="p.ry" :opacity="p.o" />
+                    </template>
+                  </template>
+
+                  <!-- 学段台阶名（三级台阶各一条：小学段 / 初中段 / 高中段）
+                       用自己的类，不借 .w-axis-label（那是维度 A 海拔轴的刻度标签）——
+                       「K12 页内海拔轴刻度 = 0」这条互斥断言要能扫干净。 -->
+                  <SvgText
+                    v-for="s in stairStages"
+                    :key="'ss' + s.code"
+                    :x="stairColX(s.from) - 26"
+                    :y="s.y - 12"
+                    text-anchor="start"
+                    font-size="13"
+                    class="w-stair-stage-label"
+                    :opacity="s.has ? 1 : 0.45"
+                  >{{ s.name }}</SvgText>
+
+                  <!-- 「我在读」标记：与维度 A 同一个 meGrade 口径（两维度不会说我读两个年级） -->
+                  <template v-for="(p, i) in stairMePrims" :key="'sm' + i">
+                    <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+                    <path
+                      v-else-if="p.k === 'path'"
+                      :class="p.c"
+                      :d="p.d"
+                      :opacity="p.o"
+                      :stroke-width="p.w"
+                      :stroke-dasharray="p.dash"
+                    />
+                    <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+                    <ellipse v-else :class="p.c" :cx="p.cx" :cy="p.cy" :rx="p.rx" :ry="p.ry" :opacity="p.o" />
+                  </template>
+                  <SvgText
+                    :x="stairMeColX"
+                    :y="stairMeBadgeY"
+                    text-anchor="middle"
+                    font-size="11"
+                    class="w-me-label"
+                  >我在读 · {{ gradeShort(meGrade) }}</SvgText>
+                </svg>
+
+                <!-- 册卡热点（与 SVG 同一列坐标真源）：点一册 → 章下钻（维度 A 的册章下钻不回归） -->
                 <button
-                  v-for="(s, i) in (dim === 'district' ? districtStorefronts : [])"
-                  :key="'sf' + s.code"
-                  class="hot shop-pin"
-                  :class="`kp-${s.light}`"
-                  :style="{ left: (s.x / MAPW) * 100 + '%', top: ((s.y - DISTRICT.blockH) / MAPH) * 100 + '%' }"
-                  :data-storefront="s.code"
-                  :data-storefront-state="s.light"
-                  :data-storefront-index="i"
-                  :aria-label="`节 ${s.name}，${doorStateWord(s.light)}，${s.kpCount} 个知识点，所属章 ${s.chapterName}，点它把这一间的楼门带到楼前`"
+                  v-for="(c, i) in stairCards"
+                  :key="'bk' + c.code"
+                  class="hot hot-book"
+                  :class="[{ selected: isSelected({ kind: 'book', code: c.code }) }, `kp-${'lit'}`]"
+                  :style="{ left: (c.x / STAIR.w) * 100 + '%', top: ((c.y - 14) / STAIR.h) * 100 + '%' }"
+                  :data-book="c.code"
+                  :data-book-grade="c.grade"
+                  :data-book-index="i"
+                  :aria-label="`人教版册 ${c.name}，${gradeName(c.grade)}，${c.stageName}，关联体系分支 ${c.branchNames || '未标注'}，点它看这一册的章`"
                   tabindex="0"
                   role="button"
-                  @click="pickStorefront(s.code)"
+                  @click="pickStairBook(c)"
                 >
                   <span class="hot-badge">
                     <svg class="hot-glyph" viewBox="0 0 24 24">
-                      <path d="M4 9.5 8 5h8l4 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
-                      <path d="M5.5 9.5h13V20h-13Z" fill="none" stroke="currentColor" stroke-width="1.7" />
-                      <path d="M10 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="1.5" />
+                      <path d="M4 5h7v14H4Zm9 0h7v14h-7Z" fill="none" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M11 5v14" stroke="currentColor" stroke-width="1.8" />
                     </svg>
                   </span>
-                  <text class="hot-label">{{ s.name }}</text>
+                  <text class="hot-label is-short">{{ c.name.replace(/^人教版/, '') }}</text>
                 </button>
+              </view>
 
-                <!-- v5（W6-a）楼门 = 知识点洞口：楼前一条街，等距一排门，点门直达楼内书房（主 surface） -->
+              <!-- ═══════════ 维度 C：学科城区 = 街区网格（v6 新画布，N1）═══════════
+                   行 = 街区（学科分支）· 列 = 楼栋（章）· 门 = 知识点（楼前底商，三态）。
+                   画布宽 = 楼栋列数真实算出来的（`cityLayout.w`），不是硬编码 1600：
+                   一支跨 G1–G12 的分支有 ~50 章 → 画布真的 8600px 宽，交给 `.map-scroll`
+                   横向滚（N10 不硬缩）。SVG 用 `xMinYMin slice` + 1:1 比例铺，
+                   否则 viewBox 8600×2028 会被 `meet` 整体缩到 1/5.4，楼栋糊成蚂蚁。 -->
+              <view
+                v-else-if="dim === 'district'"
+                class="map-scene is-city"
+                data-scene="city"
+                :data-dim-current="dim"
+                :style="{ width: cityLayout.w + 'px', minWidth: cityLayout.w + 'px', height: cityLayout.h + 'px', aspectRatio: 'auto' }"
+              >
+                <svg
+                  class="map-svg"
+                  data-map="city"
+                  :viewBox="`0 0 ${cityLayout.w} ${cityLayout.h}`"
+                  preserveAspectRatio="xMinYMin meet"
+                  role="img"
+                  :aria-label="mapAria"
+                >
+                  <!-- 街区名牌（一条街一个竖牌：街名 = 分支名；空街也挂牌，只是不铺楼）
+                       用自己的类 .w-city-street-label，**不借 .w-axis-label**——
+                       那类是维度 A 海拔轴的刻度标签；城区没有海拔轴（N1），
+                       共用一类会让「城区内海拔刻度 = 0」这条互斥断言永远扫不干净。 -->
+                  <SvgText
+                    v-for="r in cityLayout.rows"
+                    :key="'cn' + r.branch"
+                    :x="CITY.padX - 96"
+                    :y="r.y - CITY.blockH + 18"
+                    text-anchor="start"
+                    font-size="12"
+                    class="w-city-street-label"
+                    :opacity="r.buildings.length ? 1 : 0.45"
+                  >{{ r.branchName }}</SvgText>
+
+                  <!-- 底图：天际线 + 街区带 + 楼间街道 + 街名牌座（无山体、无海拔轴） -->
+                  <template v-for="(p, i) in cityPrims" :key="'ct' + i">
+                    <polygon v-if="p.k === 'poly'" :class="p.c" :points="p.points" :opacity="p.o" />
+                    <path
+                      v-else-if="p.k === 'path'"
+                      :class="p.c"
+                      :d="p.d"
+                      :opacity="p.o"
+                      :stroke-width="p.w"
+                      :stroke-dasharray="p.dash"
+                    />
+                    <circle v-else-if="p.k === 'circle'" :class="p.c" :cx="p.cx" :cy="p.cy" :r="p.r" :opacity="p.o" />
+                    <ellipse
+                      v-else-if="p.k === 'ellipse'"
+                      :class="p.c"
+                      :cx="p.cx"
+                      :cy="p.cy"
+                      :rx="p.rx"
+                      :ry="p.ry"
+                      :opacity="p.o"
+                    />
+                    <rect v-else :class="p.c" :x="p.x" :y="p.y" :width="p.w" :height="p.h" :rx="p.rx" :opacity="p.o" />
+                  </template>
+                </svg>
+
+                <!-- 楼栋热点（唯一可点区域，一栋 = 一章）：点它把这一章的知识点门带到楼前 -->
+                <template v-for="(r, ri) in cityLayout.rows" :key="'cr' + r.branch">
+                  <button
+                    v-for="(b, bi) in r.buildings"
+                    :key="'cb' + b.code"
+                    class="hot hot-building"
+                    :class="{ selected: !!cityPickChapter && cityPickChapter.branch === r.branch && cityPickChapter.chapter.code === b.code }"
+                    :style="{ left: (b.x / cityLayout.w) * 100 + '%', top: ((r.y + 4) / cityLayout.h) * 100 + '%' }"
+                    :data-building="b.code"
+                    :data-building-branch="r.branch"
+                    :data-building-state="b.state"
+                    :data-building-index="b.index"
+                    :aria-label="`${r.branchName} · 第 ${b.index + 1} 栋（章）${b.name}，${doorStateWord(b.state)}，${b.kpCount} 个知识点，点它把这一章的门带到楼前`"
+                    tabindex="0"
+                    role="button"
+                    @click="pickBuilding(r.branch, b.code)"
+                  >
+                    <span class="hot-badge">
+                      <svg class="hot-glyph" viewBox="0 0 24 24">
+                        <path d="M4 9.5 8 5h8l4 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                        <path d="M5.5 9.5h13V20h-13Z" fill="none" stroke="currentColor" stroke-width="1.7" />
+                        <path d="M10 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="1.5" />
+                      </svg>
+                    </span>
+                    <text class="hot-label is-short">{{ b.name }}</text>
+                  </button>
+                </template>
+
+                <!-- 楼门 = 知识点洞口（选中楼前一条街，等距一排门，点门直达楼内书房） -->
                 <button
-                  v-for="(d, i) in (dim === 'district' ? kpDoorPoints : [])"
+                  v-for="(d, i) in cityDoorPoints"
                   :key="'kd' + d.code"
                   class="hot kp-door"
                   :class="`kp-${d.light}`"
-                  :style="{ left: (d.x / MAPW) * 100 + '%', top: (d.y / MAPH) * 100 + '%' }"
+                  :style="{ left: (d.x / cityLayout.w) * 100 + '%', top: (d.y / cityLayout.h) * 100 + '%' }"
                   :data-kp-door="d.code"
                   :data-kp-door-id="d.id || ''"
                   :data-kp-state="d.light"
@@ -356,65 +503,64 @@
                       <path d="M4 10.5 12 4l8 6.5V20h-5v-5H9v5H4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
                     </svg>
                   </span>
-                  <text class="hot-label">{{ d.name }}</text>
+                  <text class="hot-label is-short">{{ d.name }}</text>
                 </button>
-
-                <!-- v5 大道里程碑（HTML 叠层：SVG <text> 在 uni H5 不渲染 → 走叠层，与刻度同源） -->
-                <view
-                  v-for="mk in (dim === 'district' ? avenueMarks : [])"
-                  :key="'mk' + mk.g"
-                  class="ave-mark"
-                  :style="{ left: (mk.x / MAPW) * 100 + '%', top: (avenueY / MAPH) * 100 + '%' }"
-                  :data-avenue-mark="mk.g"
-                ><text class="ave-mark-text">{{ mk.short }}</text></view>
-
-                <!-- v5 城区空态兜底（V5-N10 不造假楼）：这门学科的节/知识点还没收录 → 明说，不用美术填充 -->
-                <view v-if="dim === 'district' && distinctBlocked" class="scene-empty" data-scene-empty :data-district-empty="distinctBlocked" role="status">
-                  <text class="se-title">{{ distinctBlocked === 'nocode' ? '这门学科的楼门尚未收录' : '这一支的节洞数据还没取到' }}</text>
-                  <text class="se-text">
-                    {{ distinctBlocked === 'nocode'
-                      ? '楼门是知识点洞口，靠知识点的唯一编码铺；这门学科的知识点还没有编码，城区不铺——不用假楼充数。'
-                      : '城区只铺真实收录的节与知识点——先看上面那座峰，或切到「K12 阶段」维度。' }}
-                  </text>
-                  <button class="tbtn sm" data-empty-to-branches @click="switchDim('branches')">回到学科知识体系</button>
-                </view>
-
-                <!-- 维度 B 空态兜底（部分学科尚未发布人教版册；维度 A 对该学科仍是全覆盖的） -->
-                <view v-if="dim === 'grades' && !books.length" class="scene-empty" data-scene-empty role="status">
-                  <text class="se-title">该学科的 K12 册尚未收录</text>
-                  <text class="se-text">学段台地已经铺开，但人教版册/章还没发布到这门学科——先看「学科知识体系」维度，它对学科知识是全覆盖的。</text>
-                  <button class="tbtn sm" data-empty-to-branches @click="switchDim('branches')">回到学科知识体系</button>
-                </view>
               </view>
             </view>
 
-            <view class="map-legend">
-              <!-- v5（W6-a）城区读数：城区也要有一眼的「已走多深」——与 v4 读数条同源同数
-                   （chainProgress 由 lightStates 派生，和维度无关），只是换成街区的说法。
-                   一条链上同一份真源，两个维度都读它，读数才不会打架（N5 诚实口径）。 -->
-              <view v-if="dim === 'district' && chainNodes.length" class="ml-count" data-district-count>
-                <text class="dc-item">已亮 <text class="num" data-lit-count>{{ chainProgress.lit }}</text> / {{ chainProgress.total }} 节</text>
-                <text class="dc-item">半亮 {{ chainProgress.half }} 节（够得着 · 尚未掌握）</text>
-                <text class="dc-item">光脉前沿 {{ gradeShort(revealGradeNum) }}</text>
-              </view>
-              <text class="ml-item"><text class="ml-dot is-here" />我在这（年级海拔）</text>
-              <text class="ml-item"><text class="ml-dot is-summit" />已登顶（旗 / 雪冠）</text>
-              <text class="ml-item"><text class="ml-swatch is-k12" />K12 在读段</text>
-              <text class="ml-item"><text class="ml-swatch is-depth" />学科纵深段</text>
-              <text v-if="dim === 'branches'" class="ml-item"><text class="ml-swatch is-fog" />晨雾（未明）</text>
-              <text v-if="dim === 'branches'" class="ml-item"><text class="ml-swatch is-light" />光脉（已亮的路）</text>
-              <text v-if="dim === 'branches'" class="ml-item"><text class="ml-dot is-door" />年级洞门（暗 / 半亮 / 亮灯）</text>
-              <!-- v5（W6-a）城区图例：图的语义逐字可断言（诚实口径，见设计文档 §4） -->
-              <template v-if="dim === 'district'">
-                <text class="ml-item"><text class="ml-swatch is-road" />年级大道（横 = K12 阶段）</text>
-                <text class="ml-item"><text class="ml-swatch is-shop" />一间店（= 一节）</text>
+            <!-- 城区空态兜底（V5-N10 / v6 同口径：不造假楼）——门/章/知识点没收录 → 明说 -->
+            <view v-if="dim === 'district' && cityBlockedMsg" class="scene-empty" data-scene-empty :data-district-empty="cityBlockedMsg" role="status">
+              <text class="se-title">{{ cityBlockedTitle }}</text>
+              <text class="se-text">{{ cityBlockedText }}</text>
+              <button class="tbtn sm" data-empty-to-branches @click="switchDim('branches')">回到学科知识体系</button>
+            </view>
+
+            <!-- 维度 B 空态兜底（部分学科尚未发布人教版册；维度 A 对该学科仍是全覆盖的） -->
+            <view v-if="dim === 'grades' && !books.length" class="scene-empty" data-scene-empty role="status">
+              <text class="se-title">该学科的 K12 册尚未收录</text>
+              <text class="se-text">三级学段台阶已经铺开，但人教版册/章还没发布到这门学科——先看「学科知识体系」维度，它对学科知识是全覆盖的。</text>
+              <button class="tbtn sm" data-empty-to-branches @click="switchDim('branches')">回到学科知识体系</button>
+            </view>
+
+            <!-- 城区读数（N9 信息密度）：一城走了多深——与 v4 读数条同源同数（同一份 lightStates） -->
+            <view v-if="dim === 'district' && cityReady" class="ml-count" data-district-count>
+              <text class="dc-item">已亮 <text class="num" data-lit-count>{{ cityProgress.lit }}</text> / {{ cityProgress.total }} 节</text>
+              <text class="dc-item">半亮 {{ cityProgress.half }} 节（够得着 · 尚未掌握）</text>
+              <text class="dc-item">{{ cityLayout.rows.filter((r) => r.buildings.length).length }} 条街区有楼</text>
+            </view>
+
+            <!-- 图例（每维度只说自己这块画布的话；语义逐字可断言） -->
+            <view class="map-legend" data-legend>
+              <template v-if="dim === 'branches'">
+                <text class="ml-item"><text class="ml-dot is-here" />我在这（年级海拔）</text>
+                <text class="ml-item"><text class="ml-dot is-summit" />已登顶（旗 / 雪冠）</text>
+                <text class="ml-item"><text class="ml-swatch is-k12" />K12 在读段</text>
+                <text class="ml-item"><text class="ml-swatch is-depth" />学科纵深段</text>
+                <text class="ml-item"><text class="ml-swatch is-fog" />晨雾（未明）</text>
+                <text class="ml-item"><text class="ml-swatch is-light" />光脉（已亮的路）</text>
+                <text class="ml-item"><text class="ml-dot is-door" />年级洞门（暗 / 半亮 / 亮灯）</text>
+                <text class="ml-note">点一座峰 → 点峰上的年级洞门 → 进洞走闭环</text>
+              </template>
+              <template v-else-if="dim === 'grades'">
+                <text class="ml-item"><text class="ml-swatch is-tread" />学段踏面（小 / 初 / 高 三级台阶）</text>
+                <text class="ml-item"><text class="ml-swatch is-card" />人教版册卡（一列 ≤2 张）</text>
+                <text class="ml-item"><text class="ml-swatch is-card-empty" />空位（该年级还没收录这一科）</text>
+                <text class="ml-item"><text class="ml-swatch is-banner" />我在读</text>
+                <text class="ml-note" data-legend-stair>台阶向上 = 升学（小学 → 初中 → 高中），不是难度高低</text>
+                <text class="ml-note">点一册卡 → 看它属于哪些体系分支（册章下钻不在这块画布上重复）</text>
+              </template>
+              <template v-else>
+                <text class="ml-item"><text class="ml-swatch is-bld" />楼栋（= 一章）</text>
+                <text class="ml-item"><text class="ml-dot is-bld-lit" />楼已通（该章知识点 ≥80% 亮）</text>
+                <text class="ml-item"><text class="ml-dot is-bld-half" />楼在学（有作答未到 80）</text>
                 <text class="ml-item"><text class="ml-dot is-door" />楼门（暗 / 半亮 / 亮灯）</text>
+                <text class="ml-item"><text class="ml-swatch is-road" />街面（楼与楼之间）</text>
+                <text class="ml-item"><text class="ml-swatch is-barricade" />施工围挡 + 晨雾（前置未满足）</text>
                 <text class="ml-note" data-legend-order>路的先后是课程序列（先学后学的顺序），不是难度高低</text>
                 <text class="ml-note" data-legend-half>半亮 = 有作答且未到 80，不是「会了一半」</text>
                 <text class="ml-note" data-legend-basement>地下室是同一间店的岩洞探索室，走的是同一条闭环；楼上楼下不改变掌握度真源</text>
-                <text class="ml-note">点楼门进楼 → 楼上书房（主）走智学慧眼闭环；也可去楼下岩洞看看</text>
+                <text class="ml-note">行 = 街区（分支）· 列 = 楼栋（章）· 楼门 = 知识点 · 点楼门进楼走智学慧眼闭环</text>
               </template>
-              <text class="ml-note">{{ dim === 'branches' ? '点一座峰 → 点峰上的年级洞门 → 进洞走闭环' : '点一册书 → 看它属于哪些体系分支' }}</text>
             </view>
           </view>
 
@@ -497,7 +643,7 @@
         <!-- 侧栏 -->
         <view class="col-side">
           <view class="side-card" data-legend>
-            <text class="side-title">{{ dim === 'branches' ? '学科知识体系' : 'K12 阶段' }}</text>
+            <text class="side-title">{{ dim === 'branches' ? '学科知识体系' : dim === 'grades' ? 'K12 阶段' : '学科城区' }}</text>
             <!-- 维度 A：分支目录（全部 N 峰，一眼看全 + 逐个选） -->
             <view class="outline" v-if="dim === 'branches'">
               <button
@@ -531,7 +677,27 @@
                 </button>
               </view>
             </view>
-            <text class="side-hint">同一海拔即同一年级——所以两维度能互相对照。</text>
+            <!-- 维度 C：街区目录（一条街 = 一个分支，街内一栋 = 一章；点楼即选中） -->
+            <view class="outline" v-else-if="dim === 'district' && cityReady">
+              <view v-for="r in cityLayout.rows" :key="'oc' + r.branch" class="ol-group">
+                <text class="ol-group-title">{{ r.branchName }}</text>
+                <button
+                  v-for="b in r.buildings"
+                  :key="'ob' + b.code"
+                  class="ol-row"
+                  :class="{ on: !!cityPickChapter && cityPickChapter.branch === r.branch && cityPickChapter.chapter.code === b.code }"
+                  :data-outline-building="b.code"
+                  :data-outline-building-branch="r.branch"
+                  @click="pickBuilding(r.branch, b.code)"
+                >
+                  <text class="ol-name">{{ b.name }}</text>
+                  <text class="ol-sub">{{ b.kpCount }} 个知识点</text>
+                  <text class="ol-val">{{ doorStateWord(b.state) }}</text>
+                </button>
+              </view>
+            </view>
+            <text v-else-if="dim === 'district'" class="side-hint">城区正在一次取齐各街区的链——取到了就有街区目录。</text>
+            <text v-else class="side-hint">{{ dim === 'branches' ? '同一海拔即同一年级——所以峰与阶梯能互相对照。' : '同一列即同一个年级——点册卡看它属于哪些体系分支。' }}</text>
           </view>
 
           <view class="side-card" data-authority>
@@ -814,13 +980,24 @@ import {
   edgeToneClass,
   edgeKindWord,
   CAVE_BAND,
-  // v5（W6-a）学科城区：大道 / 一间店(=一节) / 楼间路 / 楼内书房生活场景 / 楼内暗门
-  DISTRICT,
-  gradeAvenue,
-  storefront,
-  roadSegment,
-  lifeScene,
-  basementHatch
+  // v6（W6-c）三维度分页分离：K12 升学阶梯（STAIR）与学科城区街区网格（CITY）的
+  // 画布常量与排布纯函数。三张画布各有一套坐标，切维度 = 换世界，不再换叠加层。
+  STAIR,
+  stairColX,
+  stairTreadY,
+  stairScaffold,
+  stairCard,
+  stairCardSlot,
+  CITY,
+  cityScaffold,
+  cityColX,
+  cityBuilding,
+  cityDoor,
+  cityDoorRow,
+  cityGridLayout,
+  cityRoad,
+  // v6（W6-c）施工围挡：楼前那段路的前置未满足 → 封的（沿用 v5 M2 因果口径）
+  barricade
 } from '@world-art'
 
 const knowledgeStore = useKnowledgeStore()
@@ -861,10 +1038,10 @@ onLoad((options) => {
 // ── N1 维度 ───────────────────────────────────────────────────────────────
 const DIMS = [
   { code: 'branches', name: '学科知识体系', sub: '学科全覆盖 · 一科 N 座峰' },
-  { code: 'grades', name: 'K12 阶段', sub: '学段 · 年级 · 人教版册' },
-  // v5（W6-a）学科城区：把「双体系」拆成横纵两个正交方向——横 = 年级大道（K12），
-  // 纵 = 街区（学科完整体系）；楼门 = 知识点洞口（§3 粒度裁决）。
-  { code: 'district', name: '学科城区', sub: '逛一座会长大的城 · 楼门即知识点' }
+  { code: 'grades', name: 'K12 阶段', sub: '学段台阶 × 人教版册' },
+  // v6（W6-c）学科城区 = 街区网格：**整条删除 v5 塞进城区的「年级大道」**——
+  // 那一维正是「K12 界面被错误放进城区页面」的根因。年级表达只存在于 K12 维度。
+  { code: 'district', name: '学科城区', sub: '街区 × 楼栋 · 楼门即知识点' }
 ]
 const dim = ref('branches')
 /** 跨维度保留的「当前峰」：切到维度 B 再切回来，仍站在同一座峰上（N1 不丢状态）。 */
@@ -1202,148 +1379,364 @@ const bandEdges = computed(() =>
     .map((e) => ({ ...e, a: bandPos.value.get(e.from), b: bandPos.value.get(e.to) }))
 )
 
+
 // ═══════════════════════════════════════════════════════════════════════════
-// v5（W6-a）学科城区：把「登顶」换成「逛一座会长大的城」
-//   · 横 = 年级大道（K12 体系的物理化）：路面横切，里程碑落在 GRADY_TICKS 同源的年级刻度上；
-//   · 纵 = 街区（学科完整体系）：一车道 = 一个分支峰（P1 只铺选中分支这一条）；
-//   · 一间店 = 一节（同 band 的粒度，但**不再用「洞」的名字**）；
-//   · 楼门 = 知识点洞口（§3 粒度裁决）：点门进楼 → 楼内书房（主）跑同一条智学慧眼闭环，
-//     岩洞降为楼内可选地下室，**掌握度真源不变**（edu.mastery_snapshots ≥ 80）。
-// 几何一律复用 @world-art 的城区画法（DISTRICT / gradeAvenue / storefront / roadSegment /
-// lifeScene / basementHatch）与既有常量（caveTrailLayout / CAVE_BAND.nodeW），本页不写几何。
-// 城区**长在同一块土地上**——复用 SCAFFOLD 已画的厚土台原与年级海拔格线，不另起地貌。
+// v6（W6-c）学科城区 = 街区网格（**独立画布 CITY**，与 K12 阶梯 / 群峰彻底分离）
+//
+//   · 行 = 街区（学科分支）：一条分支一整条街，街首有街名牌（分支名）；
+//   · 列 = 楼栋（章）：街区内按章顺序等距排楼，楼与楼之间是步道（楼栋两两不重叠）；
+//   · 门 = 知识点：点中的那栋楼，它的知识点在楼前底商排成一排门（三态 lit/half/dim）；
+//   · 路 = 学习顺序：楼间连街道；打通前置 → 路点亮 → 光顺路流向下一栋（v5 M2 因果口径不变）；
+//     未打通的路段画施工围挡 + 晨雾（v5 的 barricade / fogPuff，沿用不是重画）。
+//   · **整条删除 v5 的「年级大道」**（avenueMarks / districtStorefronts 那一维）：
+//     那就是「K12 阶段界面被错误放进城区页面」的根因（用户 2026-10-21 原话）。
+//     年级表达从此只存在于 K12 维度（STAIR 画布）。
+//
+// 几何一律复用 @world-art 的城区画法（CITY / cityScaffold / cityBuilding / cityDoor /
+// cityDoorRow / cityRoad）与既有件（block / isoBox / tree / shrub / lamp / fogPuff /
+// barricade / lifeScene / basementHatch），本页只做排布与状态，不另写一套画法（N2）。
+// **没有海拔轴、没有山体、没有册热区**——它们属维度 A / B（N1 场景互斥）。
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** 大道里程碑：x 取 gradeX 同一真源（不新建刻度表），标签由页面 HTML 叠层给出。 */
-const avenueMarks = computed(() =>
-  GRADE_TICKS.map((tk) => ({ g: tk.g, x: gradeX(tk.g), short: tk.short }))
+/** 城区每条街（分支）要的链：一次取齐（并行、按分支缓存），行 = 分支数才铺得出来。 */
+const cityChains = ref({})
+const cityLoading = ref(false)
+let cityLoadedSubject = null
+
+/** 城区在铺的分支清单（顺序 = 维度 A 的延续性读法，两边同一套排布口径）。 */
+const cityBranches = computed(() => sortedPeaks.value.map((p) => ({ code: p.code, name: p.name, clc: p.clc })))
+
+/** 城区每栋楼（章）的门面三态聚合：内置口径与 `gradeDoorState` 一致（≥80 亮 / 有作答半亮）。 */
+function chapterState(sectionStates) {
+  const list = sectionStates || []
+  if (!list.length) return 'dim'
+  const lit = list.filter((s) => s === 'lit').length
+  if (lit / list.length >= 0.8) return 'lit'
+  return list.some((s) => s !== 'dim') ? 'half' : 'dim'
+}
+
+/**
+ * 街区网格的**数据行**（本页喂数据；几何与坐标全在 `cityGridLayout`）。
+ * 每条街（分支）一行楼；这一支没有章数据（如 math.comp）= **空街**（街名牌在，但一栋楼都不铺——
+ * 不造假楼，页面另出空态话术）。
+ * `chapters` 是**选楼 / 门排 / 读数**要读的真源（`cityGridLayout` 只拿它算坐标，不回填），
+ * 故此处单独一个 computed：否则选楼与图例会去读 `cityLayout.rows[i].chapters`（layout 不吐它 → undefined）。
+ */
+const cityRows = computed(() =>
+  cityBranches.value.map((b) => {
+    const chain = cityChains.value[b.code]
+    const nodes = (chain && chain.nodes) || []
+    // 章 → 楼：同一章的所有节收成一栋楼；楼态由该章下所有知识点的三态聚合
+    const byChapter = new Map()
+    for (const n of nodes) {
+      const key = n.chapter || n.chapterName || n.code
+      if (!byChapter.has(key)) byChapter.set(key, { code: key, name: n.chapterName || key, kpCount: 0, states: [] })
+      const ch = byChapter.get(key)
+      ch.kpCount += (n.kps || []).length
+      for (const k of n.kps || []) ch.states.push(kpLightOf(k))
+      ch.states.push(stateOf(n.code))
+    }
+    const chapters = [...byChapter.values()].map((c) => ({ ...c, state: chapterState(c.states) }))
+    return { branch: b.code, branchName: b.name, clc: b.clc, chapters }
+  })
 )
-/** 大道铺在厚土台原的顶面上（= 山脚地面同一条线），与海拔格线同一片地面。 */
-const avenueY = SUMMIT.groundTopY
-const streetX0 = BOOKS_X0
-const streetX1 = BOOKS_X1
-const avenuePrims = computed(() => {
-  if (dim.value !== 'district') return []
-  return gradeAvenue(streetX0, streetX1, avenueY, avenueMarks.value)
+
+/** 街区网格排布（几何）：`cityRows` 的章 → 楼，坐标全走 `cityGridLayout`。 */
+const cityLayout = computed(() => {
+  if (dim.value !== 'district') return { w: CITY.w, h: CITY.h, rows: [] }
+  return cityGridLayout(cityRows.value)
 })
 
-/** 城区在铺的节点 = 当前分支链上、当前年级前后各 2 个年级（同 N11：一次只铺一小段）。 */
-const districtStorefronts = computed(() => {
-  if (dim.value !== 'district' || !chainReady.value) return []
-  const want = activeGrade.value ? activeGrade.value.gradeNum : (gradeList.value[0] ? gradeList.value[0].gradeNum : 1)
-  const slotW = DISTRICT.buildingW + DISTRICT.roadW
-  return chainNodes.value
-    .map((n) => ({ ...n, light: stateOf(n.code), gradeNum: gradeOf(n.grade) }))
-    .filter((n) => Math.abs(n.gradeNum - want) <= 2)
-    .map((n, i) => {
-      const x = Math.round(streetX0 + 40 + i * slotW)
-      return {
-        code: n.code,
-        name: n.name,
-        chapterName: n.chapterName,
-        light: n.light,
-        kpCount: (n.kps || []).length,
-        x,
-        y: avenueY,
-        prims: storefront(x, avenueY, DISTRICT.buildingW, DISTRICT.blockH, n.light)
-      }
-    })
-})
-/** 楼间路 = 前置链的物理化（v4 的「edge」搬到「路上」）：相邻店之间一段路。
- *  **未学的店之间仍画一条连续的路**，只是灯没亮——这正是"连续性可见"（用户诉求①）。 */
-const districtRoads = computed(() => {
-  if (dim.value !== 'district') return []
-  const list = districtStorefronts.value
-  const out = []
-  for (let i = 1; i < list.length; i += 1) {
-    const kind = edgeKindBetween(list[i - 1].code, list[i].code)
-    const a = { x: list[i - 1].x + DISTRICT.buildingW / 2, y: list[i - 1].y + 4 }
-    const b = { x: list[i].x - DISTRICT.buildingW / 2, y: list[i].y + 4 }
-    out.push({ ...roadSegment(a, b, kind), kind, from: list[i - 1].code, to: list[i].code })
+/** 城区总读数（一城走了多深）：全部街的节态汇总，与 v4/维度 A 同一份 `lightProgress` 口径。 */
+const cityProgress = computed(() => {
+  const states = {}
+  for (const b of cityBranches.value) {
+    for (const n of (cityChains.value[b.code] && cityChains.value[b.code].nodes) || []) {
+      states[n.code] = stateOf(n.code)
+    }
   }
+  return lightProgress(states)
+})
+const cityReady = computed(() => dim.value === 'district' && Object.keys(cityChains.value).length > 0)
+
+/** 城区当前选中哪栋楼（它的楼前才会排出一排知识点门）。{branch, chapter} | null */
+const cityPick = ref(null)
+
+/** 选中的楼（章）+ 它的知识点门排（楼前一条街，等距连续）。 */
+const cityPickChapter = computed(() => {
+  if (dim.value !== 'district') return null
+  const want = cityPick.value
+  const rows = cityRows.value
+  if (!rows.length) return null
+  const row = rows.find((r) => r.branch === (want && want.branch)) || rows.find((r) => r.chapters.length)
+  if (!row) return null
+  const ch = (want && want.chapter && row.chapters.find((c) => c.code === want.chapter)) || row.chapters.find((c) => c.state !== 'lit') || row.chapters[0]
+  if (!ch) return null
+  return { branch: row.branch, branchName: row.branchName, chapter: ch }
+})
+
+/** 选中楼的节（门排要按知识点的真实顺序排，节内顺序即课程序列）。 */
+const cityPickSections = computed(() => {
+  const p = cityPickChapter.value
+  if (!p) return []
+  const chain = cityChains.value[p.branch]
+  return ((chain && chain.nodes) || []).filter((n) => (n.chapter || n.chapterName || n.code) === p.chapter.code)
+})
+
+/** 选中楼下的全部知识点（按节顺序摊平）；`...k` 必须带上，kpLightOf 读的是它自带的 mastery 真源。 */
+const cityPickKps = computed(() => {
+  const out = []
+  for (const n of cityPickSections.value) for (const k of n.kps || []) out.push({ ...k, light: kpLightOf(k), gradeNum: gradeOf(n.grade) })
   return out
 })
 
-/** 城区当前把哪一间店的楼门带到楼前一条街上（点店面即换；null = 自动挑未亮那间）。 */
-const districtPick = ref(null)
-
-/** 章内知识点路径（楼前一条街）：点一间店 → 楼前一排门。复用 caveTrailLayout 同常量
- *  → 相邻间距 == CAVE_BAND.nodeW（验收判据 kp_path_contiguous）。 */
-const districtKpNode = computed(() => {
-  if (dim.value !== 'district') return null
-  const want = activeGrade.value ? activeGrade.value.gradeNum : null
-  const inWindow = chainNodes.value
-    .map((n) => ({ ...n, light: stateOf(n.code), gradeNum: gradeOf(n.grade) }))
-    .filter((x) => Math.abs(x.gradeNum - want) <= 2)
-  const picked = districtPick.value && inWindow.find((x) => x.code === districtPick.value)
-  // 默认挑「还没全亮」的那一间（一进去就站在要上课的地方）；全亮了就挑第一间
-  const node = picked || inWindow.find((x) => x.light !== 'lit') || inWindow[0]
-  return node ? node.code : null
-})
-const districtKpRows = computed(() => {
-  if (dim.value !== 'district' || !districtKpNode.value) return []
-  const picked = chainNodes.value.find((n) => n.code === districtKpNode.value)
-  if (!picked) return []
-  // `...k` 必须带上：kpLightOf 读的是 chain 自带的 mastery/state，摊掉就没有真源了
-  return (picked.kps || []).map((k) => ({ ...k, light: kpLightOf(k), id: kpIdByCode.value[k.code] }))
-})
-const kpPathLayout = computed(() => (districtKpRows.value.length ? caveTrailLayout(districtKpRows.value) : { w: 0, h: CAVE_BAND.h, points: [] }))
-/** KP 门的落点（SVG 坐标）：排在选中店正前的一条街上，与大道同向、等间距。 */
-const kpDoorPoints = computed(() => {
-  if (dim.value !== 'district') return []
-  const layout = kpPathLayout.value
-  if (!layout.points.length) return []
-  const anchor = districtStorefronts.value.find((s) => s.code === districtKpNode.value) || districtStorefronts.value[0]
-  // 门排以该店为中心向两侧展开，避免越出大道左右端
-  const cx = anchor ? anchor.x : Math.round((streetX0 + streetX1) / 2)
-  const span = layout.w - CAVE_BAND.padX * 2
-  const left = Math.max(streetX0 + 8, Math.min(streetX1 - 8 - span, cx - span / 2))
-  const baseY = avenueY + 40
-  return layout.points.map((p) => ({
-    code: p.node.code,
-    id: p.node.id,
-    name: p.node.name,
-    light: p.node.light,
-    x: Math.round(left + (p.x - CAVE_BAND.padX)),
-    y: Math.round(baseY + (p.y - CAVE_BAND.yMid))
+/** 楼前一条街的门排（等距连续；坐标真源在 `cityDoorRow`，夹在街道范围内整排平移但不改间距）。 */
+const cityDoorPoints = computed(() => {
+  const p = cityPickChapter.value
+  const layout = cityLayout.value
+  if (dim.value !== 'district' || !p || !cityPickKps.value.length) return []
+  const row = layout.rows.find((r) => r.branch === p.branch)
+  if (!row) return []
+  const anchor = { x: cityColX(0) + CITY.buildingW / 2, y: row.y + 4 }
+  // 排的范围 = 这条街楼与楼之间（底商开在楼前，不越出这一行）
+  const bounds = { fromX: CITY.padX + 6, toX: layout.w - CITY.padX * 0.4 }
+  const { points } = cityDoorRow(cityPickKps.value, anchor, bounds)
+  return points.map((pt2) => ({
+    code: pt2.kp.code,
+    id: pt2.kp.id,
+    name: pt2.kp.name,
+    light: pt2.kp.light,
+    gradeNum: pt2.kp.gradeNum,
+    x: pt2.x,
+    y: pt2.y,
+    branch: p.branch,
+    node: cityPickSections.value.find((n) => (n.kps || []).some((k) => k.code === pt2.kp.code))
   }))
 })
-/** 楼前一条街的路（KP 之间的序列）：未学的门之间仍是连续一条路。 */
-const kpPathPrims = computed(() => {
+
+/** 楼间的路（一街之内的楼与楼）：上一栋 → 下一栋一段路，语气同 `cityRoad`。 */
+const cityRoadPrims = computed(() => {
   if (dim.value !== 'district') return []
-  const pts = kpDoorPoints.value
   const out = []
-  for (let i = 1; i < pts.length; i += 1) {
-    const kind = edgeKindBetween(pts[i - 1].code, pts[i].code)
-    const a = { x: pts[i - 1].x, y: pts[i - 1].y + 6 }
-    const b = { x: pts[i].x, y: pts[i].y + 6 }
-    out.push(...Object.values(roadSegment(a, b, kind)))
+  for (const row of cityLayout.value.rows) {
+    const b = row.buildings
+    for (let i = 1; i < b.length; i += 1) {
+      const from = i === 1 ? null : b[i - 2]
+      // 这一栋的门面还没通（dim）→ 来的那段路是**封的**：施工围挡 + 晨雾（v5 M2 负面态，沿用）
+      const closed = b[i - 1].state === 'dim'
+      const a = { x: b[i - 1].x + CITY.buildingW / 2, y: row.y + 4 }
+      const bb2 = { x: b[i].x - CITY.buildingW / 2, y: row.y + 4 }
+      if (closed) {
+        out.push(...barricade(a.x, a.y, Math.max(10, bb2.x - a.x)))
+      } else {
+        const kind = 'seq'
+        const { wide, core } = cityRoad(a, bb2, kind)
+        out.push(wide, core)
+      }
+      if (from && from.state === 'lit' && b[i - 1].state !== 'dim') {
+        out.push(...lightBeam(`M${from.x + CITY.buildingW / 2} ${row.y + 4}L${a.x} ${row.y + 4}`, { w: 2.4 }))
+      }
+    }
   }
   return out
 })
 
-/** 城区空态判据（V5-N10 不造假楼）：
- *  - null       ：能铺（链上有节）
- *  - 'nocode'   ：这门学科的节/知识点没有唯一编码 → 楼门铺不出来，明确告知（不铺假楼）
- *  - 'empty'    ：链本身没有节
+/** 城区主体 primitives（层序即语义：天际线/街面 → 楼 → 楼间路 → 选中楼的门排）。 */
+const cityPrims = computed(() => cityPrimsImpl())
+function cityPrimsImpl() {
+  if (dim.value !== 'district') return []
+  const layout = cityLayout.value
+  // 底图宽 = 排布算出来的真实画布宽（楼栋列数说了算），不是 CITY.w 的 1600 常量——
+  // 否则 1600px 之后只剩楼，没有街面/路灯/绿化，街区断成几截。
+  const out = [...cityScaffold(layout.rows.length, { w: layout.w })]
+  for (const row of layout.rows) {
+    for (const b of row.buildings) out.push(...cityBuilding(b.x, b.y, b.state))
+  }
+  for (const p of cityRoadPrims.value) out.push(p)
+  for (const d of cityDoorPoints.value) out.push(...cityDoor(d.x, d.y, d.light, 1))
+  return out
+}
+
+/** 城区空态判据（V5-N10 / v6 同口径：不造假楼）：
+ *  - ''         ：能铺（至少一条街有楼）
+ *  - 'nocode'   ：这门学科的知识点没有唯一编码 → 楼门铺不出来，明确告知（不铺假楼）
+ *  - 'empty'    ：一条街都没有楼
+ *  - 'loading'  ：正在一次取齐各街区链（城区要每一行都有楼，故按分支并行取）
  */
-const distinctBlocked = computed(() => {
-  if (dim.value !== 'district') return null
-  if (!chainNodes.value.length) return 'empty'
-  const kps = chainNodes.value.flatMap((n) => n.kps || [])
-  if (!kps.length) return 'empty'
-  const withCode = kps.filter((k) => k && k.code)
-  if (!withCode.length) return 'nocode'
-  return null
+const cityBlockedMsg = computed(() => {
+  if (dim.value !== 'district') return ''
+  if (cityLoading.value) return 'loading'
+  const rows = cityRows.value
+  if (!rows.length || !rows.some((r) => r.chapters.length)) return 'empty'
+  const kps = cityPickKps.value
+  if (kps.length) return ''
+  // 有楼但没有可排的知识点 → 看看是不是全都没 code（有楼无门 = 编码缺失，明说）
+  const allKps = []
+  for (const b of cityBranches.value) {
+    for (const n of (cityChains.value[b.code] && cityChains.value[b.code].nodes) || []) allKps.push(...(n.kps || []))
+  }
+  if (!allKps.length) return 'empty'
+  return allKps.filter((k) => k && k.code).length ? '' : 'nocode'
+})
+const cityBlockedTitle = computed(() =>
+  cityBlockedMsg.value === 'nocode' ? '这门学科的楼门尚未收录' : '这条街的楼门数据还没取到'
+)
+const cityBlockedText = computed(() =>
+  cityBlockedMsg.value === 'nocode'
+    ? '楼门是知识点洞口，靠知识点的唯一编码铺；这门学科的知识点还没有编码，城区不铺——不用假楼充数。'
+    : '城区只铺真实收录的章与知识点——先看那座峰，或切到「K12 阶段」维度。'
+)
+
+/**
+ * 取城区要用的全部分支援链（并行 + 按分支缓存）。只读 W5-a 既有端点，不改后端（N4）。
+ * 一次取齐是因为「行 = 分支数」这个画布要每一行都有楼；空分支不铺楼（空街明示）。
+ */
+async function loadCityChains() {
+  if (dim.value !== 'district') return
+  const subj = knowledgeStore.currentSubject || 'math'
+  if (cityLoading.value) return
+  if (cityLoadedSubject === String(subj).toLowerCase() && Object.keys(cityChains.value).length) return
+  cityLoading.value = true
+  try {
+    const codes = cityBranches.value.map((b) => b.code)
+    const upper = String(subj).toUpperCase()
+    const list = await Promise.all(
+      codes.map(async (b) => {
+        let data = await getLearningChain(subj, b, null)
+        if (!(data.nodes || []).length && upper !== subj) data = await getLearningChain(upper, b, null)
+        return [b, data && Array.isArray(data.nodes) ? data : null]
+      })
+    )
+    const next = {}
+    for (const [b, d] of list) if (d) next[b] = d
+    cityChains.value = next
+    cityLoadedSubject = String(subj).toLowerCase()
+  } finally {
+    cityLoading.value = false
+  }
+}
+
+/** 点一栋楼（= 一章）：把这一章的知识点门带到楼前一条街上（看清这一栋有哪些门）。 */
+function pickBuilding(branch, chapter) {
+  cityPick.value = { branch, chapter }
+  const chain = cityChains.value[branch]
+  const node = ((chain && chain.nodes) || []).find((n) => (n.chapter || n.chapterName || n.code) === chapter)
+  if (node) ensureKpIds(gradeOf(node.grade))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v6（W6-c）维度 B「K12 阶段」= 升学阶梯（**独立画布 STAIR**，与群峰 / 城区彻底分离）
+//
+//   · 横向 12 年级一列（列距 ≥ 卡片宽度，卡片两两不重叠）；
+//   · 每列 ≤2 张人教版册卡（上/下册同族、深浅分档；没收录的年级留**空位**，不造假册）；
+//   · 三级学段台阶抬升：小学低 → 初中 → 高中越走越高（「升学」= 台阶向上，不是海拔轴）；
+//   · 「我在读」标记 = 毕业带（banner），与我所在的年级同列；
+//   · 横向可滚（min-width，不硬缩）：设计稿 §3 宽约 1600。
+//
+// 几何一律复用 @world-art 的阶梯画法（STAIR / stairScaffold / stairCardSlot / stairCard），
+// 本页只做「年级 → 列」「册 → 卡」的排布（N2 不另写一套画法）。
+// **没有山体、没有海拔轴、没有楼门**——它们属维度 A / C（N1 场景互斥）。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 学段三级台阶（真源 = STAIR.treadY，art.js 定义踏面高；页面只出段名与起止年级）。 */
+const STAIR_STAGES = [
+  { code: 'PRIMARY', name: '小学段', from: 1, to: 6 },
+  { code: 'JUNIOR', name: '初中段', from: 7, to: 9 },
+  { code: 'SENIOR', name: '高中段', from: 10, to: 12 }
+]
+
+/** 每个年级这一列收了几本人教版册（≤2：数据口径，见 w6-c 任务书 N5）。 */
+const stairGrades = computed(() => {
+  const byGrade = new Map()
+  for (const bk of books.value) {
+    if (!byGrade.has(bk.grade)) byGrade.set(bk.grade, [])
+    byGrade.get(bk.grade).push(bk)
+  }
+  const out = []
+  for (let g = 1; g <= 12; g += 1) {
+    const list = (byGrade.get(g) || []).slice(0, 2) // N5：一列最多 2 张
+    out.push({ grade: g, stageName: stageName(g), books: list, count: list.length })
+  }
+  return out
 })
 
-/** 点一间店（= 一节）：把这一间的楼门带到楼前一条街上（不直接进楼，先看清这一间有哪些门）。 */
-function pickStorefront(code) {
-  districtPick.value = code
-  const node = chainNodes.value.find((n) => n.code === code)
-  if (!node) return
-  // 这一间的门要能点开：确保该年级的 code→id 在（同 ensureKpIds 读面）
-  ensureKpIds(gradeOf(node.grade))
+/** 学段台阶带（图例与 SVG 台阶同源：踏面高从 STAIR.treadY 读）。 */
+const stairStages = computed(() =>
+  STAIR_STAGES.map((s) => ({
+    ...s,
+    y: stairTreadY(s.code),
+    has: stairGrades.value.some((g) => g.grade >= s.from && g.grade <= s.to && g.count > 0)
+  }))
+)
+
+/** 册卡落点：单卡正中；两卡上下分开（一列 ≤2 张，y 真源在 `stairCardSlot`）。 */
+const stairCards = computed(() => {
+  const out = []
+  for (const g of stairGrades.value) {
+    g.books.forEach((bk, j) => {
+      out.push({
+        code: bk.code,
+        name: bk.name,
+        grade: g.grade,
+        gradeName: bk.gradeName,
+        stageCode: bk.stageCode,
+        stageName: bk.stageName,
+        slot: j,
+        branches: bk.branches,
+        branchNames: bk.branchNames,
+        chapters: bk.chapters,
+        x: stairColX(g.grade),
+        y: stairCardSlot(g.grade, j, g.books.length),
+        prims: stairCard(stairColX(g.grade), stairCardSlot(g.grade, j, g.books.length), bk.textbook, {})
+      })
+    })
+  }
+  return out
+})
+
+/** 空位（该年级这一科还没收录人教版册）→ 画空卡明示，不造假册（同 V5-N10 诚实口径）。 */
+const stairEmptySlots = computed(() => {
+  const out = []
+  for (const g of stairGrades.value) {
+    if (g.count > 0) continue
+    out.push({ grade: g.grade, x: stairColX(g.grade), y: stairCardSlot(g.grade, 0, 1) })
+  }
+  return out
+})
+
+/** 我在读（与维度 A 同一个 meGrade / meY 口径：两维度不会说我读两个年级）。 */
+const stairMeColX = computed(() => stairColX(meGrade.value))
+/** 「我在读」标记的带（banner）：与册卡同一列、挂在踏面上方一档，绶带垂到踏面。 */
+const stairMeBadgeY = computed(() => stairTreadY(stageCodeOfGrade(meGrade.value)) - STAIR.cardLift - STAIR.cardH - 16)
+const stairMePrims = computed(() => {
+  if (dim.value !== 'grades') return []
+  const ty = stairTreadY(stageCodeOfGrade(meGrade.value))
+  const x = stairMeColX.value
+  const top = ty - STAIR.cardLift - STAIR.cardH - 16
+  return [
+    { k: 'path', c: 'w-world-banner-cut', d: `M${x - 13} ${top - 4}L${x + 13} ${top - 4}L${x + 13} ${top + 14}L${x - 13} ${top + 14}Z` },
+    { k: 'poly', c: 'w-world-banner', points: `${x - 15},${top - 16} ${x + 15},${top - 16} ${x + 15},${top + 12} ${x},${top + 22} ${x - 15},${top + 12}` },
+    { k: 'path', c: 'w-world-banner-cut', d: `M${x} ${top + 2}V${top + 12}`, w: 1.4 }
+  ]
+})
+/** 学段码（与共享件 STAGE_SPANS 同源：小 1-6 / 初 7-9 / 高 10-12）。 */
+function stageCodeOfGrade(g) {
+  return STAGE_SPANS.find((s) => g >= s.min && g <= s.max)?.code || 'PRIMARY'
+}
+
+/** 阶梯画布 primitives（层序即语义：三级台阶 → 空位 → 册卡 → 我在读）。 */
+const stairPrims = computed(() => {
+  if (dim.value !== 'grades') return []
+  const out = [...stairScaffold()]
+  for (const e of stairEmptySlots.value) for (const p of stairCard(e.x, e.y, null, { empty: true })) out.push(p)
+  for (const c of stairCards.value) for (const p of c.prims) out.push(p)
+  for (const p of stairMePrims.value) out.push(p)
+  return out
+})
+
+/** 点一册卡：走维度 B 既有的选中/详情路径（册章下钻不回归，N3）。 */
+function pickStairBook(c) {
+  selectBook(c.code)
 }
 
 /** 城区有效但还没有选中峰（直进城区 / 切学科后）→ 落到第一个峰：城区要有链才能铺。
@@ -1554,18 +1947,21 @@ async function openCave(node) {
 }
 
 /**
- * v5（W6-a）点楼门（= 知识点洞口）进楼：≤2 步进洞的第一步（比 v4 少两层）。
- * 楼门与节洞带的差别只在「入口是谁」：v4 是「点年级洞门 → 节洞带 → 点节进洞」，
- * v5 是「点楼门 → 直接进楼」——楼内跑**同一条**智学慧眼闭环（同一个 CaveScene）。
+ * v6（W6-c）点楼门（= 知识点洞口）进楼：≤2 步进洞的**第一步**（比 v4 少两层）。
+ * 楼门与节洞带的差别只在「入口是谁」：维度 A 是「点年级洞门 → 节洞带 → 点节进洞」，
+ * 城区是「点楼门 → 直接进楼」——楼内跑**同一条**智学慧眼闭环（同一个 CaveScene）。
+ *
+ * v6 起门对象自带 `branch` / `node`（城区一次铺全部分支，`chainNodes` 只装得下当前这一支，
+ * 拿它反查会把门全部判成「找不到」——那正是 v5 `openKpDoor` 的老路，现在不改）。
  */
 async function openKpDoor(d) {
   if (!d || caveLoading.value) return
-  const node = chainNodes.value.find((n) => (n.kps || []).some((k) => k.code === d.code))
+  const node = d.node || chainNodes.value.find((n) => (n.kps || []).some((k) => k.code === d.code))
   if (!node) return
   caveLoading.value = true
   try {
     await ensureKpIds(gradeOf(node.grade))
-    const id = kpIdByCode.value[d.code]
+    const id = d.id || kpIdByCode.value[d.code]
     const cave = id ? await getKpCave(id) : null
     // kpCode 指向被点的那个知识点：楼内一进门就落在这扇门上
     caveTarget.value = { node, kpCode: d.code, cave: cave || null, fromDistrict: true }
@@ -1631,15 +2027,16 @@ async function loadChain(branch, force = false) {
   // 洞带默认落在「光脉前沿」（或第一个年级）：一进来就站在光到过的地方。
   //
   // 但**城区窗口不能跟着前沿跳**：从楼门进楼、答完出洞会重取链，此时 revealGradeNum 因刚点亮而前移，
-  // 这里若照旧把窗口落到新前沿，用户刚才踩的那间店就被挤出窗口——「楼门→书房→出洞」走完回来，
-  // 眼前这条街换了位置（实测复现：76 间店 → 68 间，目标那间不见了）。
-  // 故只要 districtPick 还在（正在看/刚出洞的那一间），窗口就优先钉在它的年级上。
-  if (districtPick.value) {
-    const keep = chainNodes.value.find((n) => n.code === districtPick.value)
-    if (keep) {
-      const g = gradeList.value.find((x) => x.grade === keep.grade)
-      if (g) bandGrade.value = g.grade
-    }
+  // 这里若照旧把窗口落到新前沿，用户刚才踩的那栋楼就被挤出视野——「楼门→书房→出洞」走完回来，
+  // 眼前这条街换了位置（v5 实测复现过同类：76 间店 → 68 间，目标那间不见了）。
+  // 故只要城区还选中着一栋楼（cityPick 在），窗口就优先钉在它所属的年级上。
+  const keepChapter = cityPickChapter.value
+  if (keepChapter) {
+    const keepNode = (cityChains.value[keepChapter.branch] || { nodes: [] }).nodes.find(
+      (n) => (n.chapter || n.chapterName || n.code) === keepChapter.chapter.code
+    )
+    const g = keepNode ? gradeList.value.find((x) => x.grade === keepNode.grade) : null
+    if (g) bandGrade.value = g.grade
   }
   if (!gradeList.value.some((g) => g.grade === bandGrade.value)) {
     const front = gradeList.value.find((g) => g.gradeNum === revealGradeNum.value) || gradeList.value[0]
@@ -1724,26 +2121,17 @@ const relatedBooks = computed(() => {
 // 底图把「纯色天空」让位给本页渐变（sky:false），其余天光/远山/云鸟/地景/海拔刻度照旧。
 const SCAFFOLD = summitScaffold({ sky: false })
 
+// 维度 A（学科知识体系）独用：群山 + 雾 + 洞门 + 走过的路，全在 SUMMIT 画布（viewBox 1200×820）。
+// 维度 B / C 各走自己的画布（`stairPrims` / `cityPrims`）——v6 起**不再有共用的 scenePrims 分支**，
+// 否则同一份 prim 会同时挂到三块画布上，那正是场景互斥被打破的方式（N1）。
 const scenePrims = computed(() => {
   const out = [...SCAFFOLD]
-  if (dim.value === 'grades') for (const sb of stageBands.value) out.push(sb.prim)
-  // v5（W6-a）学科城区：层序即语义——先路（大道与楼间路）→ 再楼（一间店）→ 最后楼前一条街的门
-  if (dim.value === 'district') {
-    for (const p of avenuePrims.value) out.push(p)
-    for (const r of districtRoads.value) { out.push(r.wide); out.push(r.core) }
-    for (const s of districtStorefronts.value) for (const p of s.prims) out.push(p)
-    for (const p of kpPathPrims.value) out.push(p)
-  }
-  if (dim.value === 'branches') {
-    for (const pl of peakLayout.value) {
-      for (const p of pl.spire) out.push(p)
-      for (const p of pl.massif.prims) out.push(p)
-      for (const p of pl.trailPrims) out.push(p)
-      for (const p of pl.flags) out.push(p)
-      for (const c of pl.children) for (const p of c.prims) out.push(p)
-    }
-  } else {
-    for (const bk of books.value) for (const p of bk.prims) out.push(p)
+  for (const pl of peakLayout.value) {
+    for (const p of pl.spire) out.push(p)
+    for (const p of pl.massif.prims) out.push(p)
+    for (const p of pl.trailPrims) out.push(p)
+    for (const p of pl.flags) out.push(p)
+    for (const c of pl.children) for (const p of c.prims) out.push(p)
   }
   // v4 渲染序（层序即语义）：群山 → 晨雾（M1，罩住未明）→ 年级洞门（M3，雾里也找得到）
   // → 走过/已亮的路（M1/M2，雾压不住）。
@@ -2114,22 +2502,33 @@ const hereText = computed(() => {
   return `${knowledgeStore.subjectInfo?.name || '学科'} · ${gradeName(meGrade.value)}`
 })
 
-const mapAria = computed(() =>
-  dim.value === 'branches'
-    ? `学科知识体系登峰图：${peaks.value.length} 座分支峰沿年级海拔轴排布，当前 ${knowledgeStore.subjectInfo?.name || '学科'}`
-    : `K12 阶段登峰图：学段→年级→人教版册，共 ${books.value.length} 册`
-)
+/**
+ * 三张画布各自的 aria（N1 场景互斥的读面一端）：每张画布只说自己的世界，
+ * 不把另一张画布的东西写进自己的介绍里（K12 页不提楼门，城区页不提册）。
+ */
+const mapAria = computed(() => {
+  if (dim.value === 'branches') {
+    return `学科知识体系登峰图：${peaks.value.length} 座分支峰沿年级海拔轴排布，当前 ${knowledgeStore.subjectInfo?.name || '学科'}`
+  }
+  if (dim.value === 'grades') {
+    return `K12 升学阶梯：横向 12 个年级、三级学段台阶抬升，共 ${books.value.length} 本人教版册落在踏面上`
+  }
+  const rows = cityRows.value.filter((r) => r.chapters.length)
+  return `学科城区街区网格：${rows.length} 条街区（分支）× 各街区楼栋（章），楼门 = 知识点，已选 ${cityDoorPoints.value.length} 扇门`
+})
 const mapNote = computed(() => {
   if (dim.value === 'district') {
-    return chainReady.value
-      ? `横 = 年级大道（K12）· 纵 = 街区（学科）· 楼门 = 知识点洞口（本窗 ${districtStorefronts.value.length} 间店 / ${kpDoorPoints.value.length} 扇门）`
-      : '城区要等链取到才铺——不造假楼'
+    const rows = cityRows.value.filter((r) => r.chapters.length)
+    return cityLoading.value
+      ? '城区正在一次取齐各街区的链——不造假楼'
+      : `行 = ${rows.length} 条街区（分支）· 列 = 楼栋（章）· 楼门 = 知识点（选中那栋 ${cityDoorPoints.value.length} 扇）`
   }
-  return dim.value === 'branches'
-    ? chainReady.value
+  if (dim.value === 'branches') {
+    return chainReady.value
       ? `晨雾罩住未走到的一段 · 光脉已到 ${gradeShort(revealGradeNum.value)} · 走过与点亮的看得见（共 ${peaks.value.length} 座峰）`
       : `山脚 = 该分支 K12 起点 · 峰顶 = K12 终点 · 峰顶之上 = 学科纵深（共 ${peaks.value.length} 座峰）`
-    : `营地 = 人教版册（共 ${books.value.length} 册）· 纵向是年级，横向是册与章`
+  }
+  return `三级学段台阶 = 小学 → 初中 → 高中 · 册卡站在踏面上（共 ${books.value.length} 册 · 一列最多 2 张）`
 })
 
 // ── 切换 ─────────────────────────────────────────────────────────────────
@@ -2150,20 +2549,20 @@ function switchDim(code) {
     // 城区与学科峰共用同一条链：切进来即取（异地缓存命中时不重复取）。
     if (hit) loadChain(code0)
   }
-  // v5：城区一进来就补当前窗口的 kpId（楼门是知识点洞口，"code→id" 不补则点不开门）
-  if (code === 'district') nextTick(() => refreshWindowKpIds())
+  // v6（W6-c）城区一进来就一次取齐各街区的链（行 = 分支数，缺一支就缺一条街），
+  // 并补选中楼门排所在年级的 code→id（楼门是知识点洞口，「code→id」不补则点不开门）。
+  if (code === 'district') {
+    loadCityChains()
+    nextTick(() => refreshCityKpIds())
+  }
 }
 
-/** 城区当前窗口（前后各 2 个年级）的 code→id 补齐：与 ensureKpIds 同一读面，按需取。 */
-async function refreshWindowKpIds() {
-  if (dim.value !== 'district' || !chainReady.value) return
-  const want = activeGrade.value ? activeGrade.value.gradeNum : (gradeList.value[0] ? gradeList.value[0].gradeNum : 1)
-  const grades = new Set()
-  for (const n of chainNodes.value) {
-    const gn = gradeOf(n.grade)
-    if (Math.abs(gn - want) <= 2) grades.add(gn)
-  }
-  for (const gn of grades) await ensureKpIds(gn)
+/** 城区选中楼的门排所在年级的 code→id 补齐：与 ensureKpIds 同一读面，按需取。 */
+async function refreshCityKpIds() {
+  if (dim.value !== 'district') return
+  const p = cityPickChapter.value
+  if (!p) return
+  for (const n of cityPickSections.value) await ensureKpIds(gradeOf(n.grade))
 }
 
 function switchSubject(subj) {
@@ -2212,6 +2611,16 @@ watch(dim, (d) => {
     bandGrade.value = null
     caveTarget.value = null
   }
+  // v6：城区画布要「行 = 分支数」，缺一支就缺一条街 → 切进来即按分支并行取齐（有缓存不重取）。
+  // 放在 watch 里而不是只在 switchDim 里：切学科后 peakLayout 变了，城区也要按新分支重铺。
+  if (d === 'district') {
+    cityPick.value = null
+    loadCityChains()
+  }
+})
+// 切学科（或学科首屏就绪）后：城区缓存按 subject 判重，这里补一次触发，让新学科的分支链取到。
+watch(cityBranches, () => {
+  if (dim.value === 'district') loadCityChains()
 })
 // 峰集合就绪/换学科后：保证「我在这」永远钉在一座实际上存在的峰上（默认第一座）。
 watch(peakLayout, (list) => {
@@ -2333,9 +2742,19 @@ onBeforeUnmount(() => {
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
-/* 窄屏：横向可滚，保证 12 级海拔刻度不被压扁 */
-.map-scroll { width: 100%; overflow-x: auto; overflow-y: hidden; }
+/* 窄屏：横向可滚，保证三级台阶 / 街区网格不被压扁（min-width，不硬缩——N10）。
+   三张画布各有自己的宽高比与最小宽：切维度 = 换一块画布，不是换一张皮（N1）。
+   ⚠️ 基础态（维度 A 群峰）必须留自己的 aspect-ratio：`.map-svg` 是 position:absolute，
+   父容器没有高度就整块塌成 0 → SVG 高 0 = 世界页在主维度上直接白屏。
+   （这是 v6 重构时被 .is-stair/.is-city 掩护掉的一处回归，验收脚本在真实浏览器里逮到的。） */
+/* 画布滚动容器：城区画布是数据算出来的真实宽高（一支跨 G1–G12 → ~50 列 × 168 ≈ 8600px 宽、
+   10 条街区 ≈ 2028px 高），两个方向都要能滚——`meet` 硬缩会把楼栋糊成蚂蚁（N10 不硬缩）。
+   另两个维度画布是定宽（1600），只横向滚即可；y 轴留给城区（街区行数 = 分支数）。 */
+.map-scroll { width: 100%; overflow-x: auto; overflow-y: auto; max-height: 74vh; overscroll-behavior: contain; }
 .map-scene { position: relative; width: 100%; min-width: 560px; aspect-ratio: 1200 / 820; }
+.map-scene.is-stair { min-width: 900px; aspect-ratio: 1600 / 760; }
+/* 城区的宽高完全由 cityLayout 内联给（数据驱动），不让 aspect-ratio 与 min-width 反客为主 */
+.map-scene.is-city { min-width: 900px; }
 .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 .map-legend {
@@ -2425,15 +2844,29 @@ onBeforeUnmount(() => {
   max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* —— v5 大道里程碑（HTML 叠层；真源 = avenueMarks ← gradeX）—— */
-.ave-mark { position: absolute; z-index: 2; transform: translate(-50%, -50%); }
-.ave-mark-text {
-  display: block; font-size: 9px; line-height: 1; color: var(--world-node-text);
-  background: var(--world-node-bg); border: 1px solid var(--world-node-border);
-  border-radius: 999px; padding: 2px 6px; white-space: nowrap;
-}
-.ml-swatch.is-road { background: var(--world-road); border: 1px solid var(--world-road-edge); }
-.ml-swatch.is-shop { background: var(--world-storefront-top); border: 1px solid var(--world-storefront-right); }
+/* ── v6（W6-c）图例色片：三张画布各说自己那块画布的话（零裸色，全取令牌）── */
+.ml-swatch.is-tread { background: var(--world-stair-tread); border: 1px solid var(--world-stair-edge); }
+.ml-swatch.is-card { background: var(--world-stair-card-left); border: 1px solid var(--world-stair-card-right); }
+.ml-swatch.is-card-empty { background: var(--world-stair-card-empty); border: 1px dashed var(--world-stair-card-spine); }
+.ml-swatch.is-banner { background: var(--world-flag); border: 1px solid var(--world-stair-card-notch); }
+.ml-swatch.is-bld { background: var(--world-storefront-left); border: 1px solid var(--world-storefront-right); }
+.ml-swatch.is-road { background: var(--world-city-street); border: 1px solid var(--world-city-curb); }
+.ml-swatch.is-barricade { background: var(--world-barricade-a); border: 1px solid var(--world-barricade-b); }
+.ml-dot.is-bld-lit { background: var(--world-storefront-lit); box-shadow: 0 0 0 3px var(--world-node-halo-lit); }
+.ml-dot.is-bld-half { background: var(--world-node-halo-half); box-shadow: 0 0 0 3px var(--world-node-halo-half); }
+
+/* 册卡热点：一册 = 一卡（K12 阶梯的一列一张，列宽 STAIR.colW=112 / 卡宽 cardW=92） */
+.hot-book .hot-badge { width: 22px; height: 22px; }
+.hot-book .hot-glyph { width: 12px; height: 12px; }
+/* 标签不许超过卡宽 92：超过就会横向溢出到邻列——册卡热点是**绝对定位按百分比**的，
+   画布一变宽（1:1 后 1600px）、标签还是同一个 px，重叠就是这么来的（N5 两两交集 = 0
+   在真实浏览器里被逮到过：68px 标签挤在 63px 缩放列距里 → 每对相邻列交 5px）。 */
+.hot-book .hot-label { max-width: 92px; }
+/* 楼栋热点：一栋 = 一章（街区网格上的可点区域，与册卡热点同一套 .hot 语言） */
+.hot-building .hot-badge { width: 22px; height: 22px; }
+.hot-building .hot-glyph { width: 12px; height: 12px; }
+/* 楼宽 CITY.buildingW=132 / 列距 colW=168：标签留 18px 步道余量 */
+.hot-building .hot-label { max-width: 132px; }
 
 .hot:hover .hot-badge { transform: translateY(-3px) scale(1.06); border-color: var(--world-ring-mastered); }
 .hot:active .hot-badge { transform: scale(0.9); }
