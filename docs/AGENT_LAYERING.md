@@ -112,4 +112,8 @@
 - **底座 = 契约层**（保持小而稳，≈712K）。
 - **业务能力 = 插件**（`agent.skill` / 工具插件，读 `plugin.json` 即可装）。
 - 插件划分**必须**通过本文五条判据；跨界的（如 `LlmService`）按 V1/V2 归位。
-- 相关：`docs/PLUGIN_ARCHITECTURE.md`（总则）、`docs/AGENT_SKILL_PLUGIN_CONTRACT.md`（P-3 契约）、`docs/AGENT_BENCHMARK_PROTOCOL.md`（定期对标）。
+- 相关：`docs/PLUGIN_ARCHITECTURE.md`（总则）、`docs/AGENT_SKILL_PLUGIN_CONTRACT.md`（P-3 契约）、`docs/AGENT_BENCHMARK_PROTOCOL.md`（定期对标）、`docs/EXTERNAL_AGENT_HARNESS.md`（调外部 agent：Claude Code / Codex）。
+
+## 八、外部 agent 后端（归属裁决）
+
+"底座调用本地 Claude Code / Codex" 经五判据裁决：**屑底座能力**（换行业仍成立 / 换场景不改代码），但归为**第二类模型后端**（非普通工具）——契约见 `docs/EXTERNAL_AGENT_HARNESS.md`。两个接入点：① 当模型后端被路由选中（换脑子）；② 当 `agent.delegate` 委派工具（派活儿）。

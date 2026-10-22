@@ -18,7 +18,13 @@ else
   echo "  OpenClaw               : ✗ 未找到（设 OPENCLAW_DIR）"
 fi
 echo "  OpenClaw npm 最新      : $(timeout 12 npm view openclaw version 2>/dev/null || echo '(离线)')"
-echo "  Hermes 源码            : $([ -d "$HOME/hermes/.git" ] && echo '✓ 有仓库' || echo '✗ 无源码（降级：仅兼容面）')"
+HR="${GRI_REFS:-$HOME/refs}/hermes-agent"
+if [ -d "$HR/.git" ]; then
+  echo "  Hermes 源码            : ✓ $(git -C "$HR" rev-parse --short HEAD) ($(git -C "$HR" log -1 --format=%ci))
+                             $HR ($(du -sh "$HR" 2>/dev/null | awk '{print $1}'))"
+else
+  echo "  Hermes 源码            : ✗ 未取（跑 bash scripts/fetch-references.sh）"
+fi
 
 echo
 echo "▍GRI 底座导出面（packages/agent-core/src/index.js）"
@@ -26,7 +32,7 @@ grep -oE "^export \{[^}]*\}|^export .*from" packages/agent-core/src/index.js 2>/
   || echo "  (读不到 index.js)"
 
 echo
-echo "▍14 维度对标骨架（有=✓ / 弱=~ / 无=✗ —— 待人工判定）"
+echo "▍15 维度对标骨架（有=✓ / 弱=~ / 无=✗ —— 待人工判定）"
 cat <<'TABLE'
    1 推理环            GRI:AgentCore.run            OC:agent-runtime
    2 工具契约          GRI:makeTool                 OC:defineToolPlugin(+outputSchema/optional)
@@ -42,6 +48,7 @@ cat <<'TABLE'
   12 沙箱/信任边界     GRI:未定义                   OC:in-process非沙箱(明示)
   13 多模态            GRI:multimodalModel          OC:16类能力含
   14 观测/审计         GRI:agent.tool_runs          OC:doctor/plugins inspect
+  15 外部agent后端     GRI:—                        OC:registerCliBackend / Hermes:delegate_tool
 TABLE
 
 echo

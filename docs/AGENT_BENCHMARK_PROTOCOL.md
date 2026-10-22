@@ -10,9 +10,14 @@
 | 对象 | 本地是否有源 | 取源方式 | 权威度 |
 |---|---|---|---|
 | **OpenClaw** | ✅ 有：`~/.npm-global/lib/node_modules/openclaw`（v**2026.10.5**） | `npm view openclaw version` 取最新；源码在 `dist/*.mjs`（打包产物）；**文档在 `docs/`（22M，权威）**；`api.github.com` 可达（`200`）可拉 release/changelog | 文档 + dist 双源 |
-| **Hermes** | ⚠️ **无源码**：`/home/ubantu/hermes` 仅一个 `state.txt` | ① `docs/plugins/architecture.md` 的能力表内有 `migrate-hermes` 迁移 provider（可查 OpenClaw 侧对 Hermes 的兼容面）；② `~/knowledge-base/session-exports/hermes/*.md` 有历史能力线索（非源码） | **降级：以 OpenClaw 文档中的 Hermes 兼容面 + 会话摘要为准**，标注"非源码" |
+| **Hermes** | ✅ **有源码**：`~/refs/hermes-agent`（commit `275c211c`，Python，MIT，255k★，2026-10-21 pushed） | `bash scripts/fetch-references.sh`（浅克隆 depth 1 仅 main，359M **不进 git**） | **完整源码对标** |
+| OpenClaw 官方仓库 | ✅ `github.com/openclaw/openclaw`（`api.github.com` 200 可达） | `curl api.github.com` 取 release/changelog | 补充源 |
+| Hermes 官方仓库 | ✅ `github.com/NousResearch/hermes-agent`（`git ls-remote` 通） | 同 `fetch-references.sh` | 权威 |
 
-> 🔎 **取源结论**：**OpenClaw 可作完整对标基准**（文档+dist+GitHub）。**Hermes 目前只能对标"被 OpenClaw 兼容的那一面"**——除非拿到其仓库地址（见"待用户确认"）。
+> 🔎 **取源结论（2026-10-22 更新）**：**OpenClaw 与 Hermes 均为完整对标基准**。
+> - OpenClaw = 权威 docs(22M) + dist 打包源 + GitHub；本地 v**2026.10.5**。
+> - Hermes = 全量 Python 源码（`agent/` 331 文件、`tools/` 292 文件、`acp_adapter/` 22 文件、`agent/transports/` provider 传输层）。
+> - 取源脚本：`scripts/fetch-references.sh`（落 `~/refs/`，**不进 git**）。
 
 ---
 
@@ -34,6 +39,7 @@
 | 12 | **沙箱/信任边界** | 原生插件 **in-process、非沙箱**（明示） | 未定义 ⚠️ |
 | 13 | **多模态** | 语音/图像/视频生成、媒体理解（16 类能力含） | `multimodalModel`（neva-22b）⚠️ 仅调用 |
 | 14 | **观测/审计** | `openclaw doctor` / `plugins inspect` / 兼容信号 | `agent.tool_runs` 审计 ⚠️ 无体检命令 |
+| 15 | **外部 agent 后端** | CLI backend（`api.registerCliBackend`）+ Hermes `delegate_tool`/`agent/transports/*` | ❌ 无（→ 设计见 `docs/EXTERNAL_AGENT_HARNESS.md`） |
 
 > 每条对标都须落到 **"有/无/弱"** 三级判定，禁止模糊描述。
 
@@ -66,6 +72,15 @@
 
 ## 五、待用户确认
 
-1. **Hermes 仓库地址**——给了就能纳入完整双源对标；否则长期按"兼容面"降级。
+1. ~~**Hermes 仓库地址**~~ ✅ 已给：`github.com/NousResearch/hermes-agent`，已纳入完整双源对标。
 2. **对标节奏**：月度 / 季度 / 仅"OpenClaw 发版时"？
 3. **底座更新的授权级别**：发现底座级差距时，是"直接立卡派发"还是"先报你裁决"？
+
+## 六、Hermes 首轮对标要点（2026-10-22 已取源）
+
+| Hermes 能力 | 位置 | 对 GRI 的意义 |
+|---|---|---|
+| `delegate_tool`（子 agent 委派） | `tools/delegate_tool*.py`（10+ 文件） | **正是"调外部 agent"的同族能力**——见 `EXTERNAL_AGENT_HARNESS.md` |
+| `agent/transports/*`（provider 传输层） | `anthropic.py`/`codex.py`/`bedrock.py`/`chat_completions.py` | GRI `LlmClient` 可借鉴其"传输只管格式转换"的单一职责 |
+| `acp_adapter/`（把自己暴露为 ACP agent） | 22 文件 | 与 GRI `AcpAdapter` 对标 |
+| 插件面 | `tools/` 292 文件、`skills/` 14 | 体量大，按 14 维度逐项比 |
