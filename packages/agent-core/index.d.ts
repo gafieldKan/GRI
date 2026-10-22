@@ -164,3 +164,74 @@ export declare class AcpAdapter {
   constructor(agentCore: AgentCore, opts?: Record<string, any>);
   asTool(): Tool | null;
 }
+
+// ─── 外部 agent 后端端口（CliBackendRegistry，B-3a）──────────────────────────
+// 第二类模型后端：把本机已装 CLI agent（claude/codex/openclaw/hermes）当可委派推理后端。
+// 只描述 argv 与解析，不碰 apiKey/token、不读 env、不 import 业务。
+
+/** 单行/整体解析产物：text 覆盖累加，append=true 表示追加（纯文本后端）。 */
+export interface CliParseResult {
+  text?: string;
+  sessionId?: string;
+  append?: boolean;
+}
+
+/** 一个 CLI 后端 = 声明式描述（不含密钥）。 */
+export interface CliBackend {
+  id: string;
+  label: string;
+  bin: string;
+  resumeKey?: string | null;
+  timeoutMs?: number;
+  buildArgs(input: { prompt: string; cwd?: string }): string[];
+  parseLine(line: string, state?: { text: string; sessionId: string | null }): CliParseResult | null;
+  /** 整体 stdout 解析（openclaw 多行 JSON 信封等非逐行可析者用）。 */
+  parseOutput?(stdout: string): { text?: string; sessionId?: string; error?: string } | null;
+  /** 显式放权（allowDangerous）时才追加的危险旗标。 */
+  dangerousFlags?: string[];
+}
+
+/** run() 返回形状（stderr 已截断 ≤512B；零明文）。 */
+export interface CliRunResult {
+  text: string;
+  sessionId: string | null;
+  exitCode: number;
+  stderr: string;
+  pid: number | null;
+  timedOut: boolean;
+  error: string | null;
+  signal?: string | null;
+}
+
+/** 危险放权旗标清单（C3）。 */
+export declare const DENYLIST: ReadonlyArray<string>;
+/** 查 argv 首个命中 DENYLIST/危险前缀族的 token，无则 null。 */
+export declare function findDeniedArg(args: string[]): string | null;
+
+export declare const claudeCodeBackend: CliBackend;
+export declare const codexBackend: CliBackend;
+export declare const openclawBackend: CliBackend;
+export declare const hermesBackend: CliBackend;
+/** 四内置后端按 id 索引（`BACKENDS['claude-code']`）。 */
+export declare const BACKENDS: Readonly<Record<string, CliBackend>>;
+
+export declare class CliBackendRegistry {
+  constructor(backends?: CliBackend[] | Record<string, CliBackend>);
+  register(backend: CliBackend): this;
+  registerAll(backends: CliBackend[] | Record<string, CliBackend>): this;
+  has(id: string): boolean;
+  get(id: string): CliBackend | null;
+  list(): Array<Pick<CliBackend, 'id' | 'label' | 'bin' | 'timeoutMs' | 'resumeKey'>>;
+  /** 只读问答执行器：spawn（shell:false/detached）→ 行流式解析 → 超时杀进程组。 */
+  run(
+    id: string,
+    opts: { prompt: string; cwd?: string; timeoutMs?: number; allowDangerous?: boolean },
+  ): Promise<CliRunResult>;
+}
+
+/** 建预装四内置后端的注册表（可再追加自定义后端；撞名抛错）。 */
+export declare function createCliBackendRegistry(
+  extra?: CliBackend[] | Record<string, CliBackend>,
+): CliBackendRegistry;
+/** 进程级默认注册表。 */
+export declare const cliBackends: CliBackendRegistry;
