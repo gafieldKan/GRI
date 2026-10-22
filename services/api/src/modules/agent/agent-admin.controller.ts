@@ -1,7 +1,8 @@
-import { Controller, Get, Put, Body, Req, Query } from '@nestjs/common';
+import { Controller, Get, Put, Body, Req, Query, Optional } from '@nestjs/common';
 import { Request } from 'express';
 import { DatabaseService } from '../../database/database.service';
 import { OrganizationService } from '../organization/organization.service';
+import { AgentCredentialsService } from './agent-credentials.service';
 import { ModelRouter, storeFrom } from '@gri/agent-core';
 
 /**
@@ -11,7 +12,10 @@ import { ModelRouter, storeFrom } from '@gri/agent-core';
  * 现状曾在《前言》里是「任意登录用户可配」——本题已收紧到运营角色，防学生/普通用户改全局模型路由。
  *
  * 切换 = 写 agent.llm_routes 表 → 下一轮调用实时生效（ModelRouter 每轮读库）。
- * apiKey 永不入库：本管理面不接收/不回显任何密钥，apiKey 一律由部署 env/SecretRef 供给。
+ *
+ * 凭据（B-1 凭据缝）：可选 `api_key` 为**只写**入参 —— 经底座 CredentialStore 以 AES-256-GCM
+ * 密文落 agent.llm_credentials，明文永不落库、永不回传；`api_key` 不进 agent.llm_routes（路由行可被
+ * 运营读，凭据行独立）。GET 只回 `has_key` + `hint`（后 4 位掩码）。不传 `api_key` 时行为与旧版完全一致。
  * 缺省：无路由行 → env（LLM_MODEL/LLM_API_KEY…）。
  */
 @Controller('agent/admin/routes')
@@ -19,32 +23,46 @@ export class AgentAdminRoutesController {
   constructor(
     private readonly db: DatabaseService,
     private readonly org: OrganizationService,
+    @Optional() private readonly creds?: AgentCredentialsService,
   ) {}
 
   private _router(): ModelRouter {
-    return new ModelRouter(storeFrom((text: string, params?: unknown[]) => this.db.query(text, params)));
+    // 注入凭据读取器（未配置主密钥 → null → 只走 env，行为同今日）
+    return new ModelRouter(
+      storeFrom((text: string, params?: unknown[]) => this.db.query(text, params)),
+      null,
+      this.creds?.store ?? null,
+    );
   }
 
   private async _guard(req: Request): Promise<void> {
     await this.org.assertSiteOperator((req as any).auth?.externalId as string);
   }
 
-  /** 当前生效的全部可配路由（含 env 缺省说明）。仅运营。 */
+  /** 当前生效的全部可配路由（含 env 缺省说明）+ 各行凭据掩码。仅运营。 */
   @Get()
   async list(@Req() req: Request): Promise<any> {
     await this._guard(req);
     const router = this._router();
     const rows = await router.list();
+    const routes = await Promise.all(
+      (rows || []).map(async (r: any) => {
+        if (!this.creds?.store) return { ...r, has_key: false, hint: null };
+        const meta = await this.creds.store.meta(r.route_key);
+        return { ...r, has_key: meta.has_key, hint: meta.hint };
+      }),
+    );
     return {
       success: true,
-      routes: rows,
-      note: 'apiKey 不经此面存取；无路由行时回退环境变量缺省。',
+      routes,
+      credentialsEnabled: !!this.creds?.enabled,
+      note: 'apiKey 只写不读：列表仅回 has_key + hint（后 4 位）；无路由行时回退环境变量缺省。',
     };
   }
 
   /**
-   * 增改一条路由。body: { route_key, provider?, model?, multimodal_model?, base_url?, enabled? }
-   * 写表即切换，下一轮生效。仅运营。
+   * 增改一条路由。body: { route_key, provider?, model?, multimodal_model?, base_url?, enabled?, api_key? }
+   * 写表即切换，下一轮生效。`api_key` 可选且**只写**（密文落 agent.llm_credentials；不回显）。仅运营。
    */
   @Put()
   async upsert(@Req() req: Request, @Body() body: any): Promise<any> {
@@ -53,15 +71,51 @@ export class AgentAdminRoutesController {
     if (!body?.route_key) {
       return { success: false, error: 'route_key 必填（default | kind=<kind> | entity=<id>）' };
     }
+    const routeKey = String(body.route_key);
+    const apiKey = typeof body.api_key === 'string' ? body.api_key.trim() : '';
+    if (apiKey) {
+      // fail-fast：没有主密钥就不接收密钥（避免"看起来保存了"却无处可存）
+      if (!this.creds?.store) {
+        return {
+          success: false,
+          error: 'AGENT_CRED_MASTER_KEY 未配置 → 本服务不接受 api_key（key 不落库）；未写入任何变更',
+        };
+      }
+      if (apiKey.length < 8) {
+        return { success: false, error: 'api_key 过短（至少 8 字符）' };
+      }
+    }
+
     await router.set({
-      route_key: body.route_key,
+      route_key: routeKey,
       provider: body.provider,
       model: body.model,
       multimodal_model: body.multimodal_model,
       base_url: body.base_url,
       enabled: body.enabled ?? true,
     });
-    return { success: true, route_key: body.route_key, applied: true, note: '下一轮调用生效；apiKey 不落库' };
+    // 先落路由行再落凭据（凭据 FK → agent.llm_routes(route_key)）；不传 api_key → 完全不上凭据面（C9）
+    if (apiKey) {
+      await this.creds!.store!.set(routeKey, apiKey, { updatedBy: (req as any).auth?.externalId ?? null });
+      const meta = await this.creds!.store!.meta(routeKey);
+      return {
+        success: true,
+        route_key: routeKey,
+        applied: true,
+        has_key: meta.has_key,
+        hint: meta.hint,
+        note: '下一轮调用生效；api_key 只写不读（仅回掩码）。',
+      };
+    }
+    const meta = this.creds?.store ? await this.creds.store.meta(routeKey) : null;
+    return {
+      success: true,
+      route_key: routeKey,
+      applied: true,
+      has_key: !!meta?.has_key,
+      hint: meta?.hint ?? null,
+      note: '下一轮调用生效；api_key 只写不读（仅回掩码）。',
+    };
   }
 }
 

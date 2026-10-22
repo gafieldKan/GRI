@@ -11,6 +11,7 @@ export { makeTool } from './tool.js';
 export { SkillRegistry } from './skill-registry.js';
 export { parseSkillMarkdown, normalizeSkill } from './skill.js';
 export { MemoryStore } from './memory.js';
+export { CredentialStore, makeCipher } from './credential-store.js';
 export { storeFrom } from './store.js';
 export { McpClient, listMcpServers, bridgeMcpTools } from './mcp/client.js';
 export { McpPool } from './mcp/pool.js';

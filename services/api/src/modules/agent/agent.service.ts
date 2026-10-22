@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleDestroy, Optional } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
+import { AgentCredentialsService } from './agent-credentials.service';
 import {
   AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry,
   makeTool, storeFrom, McpPool,
@@ -175,7 +176,10 @@ export class AgentService implements OnModuleDestroy {
   /** 进程级 MCP 连接池：跨消息复用同一 server 连接（不每消息 spawn stdio 子进程）。 */
   private readonly mcpPool: McpPool;
 
-  constructor(private readonly db: DatabaseService) {
+  constructor(
+    private readonly db: DatabaseService,
+    @Optional() private readonly creds?: AgentCredentialsService,
+  ) {
     this.mcpPool = new McpPool(storeFrom((text: string, params?: unknown[]) => this.db.query(text, params)));
   }
 
@@ -198,7 +202,8 @@ export class AgentService implements OnModuleDestroy {
   ): Promise<{ core: AgentCore; memory: MemoryStore; entity: AgentEntity; subject: string; gradeLevel: number | null }> {
     const entity = await this._ensureEntity(entityId);
     const store = this._store();
-    const router = new ModelRouter(store);
+    // 凭据缝（B-1）：该生（entity=<id>）自持的 api key 优先，其次 default 凭据，最后 env（未配置 → null → 同今日）
+    const router = new ModelRouter(store, null, this.creds?.store ?? null);
     const memory = new MemoryStore(store);
     const toolDefs = this._teachingToolDefs();
     const tools = this._teachingTools().registerAll(toolDefs);

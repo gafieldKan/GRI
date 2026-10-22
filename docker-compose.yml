@@ -135,6 +135,9 @@ services:
       LLM_MODEL: ${LLM_MODEL:-deepseek-ai/deepseek-v4.1-flash}
       LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
       LLM_MULTIMODAL_MODEL: ${LLM_MULTIMODAL_MODEL:-nvidia/neva-22b}
+      # 每用户 api key 的凭据主密钥（B-1 凭据缝）：缺省空 → 凭据面关闭（api_key 拒收，零回归）；
+      # 注入真实值即启用（32 字节：base64/hex/原文）。不落库、不入 git。
+      AGENT_CRED_MASTER_KEY: ${AGENT_CRED_MASTER_KEY:-}
       # Redis 仅作物化/缓存视图，不是授权真源；不可用时 API 自动回源 DB。
       REDIS_HOST: redis
       REDIS_PORT: "6379"

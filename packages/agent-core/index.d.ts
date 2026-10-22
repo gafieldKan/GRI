@@ -36,16 +36,45 @@ export interface LlmConfig {
   multimodalModel?: string;
   baseUrl?: string;
   apiKey?: string;
-  source?: 'route' | 'env';
+  source?: 'route' | 'env' | 'cred' | 'route+cred';
+}
+
+/** 每 routeKey 的密文凭据读取器（底座 CredentialStore 的形状；ModelRouter 只依赖 get）。 */
+export interface CredentialReader {
+  get(routeKey: string): Promise<{ apiKey: string; keyVersion?: number } | null>;
 }
 
 export declare class ModelRouter {
-  constructor(store: Store, env?: Record<string, string | undefined> | null);
+  constructor(store: Store, env?: Record<string, string | undefined> | null, credentials?: CredentialReader | null);
   resolve(routeKey?: string): Promise<LlmConfig>;
   isRealKey(routeKey?: string): Promise<boolean>;
   list(): Promise<any[]>;
   set(route: Record<string, any>): Promise<boolean>;
 }
+
+/** AES-256-GCM 封装：master key 由宿主注入（底座不读 env）。 */
+export interface Cipher {
+  algo: string;
+  keyVersion: number;
+  encrypt(plaintext: string): { ciphertext: Buffer; iv: Buffer; authTag: Buffer };
+  decrypt(sealed: { ciphertext: Buffer | Uint8Array; iv: Buffer | Uint8Array; authTag: Buffer | Uint8Array }): string;
+}
+
+export declare function makeCipher(masterKey: Buffer | Uint8Array, opts?: { keyVersion?: number }): Cipher;
+
+/** 凭据存储（agent.llm_credentials，密文）：明文永不落库、永不外传；解密失败 fail-fast。 */
+export declare class CredentialStore {
+  constructor(deps: { cipher: Cipher; query: Store['query'] });
+  readonly algo: string;
+  readonly keyVersion: number;
+  get(routeKey: string): Promise<{ apiKey: string; keyVersion: number } | null>;
+  set(routeKey: string, plaintext: string, opts?: { updatedBy?: string | null }): Promise<{ ok: boolean; hint: string }>;
+  remove(routeKey: string): Promise<boolean>;
+  meta(routeKey: string): Promise<{ has_key: boolean; hint: string | null; keyVersion: number | null; updatedAt: any; updatedBy: any }>;
+}
+
+/** hint = 后 4 位（短 key 全掩）。 */
+export declare function hintOf(plaintext: string): string;
 
 export declare class LlmClient {
   constructor(resolveConfig: (routeKey: string, opts?: { multimodal?: boolean }) => Promise<LlmConfig>);

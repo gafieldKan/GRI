@@ -32,6 +32,16 @@ export interface IdentityBrokerConfig {
   serviceToken: string;
 }
 
+/**
+ * 每用户大模型 api key 的凭据缝（B-1）主密钥配置。
+ * masterKey 唯来源 env `AGENT_CRED_MASTER_KEY`（32 字节；base64/hex/32 字符原文均可）——
+ * 宿主在这里读入后注入底座 makeCipher（底座自身不读 env，见 docs/AGENT_CREDENTIAL_SEAM.md C4）。
+ */
+export interface AgentCredConfig {
+  /** 空串 = 未配置 → 凭据面关闭（行为与旧版一致）；非空但长度非法 → 启动 fail-fast。 */
+  masterKey: string;
+}
+
 export interface RedisConfig {
   host: string;
   port: number;
@@ -45,6 +55,7 @@ export interface AppConfig {
   llm: LlmConfig;
   identity: IdentityBrokerConfig;
   redis: RedisConfig;
+  agentCred: AgentCredConfig;
 }
 
 export function loadConfig(): AppConfig {
@@ -79,6 +90,10 @@ export function loadConfig(): AppConfig {
       port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
       password: process.env.REDIS_PASSWORD ?? '',
       db: parseInt(process.env.REDIS_DB ?? '0', 10),
+    },
+    agentCred: {
+      // 每用户 api key 的加密主密钥（B-1 凭据缝）。占位空 → 凭据面关闭（不回归旧行为）。
+      masterKey: process.env.AGENT_CRED_MASTER_KEY ?? '',
     },
   };
 }

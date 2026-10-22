@@ -3,8 +3,12 @@
  * 读 agent.llm_routes 表（Store 注入），按 routeKey 从最具体到 default 选首个 enabled 行，
  * 未命中则回退 env 缺省。切换=写表立即生效（每轮 resolve 都读库），无需重启。
  *
- * apiKey 永不入库：路由行只覆盖 provider/model/multimodal_model/base_url；
- * apiKey 一律取自注入的 env（生产走 SecretRef，dev 走 LLM_API_KEY 环境变量）。
+ * apiKey 来源（B-1 凭据缝，优先级从高到低）：
+ *   ① 该 routeKey 的密文凭据（注入的 CredentialStore，agent.llm_credentials，AES-256-GCM）
+ *   ② default 的密文凭据
+ *   ③ 注入的 env（生产走 SecretRef，dev 走 LLM_API_KEY）
+ * 未注入 credentials → 行为与既有完全一致（只走 env，向后兼容）。明文永不进路由行、永不外传
+ * （HTTP 面只回 has_key + 掩码，见 agent-admin.controller）。
  *
  * routeKey 约定：'default' | 'kind=<kind>' | 'entity=<entityId>'（越具体越优先）。
  */
@@ -12,10 +16,13 @@ export class ModelRouter {
   /**
    * @param {{ query: Function }} store
    * @param {Record<string,string|undefined>} [env] 注入 env 便于测试；缺省 process.env
+   * @param {{get: (routeKey: string) => Promise<{apiKey: string, keyVersion?: number}|null>}} [credentials]
+   *        可空：每 routeKey 的密文凭据读取器（底座 CredentialStore）。缺省 → 只走 env（向后兼容）。
    */
-  constructor(store, env = null) {
+  constructor(store, env = null, credentials = null) {
     this.store = store;
     this.env = env || process.env || {};
+    this.credentials = credentials || null;
   }
 
   _envDefaults() {
@@ -32,20 +39,41 @@ export class ModelRouter {
   /**
    * 解析某 routeKey 当前生效的 LLM 配置。
    * @param {string} routeKey
-   * @returns {Promise<{provider:string,model:string,multimodalModel:string,baseUrl:string,apiKey:string,source:'route'|'env'}>}
+   * @returns {Promise<{provider:string,model:string,multimodalModel:string,baseUrl:string,apiKey:string,source:'route'|'env'|'cred'|'route+cred'}>}
    */
   async resolve(routeKey) {
     const base = this._envDefaults();
     const row = await this._pick(routeKey);
-    if (!row) return { ...base, source: 'env' };
+    const cred = await this._credential(routeKey); // 该 routeKey 密文凭据 → default 凭据（可空注入 → null）
     return {
-      provider: row.provider || base.provider,
-      model: row.model || base.model,
-      multimodalModel: row.multimodal_model || base.multimodalModel,
-      baseUrl: row.base_url || base.baseUrl,
-      apiKey: base.apiKey, // 运行凭据不随路由行存
-      source: 'route',
+      provider: row?.provider || base.provider,
+      model: row?.model || base.model,
+      multimodalModel: row?.multimodal_model || base.multimodalModel,
+      baseUrl: row?.base_url || base.baseUrl,
+      apiKey: cred?.apiKey || base.apiKey, // 用户 key 优先（解密所得），env 兜底
+      source: cred ? (row ? 'route+cred' : 'cred') : row ? 'route' : 'env',
     };
+  }
+
+  /**
+   * 取该 routeKey 生效的密文凭据：具体键优先，其次 default（与路由行同样的「越具体越优先」）。
+   * 未注入 credentials → null（行为同今日）。表缺失（迁移未应用）→ 视为无凭据（不回归）；
+   * 其余错误（解密失败 / algo / key_version 不符 / 篡改）**一律上抛 fail-fast**（C8），静默回退 env 会用错 key。
+   * @param {string} routeKey
+   */
+  async _credential(routeKey) {
+    if (!this.credentials || typeof this.credentials.get !== 'function') return null;
+    const candidates = routeKey === 'default' ? ['default'] : [routeKey, 'default'];
+    for (const key of candidates) {
+      try {
+        const cred = await this.credentials.get(key);
+        if (cred && cred.apiKey) return cred;
+      } catch (e) {
+        if (isMissingRelation(e)) continue; // 表/迁移缺失 → 回退下一候选 / env
+        throw e; // fail-fast：绝不把解密失败吞成"无凭据"
+      }
+    }
+    return null;
   }
 
   /** mock gate：真实 key 为 nvapi- 前缀。 */
@@ -83,15 +111,18 @@ export class ModelRouter {
     }
   }
 
-  /** 增改一条路由（admin 用）。enabled 缺省 true；apiKey 不入参。 */
+  /** 增改一条路由（admin 用）。enabled 缺省 true；apiKey 不入参（密文凭据走 CredentialStore）。 */
   async set(route) {
     const r = route || {};
     if (!r.route_key) throw new Error('route_key required');
+    // provider 是 NOT NULL DEFAULT 'nvidia'：未传时必须落默认/保留旧值，不能显式写 NULL
+    // （否则插入直接吃 23502 not-null violation —— "只改 model 不改 provider" 这种最常见写法会 500）。
     await this.store.query(
       `INSERT INTO agent.llm_routes (route_key, provider, model, multimodal_model, base_url, enabled)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       VALUES ($1, COALESCE($2, 'nvidia'), $3, $4, $5, $6)
        ON CONFLICT (route_key) DO UPDATE SET
-         provider=$2, model=$3, multimodal_model=$4, base_url=$5, enabled=$6, updated_at=NOW()`,
+         provider = COALESCE($2, agent.llm_routes.provider),
+         model=$3, multimodal_model=$4, base_url=$5, enabled=$6, updated_at=NOW()`,
       [
         r.route_key,
         r.provider || null,
@@ -103,4 +134,11 @@ export class ModelRouter {
     );
     return true;
   }
+}
+
+/** 表/迁移尚未应用（pg 42P01 undefined_table）→ 视为「无凭据」而非篡改，允许回退 env。 */
+function isMissingRelation(e) {
+  if (!e) return false;
+  if (e.code === '42P01') return true;
+  return /relation .* does not exist/i.test(String(e.message || ''));
 }

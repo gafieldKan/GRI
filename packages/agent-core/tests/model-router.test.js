@@ -71,6 +71,21 @@ test('model-router: set upsert 可用', async () => {
   assert.ok(!calls.some((c) => /api_?key/i.test(c.text)), '写入不应含 apiKey');
 });
 
+test('model-router: 未传 provider 不写 NULL（NOT NULL 默认列，防 23502 / 500）', async () => {
+  const calls = [];
+  const store = storeFrom(async (text, params) => {
+    calls.push({ text, params });
+    return { rows: [], rowCount: 1 };
+  });
+  const r = new ModelRouter(store, {});
+  await r.set({ route_key: 'entity=abc', model: 'm' });
+  const upsert = calls.find((c) => /INSERT INTO agent\.llm_routes/.test(c.text));
+  assert.ok(upsert, '应走 INSERT … ON CONFLICT');
+  assert.ok(/COALESCE\(\$2, 'nvidia'\)/.test(upsert.text), '插入时 provider 缺省落 nvidia');
+  assert.ok(/provider = COALESCE\(\$2, agent\.llm_routes\.provider\)/.test(upsert.text), '冲突时保留旧 provider');
+  assert.equal(upsert.params[1], null); // 应用侧仍传 null，由 SQL COALESCE 兜底
+});
+
 test('model-router: 表缺失不回崩（回退 env）', async () => {
   const env = { LLM_MODEL: 'fallback' };
   const store = storeFrom(async () => {
