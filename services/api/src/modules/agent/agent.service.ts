@@ -3,7 +3,7 @@ import { DatabaseService } from '../../database/database.service';
 import { AgentCredentialsService } from './agent-credentials.service';
 import {
   AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry,
-  makeTool, storeFrom, McpPool,
+  makeTool, storeFrom, McpPool, createDelegateTool,
 } from '@gri/agent-core';
 import type { CliBackendRegistry } from '@gri/agent-core';
 
@@ -1123,7 +1123,24 @@ export class AgentService implements OnModuleDestroy {
   }
 
   private _teachingTools(): ToolRegistry {
-    return new ToolRegistry();
+    const registry = new ToolRegistry();
+    // 委派工具（B-3c 接入点②「派活儿」）：把独立子任务交给本机外部 agent，父只拿摘要。
+    // 底座侧 createDelegateTool 只做工具工厂（不 import 业务/不读 env/不碰密钥）；
+    // cwd 白名单与后端注册表在此（宿主配置面）注入。缺省 cliBackends=null → 调用明确失败（不静默）。
+    registry.register(
+      createDelegateTool({
+        cliBackends: this.cliBackends ?? null,
+        cwdAllowlist: this._delegateCwdAllowlist(),
+      }),
+    );
+    return registry;
+  }
+
+  /** 委派 cwd 白名单（宿主配置面）：AGENT_DELEGATE_CWD_ALLOWLIST（逗号分隔）→ 默认 GRI 工作树。 */
+  private _delegateCwdAllowlist(): string[] {
+    const raw = process.env.AGENT_DELEGATE_CWD_ALLOWLIST;
+    const list = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    return list.length ? list : ['/home/ubantu/GRI'];
   }
 
   /** 教学技能集：指令并入 system prompt + 携带依赖工具定义（由 AgentCore 统一装载）。 */

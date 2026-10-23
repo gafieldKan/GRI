@@ -24,6 +24,7 @@ export {
   openclawBackend,
   hermesBackend,
 } from './cli-backend.js';
+export { createDelegateTool, resolveDelegateCwd, DEFAULT_DELEGATE_CWD_ALLOWLIST } from './cli-delegate.js';
 export { storeFrom } from './store.js';
 export { McpClient, listMcpServers, bridgeMcpTools } from './mcp/client.js';
 export { McpPool } from './mcp/pool.js';

@@ -190,7 +190,7 @@ export interface CliBackend {
   bin: string;
   resumeKey?: string | null;
   timeoutMs?: number;
-  buildArgs(input: { prompt: string; cwd?: string }): string[];
+  buildArgs(input: { prompt: string; cwd?: string; resumeKey?: string }): string[];
   parseLine(line: string, state?: { text: string; sessionId: string | null }): CliParseResult | null;
   /** 整体 stdout 解析（openclaw 多行 JSON 信封等非逐行可析者用）。 */
   parseOutput?(stdout: string): { text?: string; sessionId?: string; error?: string } | null;
@@ -232,7 +232,7 @@ export declare class CliBackendRegistry {
   /** 只读问答执行器：spawn（shell:false/detached）→ 行流式解析 → 超时杀进程组。 */
   run(
     id: string,
-    opts: { prompt: string; cwd?: string; timeoutMs?: number; allowDangerous?: boolean },
+    opts: { prompt: string; cwd?: string; timeoutMs?: number; allowDangerous?: boolean; resumeKey?: string },
   ): Promise<CliRunResult>;
 }
 
@@ -242,3 +242,26 @@ export declare function createCliBackendRegistry(
 ): CliBackendRegistry;
 /** 进程级默认注册表。 */
 export declare const cliBackends: CliBackendRegistry;
+
+// ─── 委派工具（agent.delegate，B-3c）────────────────────────────────────────
+// 接入点②「派活儿」：agent 调 agent.delegate 把**独立子任务**交给外部 agent，父只拿**摘要**。
+// 底座侧只做工具工厂：不 import 业务、不读 env、不碰 apiKey/token；CLI 只经 cliBackends。
+
+/** 默认 cwd 白名单（GRI 工作树；可由宿主配置扩）。 */
+export declare const DEFAULT_DELEGATE_CWD_ALLOWLIST: ReadonlyArray<string>;
+
+/** cwd 白名单判定（越界明确拒绝，不静默）。 */
+export declare function resolveDelegateCwd(
+  cwd: string | null | undefined,
+  cwdAllowlist?: string[],
+): { ok: true; cwd: string } | { ok: false; error: string };
+
+/**
+ * 造 `agent.delegate` 委派工具（makeTool 产物）。
+ * execute 只回 `{ok, backend, summary, sessionId, exitCode, timedOut, error}`（父只拿摘要）；
+ * cwd 必须落在 `cwdAllowlist`；失败/超时/空文本一律 `ok:false`（不静默返回空）。
+ */
+export declare function createDelegateTool(opts?: {
+  cliBackends?: { run: Function } | CliBackendRegistry | null;
+  cwdAllowlist?: string[];
+}): Tool;

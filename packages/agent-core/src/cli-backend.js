@@ -66,6 +66,7 @@ export function findDeniedArg(args) {
  * 实测：`--output-format=stream-json` **必须带 `--verbose`**，否则 CLI 报错。
  * stream-json：末尾 `{"type":"result","result":"…","session_id":…}` 含最终文本；
  * 首行 `{"type":"system","subtype":"init","session_id":…}` 起各行均带 session_id。
+ * 续接（B-3c）：`--resume <session_id>` 追加于固定 argv 之后；session_id 即本后端解析出的 `session_id`。
  */
 export const claudeCodeBackend = {
   id: 'claude-code',
@@ -73,9 +74,11 @@ export const claudeCodeBackend = {
   bin: 'claude',
   resumeKey: 'session_id',
   timeoutMs: 600000,
-  /** @param {{prompt: string, cwd?: string}} input */
-  buildArgs({ prompt }) {
-    return ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'default'];
+  /** @param {{prompt: string, cwd?: string, resumeKey?: string}} input */
+  buildArgs({ prompt, resumeKey }) {
+    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'default'];
+    if (resumeKey) args.push('--resume', String(resumeKey)); // B-3c 续接：`claude -p <prompt> … --resume <session_id>`
+    return args;
   },
   /** stream-json 逐行解析：文本只取 `type==='result'` 行（最终答复，避免与 assistant 增量重复）。 */
   parseLine(line) {
@@ -94,6 +97,7 @@ export const claudeCodeBackend = {
  * codex：`codex exec <prompt> --json --skip-git-repo-check`
  * JSONL：`{"type":"thread.started","thread_id":…}` 起；最终文本在
  * `{"type":"item.completed","item":{"type":"agent_message","text":"…"}}`。
+ * 续接（B-3c）：改用子命令 `exec resume <SESSION_ID> <PROMPT> …`；session 即解析出的 `thread_id`。
  */
 export const codexBackend = {
   id: 'codex',
@@ -101,8 +105,9 @@ export const codexBackend = {
   bin: 'codex',
   resumeKey: 'thread_id',
   timeoutMs: 900000,
-  /** @param {{prompt: string, cwd?: string}} input */
-  buildArgs({ prompt }) {
+  /** @param {{prompt: string, cwd?: string, resumeKey?: string}} input */
+  buildArgs({ prompt, resumeKey }) {
+    if (resumeKey) return ['exec', 'resume', String(resumeKey), prompt, '--json', '--skip-git-repo-check']; // B-3c 续接
     return ['exec', prompt, '--json', '--skip-git-repo-check'];
   },
   /** JSONL 逐行解析：thread.started → sessionId；item.completed(agent_message) → text。 */
@@ -123,6 +128,7 @@ export const codexBackend = {
  * 实测：`--json` 回**多行 pretty JSON 信封**（非 JSONL）→ 用 parseOutput 整体解析：
  * `{ok, final, payloads:[{text}], sessionId, usage}`。文本取 `final`（回退 payloads[].text）。
  * 前置：需 ambient config 的 provider 凭据（或 `--url` 指网关）；`--isolated` 会缺鉴权报错。
+ * 续接：**无**显式 resume flag（B-3a 实测）→ 忽略 `resumeKey`，每次新上下文（B-3c 明文）。
  */
 export const openclawBackend = {
   id: 'openclaw',
@@ -130,7 +136,7 @@ export const openclawBackend = {
   bin: 'openclaw',
   resumeKey: 'sessionId',
   timeoutMs: 600000,
-  /** @param {{prompt: string, cwd?: string}} input */
+  /** @param {{prompt: string, cwd?: string, resumeKey?: string}} input `resumeKey` 被忽略（无续接能力） */
   buildArgs({ prompt, cwd }) {
     return ['agent', 'exec', '--json', '--cwd', cwd || process.cwd(), prompt];
   },
@@ -159,6 +165,7 @@ export const openclawBackend = {
 /**
  * hermes：`hermes -z <prompt>`（one-shot，仅打最终文本）。
  * 实测：本机 headless ≥120s 无输出即挂起 → 必须靠 timeoutMs 强制杀组并**明确报错**（不静默/不挂死）。
+ * 续接：one-shot，`resumeKey=null` → 忽略 `resumeKey`（无续接，B-3c 明文）。
  */
 export const hermesBackend = {
   id: 'hermes',
@@ -166,7 +173,7 @@ export const hermesBackend = {
   bin: 'hermes',
   resumeKey: null,
   timeoutMs: 600000,
-  /** @param {{prompt: string, cwd?: string}} input */
+  /** @param {{prompt: string, cwd?: string, resumeKey?: string}} input `resumeKey` 被忽略（无续接能力） */
   buildArgs({ prompt }) {
     return ['-z', prompt];
   },
@@ -248,16 +255,18 @@ export class CliBackendRegistry {
   /**
    * 只读问答执行器：spawn 后端 → 行流式解析 → 超时杀进程组 → 汇总结果。
    * @param {string} id 后端 id
-   * @param {{prompt: string, cwd?: string, timeoutMs?: number, allowDangerous?: boolean}} opts
+   * @param {{prompt: string, cwd?: string, timeoutMs?: number, allowDangerous?: boolean, resumeKey?: string}} opts
+   *   `resumeKey`（B-3c）：续接既有会话的 id；仅 `claude-code`/`codex` 会据此追加续接 argv，
+   *   其余后端（openclaw/hermes）忽略之（不报错，退化为新上下文）。
    * @returns {Promise<{text: string, sessionId: string|null, exitCode: number, stderr: string, pid: number|null, timedOut: boolean, error: string|null}>}
    */
   async run(id, opts = {}) {
     const backend = this._backends.get(id);
     if (!backend) throw new Error(`未知 CLI 后端: '${id}'（已注册：${this.list().map((b) => b.id).join(', ') || '无'}）`);
-    const { prompt, cwd, timeoutMs, allowDangerous = false } = opts;
+    const { prompt, cwd, timeoutMs, allowDangerous = false, resumeKey } = opts;
     if (typeof prompt !== 'string' || !prompt.trim()) throw new Error('run: prompt 必填且非空');
 
-    const args = backend.buildArgs({ prompt, cwd });
+    const args = backend.buildArgs({ prompt, cwd, resumeKey });
     if (allowDangerous && Array.isArray(backend.dangerousFlags) && backend.dangerousFlags.length) {
       args.push(...backend.dangerousFlags);
     }

@@ -65,7 +65,15 @@ jest.mock('@gri/agent-core', () => {
     async bridgeTools() { const { rows } = await this.store.query('SELECT name FROM agent.mcp_servers WHERE enabled = TRUE'); return (rows || []).map((r: any) => makeTool({ name: `${r.name}_math_add`, description: `[MCP ${r.name}] math.add`, category: 'mcp', execute: async () => 42 })); }
     async disconnect() { return; }
   }
-  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, storeFrom, McpPool };
+  // B-3c：委派工具工厂（mock 版）—— 真实现（cwd 白名单/超时/摘要）由 packages/agent-core 单测覆盖。
+  const createDelegateTool = (opts: any = {}) => makeTool({
+    name: 'agent.delegate',
+    description: '委派外部 agent（mock）',
+    category: 'delegate',
+    execute: async () => ({ ok: false, error: 'mock: 未注入 CliBackendRegistry' }),
+    ...opts,
+  });
+  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, storeFrom, McpPool, createDelegateTool };
 });
 
 /** 内存假 DB：认 agent.entities/memory/tool_runs/mcp_servers/llm_routes + edu.answer_records/wrong_questions/mastery_snapshots/knowledge_points/questions/learning_plans。 */

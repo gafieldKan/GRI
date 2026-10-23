@@ -84,7 +84,15 @@ jest.mock('@gri/agent-core', () => {
     async pruneIdle() { return; }
     async disconnect() { return; }
   }
-  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, storeFrom, McpPool };
+  // B-3c：委派工具工厂（mock 版）—— 真实现（cwd 白名单/超时/摘要）由 packages/agent-core 单测覆盖。
+  const createDelegateTool = (opts: any = {}) => makeTool({
+    name: 'agent.delegate',
+    description: '委派外部 agent（mock）',
+    category: 'delegate',
+    execute: async () => ({ ok: false, error: 'mock: 未注入 CliBackendRegistry' }),
+    ...opts,
+  });
+  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, storeFrom, McpPool, createDelegateTool };
 });
 
 /** 内存假 DB：认有限几种 SQL，模拟 agent.entities / agent.memory / agent.llm_routes / agent.mcp_servers。
