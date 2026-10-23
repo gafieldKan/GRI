@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AgentService, AGENT_CLI_BACKENDS } from './agent.service';
 import { AgentController } from './agent.controller';
+import { AgentV1Controller } from './agent-v1.controller';
 import { AgentCredentialsService } from './agent-credentials.service';
 import { AgentAdminRoutesController, AgentAdminToolRunsController, AgentAdminCapabilityController, AgentAdminOverviewController, AgentAdminClassDiagnosisController } from './agent-admin.controller';
 import { AgentAdminMcpServersController } from './agent-admin-mcp.controller';
@@ -10,6 +11,7 @@ import { cliBackends } from '@gri/agent-core';
 /**
  * Agent 域 —— 「每个学生一个独立 AI 教师」（@gri/agent-core 薄 Nest 绑定）。
  * 个人面：/api/agent/*     (鉴权强制，externalId 真源)
+ * 对外面：/api/v1/agent/*  (B-2 版本化契约，新增；复用 AgentService，不改旧面)
  * 管理面：/api/agent/admin/routes + /tool-runs + /mcp-servers + /capability  (大模型切换/MCP server/可观测/运营探询；仅站点运营 = 根组织 owner|admin)
  *
  * AgentCredentialsService：每用户 api key 的凭据面（B-1）。宿主在此读入 AGENT_CRED_MASTER_KEY
@@ -23,6 +25,7 @@ import { cliBackends } from '@gri/agent-core';
   imports: [OrganizationModule],
   controllers: [
     AgentController,
+    AgentV1Controller,
     AgentAdminRoutesController,
     AgentAdminToolRunsController,
     AgentAdminCapabilityController,

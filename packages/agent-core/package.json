@@ -15,6 +15,21 @@
   "scripts": {
     "test": "node --test --test-force-exit \"tests/**/*.test.js\" \"tests/**/*.test.ts\""
   },
+  "files": [
+    "src",
+    "index.d.ts",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmmirror.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://example.invalid/gri.git",
+    "directory": "packages/agent-core"
+  },
+  "homepage": "https://example.invalid/gri/packages/agent-core",
   "keywords": ["gri", "agent", "llm", "skill", "mcp", "tool"],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0"
