@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException, OnModuleDestroy, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleDestroy, Optional, Inject } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { AgentCredentialsService } from './agent-credentials.service';
 import {
   AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry,
   makeTool, storeFrom, McpPool,
 } from '@gri/agent-core';
+import type { CliBackendRegistry } from '@gri/agent-core';
+
+/**
+ * DI 令牌：外部 agent CLI 后端注册表（B-3b「换脑子」）。
+ * 由 AgentModule 注入进程级共享 `cliBackends`（B-3a）；未提供 → 注入 null → AgentCore/LlmClient 行为同今日（零回归）。
+ * 是否真正启用只看 `agent.llm_routes` 是否有 enabled 的 provider='cli' 行（C2，无全局开关）。
+ */
+export const AGENT_CLI_BACKENDS = 'AGENT_CLI_BACKENDS';
 
 /** SM-2 质量分：AI 教师内判读打分——答对=5(掌握)，答错=1(遗忘)。喂给间隔重复队列学决策曲线。 */
 const SM2_QUALITY_CORRECT = 5;
@@ -179,6 +187,7 @@ export class AgentService implements OnModuleDestroy {
   constructor(
     private readonly db: DatabaseService,
     @Optional() private readonly creds?: AgentCredentialsService,
+    @Optional() @Inject(AGENT_CLI_BACKENDS) private readonly cliBackends?: CliBackendRegistry | null,
   ) {
     this.mcpPool = new McpPool(storeFrom((text: string, params?: unknown[]) => this.db.query(text, params)));
   }
@@ -236,6 +245,9 @@ export class AgentService implements OnModuleDestroy {
         `始终用中文，语气鼓励、追问引导，紧扣学生掌握度给予个性化讲解。`,
       defaultResponder: async (ctx, o) => this._mockTeach(ctx, o, tools),
       onRun: (a) => void this._audit(entityId, a),
+      // 外部 agent 后端（B-3b）：缺省 null（未注入 → 同今日）；仅当该 routeKey 有 enabled 的 provider='cli'
+      // 路由行时，LlmClient 才会改走 CliBackendRegistry（换脑子），无 cli 行则零影响。
+      cliBackends: this.cliBackends ?? null,
     });
 
     return { core, memory, entity, subject, gradeLevel };

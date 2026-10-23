@@ -11,6 +11,12 @@
  * （HTTP 面只回 has_key + 掩码，见 agent-admin.controller）。
  *
  * routeKey 约定：'default' | 'kind=<kind>' | 'entity=<entityId>'（越具体越优先）。
+ *
+ * provider='cli' 分支（B-3b「换脑子」接入点）：某 routeKey 的**路由行** provider='cli' 时，
+ * `model` 字段即外部 agent 后端 id（claude-code/codex/openclaw/hermes），`resolve` 额外回
+ * `cliBackend=<model>`（其余情形恒 `null`）供 LlmClient 改走 CliBackendRegistry（不 POST）。
+ * 用户可选 = 该 routeKey 是否存在 enabled 的 provider='cli' 行：无 → 走原 provider（默认态，零回归）。
+ * 判定只看**路由行**，不读 env —— 不引入任何全局开关（C2）。
  */
 export class ModelRouter {
   /**
@@ -38,20 +44,24 @@ export class ModelRouter {
 
   /**
    * 解析某 routeKey 当前生效的 LLM 配置。
+   * provider='cli' 时 `cliBackend = <model>`（外部 agent 后端 id），source='route:cli'；否则 cliBackend=null。
    * @param {string} routeKey
-   * @returns {Promise<{provider:string,model:string,multimodalModel:string,baseUrl:string,apiKey:string,source:'route'|'env'|'cred'|'route+cred'}>}
+   * @returns {Promise<{provider:string,model:string,multimodalModel:string,baseUrl:string,apiKey:string,cliBackend:string|null,source:'route'|'env'|'cred'|'route+cred'|'route:cli'}>}
    */
   async resolve(routeKey) {
     const base = this._envDefaults();
     const row = await this._pick(routeKey);
     const cred = await this._credential(routeKey); // 该 routeKey 密文凭据 → default 凭据（可空注入 → null）
+    // provider='cli' 只看路由行（不看 env）：该 routeKey 有 enabled cli 行 → 走外部 CLI 后端（换脑子）。
+    const isCli = !!row && row.provider === 'cli';
     return {
       provider: row?.provider || base.provider,
       model: row?.model || base.model,
       multimodalModel: row?.multimodal_model || base.multimodalModel,
       baseUrl: row?.base_url || base.baseUrl,
       apiKey: cred?.apiKey || base.apiKey, // 用户 key 优先（解密所得），env 兜底
-      source: cred ? (row ? 'route+cred' : 'cred') : row ? 'route' : 'env',
+      cliBackend: isCli ? row.model || null : null, // provider='cli' → model 即后端 id；其余恒 null（零回归）
+      source: isCli ? 'route:cli' : cred ? (row ? 'route+cred' : 'cred') : row ? 'route' : 'env',
     };
   }
 
@@ -76,9 +86,13 @@ export class ModelRouter {
     return null;
   }
 
-  /** mock gate：真实 key 为 nvapi- 前缀。 */
+  /**
+   * mock gate：真实 key 为 nvapi- 前缀；**cli 路由**（有 enabled provider='cli' 行）视为真
+   * ——否则会误判无 key 而落 mock，外部 CLI 后端永不执行。
+   */
   async isRealKey(routeKey) {
     const cfg = await this.resolve(routeKey);
+    if (cfg.cliBackend) return true; // 外部 CLI 后端：由路由行显式开启（换脑子）
     return !!cfg.apiKey && cfg.apiKey.startsWith('nvapi-');
   }
 

@@ -96,3 +96,43 @@ test('model-router: 表缺失不回崩（回退 env）', async () => {
   assert.equal(cfg.source, 'env');
   assert.equal(cfg.model, 'fallback');
 });
+
+// ─── B-3b：provider='cli' 路由分支（换脑子接入点）───────────────────────────────
+
+test('model-router: 非 cli 行 → cliBackend 恒 null（默认零回归）', async () => {
+  const env = { LLM_MODEL: 'm', LLM_API_KEY: 'nvapi-in-env' };
+  const r = new ModelRouter(fakeStore([{ route_key: 'entity=abc', model: 'route-model', enabled: true }]), env);
+  const hit = await r.resolve('entity=abc');
+  assert.equal(hit.cliBackend, null); // route 命中但非 cli → 无信号
+  assert.equal(hit.source, 'route');
+  const miss = await r.resolve('entity=zzz'); // 无行 → env
+  assert.equal(miss.cliBackend, null);
+  assert.equal(miss.source, 'env');
+  assert.equal(await r.isRealKey('entity=zzz'), true); // env nvapi- key 仍判真
+});
+
+test('model-router: provider=cli, model=claude-code → cliBackend 信号 + source=route:cli', async () => {
+  const r = new ModelRouter(
+    fakeStore([{ route_key: 'entity=abc', provider: 'cli', model: 'claude-code', enabled: true }]),
+    {},
+  );
+  const cfg = await r.resolve('entity=abc');
+  assert.equal(cfg.provider, 'cli');
+  assert.equal(cfg.cliBackend, 'claude-code'); // model 字段即后端 id
+  assert.equal(cfg.source, 'route:cli');
+  assert.equal(await r.isRealKey('entity=abc'), true); // cli 路由 → 真（否则误落 _mock）
+});
+
+test('model-router: cli 行默认落 default → 该 routeKey 也走 CLI；disabled cli 行不算数', async () => {
+  const r = new ModelRouter(
+    fakeStore([
+      { route_key: 'entity=abc', provider: 'cli', model: 'codex', enabled: false }, // 关掉的具体行 → 跳过
+      { route_key: 'default', provider: 'cli', model: 'openclaw', enabled: true },
+    ]),
+    {},
+  );
+  const cfg = await r.resolve('entity=abc');
+  assert.equal(cfg.cliBackend, 'openclaw'); // 落到 default 的 cli 行
+  assert.equal(cfg.source, 'route:cli');
+  assert.equal((await r.resolve('entity=abc')).cliBackend, 'openclaw');
+});

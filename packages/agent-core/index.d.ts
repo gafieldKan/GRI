@@ -36,7 +36,9 @@ export interface LlmConfig {
   multimodalModel?: string;
   baseUrl?: string;
   apiKey?: string;
-  source?: 'route' | 'env' | 'cred' | 'route+cred';
+  /** provider='cli' 时 = 外部 agent 后端 id（claude-code/codex/openclaw/hermes）；其余恒 null（B-3b）。 */
+  cliBackend?: string | null;
+  source?: 'route' | 'env' | 'cred' | 'route+cred' | 'route:cli';
 }
 
 /** 每 routeKey 的密文凭据读取器（底座 CredentialStore 的形状；ModelRouter 只依赖 get）。 */
@@ -77,9 +79,12 @@ export declare class CredentialStore {
 export declare function hintOf(plaintext: string): string;
 
 export declare class LlmClient {
-  constructor(resolveConfig: (routeKey: string, opts?: { multimodal?: boolean }) => Promise<LlmConfig>);
+  constructor(
+    resolveConfig: (routeKey: string, opts?: { multimodal?: boolean }) => Promise<LlmConfig>,
+    cliBackends?: CliBackendRegistry | null,
+  );
   isRealKey(routeKey?: string): Promise<boolean>;
-  chat(messages: LlmMessage[], routeKey?: string, opts?: Record<string, any>): Promise<{ content: string; usage?: any }>;
+  chat(messages: LlmMessage[], routeKey?: string, opts?: Record<string, any>): Promise<{ content: string; usage?: any; toolCalls?: any }>;
   chatMultimodal(imageDataUrl: string, text: string, routeKey?: string, opts?: Record<string, any>): Promise<{ content: string; usage?: any }>;
   parseJSON(raw: any): any;
   validateAnswer(question: any, studentAnswer: any): any;
@@ -124,6 +129,8 @@ export interface AgentCoreDeps {
   persona?: string;
   defaultResponder?: (ctx: any, opts: any) => Promise<any>;
   onRun?: (audit: any) => void;
+  /** 外部 CLI 后端注册表（B-3b）；缺省 null → CLI 路由无后端 → chat 明确抛错（不静默降级）。 */
+  cliBackends?: CliBackendRegistry | null;
 }
 
 export declare class AgentCore {

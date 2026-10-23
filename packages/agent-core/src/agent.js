@@ -20,6 +20,7 @@ export class AgentCore {
    * @param {import('./memory.js').MemoryStore} deps.memory
    * @param {string} [deps.persona] 默认人格（可被每轮 opts.persona 覆盖）
    * @param {Function} [deps.defaultResponder] async (ctx, opts) => any 无 key 时的确定性应答
+   * @param {{run: Function}} [deps.cliBackends] 外部 CLI 后端注册表（B-3a/B-3b，「换脑子」）；缺省 null → 同今日
    */
   constructor(deps) {
     this.router = deps.router;
@@ -28,7 +29,8 @@ export class AgentCore {
     this.skills = deps.skills;
     this.memory = deps.memory;
     this.persona = deps.persona || '你是一个严谨、耐心的 AI 助教。';
-    this.llm = deps.llm || new LlmClient((routeKey, o) => this.router.resolve(routeKey));
+    // cliBackends 缺省 null → 默认 LlmClient 无 CLI 后端（行为同今日，零回归）；cli 路由时才会真正被调用
+    this.llm = deps.llm || new LlmClient((routeKey, o) => this.router.resolve(routeKey), deps.cliBackends || null);
     this.defaultResponder = deps.defaultResponder || (async () => null);
     // 工具执行审计钩子（Nest 接管 agent.tool_runs）
     this.onRun = deps.onRun || null;
