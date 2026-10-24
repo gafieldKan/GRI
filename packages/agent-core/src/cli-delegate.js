@@ -72,13 +72,18 @@ export function resolveDelegateCwd(cwd, cwdAllowlist) {
  * 造一个 `agent.delegate` 委派工具（makeTool 产物，供 ToolRegistry.register）。
  *
  * `execute(ctx, {backend, goal, cwd?, resumeKey?, timeoutMs?})`：
- *   校验 backend/goal → 校验 cwd 白名单 → `cliBackends.run(backend, {prompt:goal, cwd, resumeKey?, timeoutMs?})`
+ *   校验 backend/goal → 校验 cwd 白名单 → `cliBackends.run(backend, {prompt:goal, cwd, resumeKey?, timeoutMs?, onEvent?})`
  *   → 只回 `{ok, backend, summary, sessionId, exitCode, timedOut, error}`（**父只拿摘要**）。
  *
- * @param {{cliBackends?: {run: Function}|null, cwdAllowlist?: string[]}} [opts]
+ * `onEvent(event, ctx)`（B-4，可选）：把底座逐行冒泡的事件**透传**给宿主——
+ *   `event = {kind, data, backend}`（kind ∈ started|tool_use|assistant_delta|result|error）；
+ *   只含 child 派生信息（文本/工具名），**不含** argv/prompt/密钥。未提供时不向 run 传 onEvent（零回归）。
+ *   **本工具的 execute 仍是同步语义**（async 编排/落库由宿主接管，底座不碰 DB/不读 env）。
+ *
+ * @param {{cliBackends?: {run: Function}|null, cwdAllowlist?: string[], onEvent?: ((event: object, ctx: any) => void)|null}} [opts]
  * @returns {import('./tool.js').Tool}
  */
-export function createDelegateTool({ cliBackends = null, cwdAllowlist = DEFAULT_DELEGATE_CWD_ALLOWLIST } = {}) {
+export function createDelegateTool({ cliBackends = null, cwdAllowlist = DEFAULT_DELEGATE_CWD_ALLOWLIST, onEvent = null } = {}) {
   const roots = normalizeAllowlist(cwdAllowlist);
   return makeTool({
     name: 'agent.delegate',
@@ -129,6 +134,18 @@ export function createDelegateTool({ cliBackends = null, cwdAllowlist = DEFAULT_
         if (Number.isFinite(n) && n > 0) runOpts.timeoutMs = n; // 未传则用后端默认（C5）
       }
       if (typeof args.resumeKey === 'string' && args.resumeKey.trim()) runOpts.resumeKey = args.resumeKey.trim();
+
+      // B-4：事件透传（**仅当**宿主注入 onEvent 时才向 run 传，未注入 → runOpts 逐字不变，零回归）。
+      // event 只含 child 派生信息（kind/data），本处不拼任何密钥/argv/prompt。
+      if (typeof onEvent === 'function') {
+        runOpts.onEvent = (kind, data) => {
+          try {
+            onEvent({ kind, data, backend }, _ctx);
+          } catch {
+            /* 宿主事件回调异常不阻断委派 */
+          }
+        };
+      }
 
       let res;
       try {

@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { AgentService } from './agent.service';
+import { AgentService, EXTERNAL_RUN_ERROR_CODES } from './agent.service';
 
 // @gri/agent-core 是 ESM（type: module），jest 模块注册表不解析 node_modules 的 export 语法。
 // 与本仓其它 @gri/* 消费 spec 一致：jest.mock 重定向。底座正确性由 packages/agent-core 的 node --test 套件覆盖。
@@ -99,7 +99,13 @@ jest.mock('@gri/agent-core', () => {
  *  K12 全学科：profile（edu.students 行）与 subjectNames（ontology.subject 展示名）可注入。 */
 function fakeDb(mcpServers: any[] = [], profile: { current_subject: string; grade: number } | null = null, subjectNames: Record<string, string> = {}) {
   const memory: any[] = [];
+  // B-4：外部 agent run/事件的内存真源（fakeDb 认 external_runs/external_events SQL）。
+  const runs = new Map<string, any>();
+  const events: any[] = [];
+  let seq = 0;
   return {
+    runs,
+    events,
     lastEntityInsert: null as any,
     async query(text: string, params: any[] = []) {
       if (/INSERT INTO agent\.entities/.test(text)) {
@@ -121,6 +127,50 @@ function fakeDb(mcpServers: any[] = [], profile: { current_subject: string; grad
         return { rows: mine.map((x) => ({ key: x.k, value: x.v })) };
       }
       if (/INSERT INTO agent\.tool_runs/.test(text)) return { rows: [], rowCount: 1 };
+      // ── B-4：external_runs / external_events ────────────────────────────────
+      if (/INSERT INTO agent\.external_runs/.test(text)) {
+        runs.set(params[0], {
+          run_id: params[0], entity_id: params[1], backend: params[2], goal: params[3], mode: params[4],
+          status: 'running', error_code: null, summary: null, exit_code: null, timed_out: false,
+          resume_key: null, latency_ms: null, created_at: new Date(), finished_at: null,
+        });
+        return { rows: [], rowCount: 1 };
+      }
+      if (/INSERT INTO agent\.external_events/.test(text)) {
+        events.push({ id: ++seq, run_id: params[0], kind: params[1], data: JSON.parse(params[2]) });
+        return { rows: [], rowCount: 1 };
+      }
+      if (/UPDATE agent\.external_runs\s+SET status = \$2/.test(text)) {
+        const r = runs.get(params[0]);
+        if (r) {
+          r.status = params[1]; r.error_code = params[2]; r.summary = params[3]; r.exit_code = params[4];
+          r.timed_out = params[5]; r.resume_key = params[6]; r.latency_ms = params[7]; r.finished_at = new Date();
+        }
+        return { rows: [], rowCount: r ? 1 : 0 };
+      }
+      if (/UPDATE agent\.external_runs[\s\S]*WHERE status = 'running'/.test(text)) {
+        let n = 0;
+        for (const r of runs.values()) {
+          if (r.status === 'running') { r.status = 'failed'; r.error_code = 'INTERRUPTED'; r.finished_at = new Date(); n++; }
+        }
+        return { rows: [], rowCount: n };
+      }
+      if (/FROM agent\.external_runs\s*WHERE entity_id = \$1/.test(text)) {
+        const mine = [...runs.values()]
+          .filter((r) => r.entity_id === params[0])
+          .sort((a, b) => b.created_at - a.created_at)
+          .slice(0, Number(params[1]) || 20);
+        return { rows: mine, rowCount: mine.length };
+      }
+      if (/FROM agent\.external_runs\s*WHERE run_id = \$1 AND entity_id = \$2/.test(text)) {
+        const r = runs.get(params[0]);
+        const ok = r && r.entity_id === params[1];
+        return { rows: ok ? [r] : [], rowCount: ok ? 1 : 0 };
+      }
+      if (/FROM agent\.external_events/.test(text)) {
+        const mine = events.filter((e) => e.run_id === params[0] && e.id > params[1]);
+        return { rows: mine, rowCount: mine.length };
+      }
       if (/FROM agent\.mcp_servers/.test(text)) return { rows: mcpServers, rowCount: mcpServers.length }; // 桥接用
       if (/SELECT \* FROM agent\.llm_routes/.test(text)) return { rows: [], rowCount: 0 }; // 无路由 → 无 key → mock 路径
       if (/SELECT current_subject, grade FROM edu\.students/.test(text)) {
@@ -133,6 +183,15 @@ function fakeDb(mcpServers: any[] = [], profile: { current_subject: string; grad
       return { rows: [], rowCount: 0 };
     },
   };
+}
+
+/** 轮询等待（异步后台任务落终态用）。 */
+async function waitFor(pred: () => boolean, ms = 1000): Promise<void> {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    if (pred()) return;
+    await new Promise((r) => setTimeout(r, 5));
+  }
 }
 
 function makeService(db: any): AgentService {
@@ -352,5 +411,135 @@ describe('AgentService', () => {
     );
     expect(out.ok).toBe(false);
     expect(out.reason).toContain('未知学科');
+  });
+});
+
+describe('AgentService —— 外部 agent run 生命周期（B-4）', () => {
+  it('delegate 工具 schema 含 mode(sync|async)（v1 扩展，缺省 sync）', () => {
+    const svc = makeService(fakeDb());
+    const t = (svc as any)._delegateTool();
+    expect(t.name).toBe('agent.delegate');
+    expect(t.inputSchema.properties.mode.enum).toEqual(['sync', 'async']);
+  });
+
+  it('_delegateExecute(sync)：先建 running 行 → 跑 → 落终态 done（summary+latency_ms+resume_key）', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    const raw = {
+      execute: async () => ({ ok: true, backend: 'claude-code', summary: '摘要X', sessionId: 'sess-9', exitCode: 0, timedOut: false, error: null }),
+    };
+    const out = await (svc as any)._delegateExecute(raw, { entityId: 'stu-1' }, { backend: 'claude-code', goal: 'g' });
+    expect(out.ok).toBe(true);
+    const runs = [...db.runs.values()];
+    expect(runs).toHaveLength(1);
+    expect(runs[0].status).toBe('done');
+    expect(runs[0].entity_id).toBe('stu-1');
+    expect(runs[0].summary).toBe('摘要X');
+    expect(runs[0].resume_key).toBe('sess-9');
+    expect(typeof runs[0].latency_ms).toBe('number');
+  });
+
+  it('_delegateExecute(sync)：失败 → status=failed 且带 error_code（绝不静默）', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    const raw = { execute: async () => ({ ok: false, backend: 'x', timedOut: false, error: '委派失败：agent.delegate: cwd 越界，拒绝委派 —— 不在白名单内' }) };
+    await (svc as any)._delegateExecute(raw, { entityId: 'stu-1' }, { backend: 'x', goal: 'g' });
+    const r = [...db.runs.values()][0];
+    expect(r.status).toBe('failed');
+    expect(r.error_code).toBe('CWD_DENIED');
+    expect(r.summary).toBeNull();
+  });
+
+  it('错误码归一：timedOut/exitCode/未注入/goal/空文本 各有其码', () => {
+    const svc = makeService(fakeDb());
+    const c = (r: any) => (svc as any)._classifyDelegateError(r);
+    expect(c({ ok: false, timedOut: true })).toBe('TIMEOUT');
+    expect(c({ ok: false, exitCode: 3, error: '非零退出' })).toBe('NONZERO_EXIT');
+    expect(c({ ok: false, error: 'agent.delegate: 未注入 CliBackendRegistry —— 拒绝静默降级' })).toBe('REGISTRY_NOT_INJECTED');
+    expect(c({ ok: false, error: 'agent.delegate: 缺少 goal（子任务目标）' })).toBe('GOAL_MISSING');
+    expect(c({ ok: false, error: 'agent.delegate: 外部 agent 返回空文本 —— 拒绝静默返回空' })).toBe('EMPTY_TEXT');
+    expect(c({ ok: false, error: '委派失败：spawn 失败（claude-code/claude）：ENOENT —— 该 CLI 未安装' })).toBe('BACKEND_NOT_FOUND');
+  });
+
+  it('错误码集与实现一致（EXTERNAL_RUN_ERROR_CODES）', () => {
+    expect([...EXTERNAL_RUN_ERROR_CODES]).toEqual([
+      'TIMEOUT', 'NONZERO_EXIT', 'EMPTY_TEXT', 'BACKEND_NOT_FOUND', 'GOAL_MISSING', 'CWD_DENIED', 'REGISTRY_NOT_INJECTED', 'INTERRUPTED',
+    ]);
+  });
+
+  it('事件落库：ALS 上下文内 onEvent → external_events 按序可查且不含 argv/prompt', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    await (svc as any)._delegateExecute({ execute: async () => ({ ok: true, summary: 's' }) }, { entityId: 'stu-1' }, { backend: 'claude-code', goal: 'SECRET-GOAL' });
+    const runId = [...db.runs.keys()][0];
+    // 模拟底座在 run 上下文内逐行冒泡（runId 经 ALS 带入，不改工厂签名）
+    const als = (svc as any).delegateAls;
+    await als.run({ runId, chain: Promise.resolve() }, async () => {
+      await (svc as any)._onDelegateEvent({ kind: 'started', data: {} }, {});
+      await (svc as any)._onDelegateEvent({ kind: 'assistant_delta', data: { text: 'hi' } }, {});
+      await (svc as any)._onDelegateEvent({ kind: 'result', data: { text: 'done', sessionId: 's1' } }, {});
+    });
+    const evs = await svc.listExternalEvents('stu-1', runId, 0);
+    expect(evs.ok).toBe(true);
+    expect(evs.events!.map((e: any) => e.kind)).toEqual(['started', 'assistant_delta', 'result']);
+    const blob = JSON.stringify(evs.events);
+    expect(blob).not.toMatch(/SECRET-GOAL/); // 事件不落 prompt/goal
+    expect(blob).not.toMatch(/argv|apiKey|api_key|token|secret/i);
+    // 无 run 上下文 → 不落库（不伪造 run）
+    await (svc as any)._onDelegateEvent({ kind: 'started', data: {} }, {});
+    const evs2 = await svc.listExternalEvents('stu-1', runId, 0);
+    expect(evs2.events).toHaveLength(3);
+  });
+
+  it('_delegateExecute(async)：立即返 runId/status=running；后台执行落终态可查', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const raw = { execute: async () => { await gate; return { ok: true, summary: 'async-done', exitCode: 0, error: null }; } };
+    const out = await (svc as any)._delegateExecute(raw, { entityId: 'stu-1' }, { backend: 'claude-code', goal: 'g', mode: 'async' });
+    expect(out.ok).toBe(true);
+    expect(out.async).toBe(true);
+    expect(out.status).toBe('running');
+    expect(typeof out.runId).toBe('string');
+    expect(db.runs.get(out.runId).status).toBe('running'); // 立即返回时仍 running
+    release();
+    await waitFor(() => db.runs.get(out.runId).status !== 'running');
+    expect(db.runs.get(out.runId).status).toBe('done');
+    expect(db.runs.get(out.runId).summary).toBe('async-done');
+    expect((await svc.getExternalRun('stu-1', out.runId)).status).toBe('done');
+  });
+
+  it('_delegateExecute(async)：后台失败也必落终态（failed + error_code）', async () => {
+    const db = fakeDb();
+    const svc = makeService(db);
+    const raw = { execute: async () => { throw new Error('boom-spawn'); } };
+    const out = await (svc as any)._delegateExecute(raw, { entityId: 'stu-1' }, { backend: 'x', goal: 'g', mode: 'async' });
+    await waitFor(() => db.runs.get(out.runId).status !== 'running');
+    expect(db.runs.get(out.runId).status).toBe('failed');
+    expect(typeof db.runs.get(out.runId).error_code).toBe('string');
+  });
+
+  it('重启对账：残留 running → failed/INTERRUPTED（done 不动）', async () => {
+    const db = fakeDb();
+    db.runs.set('run-old', { run_id: 'run-old', entity_id: 'stu-1', status: 'running', created_at: new Date() });
+    db.runs.set('run-done', { run_id: 'run-done', entity_id: 'stu-1', status: 'done', created_at: new Date() });
+    const svc = makeService(db);
+    const n = await svc.reconcileInterruptedRuns();
+    expect(n).toBe(1);
+    expect(db.runs.get('run-old').status).toBe('failed');
+    expect(db.runs.get('run-old').error_code).toBe('INTERRUPTED');
+    expect(db.runs.get('run-done').status).toBe('done');
+  });
+
+  it('所有权：列表/详情/事件仅回本人（entity=他人 → 空/null/拒绝）', async () => {
+    const db = fakeDb();
+    db.runs.set('r1', { run_id: 'r1', entity_id: 'me', status: 'done', created_at: new Date() });
+    db.runs.set('r2', { run_id: 'r2', entity_id: 'other', status: 'done', created_at: new Date() });
+    const svc = makeService(db);
+    expect((await svc.listExternalRuns('me')).runs.map((r: any) => r.run_id)).toEqual(['r1']);
+    expect(await svc.getExternalRun('me', 'r2')).toBeNull();
+    expect((await svc.getExternalRun('me', 'r1')).run_id).toBe('r1');
+    expect((await svc.listExternalEvents('me', 'r2', 0)).ok).toBe(false);
   });
 });

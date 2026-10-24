@@ -222,3 +222,47 @@ test('§5.2 src 不 import @gri/agent-core，且无密钥明文', () => {
   assert.ok(!src.includes('process.env'), 'SDK 不读 env');
   assert.ok(!/nvapi-|sk-[A-Za-z0-9]{20}/.test(src), 'src 不得含密钥明文');
 });
+
+// ── §6 B-4：run 查询面（listRuns / getRun）─────────────────────────────────
+test('§6.1 listRuns 打到 /delegate/runs（limit 透传为 query），取 data.runs', async () => {
+  const fetchImpl = makeStubFetch(() => res(200, okEnvelope({ runs: [{ run_id: 'r1', status: 'done' }] })));
+  const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
+  const runs = await agent.listRuns({ limit: 5 });
+  assert.deepEqual(runs, [{ run_id: 'r1', status: 'done' }]);
+  assert.equal(fetchImpl.calls[0].method, 'GET');
+  assert.equal(fetchImpl.calls[0].url, `${BASE}${AGENT_API_PREFIX}/delegate/runs?limit=5`);
+});
+
+test('§6.2 listRuns 无 limit / 无 run → 空数组（不抛）', async () => {
+  const fetchImpl = makeStubFetch(() => res(200, okEnvelope({ runs: [] })));
+  const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
+  assert.deepEqual(await agent.listRuns(), []);
+  assert.equal(fetchImpl.calls[0].url, `${BASE}${AGENT_API_PREFIX}/delegate/runs`);
+});
+
+test('§6.3 getRun 打到 /delegate/runs/:id 并取 data.run', async () => {
+  const fetchImpl = makeStubFetch(() => res(200, okEnvelope({ run: { run_id: 'r1', status: 'failed', error_code: 'TIMEOUT' } })));
+  const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
+  const run = await agent.getRun('r1');
+  assert.equal(run.run_id, 'r1');
+  assert.equal(run.error_code, 'TIMEOUT');
+  assert.equal(fetchImpl.calls[0].url, `${BASE}${AGENT_API_PREFIX}/delegate/runs/r1`);
+});
+
+test('§6.4 getRun 他人/不存在（404 RUN_NOT_FOUND）→ 抛结构化错误（不吞）', async () => {
+  const fetchImpl = makeStubFetch(() => res(404, { v: 1, success: false, error: { code: 'RUN_NOT_FOUND', message: 'run 不存在或无权访问' } }, 'Not Found'));
+  const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
+  await assert.rejects(() => agent.getRun('ghost'), (err) => {
+    assert.ok(err instanceof AgentSdkError);
+    assert.equal(err.code, 'RUN_NOT_FOUND');
+    assert.equal(err.status, 404);
+    return true;
+  });
+});
+
+test('§6.5 getRun 空 runId → INVALID_ARGUMENT 且不发请求', async () => {
+  const fetchImpl = makeStubFetch(() => res(200, okEnvelope({ run: null })));
+  const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
+  await assert.rejects(() => agent.getRun('   '), (e) => e.code === 'INVALID_ARGUMENT');
+  assert.equal(fetchImpl.calls.length, 0);
+});

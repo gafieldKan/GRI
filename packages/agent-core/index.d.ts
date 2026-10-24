@@ -181,6 +181,17 @@ export interface CliParseResult {
   text?: string;
   sessionId?: string;
   append?: boolean;
+  /** B-4：该行归一化出的运行期事件（逐条冒泡；只含 child 派生内容）。 */
+  events?: CliBackendEvent[];
+}
+
+/** 运行期事件 kind（B-4 反馈回路）。 */
+export type CliBackendEventKind = 'started' | 'tool_use' | 'assistant_delta' | 'result' | 'error';
+
+/** 运行期事件：只含 child 派生内容（文本/工具名/sessionId），**不含** argv/prompt/密钥。 */
+export interface CliBackendEvent {
+  kind: CliBackendEventKind;
+  data: Record<string, any> | null;
 }
 
 /** 一个 CLI 后端 = 声明式描述（不含密钥）。 */
@@ -212,6 +223,8 @@ export interface CliRunResult {
 
 /** 危险放权旗标清单（C3）。 */
 export declare const DENYLIST: ReadonlyArray<string>;
+/** 运行期事件 kind 取值集（B-4）。 */
+export declare const CLI_EVENT_KINDS: ReadonlyArray<CliBackendEventKind>;
 /** 查 argv 首个命中 DENYLIST/危险前缀族的 token，无则 null。 */
 export declare function findDeniedArg(args: string[]): string | null;
 
@@ -232,7 +245,15 @@ export declare class CliBackendRegistry {
   /** 只读问答执行器：spawn（shell:false/detached）→ 行流式解析 → 超时杀进程组。 */
   run(
     id: string,
-    opts: { prompt: string; cwd?: string; timeoutMs?: number; allowDangerous?: boolean; resumeKey?: string },
+    opts: {
+      prompt: string;
+      cwd?: string;
+      timeoutMs?: number;
+      allowDangerous?: boolean;
+      resumeKey?: string;
+      /** B-4：运行期事件回调（started/tool_use/assistant_delta/result/error），逐条回调；抛错被吞。 */
+      onEvent?: (kind: CliBackendEventKind, data: Record<string, any>) => void;
+    },
   ): Promise<CliRunResult>;
 }
 
@@ -260,8 +281,11 @@ export declare function resolveDelegateCwd(
  * 造 `agent.delegate` 委派工具（makeTool 产物）。
  * execute 只回 `{ok, backend, summary, sessionId, exitCode, timedOut, error}`（父只拿摘要）；
  * cwd 必须落在 `cwdAllowlist`；失败/超时/空文本一律 `ok:false`（不静默返回空）。
+ * `onEvent`（B-4 可选）：底座逐行事件透传给宿主（`event={kind,data,backend}`，不含 argv/prompt/密钥）；
+ * execute 仍是**同步**语义（async 编排/落库在宿主）。
  */
 export declare function createDelegateTool(opts?: {
   cliBackends?: { run: Function } | CliBackendRegistry | null;
   cwdAllowlist?: string[];
+  onEvent?: ((event: { kind: CliBackendEventKind; data: Record<string, any> | null; backend: string }, ctx: any) => void) | null;
 }): Tool;

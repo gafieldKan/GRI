@@ -1,8 +1,9 @@
 # GRI Agent 对外契约 v1（`/api/v1/agent/*`）
 
-> 状态：**现行** ｜ 落卡：B-2（B 波收官）｜ 依赖：B-1 凭据缝、B-3a/b/c 外部 agent 后端
-> 依据：`docs/AI_PRODUCTIZATION_OPTIONS.md` §七裁决（② 外部入口 + ① 发布边界）
+> 状态：**现行** ｜ 落卡：B-2（B 波收官）、B-4（外部 agent 反馈回路）｜ 依赖：B-1 凭据缝、B-3a/b/c 外部 agent 后端
+> 依据：`docs/AI_PRODUCTIZATION_OPTIONS.md` §七裁决（② 外部入口 + ① 发布边界）、`docs/AI_PRODUCTIZATION_REVIEW.md` §二（三缺：流式/持久/推送）
 > 实现：`services/api/src/modules/agent/agent-v1.controller.ts`（复用 `AgentService`，不复制业务逻辑）
+> 持久化：`agent.external_runs` + `agent.external_events`（迁移 `033_agent_external_runs.sql`）
 > 客户端：[`@gri/agent-sdk`](../packages/agent-sdk/README.md)
 
 本页是**对外承诺面**的单一真源：形状、语义、版本策略。前端 3 端/portal 在用的
@@ -99,16 +100,80 @@
 - 无注册表 / 无后端 → `{ "backends": [] }`，**永不 5xx**。
 - 仅可序列化清单（`id`/`label`/`bin`/`timeoutMs`/`resumeKey`）—— 不含函数、不含任何凭据/密钥。
 
+### `GET /api/v1/agent/delegate/runs`
+
+**只读**：本人最近的外部 agent run 列表（B-4 反馈回路；按 `created_at` 倒序）。
+
+| 查询参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `limit` | number | ❌ | 上限（默认 20，封顶 100） |
+
+```json
+{ "v": 1, "success": true, "data": { "runs": [
+  { "run_id": "…", "backend": "claude-code", "goal": "…", "mode": "async", "resume_key": "sess-…",
+    "status": "done", "error_code": null, "summary": "…", "exit_code": 0, "timed_out": false,
+    "latency_ms": 8123, "created_at": "…", "finished_at": "…" }
+] } }
+```
+
+- 无 run / 落库失败 → `{ "runs": [] }`（探测面永不 5xx）。
+- 所有权：只回 `entity_id == req.auth.externalId` 的行（无 `studentId` 入参可越权）。
+
+### `GET /api/v1/agent/delegate/runs/:runId`
+
+**只读**：单条 run 明细 → `{ "data": { "run": { … } } }`（同上字段）。
+
+- 他人 run / 不存在 / `runId` 非 uuid → **404** `error.code = RUN_NOT_FOUND`（不泄露是否存在）。
+
+### `GET /api/v1/agent/delegate/runs/:runId/events`（SSE）
+
+**只读事件流**（`Content-Type: text/event-stream`；B-4，零新依赖、无 WS）：
+
+- 服务端**轮询** `agent.external_events`（间隔 ≤1s）**增量**下发；每条事件形如
+
+  ```
+  id: <事件行 id>
+  event: <started|tool_use|assistant_delta|result|error>
+  data: {…}
+  ```
+
+  `id` 单调递增（供断线续订，`Last-Event-ID` 语义）；`data` 只含 **child 派生内容**（文本/工具名/sessionId），
+  **不含** argv/prompt/密钥。
+- run 进入终态后，再发一条 `event: status`（`data: {"status":"done|failed","error_code":…}`），
+  保留 **5 秒尾巴**即关流。（`AGENT_SSE_POLL_MS`/`AGENT_SSE_TAIL_MS` 为运维旋钮，缺省 900/5000。）
+- 他人 run → **404**（不进入流）。
+
+> **SSE 不在 SDK 内**：消费方用 `EventSource`（浏览器）或等价客户端直接订阅；SDK 只提供
+> `listRuns()`/`getRun(runId)` 两个只读 JSON 面。
+
 ---
 
 ## 三、错误码
 
+### 3.1 契约错误码（`error.code`，HTTP 级）
+
 | `error.code` | HTTP | 含义 |
 |---|---|---|
 | `INVALID_CONTENT` | 400 | `POST me/message` 的 `content` 缺失/全空白 |
+| `RUN_NOT_FOUND` | 404 | `GET delegate/runs/:runId[/events]` 的目标 run 不存在或不属本人 |
 
 > 其余失败沿用 Nest 缺省形状（无 `error.code` 字段），客户端按 `status` 处理。
 > 结构化错误由 SDK 统一归一化为 `AgentSdkError.code`（见 SDK README）。
+
+### 3.2 run 错误码（`data.runs[].error_code`，业务级，仅 `status="failed"` 时非空）
+
+| `error_code` | 含义 |
+|---|---|
+| `TIMEOUT` | 超时（已杀进程组） |
+| `NONZERO_EXIT` | 后端非零退出 |
+| `EMPTY_TEXT` | 后端正常退出但无可用文本 |
+| `BACKEND_NOT_FOUND` | 未知后端 id / CLI 未安装（`spawn` ENOENT） |
+| `GOAL_MISSING` | 委派缺少 `goal` |
+| `CWD_DENIED` | `cwd` 越出白名单（拒绝委派） |
+| `REGISTRY_NOT_INJECTED` | 宿主未注入 `CliBackendRegistry` |
+| `INTERRUPTED` | 宿主重启对账：残留 `running` 的孤儿 run 被置为中断 |
+
+> **failed 必带其一（绝不静默）**。取值集与 `services/api` 的 `EXTERNAL_RUN_ERROR_CODES` 同源。
 
 ---
 

@@ -15,6 +15,7 @@ export { CredentialStore, makeCipher } from './credential-store.js';
 export {
   CliBackendRegistry,
   DENYLIST,
+  CLI_EVENT_KINDS,
   findDeniedArg,
   BACKENDS,
   createCliBackendRegistry,

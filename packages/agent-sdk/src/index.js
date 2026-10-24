@@ -9,6 +9,9 @@
  *   - `POST /api/v1/agent/me/message`           → 发消息 `{content, routeKey?}` → 回复
  *   - `GET  /api/v1/agent/me/diagnosis`         → 只读学情总览
  *   - `GET  /api/v1/agent/delegate/backends`    → 只读：本机可用 CLI 后端
+ *   - `GET  /api/v1/agent/delegate/runs`        → 只读：本人外部 agent 最近 run 列表（B-4）
+ *   - `GET  /api/v1/agent/delegate/runs/:id`    → 只读：单条 run（他人 → 404）
+ *   （run 事件流为 SSE，消费方直接用 EventSource 订阅 `/runs/:id/events`，不入 SDK。）
  *
  * 错误语义：**绝不吞错**。非 2xx → 抛 `AgentSdkError`（含 status/code/url/body）；
  *   超时 → `code='TIMEOUT'`；网络异常 → `code='NETWORK'`。鉴权 token 由调用方注入，
@@ -172,6 +175,25 @@ export function createAgentClient(opts = {}) {
     async listBackends() {
       const data = unwrap(await request('GET', '/delegate/backends'), baseUrl + AGENT_API_PREFIX + '/delegate/backends');
       return data?.backends ?? [];
+    },
+
+    /** 只读：本人外部 agent 最近 run 列表（B-4）；无 run → 空数组。@param {{limit?: number}} [o] */
+    async listRuns(o = {}) {
+      const limit = Number(o && o.limit);
+      const q = Number.isFinite(limit) && limit > 0 ? `?limit=${Math.floor(limit)}` : '';
+      const path = `/delegate/runs${q}`;
+      const data = unwrap(await request('GET', path), baseUrl + AGENT_API_PREFIX + path);
+      return data?.runs ?? [];
+    },
+
+    /** 只读：单条 run（B-4）。他人/不存在 → AgentSdkError(code='RUN_NOT_FOUND', status=404)。 */
+    async getRun(runId) {
+      if (typeof runId !== 'string' || !runId.trim()) {
+        throw new AgentSdkError('runId 必填且非空', { code: 'INVALID_ARGUMENT' });
+      }
+      const path = `/delegate/runs/${encodeURIComponent(runId)}`;
+      const data = unwrap(await request('GET', path), baseUrl + AGENT_API_PREFIX + path);
+      return data?.run ?? null;
     },
   };
 }

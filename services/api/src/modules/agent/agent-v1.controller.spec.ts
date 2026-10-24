@@ -56,6 +56,22 @@ function request(port: number, method: string, path: string, opts: { body?: any;
   });
 }
 
+/** 原始文本客户端（SSE 流用：读到连接关闭为止，返回累积文本 + 头）。 */
+function requestRaw(port: number, path: string, opts: { user?: string } = {}): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
+  return new Promise((resolve, reject) => {
+    const headers: Record<string, string> = {};
+    if (opts.user) headers['x-test-user'] = opts.user;
+    const req = http.request({ host: '127.0.0.1', port, method: 'GET', path, headers }, (res) => {
+      let raw = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => (raw += c));
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, headers: res.headers, body: raw }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 describe('AgentV1Controller —— /api/v1/agent/* 对外版本化契约（B-2）', () => {
   let app: INestApplication;
   let port: number;
@@ -77,10 +93,16 @@ describe('AgentV1Controller —— /api/v1/agent/* 对外版本化契约（B-2�
       routeKey: opts?.routeKey ?? 'default',
     })),
     diagnosisOverview: jest.fn(async (entityId: string) => ({ success: true, phase: 'diagnosis', entityId, mastery: 0.5 })),
+    // B-4：外部 agent run 查询面（默认空/无）
+    listExternalRuns: jest.fn(async (_entityId: string, _limit: number): Promise<{ runs: any[] }> => ({ runs: [] })),
+    getExternalRun: jest.fn(async (_entityId: string, _runId: string): Promise<any> => null),
+    listExternalEvents: jest.fn(async (_entityId: string, _runId: string, _afterId: number): Promise<{ ok: boolean; run: any; events: any[] }> => ({ ok: true, run: null, events: [] })),
   };
   const backends = { list: () => [{ id: 'claude-code', label: 'Claude Code', bin: 'claude', timeoutMs: 1000, resumeKey: null }] };
 
   beforeAll(async () => {
+    process.env.AGENT_SSE_POLL_MS = '40'; // B-4：SSE 测试加速（默认 900ms）
+    process.env.AGENT_SSE_TAIL_MS = '120'; // 默认 5000ms
     const moduleRef = await Test.createTestingModule({
       controllers: [AgentV1Controller],
       providers: [
@@ -102,10 +124,18 @@ describe('AgentV1Controller —— /api/v1/agent/* 对外版本化契约（B-2�
   });
 
   afterAll(async () => {
+    delete process.env.AGENT_SSE_POLL_MS;
+    delete process.env.AGENT_SSE_TAIL_MS;
     await app.close();
   });
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // 重置 B-4 查询面默认（隔离各用例的 mockImplementation 泄漏）
+    svc.listExternalRuns.mockImplementation(async () => ({ runs: [] }));
+    svc.getExternalRun.mockImplementation(async () => null);
+    svc.listExternalEvents.mockImplementation(async () => ({ ok: true, run: null, events: [] }));
+  });
 
   // ── §1 路由注册（真 HTTP，逐条证明「路径存在」）────────────────────────────
   it('§1.1 GET /api/v1/agent/me → 200 + v1 信封 + 版本头', async () => {
@@ -170,5 +200,58 @@ describe('AgentV1Controller —— /api/v1/agent/* 对外版本化契约（B-2�
     expect(bare.backends()).toEqual({ v: 1, success: true, data: { backends: [] } });
     const undefinedReg = new AgentV1Controller(svc as unknown as AgentService, undefined);
     expect(undefinedReg.backends().data).toEqual({ backends: [] });
+  });
+
+  // ── §5 B-4：外部 agent run 查询面（列表 / 详情 / SSE）──────────────────────
+  it('§5.1 GET /api/v1/agent/delegate/runs?limit → 200，主体取 externalId', async () => {
+    svc.listExternalRuns.mockImplementation(async (entityId: string) => ({ runs: [{ run_id: 'r1', entity_id: entityId, status: 'done' }] }));
+    const r = await request(port, 'GET', '/api/v1/agent/delegate/runs?limit=5', { user: 'u-9' });
+    expect(r.status).toBe(200);
+    expect(r.headers['x-agent-api-version']).toBe(String(AGENT_API_VERSION));
+    expect(r.json).toMatchObject({ v: 1, success: true });
+    expect(r.json.data.runs[0].run_id).toBe('r1');
+    expect(svc.listExternalRuns).toHaveBeenCalledWith('u-9', 5);
+  });
+
+  it('§5.2 GET /delegate/runs/:runId（本人）→ 200 + run 明细', async () => {
+    svc.getExternalRun.mockImplementation(async (e: string, id: string) => (id === 'r1' ? { run_id: 'r1', entity_id: e, status: 'failed', error_code: 'TIMEOUT' } : null));
+    const r = await request(port, 'GET', '/api/v1/agent/delegate/runs/r1');
+    expect(r.status).toBe(200);
+    expect(r.json.data.run.error_code).toBe('TIMEOUT');
+    expect(svc.getExternalRun).toHaveBeenCalledWith('user-1', 'r1');
+  });
+
+  it('§5.3 GET /delegate/runs/:runId（他人/不存在）→ 404 + error.code=RUN_NOT_FOUND', async () => {
+    const r = await request(port, 'GET', '/api/v1/agent/delegate/runs/ghost');
+    expect(r.status).toBe(404);
+    expect(r.json).toMatchObject({ v: 1, success: false, error: { code: 'RUN_NOT_FOUND' } });
+  });
+
+  it('§5.4 GET /delegate/runs/:runId/events（他人）→ 404（不进入 SSE 流）', async () => {
+    const r = await request(port, 'GET', '/api/v1/agent/delegate/runs/ghost/events');
+    expect(r.status).toBe(404);
+    expect(r.json.error.code).toBe('RUN_NOT_FOUND');
+    expect(String(r.headers['content-type'] ?? '')).not.toContain('event-stream');
+  });
+
+  it('§5.5 SSE：增量下发事件 → 终态 status → 关流（主体=externalId）', async () => {
+    const seenAfter: number[] = [];
+    let calls = 0;
+    svc.getExternalRun.mockImplementation(async (e: string, id: string) => (id === 'r1' ? { run_id: 'r1', entity_id: e, status: 'running' } : null));
+    svc.listExternalEvents.mockImplementation(async (_e: string, _id: string, after: number) => {
+      seenAfter.push(after);
+      calls++;
+      if (calls === 1) return { ok: true, run: { run_id: 'r1', status: 'running' }, events: [{ id: 1, kind: 'assistant_delta', data: { text: 'part' } }] };
+      return { ok: true, run: { run_id: 'r1', status: 'done', error_code: null }, events: [] };
+    });
+    const r = await requestRaw(port, '/api/v1/agent/delegate/runs/r1/events', { user: 'u-7' });
+    expect(r.status).toBe(200);
+    expect(String(r.headers['content-type'])).toContain('text/event-stream');
+    expect(r.body).toContain('event: assistant_delta');
+    expect(r.body).toContain('"text":"part"');
+    expect(r.body).toContain('event: status');
+    expect(r.body).toContain('"status":"done"');
+    expect(svc.getExternalRun).toHaveBeenCalledWith('u-7', 'r1'); // 所有权真源
+    expect(seenAfter.some((a) => a > 0)).toBe(true); // 增量（after 递增，非每次全量）
   });
 });

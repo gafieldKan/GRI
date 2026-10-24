@@ -30,6 +30,15 @@ const MAX_LINE_BYTES = 1024 * 1024;
 const TIMEOUT_EXIT_CODE = 124;
 
 /**
+ * 运行期事件 kind（B-4 反馈回路，对外契约见 docs/AGENT_PUBLIC_CONTRACT.md §三）：
+ *   started / tool_use / assistant_delta / result / error。
+ * 底座在 `run()` 逐条回调宿主注入的 `opts.onEvent(kind, data)`——中间行**不再丢弃**（B-3a 前只取终态）。
+ * 事件 data **只含 child 派生内容**（文本/工具名/sessionId），**绝不**含 argv/prompt/密钥（C3）。
+ * @type {ReadonlyArray<string>}
+ */
+export const CLI_EVENT_KINDS = Object.freeze(['started', 'tool_use', 'assistant_delta', 'result', 'error']);
+
+/**
  * 危险放权旗标清单（C3）。默认 argv 不得含其中任一；仅显式 `allowDangerous` 放权才可加。
  * @type {ReadonlyArray<string>}
  */
@@ -80,13 +89,26 @@ export const claudeCodeBackend = {
     if (resumeKey) args.push('--resume', String(resumeKey)); // B-3c 续接：`claude -p <prompt> … --resume <session_id>`
     return args;
   },
-  /** stream-json 逐行解析：文本只取 `type==='result'` 行（最终答复，避免与 assistant 增量重复）。 */
+  /**
+   * stream-json 逐行解析：文本只取 `type==='result'` 行（最终答复，避免与 assistant 增量重复）；
+   * 另把 assistant 行里的文本块/工具调用块**归一化为事件**（B-4：中间行不再丢弃，见 `events`）。
+   */
   parseLine(line) {
     const obj = safeJson(line);
     if (!obj) return null;
     const out = {};
     if (obj.session_id) out.sessionId = String(obj.session_id);
     if (obj.type === 'result' && typeof obj.result === 'string') out.text = obj.result;
+    // B-4：assistant 行内文本块 → assistant_delta；tool_use 块 → tool_use（仅供事件冒泡，不改文本取值语义）
+    if (obj.type === 'assistant' && obj.message && Array.isArray(obj.message.content)) {
+      const events = [];
+      for (const block of obj.message.content) {
+        if (!block || typeof block !== 'object') continue;
+        if (block.type === 'text' && typeof block.text === 'string') events.push({ kind: 'assistant_delta', data: { text: block.text } });
+        else if (block.type === 'tool_use' && block.name) events.push({ kind: 'tool_use', data: { name: String(block.name) } });
+      }
+      if (events.length) out.events = events;
+    }
     return Object.keys(out).length ? out : null;
   },
   /** 显式放权才追加（默认永不出现在 buildArgs）。 */
@@ -177,10 +199,10 @@ export const hermesBackend = {
   buildArgs({ prompt }) {
     return ['-z', prompt];
   },
-  /** 纯文本：逐行追加（one-shot 只打最终答复）。 */
+  /** 纯文本：逐行追加（one-shot 只打最终答复）；B-4：每行同时冒泡 assistant_delta 事件。 */
   parseLine(line) {
     const t = String(line).replace(/\r$/, '');
-    return t.length ? { text: t, append: true } : null;
+    return t.length ? { text: t, append: true, events: [{ kind: 'assistant_delta', data: { text: t } }] } : null;
   },
   dangerousFlags: ['--yolo'],
 };
@@ -255,15 +277,19 @@ export class CliBackendRegistry {
   /**
    * 只读问答执行器：spawn 后端 → 行流式解析 → 超时杀进程组 → 汇总结果。
    * @param {string} id 后端 id
-   * @param {{prompt: string, cwd?: string, timeoutMs?: number, allowDangerous?: boolean, resumeKey?: string}} opts
+   * @param {{prompt: string, cwd?: string, timeoutMs?: number, allowDangerous?: boolean, resumeKey?: string,
+   *          onEvent?: (kind: string, data: object) => void}} opts
    *   `resumeKey`（B-3c）：续接既有会话的 id；仅 `claude-code`/`codex` 会据此追加续接 argv，
    *   其余后端（openclaw/hermes）忽略之（不报错，退化为新上下文）。
+   *   `onEvent`（B-4）：运行期事件回调——`kind ∈ started|tool_use|assistant_delta|result|error`，
+   *   逐条回调（**非**只回终态）；`data` 只含 child 派生内容（文本/工具名/sessionId），
+   *   不含 argv/prompt/密钥。回调抛错被吞（绝不阻断执行）。
    * @returns {Promise<{text: string, sessionId: string|null, exitCode: number, stderr: string, pid: number|null, timedOut: boolean, error: string|null}>}
    */
   async run(id, opts = {}) {
     const backend = this._backends.get(id);
     if (!backend) throw new Error(`未知 CLI 后端: '${id}'（已注册：${this.list().map((b) => b.id).join(', ') || '无'}）`);
-    const { prompt, cwd, timeoutMs, allowDangerous = false, resumeKey } = opts;
+    const { prompt, cwd, timeoutMs, allowDangerous = false, resumeKey, onEvent } = opts;
     if (typeof prompt !== 'string' || !prompt.trim()) throw new Error('run: prompt 必填且非空');
 
     const args = backend.buildArgs({ prompt, cwd, resumeKey });
@@ -286,6 +312,7 @@ export class CliBackendRegistry {
       timeoutMs: effectiveTimeout,
       parseLine: backend.parseLine,
       parseOutput: backend.parseOutput,
+      onEvent: typeof onEvent === 'function' ? onEvent : null,
     });
   }
 }
@@ -296,9 +323,20 @@ export class CliBackendRegistry {
 
 /**
  * spawn 一个后端并收集结果。**shell:false + argv 数组**（防注入）；detached 独立进程组。
- * @param {{id: string, bin: string, args: string[], cwd: string, timeoutMs: number, parseLine?: Function, parseOutput?: Function}} spec
+ * B-4：可选 `onEvent(kind, data)` —— spawn 即 `started`，逐行解析出的 `events` 逐条冒泡，
+ *   收尾再发**唯一**终态 `result`（成功）或 `error`（失败，带 `code`）。回调抛错被吞（不阻断）。
+ * @param {{id: string, bin: string, args: string[], cwd: string, timeoutMs: number, parseLine?: Function, parseOutput?: Function, onEvent?: Function|null}} spec
  */
-function spawnRun({ id, bin, args, cwd, timeoutMs, parseLine, parseOutput }) {
+function spawnRun({ id, bin, args, cwd, timeoutMs, parseLine, parseOutput, onEvent }) {
+  /** 事件回调（best-effort）：抛错被吞，绝不阻断执行/回归。 */
+  const emit = (kind, data) => {
+    if (typeof onEvent !== 'function') return;
+    try {
+      onEvent(kind, data);
+    } catch {
+      /* 宿主回调异常不阻断执行 */
+    }
+  };
   return new Promise((resolve, reject) => {
     /** @type {{text: string, sessionId: string|null}} */
     const state = { text: '', sessionId: null };
@@ -336,7 +374,15 @@ function spawnRun({ id, bin, args, cwd, timeoutMs, parseLine, parseOutput }) {
       if (typeof parsed.text === 'string') {
         state.text = parsed.append ? (state.text ? `${state.text}\n${parsed.text}` : parsed.text) : parsed.text;
       }
+      // B-4：把该行归一化出的事件逐条冒泡（中间行不再丢弃）
+      if (Array.isArray(parsed.events)) {
+        for (const ev of parsed.events) {
+          if (ev && typeof ev.kind === 'string') emit(ev.kind, ev.data ?? {});
+        }
+      }
     };
+
+    emit('started', {}); // B-4：生命周期起点（不早于 spawn 成功；ENOENT 会随后补 error 事件）
 
     if (child.stdout) {
       child.stdout.setEncoding('utf8');
@@ -378,7 +424,9 @@ function spawnRun({ id, bin, args, cwd, timeoutMs, parseLine, parseOutput }) {
       if (lineBuf.length) feedLine(lineBuf); // 尾部无换行的残留行
 
       if (spawnErr) {
-        reject(new Error(`spawn 失败（${id}/${bin}）：${spawnErr.message}${spawnErr.code === 'ENOENT' ? ' —— 该 CLI 未安装或不在 PATH' : ''}`));
+        const msg = `spawn 失败（${id}/${bin}）：${spawnErr.message}${spawnErr.code === 'ENOENT' ? ' —— 该 CLI 未安装或不在 PATH' : ''}`;
+        emit('error', { code: 'BACKEND_NOT_FOUND', message: msg }); // B-4：终态 error 事件（带机器码）
+        reject(new Error(msg));
         return;
       }
 
@@ -410,6 +458,9 @@ function spawnRun({ id, bin, args, cwd, timeoutMs, parseLine, parseOutput }) {
           error = `后端 '${id}' 非零退出（exitCode=${exitCode}）且无文本输出；前置条件未就绪（详见 stderr 字段）`;
         }
       }
+      // B-4：唯一终态事件——成功 `result`（带 text/sessionId），失败 `error`（带机器码 code）。
+      if (error) emit('error', { code: classifyRunError({ timedOut, exitCode, text, error }), message: error });
+      else emit('result', { text, sessionId: sessionId || null });
       resolve({
         text,
         sessionId: sessionId || null,
@@ -422,6 +473,14 @@ function spawnRun({ id, bin, args, cwd, timeoutMs, parseLine, parseOutput }) {
       });
     });
   });
+}
+
+/** 运行期失败 → 机器码（B-4 §目标4；与宿主 external_runs.error_code 取值同集）。 */
+function classifyRunError({ timedOut, exitCode, text, error }) {
+  if (timedOut) return 'TIMEOUT';
+  if (Number(exitCode) !== 0) return 'NONZERO_EXIT';
+  if (!String(text || '').trim()) return 'EMPTY_TEXT';
+  return 'NONZERO_EXIT'; // 残例：有文本但同时报告 error（后端自述失败）→ 归入非零/失败语义
 }
 
 /** 杀整个进程组（detached → child 是组长）；失败再退化为单进程 kill。 */

@@ -62,6 +62,27 @@ export interface AgentCliBackend {
   resumeKey?: string | null;
 }
 
+/**
+ * 外部 agent 运行记录（B-4；v1 `GET /api/v1/agent/delegate/runs[/:id]`）。
+ * `error_code` 取值见 docs/AGENT_PUBLIC_CONTRACT.md §三（failed 必带其一）。
+ */
+export interface AgentRun {
+  run_id: string;
+  backend: string | null;
+  goal: string | null;
+  mode: 'sync' | 'async';
+  resume_key: string | null;
+  status: 'running' | 'done' | 'failed';
+  error_code: string | null;
+  summary: string | null;
+  exit_code: number | null;
+  timed_out: boolean;
+  latency_ms: number | null;
+  created_at: string;
+  finished_at: string | null;
+  [k: string]: any;
+}
+
 export interface CreateAgentClientOptions {
   /** 服务根（如 `https://gri.example.com`，不含 `/api`）；末尾 `/` 自动去除。 */
   baseUrl: string;
@@ -80,6 +101,10 @@ export interface AgentClient {
   sendMessage(content: string, opts?: { routeKey?: string }): Promise<AgentMessageResult>;
   getDiagnosis(): Promise<AgentDiagnosis>;
   listBackends(): Promise<AgentCliBackend[]>;
+  /** 本人外部 agent 最近 run 列表（B-4）。 */
+  listRuns(opts?: { limit?: number }): Promise<AgentRun[]>;
+  /** 单条 run（B-4）；他人/不存在 → AgentSdkError(code='RUN_NOT_FOUND', status=404)。 */
+  getRun(runId: string): Promise<AgentRun | null>;
 }
 
 export declare function createAgentClient(opts: CreateAgentClientOptions): AgentClient;

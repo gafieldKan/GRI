@@ -1,10 +1,14 @@
-import { Controller, Get, Post, Body, Req, Header, Inject, Optional, BadRequestException } from '@nestjs/common';
-import { Request } from 'express';
+import { Controller, Get, Post, Body, Req, Header, Param, Query, Res, Inject, Optional, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AgentService, AGENT_CLI_BACKENDS } from './agent.service';
 import type { CliBackendRegistry } from '@gri/agent-core';
 
 /** v1 契约版本号（随 body `v` 与响应头 `X-Agent-Api-Version` 同时下发）。 */
 export const AGENT_API_VERSION = 1;
+
+/** SSE 轮询间隔（≤1s，B-4）；run 终态后再发一条 status 事件 + 5 秒尾巴即关流。 */
+export const AGENT_SSE_POLL_MS = 900;
+export const AGENT_SSE_TAIL_MS = 5000;
 
 /**
  * 对外版本化契约 —— `POST/GET /api/v1/agent/*`（B-2 目标 1）。
@@ -85,5 +89,105 @@ export class AgentV1Controller {
   backends() {
     const list = this.cliBackends?.list?.() ?? [];
     return this.ok({ backends: list });
+  }
+
+  /**
+   * 本人最近外部 agent run 列表（B-4）。GET /api/v1/agent/delegate/runs?limit=20
+   * 只读；所有权按 req.auth.externalId 隔离（无 studentId 入参可越权）。无 run / 落库失败 → `{ runs: [] }`（探测面永不 5xx）。
+   */
+  @Get('delegate/runs')
+  @Header('X-Agent-Api-Version', String(AGENT_API_VERSION))
+  async listRuns(@Req() req: Request, @Query('limit') limit?: string) {
+    return this.ok(await this.agentService.listExternalRuns(this.externalId(req), Number(limit) || 20));
+  }
+
+  /**
+   * 单条 run（B-4）。GET /api/v1/agent/delegate/runs/:runId
+   * 他人/不存在 → **404**（结构化 error.code=RUN_NOT_FOUND，不泄露是否存在）。
+   */
+  @Get('delegate/runs/:runId')
+  @Header('X-Agent-Api-Version', String(AGENT_API_VERSION))
+  async getRun(@Req() req: Request, @Param('runId') runId: string) {
+    const run = await this.agentService.getExternalRun(this.externalId(req), runId);
+    if (!run) {
+      throw new NotFoundException({
+        v: AGENT_API_VERSION,
+        success: false,
+        error: { code: 'RUN_NOT_FOUND', message: 'run 不存在或无权访问' },
+      });
+    }
+    return this.ok({ run });
+  }
+
+  /**
+   * run 事件流（SSE，B-4）。GET /api/v1/agent/delegate/runs/:runId/events
+   * `text/event-stream`：循 agent.external_events 增量下发（`id`=事件行 id，`event`=kind，`data`=JSON），
+   * run 终态后再发一条 `event: status` 并保留 5 秒尾巴即关流。**零新依赖、无 WS**（服务端轮询，间隔 ≤1s）。
+   * 他人 run → 404（不进入流）。事件 data 只含 child 派生内容（**不含** argv/prompt/密钥）。
+   */
+  @Get('delegate/runs/:runId/events')
+  async runEvents(@Req() req: Request, @Param('runId') runId: string, @Res() res: Response) {
+    const entityId = this.externalId(req);
+    // 所有权：先确认 run 属本人（他人 → 404，且不写任何流内容）
+    const run = await this.agentService.getExternalRun(entityId, runId);
+    if (!run) {
+      res.status(404).json({
+        v: AGENT_API_VERSION,
+        success: false,
+        error: { code: 'RUN_NOT_FOUND', message: 'run 不存在或无权访问' },
+      });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Agent-Api-Version', String(AGENT_API_VERSION));
+    res.flushHeaders?.();
+
+    let lastId = 0;
+    let ended = false;
+    let pollTimer: NodeJS.Timeout | null = null;
+    let tailTimer: NodeJS.Timeout | null = null;
+    const clearTimers = () => {
+      if (pollTimer) clearInterval(pollTimer);
+      if (tailTimer) clearTimeout(tailTimer);
+      pollTimer = null;
+      tailTimer = null;
+    };
+    const end = () => {
+      if (ended) return;
+      ended = true;
+      clearTimers();
+      try { res.end(); } catch { /* 连接已断 */ }
+    };
+
+    const tick = async () => {
+      if (ended) return;
+      try {
+        const r = await this.agentService.listExternalEvents(entityId, runId, lastId);
+        if (!r.ok) { end(); return; }
+        for (const ev of r.events || []) {
+          lastId = Number(ev.id) || lastId;
+          res.write(`id: ${ev.id}\nevent: ${ev.kind}\ndata: ${JSON.stringify(ev.data ?? {})}\n\n`);
+        }
+        // 终态：发 status 尾巴事件 → 停止轮询 → 5 秒后关流
+        if (r.run && r.run.status !== 'running') {
+          res.write(`event: status\ndata: ${JSON.stringify({ status: r.run.status, error_code: r.run.error_code ?? null })}\n\n`);
+          if (pollTimer) clearInterval(pollTimer);
+          pollTimer = null;
+          const tailMs = Number(process.env.AGENT_SSE_TAIL_MS) > 0 ? Number(process.env.AGENT_SSE_TAIL_MS) : AGENT_SSE_TAIL_MS;
+          tailTimer = setTimeout(end, tailMs);
+          if (typeof tailTimer.unref === 'function') tailTimer.unref();
+        }
+      } catch { end(); }
+    };
+
+    // 客户端断开：只清定时器（不再 res.end）
+    req.on('close', () => { ended = true; clearTimers(); });
+    void tick();
+    const pollMs = Number(process.env.AGENT_SSE_POLL_MS) > 0 ? Number(process.env.AGENT_SSE_POLL_MS) : AGENT_SSE_POLL_MS;
+    pollTimer = setInterval(() => void tick(), pollMs);
+    if (typeof pollTimer.unref === 'function') pollTimer.unref();
   }
 }
