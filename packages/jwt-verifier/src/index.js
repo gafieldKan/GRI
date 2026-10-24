@@ -11,6 +11,14 @@
  *      { sub, domain, externalId, username, name, roles, iat, exp, iss }
  *    business 后端据 externalId 定位业务实体（原 users.id / students.id），保持无状态。
  *
+ * 公钥刷新（JWKS 模式）：
+ *  - kid 命中缓存且未过 TTL → 直接复用，不发 JWKS 请求（快路径）。
+ *  - kid 不匹配 / 缓存未命中 → 同步拉取一次。
+ *  - 距上次拉取超过 TTL（默认 300000ms，可用环境变量 AUTH_JWKS_TTL_MS 或
+ *    opts.jwksTtlMs 配置）→ 到期后的第一个请求同步刷新一次，其余仍走缓存，
+ *    使 auth-center 重启/轮钥后运行中的服务不重启也能自愈。
+ *  - 验签失败 → 清缓存重拉重试一次（保留既有行为）。
+ *
  * 用法（Express）：
  *   import { createJwtVerifier } from '@gri/jwt-verifier'
  *   const requireAuth = createJwtVerifier({
@@ -26,6 +34,18 @@ import { createPublicKey } from 'node:crypto';
 
 const { verify } = jsonwebtoken;
 const DEFAULT_ISSUER = 'gri-auth-center';
+/** JWKS 缓存 TTL 默认 5 分钟（过期后首个请求同步刷新一次） */
+const DEFAULT_JWKS_TTL_MS = 300000;
+
+/** 解析 TTL：opts.jwksTtlMs 优先，其次环境变量 AUTH_JWKS_TTL_MS，否则默认值。 */
+function resolveJwksTtlMs(opts) {
+  if (typeof opts.jwksTtlMs === 'number' && Number.isFinite(opts.jwksTtlMs) && opts.jwksTtlMs >= 0) {
+    return opts.jwksTtlMs;
+  }
+  const raw = process.env.AUTH_JWKS_TTL_MS;
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_JWKS_TTL_MS;
+}
 
 /**
  * 将 JWKS 中的 RSA JWK（n/e）转为 PEM 公钥，供 jsonwebtoken verify 使用。
@@ -59,46 +79,85 @@ export function createJwtVerifier(opts = {}) {
   const issuer = opts.issuer ?? DEFAULT_ISSUER;
   const jwksUrl = opts.jwksUrl ?? 'http://localhost:3004/auth/jwks';
 
-  // 缓存：优先 PEM 注入；否则按 kid 缓存 JWK→PEM
-  const cache = { keyId: null, pem: null };
+  const jwksTtlMs = resolveJwksTtlMs(opts);
+  const now = typeof opts.now === 'function' ? opts.now : () => Date.now();
+
+  // 缓存：优先 PEM 注入；否则按 kid 缓存 JWK→PEM，并记录上次拉取时刻（TTL 用）
+  const cache = { keyId: null, pem: null, fetchedAt: 0 };
 
   // 注入的静态 PEM（若提供，永不拉 JWKS）
   const staticPem = opts.publicKey ?? readPemFromEnv();
   if (staticPem) cache.pem = staticPem;
 
-  /** 惰性解析公钥 PEM（静态优先；否则拉 JWKS 并按 kid 缓存，命中快路径免拉） */
-  async function resolvePem(header) {
-    if (staticPem) return staticPem;
-
-    const targetKid = header?.kid;
-    // 快路径：已有缓存且 kid 一致（或无 kid 但有缓存）→ 直接复用，免一次 JWKS 往返。
-    // 修复点：原实现无条件 fetchJson(jwksUrl)，导致 JWKS 模式下每请求都拉公钥（缓存形同虚设）。
-    if (cache.pem && (!targetKid || targetKid === cache.keyId)) {
-      return cache.pem;
-    }
-
-    const { keys } = await fetchJson(jwksUrl);
-    // 挑 kid 匹配的；未提供 header/token kid 时取第一把
-    const jwk =
-      keys.find((k) => k.kid === targetKid) ??
-      keys.find((k) => k.kty === 'RSA' && k.use === 'sig') ??
-      keys[0];
-    if (!jwk) throw new Error('JWKS 无可用签名公钥');
-
-    const pem = jwkToPem(jwk);
-    if (jwk.kid && jwk.kid !== cache.keyId) {
-      cache.keyId = jwk.kid;
-      cache.pem = pem;
-    } else if (!cache.pem) {
-      cache.pem = pem;
-    }
-    return pem;
-  }
-
   async function fetchJson(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`JWKS 拉取失败: ${res.status}`);
     return res.json();
+  }
+
+  /** 按 kid 挑钥：命中 targetKid 优先，否则取第一把 RSA 签名钥 */
+  function selectJwk(keys, targetKid) {
+    return (
+      (targetKid ? keys.find((k) => k.kid === targetKid) : undefined) ??
+      keys.find((k) => k.kty === 'RSA' && k.use === 'sig') ??
+      keys[0]
+    );
+  }
+
+  /**
+   * 拉取 JWKS 并更新缓存（按 kid 选钥，记录拉取时刻）。
+   * 拉取失败明确抛错（不静默），由调用方决定是否回退旧缓存。
+   */
+  async function refreshCache(targetKid, reason) {
+    let keys;
+    try {
+      ({ keys } = await fetchJson(jwksUrl));
+    } catch (err) {
+      // 诊断日志：只含 kid/原因/错误信息，绝不含 token/PEM/私钥
+      console.warn(
+        `[jwt-verifier] JWKS 拉取失败（${reason}）: kid=${targetKid ?? 'none'} err=${err.message}`,
+      );
+      throw err;
+    }
+    const jwk = Array.isArray(keys) ? selectJwk(keys, targetKid) : undefined;
+    if (!jwk) throw new Error('JWKS 无可用签名公钥');
+
+    const pem = jwkToPem(jwk);
+    const kid = jwk.kid ?? null;
+    const matched = !targetKid || kid === targetKid;
+    // 仅当目标 kid 命中（或无 kid 请求）时替换缓存——避免不匹配的钥污染快路径
+    if (matched) {
+      cache.keyId = kid;
+      cache.pem = pem;
+    }
+    cache.fetchedAt = now();
+    console.warn(
+      `[jwt-verifier] JWKS 刷新（${reason}）: kid=${kid ?? 'unknown'} matched=${matched} ttlMs=${jwksTtlMs}`,
+    );
+    return cache.pem ?? pem;
+  }
+
+  /** 惰性解析公钥 PEM（静态优先；否则按 kid 缓存 + TTL，命中快路径免拉） */
+  async function resolvePem(header) {
+    if (staticPem) return staticPem;
+
+    const targetKid = header?.kid;
+    // 快路径：已有缓存且 kid 一致（或无 kid 但有缓存）→ 免一次 JWKS 往返。
+    // 修复点：原实现无条件 fetchJson(jwksUrl)，导致 JWKS 模式下每请求都拉公钥（缓存形同虚设）。
+    if (cache.pem && (!targetKid || targetKid === cache.keyId)) {
+      // TTL 到期：仅到期后的第一个请求同步刷新一次；刷新失败仍用旧缓存，避免把请求打挂
+      if (now() - cache.fetchedAt > jwksTtlMs) {
+        try {
+          return await refreshCache(targetKid, 'ttl-expired');
+        } catch {
+          return cache.pem;
+        }
+      }
+      return cache.pem;
+    }
+
+    // 缓存未命中 / kid 不匹配 → 拉取 JWKS（失败抛错，由中间件失败路径兜底）
+    return refreshCache(targetKid, 'cache-miss');
   }
 
   /** 若提供了 token，则解出头（含 kid）供 JWKS 匹配 */
@@ -143,8 +202,13 @@ export function createJwtVerifier(opts = {}) {
       } catch (err) {
         // 密钥轮换导致校验失败时，若走 JWKS 缓存则清缓存重试一次
         if (!staticPem && cache.pem) {
+          // 诊断日志：kid + 失败原因，绝不含 token/PEM/私钥
+          console.warn(
+            `[jwt-verifier] 验签失败，清缓存重试一次: kid=${decodeHeader(token)?.kid ?? 'none'} err=${err.message}`,
+          );
           cache.pem = null;
           cache.keyId = null;
+          cache.fetchedAt = 0;
           try {
             const pem = await resolvePem(decodeHeader(token));
             const payload = verify(token, pem, {

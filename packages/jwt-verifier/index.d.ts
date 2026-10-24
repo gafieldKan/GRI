@@ -33,6 +33,10 @@ export interface JwtVerifierOptions {
   publicKey?: string;
   /** JWKS 端点，缺省 http://localhost:3004/auth/jwks */
   jwksUrl?: string;
+  /** JWKS 缓存 TTL（ms），缺省 300000；亦可用环境变量 AUTH_JWKS_TTL_MS 配置 */
+  jwksTtlMs?: number;
+  /** 时钟注入（测试用），缺省 Date.now */
+  now?: () => number;
 }
 
 /** requireAuth(options) 的运行时选项 */
