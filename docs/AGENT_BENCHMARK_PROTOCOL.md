@@ -39,7 +39,7 @@
 | 12 | **沙箱/信任边界** | 原生插件 **in-process、非沙箱**（明示） | 未定义 ⚠️ |
 | 13 | **多模态** | 语音/图像/视频生成、媒体理解（16 类能力含） | `multimodalModel`（neva-22b）⚠️ 仅调用 |
 | 14 | **观测/审计** | `openclaw doctor` / `plugins inspect` / 兼容信号 | `agent.tool_runs` 审计 ⚠️ 无体检命令 |
-| 15 | **外部 agent 后端** | CLI backend（`api.registerCliBackend`）+ Hermes `delegate_tool`/`agent/transports/*` | ❌ 无（→ 设计见 `docs/EXTERNAL_AGENT_HARNESS.md`） |
+| 15 | **外部 agent 后端** | CLI backend（`api.registerCliBackend`）+ Hermes `delegate_tool`/`agent/transports/*`（7 终端后端：local/Docker/SSH/Modal…） | ✅ `CliBackendRegistry` + 四后端（B-3a/b `40ea83c`/`b426070`）+ `agent.delegate` 委派（B-3c `194a72a`）；默认只读 + cwd 白名单 + 父只拿摘要；**隔离弱于对方**（我们 OS 用户级，Hermes 有容器级终端） |
 
 > 每条对标都须落到 **"有/无/弱"** 三级判定，禁止模糊描述。
 
