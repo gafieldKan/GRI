@@ -4,6 +4,11 @@ import { DatabaseService } from '../../database/database.service';
 import { OrganizationService } from '../organization/organization.service';
 import { AgentCredentialsService } from './agent-credentials.service';
 import { ModelRouter, storeFrom } from '@gri/agent-core';
+import {
+  eduQuery, findKnowledgePointName, countStudentsWithData, countUnresolvedWrongTotal,
+  countActivePlans, lessonRollup, classKpAccuracy, classStudentAccuracy, kpQuestionStats,
+  findQuestionMeta, countQuestionWrong, topWrongAnswers, wrongStudentsByQuestion,
+} from '../edu-core/repository';
 
 /**
  * 大模型路由管理（运营可配、前台可切）—— /api/agent/admin/routes。
@@ -176,18 +181,12 @@ export class AgentAdminOverviewController {
     await this.org.assertSiteOperator((req as any).auth?.externalId as string);
     const [ents, data, runs, wrong, plans, lessons, usage, recent] = await Promise.all([
       this.db.query(`SELECT count(*)::int AS n FROM agent.entities WHERE kind = 'student' AND status = 'active'`),
-      this.db.query(`SELECT count(DISTINCT user_id)::int AS n FROM edu.answer_records`),
+      countStudentsWithData(eduQuery(this.db)),
       this.db.query(`SELECT count(*)::int AS n FROM agent.tool_runs`),
-      this.db.query(`SELECT count(*)::int AS n FROM edu.wrong_questions WHERE is_resolved = false`),
-      this.db.query(`SELECT count(*)::int AS n FROM edu.learning_plans WHERE status = 'active'`),
+      countUnresolvedWrongTotal(eduQuery(this.db)),
+      countActivePlans(eduQuery(this.db)),
       // 授课落盘聚合：上了多少节课(plan_type='lesson') + 平均掌握度提升(plan_data->>'delta' 数值均值)
-      this.db.query(
-        `SELECT count(*)::int AS n,
-                count(DISTINCT (plan_data->>'kpId'))::int AS kps,
-                ROUND(AVG(NULLIF(plan_data->>'delta','')::numeric))::int AS "avgDelta"
-           FROM edu.learning_plans
-          WHERE plan_type = 'lesson'`,
-      ),
+      lessonRollup(eduQuery(this.db)),
       this.db.query(`SELECT tool_name, count(*)::int AS n FROM agent.tool_runs GROUP BY tool_name ORDER BY n DESC`),
       this.db.query(`SELECT entity_id, tool_name, created_at FROM agent.tool_runs ORDER BY id DESC LIMIT 8`),
     ]);
@@ -195,16 +194,16 @@ export class AgentAdminOverviewController {
       success: true,
       counts: {
         activeStudents: ents.rows[0]?.n ?? 0,
-        studentsWithData: data.rows[0]?.n ?? 0,
+        studentsWithData: data[0]?.n ?? 0,
         totalToolRuns: runs.rows[0]?.n ?? 0,
-        unresolvedWrong: wrong.rows[0]?.n ?? 0,
-        activePlans: plans.rows[0]?.n ?? 0,
-        lessonsRecorded: lessons.rows[0]?.n ?? 0,
+        unresolvedWrong: wrong[0]?.n ?? 0,
+        activePlans: plans[0]?.n ?? 0,
+        lessonsRecorded: lessons[0]?.n ?? 0,
       },
       lessons: {
-        count: lessons.rows[0]?.n ?? 0,
-        knowledgePoints: lessons.rows[0]?.kps ?? 0,
-        avgDelta: lessons.rows[0]?.avgDelta ?? null,
+        count: lessons[0]?.n ?? 0,
+        knowledgePoints: lessons[0]?.kps ?? 0,
+        avgDelta: lessons[0]?.avgDelta ?? null,
       },
       toolUsage: (usage.rows || []).map((r: any) => ({ toolName: r.tool_name, n: r.n })),
       recent: (recent.rows || []).map((r: any) => ({ entityId: r.entity_id, toolName: r.tool_name, createdAt: r.created_at })),
@@ -231,27 +230,12 @@ export class AgentAdminClassDiagnosisController {
     await this.org.assertSiteOperator((req as any).auth?.externalId as string);
     const [kpRes, studentRes] = await Promise.all([
       // 每题/每知识点集合准确率（跨全体学生）
-      this.db.query(
-        `SELECT kp.id AS kp_id, kp.name AS kp_name,
-                count(*)::int           AS attempts,
-                count(*) FILTER (WHERE ar.is_correct)::int AS correct,
-                count(DISTINCT ar.user_id)::int AS students
-           FROM edu.answer_records ar
-           JOIN edu.questions q        ON q.id = ar.question_id
-           JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-          GROUP BY kp.id, kp.name`,
-      ),
+      classKpAccuracy(eduQuery(this.db)),
       // 每位学生总掌握（学生×累计作答准确率）——提供钻取背景
-      this.db.query(
-        `SELECT ar.user_id AS student_id,
-                count(*)::int AS attempts,
-                count(*) FILTER (WHERE ar.is_correct)::int AS correct
-           FROM edu.answer_records ar
-          GROUP BY ar.user_id`,
-      ),
+      classStudentAccuracy(eduQuery(this.db)),
     ]);
 
-    const knowledgePoints = (kpRes.rows || []).map((r: any) => {
+    const knowledgePoints = (kpRes || []).map((r: any) => {
       const attempts = r.attempts || 0;
       return {
         kpId: r.kp_id,
@@ -266,7 +250,7 @@ export class AgentAdminClassDiagnosisController {
     knowledgePoints.sort((a: any, b: any) => a.accuracy - b.accuracy);
     const weakest = knowledgePoints.filter((k: any) => k.attempts > 0).slice(0, 5);
 
-    const studentRows = (studentRes.rows || []).map((r: any) => {
+    const studentRows = (studentRes || []).map((r: any) => {
       const attempts = r.attempts || 0;
       return {
         studentId: r.student_id,
@@ -298,21 +282,11 @@ export class AgentAdminClassDiagnosisController {
     if (!kpId) {
       return { success: true, kpId: null, totalQuestions: 0, questions: [], note: '缺 kpId' };
     }
-    const [kpRes, qRes] = await Promise.all([
-      this.db.query(`SELECT name FROM edu.knowledge_points WHERE id = $1`, [kpId]),
-      this.db.query(
-        `SELECT q.id AS question_id, q.content, q.difficulty, q.type,
-                count(ar.id)::int                    AS attempts,
-                count(ar.id) FILTER (WHERE ar.is_correct)::int AS correct
-           FROM edu.questions q
-           LEFT JOIN edu.answer_records ar ON ar.question_id = q.id
-          WHERE q.knowledge_point_id = $1
-          GROUP BY q.id
-          ORDER BY attempts DESC`,
-        [kpId],
-      ),
+    const [kpName, qRes] = await Promise.all([
+      findKnowledgePointName(eduQuery(this.db), kpId),
+      kpQuestionStats(eduQuery(this.db), kpId),
     ]);
-    const questions = (qRes.rows || [])
+    const questions = (qRes || [])
       .map((r: any) => {
         const attempts = r.attempts || 0;
         const correct = r.correct || 0;
@@ -333,7 +307,7 @@ export class AgentAdminClassDiagnosisController {
     return {
       success: true,
       kpId,
-      kpName: kpRes.rows?.[0]?.name ?? null,
+      kpName: kpName ?? null,
       totalQuestions: questions.length,
       questions,
       note: '仅题面+全班作答统计，不透答案。',
@@ -352,29 +326,22 @@ export class AgentAdminClassDiagnosisController {
     if (!questionId) {
       return { success: true, questionId: null, error: '需 questionId' };
     }
-    const [qRes, wrongRes, topRes, studentRes] = await Promise.all([
-      this.db.query(`SELECT q.content, q.difficulty, q.type, q.knowledge_point_id, kp.name AS kp_name
-                       FROM edu.questions q
-                       LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-                      WHERE q.id = $1`, [questionId]),
-      this.db.query(`SELECT count(*)::int AS n FROM edu.answer_records WHERE question_id = $1 AND is_correct = false`, [questionId]),
-      this.db.query(`SELECT student_answer, count(*)::int AS n
-                       FROM edu.answer_records
-                      WHERE question_id = $1 AND is_correct = false AND student_answer IS NOT NULL AND student_answer <> ''
-                      GROUP BY student_answer ORDER BY n DESC LIMIT 5`, [questionId]),
-      this.db.query(`SELECT DISTINCT user_id, student_answer FROM edu.answer_records
-                      WHERE question_id = $1 AND is_correct = false ORDER BY user_id`, [questionId]),
+    const [meta, wrongCount, topWrong, wrongStudents] = await Promise.all([
+      findQuestionMeta(eduQuery(this.db), questionId),
+      countQuestionWrong(eduQuery(this.db), questionId),
+      topWrongAnswers(eduQuery(this.db), questionId),
+      wrongStudentsByQuestion(eduQuery(this.db), questionId),
     ]);
-    const content = qRes.rows?.[0]?.content ?? '';
+    const content = meta?.content ?? '';
     return {
       success: true,
       questionId,
       question: content,
-      kpName: qRes.rows?.[0]?.kp_name ?? null,
-      difficulty: qRes.rows?.[0]?.difficulty ?? null,
-      wrongCount: wrongRes.rows?.[0]?.n ?? 0,
-      topWrong: (topRes.rows || []).map((r: any) => ({ answer: r.student_answer, count: r.n })),
-      wrongStudents: (studentRes.rows || []).map((r: any) => ({ studentId: r.user_id, answer: r.student_answer })),
+      kpName: meta?.kp_name ?? null,
+      difficulty: meta?.difficulty ?? null,
+      wrongCount: wrongCount ?? 0,
+      topWrong: (topWrong || []).map((r: any) => ({ answer: r.student_answer, count: r.n })),
+      wrongStudents: (wrongStudents || []).map((r: any) => ({ studentId: r.user_id, answer: r.student_answer })),
     };
   }
 }

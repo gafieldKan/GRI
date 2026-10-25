@@ -9,6 +9,17 @@ import {
 } from '@gri/agent-core';
 import type { CliBackendRegistry } from '@gri/agent-core';
 import { binaryQuality, applySrReview } from '../edu-core/sm2';
+import {
+  eduQuery,
+  findQuestionById, insertAnswerRecord, upsertWrongQuestion, resolveMasteredWrongQuestion,
+  resolveWrongQuestion, listUnresolvedWrongQuestions, countUnresolvedWrongByKpName, countUnresolvedWrongByKp,
+  findKnowledgePointName, insertLessonPlan, findStudentProfile, listQuestionsBySubject,
+  listKnowledgePointsByChapters, masteryByKnowledgePoint, masteryByKnowledgePointWithTime,
+  masteryByQuestionKp, masteryBySingleKp, practiceAggByKp, dailyMasterySeries, listReviewCandidates,
+  findLastWrongAnswer, findRandomQuestionByKp, findQuestionIdByKp, listKnowledgePointsByIds,
+  upsertMasterySnapshot, upsertMasterySnapshotBumped, findMasterySnapshot, archivePersonalizedPlans,
+  insertPersonalizedPlan, findPlanForUser, findLatestPlan, updatePlanProgress, listQuestionsByKp,
+} from '../edu-core/repository';
 import { loadConfig } from '../../config/config';
 
 /**
@@ -33,7 +44,10 @@ export const EXTERNAL_RUN_ERROR_CODES = Object.freeze([
   'INTERRUPTED',          // 重启对账：宿主重启时残留 running 的孤儿 run
 ] as const);
 
-/** SM-2 已收敛到 `edu-core/sm2`（W2.1 唯一实现）：公式 + `edu.sr_queue` 读写 + 判读二分质量分。 */
+/**
+ * 教育域数据访问**已收敛到 `edu-core`**（W2.1 单一领域组件）：本文件不再内联任何 `edu.*` SQL，
+ * 一律经 `../edu-core/repository`（SM-2 见 `../edu-core/sm2`）。这是工具插件化（W2.3）的前置条件。
+ */
 
 interface AgentEntity {
   entity_id: string;
@@ -49,42 +63,40 @@ interface AgentEntity {
  *   + resolveOnCorrect 消错题 + SM-2 间隔重复队列。全部以 ctx.entityId 隔离；任一步失败不阻断判题。
  */
 async function gradeAnswerRecord(ctx: any, args: any): Promise<any> {
-  const { rows } = await ctx.store.query('SELECT * FROM edu.questions WHERE id = $1', [args.questionId]);
-  const q = rows[0];
+  const db = eduQuery(ctx.store);
+  const q = (await findQuestionById(db, args.questionId)) ?? undefined;
   const grader = new LlmClient(async () => ({ apiKey: '', model: '', baseUrl: '' }));
   const result = await grader.validateAnswer(q, args.answer);
   const isCorrect = !!result.correct;
   let recorded = false;
   let sm2Out: { interval: number; easeFactor: number; repetitions: number; nextReview: string } | null = null;
   try {
-    await ctx.store.query(
-      `INSERT INTO edu.answer_records (user_id, question_id, session_id, student_answer, is_correct, time_spent_ms)
-       VALUES ($1, $2, NULL, $3, $4, $5)`,
-      [ctx.entityId, args.questionId, String(args.answer ?? ''), isCorrect, args.timeSpentMs != null && args.timeSpentMs > 0 ? Math.round(args.timeSpentMs) : null],
-    );
+    await insertAnswerRecord(db, {
+      userId: ctx.entityId,
+      questionId: args.questionId,
+      studentAnswer: args.answer,
+      isCorrect,
+      timeSpentMs: args.timeSpentMs,
+    });
     recorded = true;
     if (!isCorrect && q) {
-      const diffNum = ({ easy: 0.3, medium: 0.5, hard: 0.8 } as Record<string, number>)[q.difficulty ?? ''] ?? 0.5;
-      await ctx.store.query(
-        `INSERT INTO edu.wrong_questions
-           (user_id, question_id, student_answer, correct_answer, error_type, difficulty, reviewed, mastered, review_count, wrong_count, last_attempt_at, last_reviewed_at)
-         VALUES ($1, $2, $3, $4, '判读错误', $5, false, false, 0, 1, CURRENT_TIMESTAMP, NULL)
-         ON CONFLICT (user_id, question_id) DO UPDATE SET wrong_count = edu.wrong_questions.wrong_count + 1, last_attempt_at = CURRENT_TIMESTAMP`,
-        [ctx.entityId, args.questionId, String(args.answer ?? ''), q.answer != null ? String(q.answer) : '', diffNum],
-      );
+      await upsertWrongQuestion(db, {
+        userId: ctx.entityId,
+        questionId: args.questionId,
+        studentAnswer: args.answer,
+        correctAnswer: q.answer,
+        difficulty: q.difficulty,
+      });
     }
     if (args.resolveOnCorrect && isCorrect) {
-      await ctx.store.query(
-        `UPDATE edu.wrong_questions SET is_resolved = true, mastered = true
-          WHERE user_id = $1 AND question_id = $2`,
-        [ctx.entityId, args.questionId],
-      );
+      await resolveMasteredWrongQuestion(db, ctx.entityId, args.questionId);
     }
     {
-      const { sm2, nextReview } = await applySrReview(
-        (sql, params) => ctx.store.query(sql, params),
-        { userId: ctx.entityId, questionId: args.questionId, quality: binaryQuality(isCorrect) },
-      );
+      const { sm2, nextReview } = await applySrReview(db, {
+        userId: ctx.entityId,
+        questionId: args.questionId,
+        quality: binaryQuality(isCorrect),
+      });
       sm2Out = { interval: sm2.interval, easeFactor: sm2.easeFactor, repetitions: sm2.repetitions, nextReview: nextReview.toISOString() };
     }
   } catch { /* 作答/错题/记忆队列记录失败不阻断判题 */ }
@@ -108,8 +120,7 @@ async function lessonRecord(ctx: any, args: any): Promise<any> {
   let kpName = String(args.kpName ?? '');
   if (!kpName) {
     try {
-      const kp = await ctx.store.query('SELECT name FROM edu.knowledge_points WHERE id = $1', [kpId]);
-      kpName = kp.rows?.[0]?.name ?? kpId;
+      kpName = (await findKnowledgePointName(eduQuery(ctx.store), kpId)) ?? kpId;
     } catch { kpName = kpId; }
   }
   const outcome = args.outcome === 'abandoned' ? 'abandoned' : 'completed';
@@ -128,13 +139,12 @@ async function lessonRecord(ctx: any, args: any): Promise<any> {
     recordedAt: new Date().toISOString(),
   };
   // 落盘一行
-  const { rows: ins } = await ctx.store.query(
-    `INSERT INTO edu.learning_plans (user_id, title, plan_type, plan_data, total_tasks, completed_tasks, status, start_date, end_date)
-     VALUES ($1, $2, 'lesson', $3::jsonb, 1, 1, $4, CURRENT_DATE, CURRENT_DATE)
-     RETURNING id`,
-    [ctx.entityId, `一节课「${kpName}」`, JSON.stringify(lessons), outcome],
-  );
-  const recordId = ins?.[0]?.id ?? null;
+  const recordId = await insertLessonPlan(eduQuery(ctx.store), {
+    userId: ctx.entityId,
+    title: `一节课「${kpName}」`,
+    planData: lessons,
+    status: outcome,
+  });
   return { ok: true, recordId, kpName, outcome, lessons };
 }
 
@@ -206,12 +216,9 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
     const skills = this._teachingSkills(toolDefs);
 
     // 学科/年级链式取真源：显式 opts → 学生档案 → 默认 math
-    const profile = await store.query(
-      `SELECT current_subject, grade FROM edu.students WHERE user_id = $1`,
-      [entityId],
-    );
-    const subject = String(opts.subject || profile.rows[0]?.current_subject || 'math');
-    const gradeLevel = profile.rows[0]?.grade ?? null;
+    const profile = await findStudentProfile(eduQuery(store), entityId);
+    const subject = String(opts.subject || profile?.current_subject || 'math');
+    const gradeLevel = profile?.grade ?? null;
     const subjectName = await this._subjectDisplayName(subject);
 
     const core = new AgentCore({
@@ -269,15 +276,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
         inputSchema: { type: 'object', properties: { subject: { type: 'string' }, limit: { type: 'number' } }, required: ['subject'] },
         async execute(ctx, args) {
           const limit = Math.min(Number(args.limit) || 5, 20);
-          const { rows } = await ctx.store.query(
-            `SELECT q.id, q.content, q.type, q.options, q.answer, q.difficulty, kp.name AS knowledge_point
-               FROM edu.questions q
-               LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-              WHERE LOWER(kp.subject) = LOWER($1)
-              ORDER BY random()
-              LIMIT $2`,
-            [args.subject, limit],
-          );
+          const rows = await listQuestionsBySubject(eduQuery(ctx.store), args.subject, limit);
           return rows.map((r: any) => ({ id: r.id, content: r.content, type: r.type, options: r.options, difficulty: r.difficulty }));
         },
       }),
@@ -326,14 +325,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
           // 知识点（章节范围内 published）
           const chapterIds = chapters.map((c: any) => c.id);
           const kps = chapterIds.length
-            ? (await ctx.store.query(
-                `SELECT kp.id, kp.code, kp.name, kp.description, kp.subject, kp.grade_level, kp.chapter_id, kp.status
-                   FROM edu.knowledge_points kp
-                  WHERE kp.chapter_id = ANY($1::uuid[])
-                    AND (kp.status = 'published' OR kp.status IS NULL)
-                  ORDER BY kp.code NULLS LAST LIMIT 50`,
-                [chapterIds],
-              )).rows
+            ? await listKnowledgePointsByChapters(eduQuery(ctx.store), chapterIds)
             : [];
           return {
             textbooks: tb.rows,
@@ -356,30 +348,12 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
         inputSchema: { type: 'object', properties: { limit: { type: 'number' } } },
         async execute(ctx, args) {
           const limit = Math.min(Number(args.limit) || 5, 20);
-          const { rows } = await ctx.store.query(
-            `SELECT wq.question_id, q.content, q.type, q.options, q.difficulty, q.knowledge_point_id,
-                    wq.student_answer, wq.wrong_count, wq.last_attempt_at, kp.name AS knowledge_point
-               FROM edu.wrong_questions wq
-               LEFT JOIN edu.questions q ON q.id = wq.question_id
-               LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-              WHERE wq.user_id = $1 AND wq.is_resolved = false
-              LIMIT $2`,
-            [ctx.entityId, limit],
-          );
+          const rows = await listUnresolvedWrongQuestions(eduQuery(ctx.store), ctx.entityId, limit);
           // 拉该生 per-KP 掌握度（与 diagnosis 同源），把错题冲刺按"最弱知识点优先"排序——先练不会的。
           const masteryByKp = new Map<string, number>();
           try {
-            const agg = await ctx.store.query(
-              `SELECT q.knowledge_point_id AS kp_id,
-                      COUNT(ar.id)::int AS attempts,
-                      COUNT(ar.id) FILTER (WHERE ar.is_correct)::int AS correct
-                 FROM edu.answer_records ar
-                 JOIN edu.questions q ON q.id = ar.question_id
-                WHERE ar.user_id = $1
-                GROUP BY q.knowledge_point_id`,
-              [ctx.entityId],
-            );
-            for (const r of agg.rows || []) {
+            const agg = await masteryByQuestionKp(eduQuery(ctx.store), ctx.entityId);
+            for (const r of agg || []) {
               const att = r.attempts || 0;
               masteryByKp.set(r.kp_id, att ? (r.correct || 0) / att : 0);
             }
@@ -428,20 +402,10 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
         async execute(ctx, args) {
           const size = Math.min(Number(args.size) || 5, 10);
           // 1) 每知识点掌握度（复用 diagnosis 的念头：answer_records→questions→kps）
-          const agg = await ctx.store.query(
-            `SELECT kp.id AS kp_id, kp.name AS kp_name,
-                    COUNT(ar.id)::int AS attempts,
-                    COUNT(ar.id) FILTER (WHERE ar.is_correct)::int AS correct
-               FROM edu.answer_records ar
-               JOIN edu.questions q ON q.id = ar.question_id
-               JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-              WHERE ar.user_id = $1
-              GROUP BY kp.id, kp.name`,
-            [ctx.entityId],
-          );
+          const agg = await masteryByKnowledgePoint(eduQuery(ctx.store), ctx.entityId);
           const masteryById = new Map<string, number>();
           const kpNameById = new Map<string, string>();
-          for (const r of agg.rows || []) {
+          for (const r of agg || []) {
             const attempts = r.attempts || 0;
             const correct = r.correct || 0;
             masteryById.set(r.kp_id, attempts ? correct / attempts : 0);
@@ -458,20 +422,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
             return { entityId: ctx.entityId, total: 0, questions: [], note: '该学生还没有作答记录，先做几道题我才能排出复习序列。' };
           }
           // 3) 拉候选题目 + 每题的 SM-2 间隔信号（edu.sr_queue.next_review 到期日；无档案时回退到 answer_records.created_at 距作答时长）
-          const { rows } = await ctx.store.query(
-            `SELECT q.id AS question_id, q.content, q.type, q.options, q.difficulty, q.knowledge_point_id,
-                    MAX(CASE WHEN ar.created_at IS NOT NULL THEN ar.created_at ELSE NULL END) AS last_attempt_at,
-                    MAX(CASE WHEN ar.is_correct = false THEN ar.created_at END) AS last_wrong_at,
-                    MAX(sq.next_review) AS next_review
-               FROM edu.questions q
-               LEFT JOIN edu.answer_records ar
-                 ON ar.question_id = q.id AND ar.user_id = $1
-               LEFT JOIN edu.sr_queue sq
-                 ON sq.question_id = q.id AND sq.user_id = $1
-              WHERE q.knowledge_point_id = ANY($2::uuid[])
-              GROUP BY q.id, q.knowledge_point_id`,
-            [ctx.entityId, kpIds],
-          );
+          const rows = await listReviewCandidates(eduQuery(ctx.store), ctx.entityId, kpIds);
           // 4) 自适应排序（SM-2 记忆曲线 + 短期答错惩罚）：score = gap*10 + spacingDays + wrongBoost。
           //    gap 越大(掌握度越低)越前；到期越近/越逾期越前。有 sr_queue.next_review 时按到期算——
           //    逾期(N 天前到期)=14+min(逾期天数,7)、N 天后到期=14-N(未到期自动预降，长期在册自动沉底)；
@@ -582,60 +533,28 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
           const stage = (args.stage as string) || state.stage || 'assess';
           const next = stage === 'assess' ? 'teach' : stage === 'teach' ? 'example' : stage === 'example' ? 'drill' : stage === 'drill' ? 'complete' : null;
           // 该KP名称
-          const kp = await ctx.store.query('SELECT name FROM edu.knowledge_points WHERE id = $1', [kpId]);
-          const kpName = kp.rows?.[0]?.name ?? kpId;
+          const kpName = (await findKnowledgePointName(eduQuery(ctx.store), kpId)) ?? kpId;
           let anchor: any = {};
           if (stage === 'assess') {
             // 摸底：该KP该生真实作答聚合 + 该KP未解决错题数
-            const [a, w] = await Promise.all([
-              ctx.store.query(
-                `SELECT kp.id AS kp_id, kp.name AS kp_name,
-                        COUNT(ar.id)::int AS attempts,
-                        COUNT(ar.id) FILTER (WHERE ar.is_correct)::int AS correct
-                   FROM edu.knowledge_points kp
-                   LEFT JOIN edu.questions q ON q.knowledge_point_id = kp.id
-                   LEFT JOIN edu.answer_records ar ON ar.question_id = q.id AND ar.user_id = $1
-                  WHERE kp.id = $2
-                  GROUP BY kp.id, kp.name`,
-                [ctx.entityId, kpId],
-              ),
-              ctx.store.query(
-                `SELECT count(*)::int AS n
-                   FROM edu.wrong_questions wq
-                   JOIN edu.questions q ON q.id = wq.question_id
-                  WHERE wq.user_id = $1 AND q.knowledge_point_id = $2 AND wq.is_resolved = false`,
-                [ctx.entityId, kpId],
-              ),
+            const [row, unresolvedWrong] = await Promise.all([
+              masteryBySingleKp(eduQuery(ctx.store), ctx.entityId, kpId),
+              countUnresolvedWrongByKp(eduQuery(ctx.store), ctx.entityId, kpId),
             ]);
-            const row = a.rows?.[0] || {};
-            const attempts = row.attempts || 0;
-            anchor = { mastery: attempts ? Math.round(((row.correct || 0) / attempts) * 100) : 0, attempts, unresolvedWrong: w.rows?.[0]?.n ?? 0, baseline: attempts ? Math.round(((row.correct || 0) / attempts) * 100) : 0 };
+            const attempts = row?.attempts || 0;
+            anchor = { mastery: attempts ? Math.round(((row.correct || 0) / attempts) * 100) : 0, attempts, unresolvedWrong, baseline: attempts ? Math.round(((row.correct || 0) / attempts) * 100) : 0 };
           } else if (stage === 'teach') {
             // 错因：优先讲"这次答错"(授课状态里 lesson.submit 存的本错)；无则回退该KP最近一次实际答错的作答
             const targetedWrong = state.lastWrongAnswer && String(state.lastWrongAnswer).trim();
             if (targetedWrong) {
               anchor = { wrongAnswer: String(state.lastWrongAnswer), targeted: true };
             } else {
-              const { rows } = await ctx.store.query(
-                `SELECT ar.student_answer
-                   FROM edu.answer_records ar
-                   JOIN edu.questions q ON q.id = ar.question_id
-                  WHERE ar.user_id = $1 AND q.knowledge_point_id = $2 AND ar.is_correct = false
-                  ORDER BY ar.created_at DESC NULLS LAST LIMIT 1`,
-                [ctx.entityId, kpId],
-              );
-              anchor = { wrongAnswer: rows?.[0]?.student_answer ?? null, targeted: false };
+              const wrongAnswer = await findLastWrongAnswer(eduQuery(ctx.store), ctx.entityId, kpId);
+              anchor = { wrongAnswer, targeted: false };
             }
           } else if (stage === 'example' || stage === 'drill') {
             // 例题 / 再练：该KP抽一道真题（真实题面；判读走 answer.grade）
-            const { rows } = await ctx.store.query(
-              `SELECT q.id AS question_id, q.content, q.type, q.options, q.difficulty
-                 FROM edu.questions q
-                WHERE q.knowledge_point_id = $1
-                ORDER BY random() LIMIT 1`,
-              [kpId],
-            );
-            const q = rows?.[0];
+            const q = await findRandomQuestionByKp(eduQuery(ctx.store), kpId);
             anchor = q ? { questionId: q.question_id, content: q.content, type: q.type, options: q.options, difficulty: q.difficulty } : { question: null };
           }
           // 持久化推进后的阶段 + 授课数据锚(跨消息续课)：example/drill 记 lastQuestion, assess 记 baseline，lesson.submit 据此回授。
@@ -698,16 +617,8 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
           let practiceMastery = 0;
           let baseline: number | null = typeof state.baseline === 'number' ? state.baseline : null;
           try {
-            const { rows } = await ctx.store.query(
-              `SELECT COUNT(ar.id) FILTER (WHERE ar.is_correct)::int AS correct, COUNT(ar.id)::int AS attempts
-                 FROM edu.answer_records ar
-                 JOIN edu.questions q ON q.id = ar.question_id
-                WHERE ar.user_id = $1 AND q.knowledge_point_id = $2`,
-              [ctx.entityId, kpId],
-            );
-            const rc = rows?.[0];
-            const attempts = rc?.attempts || 0;
-            if (attempts) practiceMastery = Math.round(((rc.correct || 0) / attempts) * 100);
+            const rc = await practiceAggByKp(eduQuery(ctx.store), ctx.entityId, kpId);
+            if (rc.attempts) practiceMastery = Math.round((rc.correct / rc.attempts) * 100);
           } catch { /* 掌握度查询失败不阻断 */ }
           // 耦合回授课状态机：答对推进,答错留练，并累计练习次数/漏档
           let stage = 'drill';
@@ -783,19 +694,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
           void args;
           const entityId = ctx.entityId;
           // 按天分桶：作答正确/次数（同源 diagnosis 的聚合，仅多按天分组，保证趋势与掌握度一致）
-          const { rows } = await ctx.store.query(
-            `SELECT q.knowledge_point_id AS kp_id, kp.name AS kp_name,
-                    date_trunc('day', ar.created_at)::date AS day,
-                    COUNT(*)::int AS attempts,
-                    COUNT(ar.id) FILTER (WHERE ar.is_correct)::int AS correct
-               FROM edu.answer_records ar
-               JOIN edu.questions q ON q.id = ar.question_id
-               JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-              WHERE ar.user_id = $1
-              GROUP BY q.knowledge_point_id, kp.name, date_trunc('day', ar.created_at)
-              ORDER BY day ASC`,
-            [entityId],
-          );
+          const rows = await dailyMasterySeries(eduQuery(ctx.store), entityId);
           // 每 KP 按天累进掌握度 → 时间序列 + 首末差值
           const byKp = new Map<string, any>();
           for (const r of rows || []) {
@@ -839,27 +738,10 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
           void args;
           const entityId = ctx.entityId;
           // 1) per-KP 作答掌握度（edu.answer_records → questions → knowledge_points）
-          const agg = await ctx.store.query(
-            `SELECT kp.id AS kp_id, kp.name AS kp_name,
-                    COUNT(ar.id)::int AS attempts,
-                    COUNT(ar.id) FILTER (WHERE ar.is_correct)::int AS correct,
-                    ROUND(AVG(ar.time_spent_ms))::int AS avg_time_ms
-               FROM edu.answer_records ar
-               JOIN edu.questions q ON q.id = ar.question_id
-               JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-              WHERE ar.user_id = $1
-              GROUP BY kp.id, kp.name`,
-            [entityId],
-          );
+          const agg = await masteryByKnowledgePointWithTime(eduQuery(ctx.store), entityId);
           // 2) 未解决错题按 KP 名归并（wrong_questions.knowledge_point 是文本）
-          const wr = await ctx.store.query(
-            `SELECT wq.knowledge_point AS kp_name, COUNT(*)::int AS count
-               FROM edu.wrong_questions wq
-              WHERE wq.user_id = $1 AND wq.is_resolved = false
-              GROUP BY wq.knowledge_point`,
-            [entityId],
-          );
-          const knowledgePoints = (agg.rows || []).map((r: any) => {
+          const wr = await countUnresolvedWrongByKpName(eduQuery(ctx.store), entityId);
+          const knowledgePoints = (agg || []).map((r: any) => {
             const attempts = r.attempts || 0;
             const correct = r.correct || 0;
             return {
@@ -871,21 +753,18 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
               avgTimeSec: r.avg_time_ms != null ? Math.round(r.avg_time_ms / 1000) : null,
             };
           });
-          const unresolvedByKp = (wr.rows || []).map((r: any) => ({ kpName: r.kp_name, count: r.count }));
+          const unresolvedByKp = (wr || []).map((r: any) => ({ kpName: r.kp_name, count: r.count }));
           const totalAttempts = knowledgePoints.reduce((s: number, k: any) => s + k.attempts, 0);
           const totalCorrect = knowledgePoints.reduce((s: number, k: any) => s + k.correct, 0);
           // 3) 把最新掌握度吃进 mastery_snapshots（每 生每 KP 一行，UPSERT）——运行时真正维护掌握度模型
           for (const k of knowledgePoints) {
             try {
-              await ctx.store.query(
-                `INSERT INTO edu.mastery_snapshots (user_id, knowledge_point_id, mastery_score, confidence_level, calculated_at)
-                 VALUES ($1, $2, $3, $4, NOW())
-                 ON CONFLICT (user_id, knowledge_point_id) DO UPDATE
-                   SET mastery_score = EXCLUDED.mastery_score,
-                       confidence_level = EXCLUDED.confidence_level,
-                       calculated_at = NOW()`,
-                [entityId, k.kpId, k.mastery, k.attempts > 0 ? Math.min(1, k.attempts / 20) : 0],
-              );
+              await upsertMasterySnapshot(eduQuery(ctx.store), {
+                userId: entityId,
+                kpId: k.kpId,
+                mastery: k.mastery,
+                confidence: k.attempts > 0 ? Math.min(1, k.attempts / 20) : 0,
+              });
             } catch { /* 快照写失败不阻断诊断 */ }
           }
           return {
@@ -893,7 +772,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
             totalAttempts,
             totalCorrect,
             accuracy: totalAttempts ? Math.round((totalCorrect / totalAttempts) * 100) : 0,
-            totalUnresolved: (wr.rows || []).reduce((s: number, r: any) => s + (r.count || 0), 0),
+            totalUnresolved: (wr || []).reduce((s: number, r: any) => s + (r.count || 0), 0),
             knowledgePoints,
             unresolvedByKp,
           };
@@ -912,40 +791,30 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
           const ids: string[] = (args.weakKnowledgePointIds || []).slice(0, 8);
           if (!ids.length) return { ok: false, reason: '未提供弱项知识点(weakKnowledgePointIds)' };
           // 1) 先归档未完成的同类计划，避免计划堆叠
-          await ctx.store.query(
-            `UPDATE edu.learning_plans SET status = 'archived'
-              WHERE user_id = $1 AND status = 'active' AND plan_type = 'personalized'`,
-            [entityId],
-          );
+          await archivePersonalizedPlans(eduQuery(ctx.store), entityId);
           // 2) 取每个弱 KPs 的名称 + 抽一题作温习任务
-          const { rows: kps } = await ctx.store.query(
-            `SELECT id, name, subject FROM edu.knowledge_points WHERE id = ANY($1::uuid[])`,
-            [ids],
-          );
+          const kps = await listKnowledgePointsByIds(eduQuery(ctx.store), ids);
           const tasks = [];
           for (const k of kps || []) {
-            const { rows: qs } = await ctx.store.query(
-              `SELECT id FROM edu.questions WHERE knowledge_point_id = $1 ORDER BY random() LIMIT 1`,
-              [k.id],
-            );
+            const questionId = await findQuestionIdByKp(eduQuery(ctx.store), k.id);
             tasks.push({
               kpId: k.id,
               kpName: k.name,
               taskType: 'review',
               title: `温习「${k.name}」`,
               subject: k.subject ?? null,
-              questionId: qs[0] ? qs[0].id : null,
+              questionId,
             });
           }
           // 3) 落库一行个性化计划
-          const { rows: plans } = await ctx.store.query(
-            `INSERT INTO edu.learning_plans (user_id, title, plan_type, plan_data, total_tasks, completed_tasks, status, start_date, end_date)
-             VALUES ($1, $2, 'personalized', $3::jsonb, $4, 0, 'active', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days')
-             RETURNING id`,
-            [entityId, `个性化学习计划（${tasks.length} 个弱项）`, JSON.stringify({ tasks, generatedAt: new Date().toISOString() }), tasks.length],
-          );
-          const planId = plans[0]?.id ?? null;
-          return { ok: true, planId, title: `个性化学习计划（${tasks.length} 个弱项）`, totalTasks: tasks.length, tasks };
+          const title = `个性化学习计划（${tasks.length} 个弱项）`;
+          const planId = await insertPersonalizedPlan(eduQuery(ctx.store), {
+            userId: entityId,
+            title,
+            planData: { tasks, generatedAt: new Date().toISOString() },
+            totalTasks: tasks.length,
+          });
+          return { ok: true, planId, title, totalTasks: tasks.length, tasks };
         },
       }),
       makeTool({
@@ -981,13 +850,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
         async execute(ctx, args) {
           const entityId = ctx.entityId;
           // 所有权铁律: 仅能取属于自己的计划, 杜绝跨学生访问
-          const { rows } = await ctx.store.query(
-            `SELECT id, title, plan_data, total_tasks, completed_tasks, status
-               FROM edu.learning_plans
-              WHERE id = $1 AND user_id = $2`,
-            [args.planId, entityId],
-          );
-          const plan = rows[0];
+          const plan = await findPlanForUser(eduQuery(ctx.store), args.planId, entityId);
           if (!plan) return { ok: false, reason: '未找到该学习计划（或不属于当前学生）' };
           const tasks: any[] = Array.isArray(plan.plan_data?.tasks) ? plan.plan_data.tasks : [];
           const idx = Number(args.taskIndex);
@@ -1007,37 +870,24 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
           if (args.correct !== false && task.kpId) {
             if (task.questionId) {
               try {
-                await ctx.store.query(
-                  `UPDATE edu.wrong_questions SET is_resolved = true
-                    WHERE user_id = $1 AND question_id = $2 AND is_resolved = false`,
-                  [entityId, task.questionId],
-                );
+                await resolveWrongQuestion(eduQuery(ctx.store), entityId, task.questionId);
               } catch { /* 消除错题失败不阻断完成 */ }
             }
             try {
-              const cur = await ctx.store.query(
-                `SELECT mastery_score FROM edu.mastery_snapshots WHERE user_id = $1 AND knowledge_point_id = $2`,
-                [entityId, task.kpId],
-              );
-              const curV = cur.rows[0]?.mastery_score ?? null;
+              const curV = await findMasterySnapshot(eduQuery(ctx.store), entityId, task.kpId);
               const newV = curV == null ? 60 : Math.min(100, curV + 10);
-              await ctx.store.query(
-                `INSERT INTO edu.mastery_snapshots (user_id, knowledge_point_id, mastery_score, confidence_level, calculated_at)
-                 VALUES ($1, $2, $3, 0.8, NOW())
-                 ON CONFLICT (user_id, knowledge_point_id) DO UPDATE
-                   SET mastery_score = EXCLUDED.mastery_score,
-                       confidence_level = EXCLUDED.confidence_level,
-                       calculated_at = NOW()`,
-                [entityId, task.kpId, newV],
-              );
+              await upsertMasterySnapshotBumped(eduQuery(ctx.store), entityId, task.kpId, newV);
               masteryBump = newV;
             } catch { /* 快照回灌失败不阻断完成 */ }
           }
-          await ctx.store.query(
-            `UPDATE edu.learning_plans SET plan_data = $3::jsonb, completed_tasks = $4, progress = $5, status = $6, updated_at = NOW()
-             WHERE id = $1 AND user_id = $2`,
-            [plan.id, entityId, JSON.stringify(plan.plan_data), completedTasks, progress, nextStatus],
-          );
+          await updatePlanProgress(eduQuery(ctx.store), {
+            planId: plan.id,
+            userId: entityId,
+            planData: plan.plan_data,
+            completedTasks,
+            progress,
+            status: nextStatus,
+          });
           return {
             ok: true,
             planId: plan.id,
@@ -1469,11 +1319,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
     if (/完成|做完了/.test(lower)) {
       // 计划完成回灌：取进行中最新的个性化计划，完成其第一条未完成任务（答对）
       if (!registry) return { success: true, phase: 'teaching', message: '我可以帮你记录任务完成进度，请稍后再试。' };
-      const pl = await this._store().query(
-        `SELECT id, plan_data FROM edu.learning_plans WHERE user_id = $1 AND status IN ('active','completed') ORDER BY created_at DESC LIMIT 1`,
-        [o.entityId],
-      );
-      const p = pl.rows[0];
+      const p = await findLatestPlan(eduQuery(this._store()), o.entityId);
       if (!p) return { success: true, phase: 'teaching', message: '你还没有进行中的个性化学习计划，我可以先帮你生成一个。' };
       const pdata = typeof p.plan_data === 'string' ? JSON.parse(p.plan_data) : (p.plan_data || {});
       const tasks: any[] = Array.isArray(pdata.tasks) ? pdata.tasks : [];
@@ -1683,15 +1529,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
   async kpQuestions(entityId: string, kpId: string, size = 5): Promise<any> {
     if (!kpId) return { success: false, error: 'kpId 必填', questions: [] };
     const n = Math.max(1, Math.min(Number(size) || 5, 10));
-    const { rows } = await this._store().query(
-      `SELECT q.id, q.content, q.type, q.options, q.difficulty, kp.name AS knowledge_point
-         FROM edu.questions q
-         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-        WHERE q.knowledge_point_id = $1
-        ORDER BY random()
-        LIMIT $2`,
-      [kpId, n],
-    );
+    const rows = await listQuestionsByKp(eduQuery(this._store()), kpId, n);
     const questions = (rows || []).map((r: any) => ({
       questionId: r.id,
       content: r.content,
