@@ -135,10 +135,16 @@ export interface AgentCoreDeps {
   cliBackends?: CliBackendRegistry | null;
   /** LLM 单次调用超时（ms）；透传 LlmClient。不传 = 默认 60000（零回归）。 */
   llmTimeoutMs?: number;
+  /** 记忆摘要小标题（底座保持业务中立，缺省 '## 记忆'；宿主注入业务文案）。 */
+  memoryHeading?: string;
 }
 
-export declare class AgentCore {
+export declare class AgentCore implements EnginePort {
   constructor(deps: AgentCoreDeps);
+  /** EnginePort 身份（默认引擎 'gri-core'）。 */
+  id: string;
+  apiVersion: string;
+  capabilities: EngineCapabilities;
   listTools(): Array<Pick<Tool, 'name' | 'description' | 'inputSchema'>>;
   listSkills(): Skill[];
   run(params: {
@@ -149,6 +155,50 @@ export declare class AgentCore {
     routeKey?: string;
     opts?: Record<string, any>;
   }): Promise<any>;
+}
+
+/** 可换引擎契约（双轨：抽象端口 + 可换引擎）。见 src/engine-port.js。 */
+export interface EngineCapabilities {
+  /** 'host' = 工具环在 GRI；'engine' = 工具环在引擎。 */
+  toolLoop: 'host' | 'engine';
+  streaming: boolean;
+  needsApiKey: boolean;
+  subagents: boolean;
+  multimodal: boolean;
+}
+
+export interface EnginePort {
+  id: string;
+  apiVersion: string;
+  capabilities: EngineCapabilities;
+  run(ctx: Record<string, any>): Promise<any>;
+  listTools(): any[];
+  listSkills(): any[];
+}
+
+export declare const ENGINE_API_VERSION: string;
+
+export declare class EnginePortError extends Error {
+  code: string;
+}
+
+export declare function defineEnginePort(spec: {
+  id: string;
+  apiVersion?: string;
+  capabilities?: Partial<EngineCapabilities>;
+  run: (ctx: Record<string, any>) => Promise<any>;
+  listTools?: () => any[];
+  listSkills?: () => any[];
+}): Readonly<EnginePort>;
+
+export declare function isEnginePort(x: unknown): x is EnginePort;
+
+export declare class EngineRegistry {
+  constructor(engines?: EnginePort[]);
+  register(engine: EnginePort): this;
+  has(id: string): boolean;
+  get(id: string): EnginePort | null;
+  list(): Array<Pick<EnginePort, 'id' | 'apiVersion' | 'capabilities'>>;
 }
 
 export declare class McpClient {

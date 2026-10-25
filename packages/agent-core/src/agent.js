@@ -1,4 +1,5 @@
 import { LlmClient } from './llm-client.js';
+import { ENGINE_API_VERSION } from './engine-port.js';
 
 /**
  * AgentCore —— 通用推理/工具循环（OpenClaw core 的浓缩）。
@@ -21,6 +22,7 @@ export class AgentCore {
    * @param {string} [deps.persona] 默认人格（可被每轮 opts.persona 覆盖）
    * @param {Function} [deps.defaultResponder] async (ctx, opts) => any 无 key 时的确定性应答
    * @param {{run: Function}} [deps.cliBackends] 外部 CLI 后端注册表（B-3a/B-3b，「换脑子」）；缺省 null → 同今日
+   * @param {string} [deps.memoryHeading] 记忆摘要的小标题（底座保持业务中立，缺省 '## 记忆'；宿主注入业务文案）
    */
   constructor(deps) {
     this.router = deps.router;
@@ -29,6 +31,8 @@ export class AgentCore {
     this.skills = deps.skills;
     this.memory = deps.memory;
     this.persona = deps.persona || '你是一个严谨、耐心的 AI 助教。';
+    // 记忆摘要标题可注入：底座不渗业务语义（AGENT_LAYERING 判据 1/2）；宿主给「## 关于该学生的记忆」，缺省中性。
+    this.memoryHeading = deps.memoryHeading || '## 记忆';
     // cliBackends 缺省 null → 默认 LlmClient 无 CLI 后端（行为同今日，零回归）；cli 路由时才会真正被调用
     // llmTimeoutMs：宿主可注入 LLM 单次调用超时（deepseek 等推理模型大 prompt 下默认 60s 会误杀）；不传 = LlmClient 默认 60s（零回归）
     this.llm =
@@ -37,6 +41,17 @@ export class AgentCore {
     this.defaultResponder = deps.defaultResponder || (async () => null);
     // 工具执行审计钩子（Nest 接管 agent.tool_runs）
     this.onRun = deps.onRun || null;
+    // —— EnginePort 身份与能力（双轨：gri-core 为默认引擎，见 engine-port.js）——
+    // 类名 AgentCore 不变（index.js/index.d.ts + 大量 node:test 依赖）；这里只**显式声明**它已满足的端口。
+    this.id = deps.engineId || 'gri-core';
+    this.apiVersion = ENGINE_API_VERSION;
+    this.capabilities = Object.freeze({
+      toolLoop: 'host', // 工具环在 GRI；外部引擎（Claude SDK / OpenClaw core）声明 'engine'
+      streaming: false,
+      needsApiKey: true,
+      subagents: true, // agent.delegate
+      multimodal: false,
+    });
   }
 
   listTools() {
@@ -165,7 +180,7 @@ export class AgentCore {
     return [
       persona,
       skills ? `\n\n## 可用技能\n${skills}` : '',
-      mem ? `\n\n## 关于该学生的记忆\n${mem}` : '',
+      mem ? `\n\n${this.memoryHeading}\n${mem}` : '',
       `\n\n## 可用工具\n${tools || '（无）'}\n\n始终用中文回复。`,
       routeKey && routeKey !== 'default' ? `\n（当前模型路由：${routeKey}）` : '',
     ].join('');

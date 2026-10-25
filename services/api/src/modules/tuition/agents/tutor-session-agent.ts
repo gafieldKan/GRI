@@ -110,6 +110,7 @@ export class TutorSessionAgent {
       tools,
       skills,
       memory,
+      memoryHeading: '## 关于该学生的记忆', // 底座默认 '## 记忆'；宿主注入业务文案，prompt 逐字不变
       persona: '你是智学慧眼为这位学生配备的专属数学教师（决策模式）。只用中文。你不是在闲聊，而是通过工具给出教学判定。',
       defaultResponder: async () => null, // 无 key → decide 返回 null，调用方走本地 fallback
       llmTimeoutMs: loadConfig().llm.timeoutMs, // 与教师路同源：推理模型大 prompt 下 60s 误杀

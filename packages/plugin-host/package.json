@@ -1,0 +1,31 @@
+{
+  "name": "@gri/plugin-host",
+  "version": "0.1.0",
+  "description": "GRI 插件宿主 —— manifest-first、能力注册表、生命周期钩子、显式装配顺序（鉴权/授权策略最后组装）",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./src/index.js",
+      "require": "./src/index.js",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test --test-force-exit \"tests/**/*.test.js\""
+  },
+  "files": [
+    "src",
+    "index.d.ts",
+    "README.md"
+  ],
+  "keywords": [
+    "gri",
+    "plugin",
+    "manifest",
+    "capability",
+    "assembly"
+  ],
+  "license": "MIT"
+}

@@ -268,6 +268,8 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
       tools,
       skills,
       memory,
+      // 底座保持业务中立（默认 '## 记忆'）；宿主在此注入业务文案，prompt 逐字不变（零回归）。
+      memoryHeading: '## 关于该学生的记忆',
       persona:
         `你是智学慧眼为「学生 ${entityId}」配备的专属 AI 教师（独立记忆、独立进度）。` +
         `学生当前所学学科是「${subjectName}」${gradeLevel ? `（${gradeLevel} 年级）` : ''}，出题/讲解默认围绕该学科展开；` +

@@ -1,9 +1,9 @@
 /**
  * McpPool —— 进程级共享 MCP 连接池（跨消息复用，消掉「每消息 spawn stdio 子进程」的热点）。
  *
- * 思路：每生 agent 每消息都走 bridgeTools() 桥工具，但底层对同一 agent.mcp_servers 行的 MCP 连接
+ * 思路：每 entity agent 每消息都走 bridgeTools() 桥工具，但底层对同一 agent.mcp_servers 行的 MCP 连接
  * 只建一次、按需复用；空闲超时后 prune 收回。连接由池持有，工具 execute 只发 callTool，不再重建/泄漏子进程。
- * 每 server 一把 promise 链，规避「多学生并发打同一 server」对单 Client 的重入竞争。
+ * 每 server 一把 promise 链，规避「多消费者并发打同一 server」对单 Client 的重入竞争。
  *
  * 凭证铁律不变：连接只带 transport 形态（config.command/args/url/env-var 名），无任何 apiKey/secret 落内存。
  */

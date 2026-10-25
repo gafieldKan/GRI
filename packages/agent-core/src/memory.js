@@ -1,9 +1,9 @@
 /**
  * MemoryStore —— 按 entity 隔离的跨会话持久记忆（agent.memory 表）。
- * 每个学生（entity）一个独立记忆命名空间；他人 entity 读不到（按 entity_id 过滤）。
- * 值一律 JSONB；strength 反映掌握度/读写频率，供 AgentCore 装配进 prompt 时排序。
+ * 每个实体（entity）一个独立记忆命名空间；他人 entity 读不到（按 entity_id 过滤）。
+ * 值一律 JSONB；strength 反映强度/读写频率，供 AgentCore 装配进 prompt 时排序。
  *
- * key 约定：`setting.*`（偏好）、`mastery.<kpId>`（掌握度）、`fact.*`（家庭/事实）…
+ * key 命名空间由宿主定义（底座保持中立）：如 `setting.*`、`fact.*`…
  */
 
 const AVOID_KEYS = /(password|secret|token|api_?key|credential)/i;
