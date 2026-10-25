@@ -39,6 +39,8 @@ export interface LlmConfig {
   /** provider='cli' 时 = 外部 agent 后端 id（claude-code/codex/openclaw/hermes）；其余恒 null（B-3b）。 */
   cliBackend?: string | null;
   source?: 'route' | 'env' | 'cred' | 'route+cred' | 'route:cli';
+  /** LLM 单次调用超时（ms）；透传 LlmClient。缺省 = LlmClient 默认 60000。 */
+  timeoutMs?: number;
 }
 
 /** 每 routeKey 的密文凭据读取器（底座 CredentialStore 的形状；ModelRouter 只依赖 get）。 */
@@ -131,6 +133,8 @@ export interface AgentCoreDeps {
   onRun?: (audit: any) => void;
   /** 外部 CLI 后端注册表（B-3b）；缺省 null → CLI 路由无后端 → chat 明确抛错（不静默降级）。 */
   cliBackends?: CliBackendRegistry | null;
+  /** LLM 单次调用超时（ms）；透传 LlmClient。不传 = 默认 60000（零回归）。 */
+  llmTimeoutMs?: number;
 }
 
 export declare class AgentCore {

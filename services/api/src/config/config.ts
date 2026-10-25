@@ -23,6 +23,8 @@ export interface LlmConfig {
   model: string;
   provider: string;
   multimodalModel: string;
+  /** LLM 单次调用超时（ms；env LLM_TIMEOUT_MS，默认 150000）。 */
+  timeoutMs: number;
 }
 
 export interface IdentityBrokerConfig {
@@ -80,6 +82,9 @@ export function loadConfig(): AppConfig {
       model: process.env.LLM_MODEL ?? 'deepseek-ai/deepseek-v4.1-flash',
       provider: process.env.LLM_PROVIDER ?? 'nvidia',
       multimodalModel: process.env.LLM_MULTIMODAL_MODEL ?? 'nvidia/neva-22b',
+      // LLM 单次调用超时：deepseek 等推理模型大 prompt 下 60s 默认会误杀（教师路曾 500/用户 499）；
+      // 宿主 env 可配（底座不读 env 红线：config 是宿主侧）。150s < nginx /api 的 180s。
+      timeoutMs: Number.parseInt(process.env.LLM_TIMEOUT_MS ?? '', 10) || 150000,
     },
     identity: {
       authCenterUrl: process.env.AUTH_CENTER_URL ?? 'http://auth-center:3004',

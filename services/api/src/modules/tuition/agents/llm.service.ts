@@ -50,6 +50,8 @@ export class LlmService {
   readonly model: string;
   readonly provider: string;
   readonly multimodalModel: string;
+  /** LLM 单次调用超时（ms；宿主 env LLM_TIMEOUT_MS，默认 150000）。 */
+  readonly timeoutMs: number;
 
   /** loadConfig 快照 = 兜底默认（路由器查不到路由/表缺失时用）。 */
   private readonly fallback: ActiveCfg;
@@ -70,6 +72,7 @@ export class LlmService {
     this.model = llm.model;
     this.provider = llm.provider;
     this.multimodalModel = llm.multimodalModel;
+    this.timeoutMs = llm.timeoutMs;
     this.router = db
       ? new ModelRouter(storeFrom((text: string, params?: unknown[]) => db.query(text, params)))
       : null;
@@ -185,7 +188,7 @@ action 判定规则：
       const responseObj = await this._callLLMWithRetry(messages, {
         temperature: 0.3,
         max_tokens: 4096,
-        timeoutMs: 60000,
+        timeoutMs: this.timeoutMs,
         maxRetries: 2,
         baseDelayMs: 2000,
       });
@@ -266,7 +269,7 @@ intent 说明：
       const response = await this._callLLMWithRetry(messages, {
         temperature: 0.3,
         max_tokens: 4096,
-        timeoutMs: 60000,
+        timeoutMs: this.timeoutMs,
         maxRetries: 2,
         baseDelayMs: 2000,
       });
@@ -323,7 +326,7 @@ intent 说明：
     const {
       temperature = 0.7,
       max_tokens = 4096,
-      timeoutMs = 30000,
+      timeoutMs = this.timeoutMs,
       maxRetries = 3,
       baseDelayMs = 1000,
     } = options;

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
+import { loadConfig } from '../../../config/config';
 import { SessionFsm } from './session-fsm';
 import {
   AgentCore, ModelRouter, ToolRegistry, SkillRegistry, MemoryStore, makeTool, storeFrom,
@@ -111,6 +112,7 @@ export class TutorSessionAgent {
       memory,
       persona: '你是智学慧眼为这位学生配备的专属数学教师（决策模式）。只用中文。你不是在闲聊，而是通过工具给出教学判定。',
       defaultResponder: async () => null, // 无 key → decide 返回 null，调用方走本地 fallback
+      llmTimeoutMs: loadConfig().llm.timeoutMs, // 与教师路同源：推理模型大 prompt 下 60s 误杀
     });
 
     try {

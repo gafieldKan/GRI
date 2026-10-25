@@ -30,7 +30,10 @@ export class AgentCore {
     this.memory = deps.memory;
     this.persona = deps.persona || '你是一个严谨、耐心的 AI 助教。';
     // cliBackends 缺省 null → 默认 LlmClient 无 CLI 后端（行为同今日，零回归）；cli 路由时才会真正被调用
-    this.llm = deps.llm || new LlmClient((routeKey, o) => this.router.resolve(routeKey), deps.cliBackends || null);
+    // llmTimeoutMs：宿主可注入 LLM 单次调用超时（deepseek 等推理模型大 prompt 下默认 60s 会误杀）；不传 = LlmClient 默认 60s（零回归）
+    this.llm =
+      deps.llm ||
+      new LlmClient((routeKey, o) => this.router.resolve(routeKey), deps.cliBackends || null, deps.llmTimeoutMs != null ? { timeoutMs: deps.llmTimeoutMs } : undefined);
     this.defaultResponder = deps.defaultResponder || (async () => null);
     // 工具执行审计钩子（Nest 接管 agent.tool_runs）
     this.onRun = deps.onRun || null;

@@ -8,6 +8,7 @@ import {
   makeTool, storeFrom, McpPool, createDelegateTool,
 } from '@gri/agent-core';
 import type { CliBackendRegistry } from '@gri/agent-core';
+import { loadConfig } from '../../config/config';
 
 /**
  * DI 令牌：外部 agent CLI 后端注册表（B-3b「换脑子」）。
@@ -277,6 +278,8 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
       // 外部 agent 后端（B-3b）：缺省 null（未注入 → 同今日）；仅当该 routeKey 有 enabled 的 provider='cli'
       // 路由行时，LlmClient 才会改走 CliBackendRegistry（换脑子），无 cli 行则零影响。
       cliBackends: this.cliBackends ?? null,
+      // LLM 单次调用超时（宿主 env LLM_TIMEOUT_MS，默认 150s）：deepseek 推理模型大 prompt 下 60s 误杀
+      llmTimeoutMs: loadConfig().llm.timeoutMs,
     });
 
     return { core, memory, entity, subject, gradeLevel };

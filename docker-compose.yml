@@ -134,6 +134,9 @@ services:
       LLM_API_URL: ${LLM_API_URL:-https://integrate.api.nvidia.com/v1/chat/completions}
       LLM_MODEL: ${LLM_MODEL:-deepseek-ai/deepseek-v4.1-flash}
       LLM_PROVIDER: ${LLM_PROVIDER:-nvidia}
+      # LLM 单次调用超时（ms）：deepseek 推理模型大 prompt 下默认 60s 会误杀（教师路 500/用户 499）。
+      # 150s < nginx /api 的 180s；可用 .env 的 LLM_TIMEOUT_MS 覆盖。
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-150000}
       LLM_MULTIMODAL_MODEL: ${LLM_MULTIMODAL_MODEL:-nvidia/neva-22b}
       # 每用户 api key 的凭据主密钥（B-1 凭据缝）：缺省空 → 凭据面关闭（api_key 拒收，零回归）；
       # 注入真实值即启用（32 字节：base64/hex/原文）。不落库、不入 git。
