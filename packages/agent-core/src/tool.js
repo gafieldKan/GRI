@@ -24,3 +24,18 @@ export function makeTool(def) {
     execute: typeof def.execute === 'function' ? def.execute : async () => null,
   };
 }
+
+/**
+ * 工具名的**跨 provider 清洗**：OpenAI/NVIDIA 等只接受 `[a-zA-Z0-9_-]`，而注册名可含 `.`。
+ * 模型看到的是清洗名（`question.lookup` → `question-lookup`），调用时再反查回注册名。
+ *
+ * 注意这是**多对一**映射（`.` 与 `-` 都 → `-`），故两个不同注册名可能撞到同一个清洗名 ——
+ * 那会让「反查」有歧义（模型失去分辨力，谁被选中取决于注册顺序）。调用方（`AgentCore` 的
+ * 反查表、以及装配期的撞名检查）因此必须把**清洗名**当作等价键：装配期拒收，运行期不猜。
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+export function sanitizeToolName(name) {
+  return String(name).replace(/[^a-zA-Z0-9_-]/g, '-');
+}

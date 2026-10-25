@@ -34,6 +34,10 @@ COPY packages ./packages
 COPY services/api/package.json ./services/api/package.json
 # 编译产物（dist/ 含 migrate/*.sql assets）
 COPY --from=build /app/services/api/dist ./services/api/dist
+# 出厂插件目录（W2.3）：manifest-first 的**数据**，不参与编译 —— 必须与 dist 同层落位，
+# 否则宿主按 `resolve(__dirname,'../../../plugins')` 找不到目录，教师静默少一批工具
+# （启动日志会报 PLUGINS_DIR_MISSING，但正确做法是让它干脆存在）。
+COPY services/api/plugins ./services/api/plugins
 # Explorer 几何 API 的只读数据源（GeoService 运行时按需读取并缓存切片）
 COPY scripts/reference-data/data/un-regions.geo.json scripts/reference-data/data/un-regions-maps.geo.json ./scripts/reference-data/data/
 # 运行时文件清单仅依赖 package.json + dist；其余源码不需要

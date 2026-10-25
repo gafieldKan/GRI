@@ -1,0 +1,17 @@
+{
+  "id": "memory",
+  "name": "长期记忆",
+  "kind": "agent.skill",
+  "apiVersion": "1",
+  "version": "1.0.0",
+  "description": "每生独立 AI 教师的长期记忆三件套（跨会话）：recall / remember / forget。",
+  "entry": "./index.js",
+  "provides": [
+    "agent.memory"
+  ],
+  "trust": {
+    "boundary": "in-process",
+    "network": false,
+    "filesystem": "none"
+  }
+}

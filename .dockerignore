@@ -44,3 +44,6 @@ node.md
 Dockerfile
 *.md
 .scripts
+
+# 例外：插件目录里的 README 是 P6「AI/人可读」的**运行时资产**（随插件一起进镜像），非项目文档
+!services/api/plugins/**/*.md

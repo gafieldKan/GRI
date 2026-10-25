@@ -1,13 +1,14 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Optional, Inject } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional, Inject } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { AgentCredentialsService } from './agent-credentials.service';
 import { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, storeFrom, McpPool } from '@gri/agent-core';
 import type { CliBackendRegistry } from '@gri/agent-core';
 
 import { eduQuery, findStudentProfile, findLatestPlan } from '../edu-core/repository';
-import { AgentTeachingTools } from './teaching-tools';
+import { AgentTeachingTools, HOST_RESERVED_TOOL_NAMES, dropHostNameCollisions } from './teaching-tools';
 import { AgentDelegateRunsService } from './agent-delegate.service';
 import { AgentPanelService } from './agent-panel.service';
+import { agentPlugins } from './agent-plugins';
 import { loadConfig } from '../../config/config';
 
 /**
@@ -16,6 +17,9 @@ import { loadConfig } from '../../config/config';
  * 是否真正启用只看 `agent.llm_routes` 是否有 enabled 的 provider='cli' 行（C2，无全局开关）。
  */
 export const AGENT_CLI_BACKENDS = 'AGENT_CLI_BACKENDS';
+
+/** 出厂插件装载的日志通道（W2.3）—— 装配了什么、哪条装载失败，启动即可见。 */
+const agentPluginLogger = new Logger('AgentPlugins');
 
 /**
  * 外部 agent run 的 `error_code` 取值集（B-4 §目标4）—— 定义随委派面移入 ./agent-delegate.service，
@@ -67,12 +71,36 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
 
   /** Nest 生命周期：启动时重启对账——把宿主重启前残留 running 的孤儿 run 置 failed/INTERRUPTED（B-4）。 */
   async onModuleInit(): Promise<void> {
+    this._reportPluginDiagnostics();
     await this.reconcileInterruptedRuns();
   }
 
   /** Nest 生命周期：进程退出时回收全部 MCP 连接（防僵尸子进程残留）。 */
   async onModuleDestroy(): Promise<void> {
     await this.mcpPool.disconnect();
+  }
+
+  /**
+   * 插件装载诊断（W2.3）：装配了什么、哪一条装载失败 —— 启动时打出来。
+   * 「不阻断启动」的前提是**问题可见**：缺插件只少工具，但绝不静默。
+   */
+  private _reportPluginDiagnostics(): void {
+    const { dir, activated, ignored, errors } = agentPlugins().diagnostics;
+    agentPluginLogger.log(`出厂插件：${activated.length ? activated.join('、') : '（无）'} ← ${dir}`);
+    // 目录存在却无清单 → 按非插件跳过：不是错误，但**必须可见**（否则「插件整个不见了」查无对证）。
+    for (const g of ignored) agentPluginLogger.log(`插件目录跳过：${JSON.stringify(g)}`);
+    for (const e of errors) agentPluginLogger.warn(`插件装载问题：${JSON.stringify(e)}`);
+    // 防漂移：宿主**所有**自有工具名都必须登记进保留表，否则插件（或 MCP）可无声顶替它。
+    // 两个来源缺一不可：① 宿主自注册进 registry 的（委派工具 `agent.delegate`）；
+    // ② 内建工具表 **纯内建**（`toolDefs([])`，不含插件）——漏了它就等于给第 14 个内建工具留个无声顶替口。
+    const reserved = new Set(HOST_RESERVED_TOOL_NAMES);
+    const ownTools = new Set([
+      ...this._teachingTools().list().map((t) => t.name),
+      ...this._teach.toolDefs([]).map((t) => t.name),
+    ]);
+    for (const name of ownTools) {
+      if (!reserved.has(name)) agentPluginLogger.warn(`宿主工具 ${name} 未登记进 HOST_RESERVED_TOOL_NAMES —— 插件可无声顶替它`);
+    }
   }
 
   /** Store 适配：把 DatabaseService 拧成 agent-core 的 {query}。 */
@@ -98,7 +126,15 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
     // 用进程级共享连接池（跨消息复用，空闲自动回收）——不每消息 spawn 子进程、工具执行不泄漏连接。
     // 无启用 server → []（no-op，不回归）；单台失败被池隔离。凭证永不经工具入模型。
     const mcpTools = await this.mcpPool.bridgeTools();
-    if (mcpTools.length) tools.registerAll(mcpTools);
+    if (mcpTools.length) {
+      // MCP 工具与宿主/插件工具同进一个 ToolRegistry（**后写覆盖**）：撞宿主自有名 → 丢弃并告警。
+      // 现状下这**几乎不会命中**：MCP 工具名恒为 `<server>_<tool>`（见 agent-core mcp/pool.js），含 `_`
+      // 分隔符，而保留名里没有 `_` —— 故这是**兜底**（MCP 命名规则若变、或将来接入非前缀命名的桥，撞名即被拦）。
+      // 保留它是为了把「后写覆盖 → 无声顶替」这条机制**补上最后一道口**，而非声称当前必然发生。
+      const { safe, dropped } = dropHostNameCollisions(mcpTools);
+      for (const t of dropped) agentPluginLogger.warn(`MCP 工具 ${t && t.name} 撞宿主自有名，已丢弃（不无声顶替内建/委派工具）`);
+      if (safe.length) tools.registerAll(safe);
+    }
     const skills = this._teachingSkills(toolDefs);
 
     // 学科/年级链式取真源：显式 opts → 学生档案 → 默认 math
@@ -157,7 +193,8 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
   private readonly _teach = new AgentTeachingTools();
 
   private _teachingToolDefs(): any[] {
-    return this._teach.toolDefs();
+    // W2.3：插件提供的工具（出厂插件目录，进程内一次性装载）按原位拼回；缺插件 → 少工具但宿主可用（P5）。
+    return this._teach.toolDefs(agentPlugins().tools as any[]);
   }
 
   private _teachingTools(): ToolRegistry {

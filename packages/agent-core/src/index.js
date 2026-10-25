@@ -8,7 +8,7 @@ export { LlmClient } from './llm-client.js';
 export { ENGINE_API_VERSION, EnginePortError, defineEnginePort, isEnginePort, EngineRegistry } from './engine-port.js';
 export { ModelRouter } from './model-router.js';
 export { ToolRegistry } from './tool-registry.js';
-export { makeTool } from './tool.js';
+export { makeTool, sanitizeToolName } from './tool.js';
 export { SkillRegistry } from './skill-registry.js';
 export { parseSkillMarkdown, normalizeSkill } from './skill.js';
 export { MemoryStore } from './memory.js';

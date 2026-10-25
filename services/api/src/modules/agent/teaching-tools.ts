@@ -1,16 +1,19 @@
 /**
  * 教学工具与技能集（W2.2「拆神服务」—— 从 agent.service.ts:1777 抽出）。
  *
- * 这里装的是 AI 教师**能做什么**：16 个 `makeTool` 工具定义（question/answer/diagnosis/plan/wrong/review/
- * lesson/memory/curriculum/map…）+ `tutor` 技能正文 + 两个共享落库管线（gradeAnswerRecord / lessonRecord）。
+ * 这里装的是 AI 教师**能做什么**：`makeTool` 工具定义（question/answer/diagnosis/plan/wrong/review/
+ * lesson/curriculum/map…，共 13 个内建）+ `tutor` 技能正文 + 两个共享落库管线（gradeAnswerRecord / lessonRecord）。
  *
- * 为什么单独成件：① `agent.service.ts` 因此回到「装配 + 面板」两件事；② W2.3 要把它插件化
- * （`agent.skill` manifest），先有独立文件、再谈 manifest，避免 16 个插件各嵌 SQL。
+ * W2.3 起**首个工具组已插件化**：长期记忆三件套（memory.*）搬到出厂插件 `plugins/memory`
+ * （知识/技能插件化的第一例，见 docs/AGENT_SKILL_PLUGIN_CONTRACT.md §四 P-3.1）；
+ * 其余内建工具按 `toolDefs(pluginTools)` 的**原位**拼回，工具表顺序与集合不变。
+ *
+ * 为什么单独成件：① `agent.service.ts` 因此回到「装配 + 面板」两件事；② 插件化需要先有独立文件。
  *
  * 依赖**只向下**：edu-core（数据口，W2.1）+ @gri/agent-core（工具/技能原语）。零 `this.`、零回指宿主。
  */
 
-import { AgentCore, LlmClient, ModelRouter, MemoryStore, SkillRegistry, makeTool } from '@gri/agent-core';
+import { AgentCore, LlmClient, ModelRouter, MemoryStore, SkillRegistry, makeTool, sanitizeToolName } from '@gri/agent-core';
 import { binaryQuality, applySrReview } from '../edu-core/sm2';
 import {
   eduQuery,
@@ -137,9 +140,74 @@ export async function lessonRecord(ctx: any, args: any): Promise<any> {
   return { ok: true, recordId, kpName, outcome, lessons };
 }
 
+/**
+ * 宿主**自有**工具名（13 个内建）——**插件不得占用**。
+ *
+ * 为什么单列一张表：宿主工具与插件工具最终同进一个 `ToolRegistry`，而它是**后写覆盖**——
+ * 插件只要叫 `answer.grade`，内建工具就被**无声顶替**，且面板按名取用会指向插件版本。
+ * 故装载时把本表作为 `PluginHost.reservedTools` 传入（撞名 → `TOOL_NAME_RESERVED` 诊断并拒绝），
+ * `toolDefs()` 里再做一层**同源守卫**（见下），双保险。
+ *
+ * 与 `toolDefs()` 的一致性由 `agent-plugins.spec.ts` 断言（防本表漂移）。
+ */
+export const BUILTIN_TOOL_NAMES = [
+  'question.lookup',
+  'curriculum.lookup',
+  'answer.grade',
+  'wrong.list',
+  'review.sequence',
+  'lesson.current',
+  'lesson.submit',
+  'progress.trend',
+  'diagnosis.state',
+  'plan.generate',
+  'lesson.record',
+  'plan.complete',
+  'map.explorer',
+];
+
+/**
+ * 宿主**自有**工具名全集 —— 装配时作为 `PluginHost.reservedTools` 传入，插件一律不得占用。
+ *
+ * = 本文件内建 13 个 **加上宿主自己另注册进同一 registry 的工具**：委派工具 `agent.delegate`
+ * （由 `AgentService._teachingTools()` 注册 —— 它**不在** `toolDefs()` 里，宿主另外并入同一 registry；
+ * 漏登记它，插件就能无声顶替委派工具）。名字取自 `packages/agent-core/src/cli-delegate.js`；
+ * `AgentService._reportPluginDiagnostics()` 在启动期核对「宿主自有工具名是否都在本表内」，防漂移。
+ */
+export const HOST_RESERVED_TOOL_NAMES = [...BUILTIN_TOOL_NAMES, 'agent.delegate'];
+
+/**
+ * 丢弃**与宿主自有工具同（清洗）名**的外来工具（插件 / MCP 桥接）。
+ *
+ * 为什么需要：外来工具与宿主工具最终同进一个 `ToolRegistry`（**后写覆盖**），撞名即**无声顶替**——
+ * 且宿主「按名取用」（面板直调 `execute`）会拿到外来版本。按**清洗名**比对（模型眼里的函数名空间
+ * 多对一：`answer.grade` 与 `answer-grade` 同名），只按原样比会漏放后者。
+ *
+ * 与 `PluginHost.reservedTools`/`nameKey` 是**同一规则的两道口**：那处负责在**装载期**拒绝并诊断；
+ * 这处负责在**装配期**兜底（MCP 桥接不经过 plugin-host，只有这一道）。
+ *
+ * @returns {{safe: any[], dropped: any[]}} 保留的工具 / 被丢弃的工具（调用方应把 dropped 打日志，不静默）
+ */
+export function dropHostNameCollisions(tools: any[], reserved: readonly string[] = HOST_RESERVED_TOOL_NAMES): { safe: any[]; dropped: any[] } {
+  const reservedKeys = new Set(reserved.map(sanitizeToolName));
+  const safe: any[] = [];
+  const dropped: any[] = [];
+  for (const t of tools) (t && t.name && !reservedKeys.has(sanitizeToolName(t.name)) ? safe : dropped).push(t);
+  return { safe, dropped };
+}
+
 export class AgentTeachingTools {
-  /** 教学工具定义集：学生 agent 可调用的能力（直接读库，不耦合 tuition）。 */
-  toolDefs(): any[] {
+  /**
+   * 教学工具定义集：学生 agent 可调用的能力（直接读库，不耦合 tuition）。
+   *
+   * `pluginTools`：由**出厂插件**提供的工具（宿主经 `@gri/plugin-host` 装配后传入，见 `./agent-plugins`），
+   * 按**原位**拼回工具表（当前承载 memory.* 三件套）。缺省空数组 → 纯内建集（插件缺失时宿主仍可用，P5）。
+   */
+  toolDefs(pluginTools: any[] = []): any[] {
+    // 同源守卫：撞宿主自有名（HOST_RESERVED_TOOL_NAMES）的插件工具在此丢弃 —— 真正的拦截与诊断在宿主
+    // （PluginHost.reservedTools / nameKey），这层保证「即便调用方把撞名工具直接塞进来」也不会顶替内建。
+    // 与**注册顺序无关**：不管插件工具落在内建表的哪一段（原位拼回时它在中间），一律按名丢弃。
+    const safePluginTools = dropHostNameCollisions(pluginTools).safe;
     return [
       makeTool({
         name: 'question.lookup',
@@ -358,33 +426,9 @@ export class AgentTeachingTools {
           };
         },
       }),
-      makeTool({
-        name: 'memory.recall',
-        description: '读回该学生已存记忆（偏好/事实/掌握度），用于个性化。',
-        async execute(ctx, args) {
-          void args;
-          const facts = await ctx.memory.list(ctx.entityId, { limit: 20 });
-          return facts;
-        },
-      }),
-      makeTool({
-        name: 'memory.remember',
-        description: '存一条关于该学生的长期记忆（偏好/事实），供以后所有会话使用。',
-        inputSchema: { type: 'object', properties: { key: { type: 'string' }, value: { type: 'string' } }, required: ['key', 'value'] },
-        async execute(ctx, args) {
-          await ctx.memory.set(ctx.entityId, args.key, args.value, 1);
-          return { saved: true, key: args.key };
-        },
-      }),
-      makeTool({
-        name: 'memory.forget',
-        description: '删除该学生的一条长期记忆（当它已过时/记错/学生明确说"忘掉"时用）。key 与 memory.remember 写入的一致。',
-        inputSchema: { type: 'object', properties: { key: { type: 'string' } }, required: ['key'] },
-        async execute(ctx, args) {
-          await ctx.memory.delete(ctx.entityId, args.key);
-          return { forgot: true, key: args.key };
-        },
-      }),
+      // 长期记忆三件套（memory.*）自 W2.3 起由**出厂插件** `plugins/memory` 提供；
+      // 宿主按**原位**拼回（同 index），使工具表顺序与插件化前逐项一致（listTools() 集合不变）。
+      ...safePluginTools,
       makeTool({
         name: 'lesson.current',
         description:

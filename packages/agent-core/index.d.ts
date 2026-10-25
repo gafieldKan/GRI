@@ -19,6 +19,11 @@ export interface Tool {
 
 export declare function makeTool(def: Partial<Tool> & { name: string }): Tool;
 
+/**
+ * 工具名的跨 provider 清洗（多对一：`.` 与 `-` 都 → `-`）。装配期的撞名检查应把清洗名当等价键。
+ */
+export declare function sanitizeToolName(name: string): string;
+
 export declare function storeFrom(query: Store['query']): Store;
 
 export declare class ToolRegistry {

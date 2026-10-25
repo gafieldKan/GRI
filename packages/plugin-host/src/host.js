@@ -27,23 +27,163 @@ export class PluginHostError extends Error {
   }
 }
 
+/**
+ * 从抛出的值里安全取出 `{code, message}`（**导出**：loader 的三个 catch 也走它，防两处漂移）。
+ *
+ * **为何不能直接读 `e.code` / `e.message`**：`catch` 的参数可以是**任意值** —— Proxy、带抛错 getter
+ * 的对象、`Symbol`。诊断构造发生在 catch 块里，若此处再抛，异常就**穿出**装配/装载（违 P5「不升错」），
+ * 病人反而变成新崩溃点。故两处属性访问**各自** try/catch，连兜底的 `String(e)` 也包
+ * （`Symbol.toPrimitive` 会抛；`String(Symbol())` 反而合法，故不能直接 `String(e)` 了事）。
+ * @param {unknown} e
+ * @returns {{code: string|null, message: string}}
+ */
+export function errorInfo(e) {
+  let code = null;
+  let message = null;
+  try {
+    const c = e && e.code;
+    if (typeof c === 'string' && c) code = c;
+  } catch {
+    /* 抛错 getter → 让调用方落到各自的缺省码 */
+  }
+  try {
+    const m = e && e.message;
+    if (typeof m === 'string' && m) message = m;
+  } catch {
+    /* 同上 */
+  }
+  if (!message) {
+    try {
+      message = String(e);
+    } catch {
+      message = '[不可读的错误对象]';
+    }
+  }
+  return { code, message };
+}
+
+/**
+ * 校验保留名参数：必须是字符串数组（缺省 = 空表）。
+ * **为什么要校验**：`new Set('abc')` 会得到 `{'a','b','c'}` —— 传错类型不报错，却把保留表变成一串单字符，
+ * 调用方要保护的 `answer.grade` **一个都没保护上**，且毫无迹象。
+ * @param {unknown} names
+ * @returns {string[]}
+ */
+function assertReservedTools(names) {
+  if (names == null) return [];
+  if (!Array.isArray(names) || names.some((n) => typeof n !== 'string')) {
+    throw new PluginHostError(
+      'RESERVED_TOOLS_INVALID',
+      `reservedTools 必须是字符串数组，收到 ${Array.isArray(names) ? '含非字符串项' : typeof names}`,
+    );
+  }
+  return names;
+}
+
 export class PluginHost {
   /**
-   * @param {{kinds?: Record<string,number>, apiVersion?: string, context?: object, observability?: {event?: Function}}} [opts]
+   * @param {{kinds?: Record<string,number>, apiVersion?: string, context?: object, observability?: {event?: Function}, reservedTools?: string[], nameKey?: (name: string) => string}} [opts]
    */
   constructor(opts = {}) {
+    opts = opts || {}; // 显式 `null` 也不得崩（P5 同级：配置可缺省）
     this.kinds = opts.kinds || DEFAULT_KINDS;
     this.apiVersion = opts.apiVersion || HOST_API_VERSION;
     this.context = opts.context || {};
     this.observability = opts.observability || null;
     this.registry = new CapabilityRegistry();
+    // 工具名等价键是**配置**：非函数（且非空）是调用方错误，响亮报出，不得静默退化成恒等键
+    // （否则「传了清洗键却没生效」= 清洗名防线凭空消失，`agent-delegate` 又能顶替 `agent.delegate`）。
+    if (opts.nameKey != null && typeof opts.nameKey !== 'function') {
+      throw new PluginHostError('NAME_KEY_INVALID', `工具名等价键必须是函数，收到 ${typeof opts.nameKey}`);
+    }
+    /**
+     * 工具名**等价键**（缺省恒等）。宿主可注入「清洗名」规则，使 `answer.grade` 与 `answer-grade`
+     * 视为同名 —— 二者在 provider 的 function 名空间里本就同键（见 agent-core `sanitizeToolName`），
+     * 不按等价键比对，插件就能用 `agent-delegate` 顶替 `agent.delegate`。所有撞名判定都走它。
+     * @type {(name: string) => string}
+     */
+    this._nameKey = typeof opts.nameKey === 'function' ? opts.nameKey : (n) => String(n);
+    /** @type {Set<string>} 宿主**自有**工具名（原样） */
+    this._reservedTools = new Set(assertReservedTools(opts.reservedTools));
+    /** @type {Set<string>} 同上，按等价键归一（撞名判定用这个） */
+    this._reservedKeys = new Set([...this._reservedTools].map((n) => this._nameKey(n)));
     /** @type {Set<string>} 已激活插件 id */
     this._active = new Set();
-    /** @type {Map<string,string>} tool 名 -> plugin id */
+    /** @type {Map<string,string>} tool 名 -> plugin id（原样，卸载/回滚用） */
     this._toolOwners = new Map();
+    /** @type {Map<string,string>} 工具名**等价键** -> plugin id（撞名判定用，与 nameKey 一致） */
+    this._toolKeys = new Map();
     /** @type {Array<object>} */
     this._tools = [];
     this._errors = [];
+  }
+
+  /**
+   * 追加宿主自有工具名（**复用既有宿主**时用：`new PluginHost()` 之后再补保留表）。
+   * 按 `nameKey` 归一，返回 this 以便链式。
+   * @param {string[]} names
+   */
+  reserveTools(names = []) {
+    for (const n of assertReservedTools(names)) {
+      this._reservedTools.add(n);
+      this._reservedKeys.add(this._nameKey(n));
+    }
+    return this;
+  }
+
+  /**
+   * 设定/更换工具名**等价键**（**复用既有宿主**时用：`loadPlugins({ host, nameKey })` 会调它），
+   * 且可**一步**追加保留名（`extraReserved`，按**新键**归一）。
+   *
+   * 为什么把「补保留表」并进这里、而不是分两步 `reserveTools()`+`setNameKey()`：换键会让
+   * 已登记工具在**新键**下重新判撞名，而 `reserveTools` 只增不校验 —— 分两步时若第二步抛错，
+   * 第一步已经改了宿主（**半改**），调用方以为「拒绝=没动」。合一步后：**先整体校验、后整体提交**，
+   * 抛错则宿主**分毫未动**（原子）。
+   *
+   * @param {(name: string) => string} [fn] 新等价键（缺省恒等）
+   * @param {string[]} [extraReserved] 顺带追加的宿主自有工具名（按新键归一）
+   * @returns {this}
+   */
+  setNameKey(fn, extraReserved = []) {
+    // 非函数是**调用方配置错误**：不得被当成「重置为恒等键」而静默丢掉清洗名防线。
+    if (fn != null && typeof fn !== 'function') {
+      throw new PluginHostError('NAME_KEY_INVALID', `工具名等价键必须是函数，收到 ${typeof fn}`);
+    }
+    const next = typeof fn === 'function' ? fn : (n) => String(n);
+    const extra = assertReservedTools(extraReserved);
+    // 短路：键未变且保留名都已在表内 → 无事可做。
+    if (next === this._nameKey && extra.every((n) => this._reservedTools.has(n))) return this;
+    // ---- 校验（尚未改动任何字段）----
+    const nextReserved = new Set([...this._reservedTools, ...extra].map(next));
+    const nextKeys = new Map();
+    // 键 → **原工具名**：用来抓「同键不同原名」—— 那种塌陷会让模型函数名空间**少一个工具**
+    // （与 `_collectTools` 判 `TOOL_NAME_DUPLICATE` 同义），故这里也必须拒（不论是否同一 owner）。
+    const nextNames = new Map();
+    for (const t of this._tools) {
+      const key = next(t.name);
+      const owner = this._toolOwners.get(t.name);
+      if (nextReserved.has(key)) {
+        throw new PluginHostError('TOOL_NAME_RESERVED', `改等价键后已登记工具 ${t.name} 与宿主自有工具撞名 —— 拒绝改键`);
+      }
+      const prevName = nextNames.get(key);
+      if (prevName !== undefined && prevName !== t.name) {
+        const prevOwner = nextKeys.get(key);
+        throw new PluginHostError(
+          prevOwner === owner ? 'TOOL_NAME_DUPLICATE' : 'TOOL_NAME_CONFLICT',
+          prevOwner === owner
+            ? `改等价键后插件 ${owner} 内 ${prevName} 与 ${t.name} 同键（同名空间塌陷）—— 拒绝改键`
+            : `改等价键后已登记工具 ${t.name} 与另一插件工具 ${prevName} 撞名 —— 拒绝改键`,
+        );
+      }
+      nextNames.set(key, t.name);
+      nextKeys.set(key, owner);
+    }
+    // ---- 提交（全部成功才落）----
+    this._nameKey = next;
+    this._reservedTools = new Set([...this._reservedTools, ...extra]);
+    this._reservedKeys = nextReserved;
+    this._toolKeys = nextKeys;
+    return this;
   }
 
   /** 注册一个插件（清单 + 可选实现）。撞名/非法清单 → 抛 PluginManifestError。 */
@@ -94,6 +234,9 @@ export class PluginHost {
         this._emit('plugin.skipped', { id: manifest.id, kind: manifest.kind });
         continue;
       }
+      // 已激活的插件**不重复装配**：否则再次 `assemble()`（如复用的宿主被 `loadPlugins` 二次装载）
+      // 会对同一 manifest 再跑一遍 `_collectTools`，把工具**重复推入**工具表（撞名判定的 `owner` 同名 → 不算冲突）。
+      if (this._active.has(manifest.id)) continue;
       const impl = this.registry.get(manifest.id)?.impl || null;
       try {
         await this._lifecycle(manifest, impl, 'install');
@@ -103,7 +246,9 @@ export class PluginHost {
         activated.push(manifest.id);
         this._emit('plugin.activated', { id: manifest.id, kind: manifest.kind });
       } catch (e) {
-        const err = { id: manifest.id, kind: manifest.kind, error: e && e.message ? e.message : String(e) };
+        const info = errorInfo(e);
+        const err = { id: manifest.id, kind: manifest.kind, error: info.message };
+        if (info.code) err.code = info.code;
         this._errors.push(err);
         this._emit('plugin.error', err);
       }
@@ -144,6 +289,8 @@ export class PluginHost {
         this._emit('plugin.skipped', { id: manifest.id, kind: manifest.kind });
         continue;
       }
+      // 已激活的插件不重复装配（同 `assemble()`：防二次装配把工具重复推入）。
+      if (this._active.has(manifest.id)) continue;
       const impl = this.registry.get(manifest.id)?.impl || null;
       try {
         this._lifecycleSync(manifest, impl, 'install');
@@ -153,8 +300,9 @@ export class PluginHost {
         activated.push(manifest.id);
         this._emit('plugin.activated', { id: manifest.id, kind: manifest.kind });
       } catch (e) {
-        const err = { id: manifest.id, kind: manifest.kind, error: e && e.message ? e.message : String(e) };
-        if (e && e.code) err.code = e.code;
+        const info = errorInfo(e);
+        const err = { id: manifest.id, kind: manifest.kind, error: info.message };
+        if (info.code) err.code = info.code;
         this._errors.push(err);
         this._emit('plugin.error', err);
       }
@@ -235,13 +383,14 @@ export class PluginHost {
       await this._lifecycle(entry.manifest, entry.impl, 'deactivate');
       await this._lifecycle(entry.manifest, entry.impl, 'uninstall');
     } catch (e) {
-      warning = e && e.message ? e.message : String(e);
+      warning = errorInfo(e).message;
       this._emit('plugin.error', { id, error: warning });
     } finally {
       // 清理不依赖钩子成功：确保该插件不再活动、其工具全部移除（否则回滚会留半装配状态）。
       this._active.delete(id);
       this._tools = this._tools.filter((t) => this._toolOwners.get(t.name) !== id);
       for (const [tool, owner] of Array.from(this._toolOwners)) if (owner === id) this._toolOwners.delete(tool);
+      for (const [key, owner] of Array.from(this._toolKeys)) if (owner === id) this._toolKeys.delete(key);
     }
     this._emit('plugin.uninstalled', { id, warning });
     return warning ? { ok: true, warning } : { ok: true };
@@ -326,6 +475,7 @@ export class PluginHost {
         this._active.delete(id);
         this._tools = this._tools.filter((t) => this._toolOwners.get(t.name) !== id);
         for (const [tool, owner] of Array.from(this._toolOwners)) if (owner === id) this._toolOwners.delete(tool);
+        for (const [key, owner] of Array.from(this._toolKeys)) if (owner === id) this._toolKeys.delete(key);
       }
     }
   }
@@ -338,16 +488,31 @@ export class PluginHost {
     const seen = new Set();
     for (const t of tools) {
       const name = t && t.name;
-      if (!name) throw new Error(`插件 ${manifest.id} 提供了无名工具`);
-      if (seen.has(name)) throw new Error(`插件 ${manifest.id} 内工具名重复: ${name}`);
-      seen.add(name);
-      const owner = this._toolOwners.get(name);
+      if (!name) throw new PluginHostError('TOOL_NAME_MISSING', `插件 ${manifest.id} 提供了无名工具`);
+      // 一律按**等价键**（nameKey，缺省恒等）判撞名：provider 的 function 名空间是多对一的，
+      // `answer.grade` 与 `answer-grade` 在模型眼里同名 —— 只按原样比就会漏放后者去顶替前者。
+      const key = this._nameKey(name);
+      if (seen.has(key)) throw new PluginHostError('TOOL_NAME_DUPLICATE', `插件 ${manifest.id} 内工具名重复: ${name}`);
+      seen.add(key);
+      // 宿主自有工具名：插件**不得**占用。这类撞名最隐蔽——宿主工具先注册、插件工具后注册，
+      // ToolRegistry 后写覆盖，被顶替的宿主工具**无声消失**（且面板按名取用会指向插件版本）。
+      if (this._reservedKeys.has(key)) {
+        throw new PluginHostError(
+          'TOOL_NAME_RESERVED',
+          `工具名与宿主自有工具冲突，拒绝加载: ${name}（插件 ${manifest.id}）`,
+        );
+      }
+      const owner = this._toolKeys.get(key);
       if (owner && owner !== manifest.id) {
-        throw new Error(`工具名撞名，拒绝加载: ${name}（已被 ${owner} 提供，冲突插件 ${manifest.id}）`);
+        throw new PluginHostError(
+          'TOOL_NAME_CONFLICT',
+          `工具名撞名，拒绝加载: ${name}（已被 ${owner} 提供，冲突插件 ${manifest.id}）`,
+        );
       }
     }
     for (const t of tools) {
       this._toolOwners.set(t.name, manifest.id);
+      this._toolKeys.set(this._nameKey(t.name), manifest.id);
       this._tools.push(t);
     }
   }

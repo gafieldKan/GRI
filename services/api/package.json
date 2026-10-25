@@ -19,6 +19,7 @@
     "@gri/jwt-verifier": "file:../../packages/jwt-verifier",
     "@gri/ontology": "file:../../packages/ontology",
     "@gri/ontology-engine": "file:../../packages/ontology-engine",
+    "@gri/plugin-host": "file:../../packages/plugin-host",
     "@nestjs/axios": "^12.0.1",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^12.0.1",
@@ -60,7 +61,10 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "transformIgnorePatterns": [
-      "<rootDir>/../node_modules/(?!@nestjs/)"
+      "<rootDir>/../node_modules/(?!@nestjs/)",
+      "<rootDir>/../plugins/",
+      "<rootDir>/__mocks__/",
+      "/tmp/gri-plugins-"
     ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"

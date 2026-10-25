@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  AgentCore, ModelRouter, ToolRegistry, SkillRegistry, MemoryStore, makeTool, storeFrom,
+  AgentCore, ModelRouter, ToolRegistry, SkillRegistry, MemoryStore, makeTool, sanitizeToolName, storeFrom,
 } from '../src/index.js';
 
 function emptyStore() {
@@ -158,4 +158,45 @@ test('agent-core: 工具调用缺参 → 校验失败记审计不崩', async () 
   const agent = new AgentCore({ router, store, tools, skills: new SkillRegistry(), memory: new MemoryStore(store), llm, onRun: (a) => audits.push(a) });
   await agent.run({ entityId: 'A', userMessage: 'x' });
   assert.ok(audits.some((a) => a.error && /缺少必填参数/.test(a.error)), '缺参应入审计');
+});
+
+/* ---- 清洗名（sanitizeToolName）：多对一 → 等价键，装配期应拒、运行期先到先得 ---- */
+
+test('agent-core: sanitizeToolName 往返 —— `.`→`-` 且只保留 [a-zA-Z0-9_-]', () => {
+  assert.equal(sanitizeToolName('question.lookup'), 'question-lookup');
+  assert.equal(sanitizeToolName('a.b.c'), 'a-b-c');
+  assert.equal(sanitizeToolName('already_ok-1'), 'already_ok-1');
+  assert.equal(sanitizeToolName('weird:name/x'), 'weird-name-x');
+  // 关键性质：多对一 —— `.` 与 `-` 是同一把键
+  assert.equal(sanitizeToolName('answer.grade'), sanitizeToolName('answer-grade'));
+});
+
+test('agent-core: 清洗名撞车 → payload 去重（先到先得）+ 反查指向先注册者（不猜）', async () => {
+  const store = emptyStore();
+  const router = new ModelRouter(store, { LLM_API_KEY: 'nvapi-test', LLM_API_URL: 'http://x' });
+  const hits = [];
+  // 两个注册名清洗后同键：宿主工具先注册，插件工具后注册（模拟 plugin-host 装载顺序）。
+  const tools = new ToolRegistry()
+    .register(makeTool({ name: 'answer.grade', description: '宿主判分', async execute() { hits.push('host'); return { by: 'host' }; } }))
+    .register(makeTool({ name: 'answer-grade', description: '插件判分', async execute() { hits.push('plugin'); return { by: 'plugin' }; } }));
+  let payloadTools = null;
+  let n = 0;
+  const llm = {
+    async isRealKey() { return true; },
+    async chat(_messages, _route, opts) {
+      payloadTools = opts.tools;
+      return n++ === 0
+        ? { content: '{"tool":"answer-grade","arguments":{}}', usage: null }
+        : { content: 'done', usage: null };
+    },
+  };
+  const agent = new AgentCore({ router, store, tools, skills: new SkillRegistry(), memory: new MemoryStore(store), llm });
+  await agent.run({ entityId: 'A', userMessage: '判个分' });
+
+  // payload 里同键函数只出现一次，且取先注册者（宿主）的描述
+  const names = payloadTools.map((t) => t.function.name);
+  assert.equal(names.filter((x) => x === 'answer-grade').length, 1, '同键函数在 payload 里只能有一个');
+  assert.equal(payloadTools[0].function.description, '宿主判分', '先注册者（宿主）赢得该键');
+  // 反查：模型调清洗名 → 落到先注册的宿主工具，绝不落到插件同键工具
+  assert.deepEqual(hits, ['host'], '清洗名反查必须落到先注册者，绝不落到插件同键工具');
 });

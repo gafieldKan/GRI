@@ -16,6 +16,8 @@ jest.mock('@gri/agent-core', () => ({
   SkillRegistry: class {},
   McpPool: class {},
   makeTool: (def: any) => def,
+  // 与真件同规则：teaching-tools 在 toolDefs() 入口按清洗名建保留名表，替身缺它即 `undefined is not a function`。
+  sanitizeToolName: (n: string) => String(n).replace(/[^a-zA-Z0-9_-]/g, '-'),
   storeFrom: (query: any) => ({ query }),
   createDelegateTool: () => ({ name: 'agent.delegate' }),
 }));

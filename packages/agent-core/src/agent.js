@@ -1,5 +1,6 @@
 import { LlmClient } from './llm-client.js';
 import { ENGINE_API_VERSION } from './engine-port.js';
+import { sanitizeToolName } from './tool.js';
 
 /**
  * AgentCore —— 通用推理/工具循环（OpenClaw core 的浓缩）。
@@ -94,12 +95,21 @@ export class AgentCore {
     ];
     // 注册表工具名可含 `.`（如 question.lookup），但 OpenAI/NVIDIA 等只允许 [a-zA-Z0-9_-]。
     // → payload 里用清洗名，调用时反查回注册名，保证跨 provider 通用。
-    const sanitize = (name) => String(name).replace(/[^a-zA-Z0-9_-]/g, '-');
-    const payloadTools = this.tools.list().map((t) => ({
-      type: 'function',
-      function: { name: sanitize(t.name), description: t.description, parameters: t.inputSchema || { type: 'object' } },
-    }));
-    const bySanitized = new Map(this.tools.list().map((t) => [sanitize(t.name), t.name]));
+    // 清洗名是**多对一**（`answer.grade` 与 `answer-grade` 同键），故这里**先到先得**：同名键已存在就
+    // 保留先注册者、后来者不进 payload。这保证的是**确定性**（不给模型两个同名函数、反查无歧义），
+    // 而**不是**「宿主工具一定赢」——谁赢取决于**注册顺序**。真正防「插件顶替宿主工具」的是
+    // **装配期拒收**（plugin-host 的 reservedTools / nameKey）与宿主自己的保留名守卫；底座不猜谁是谁。
+    const bySanitized = new Map();
+    const payloadTools = [];
+    for (const t of this.tools.list()) {
+      const key = sanitizeToolName(t.name);
+      if (bySanitized.has(key)) continue;
+      bySanitized.set(key, t.name);
+      payloadTools.push({
+        type: 'function',
+        function: { name: key, description: t.description, parameters: t.inputSchema || { type: 'object' } },
+      });
+    }
 
     let turn = 0;
     while (turn < maxToolTurns) {
