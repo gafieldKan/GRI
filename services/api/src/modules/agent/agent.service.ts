@@ -8,6 +8,7 @@ import {
   makeTool, storeFrom, McpPool, createDelegateTool,
 } from '@gri/agent-core';
 import type { CliBackendRegistry } from '@gri/agent-core';
+import { binaryQuality, applySrReview } from '../edu-core/sm2';
 import { loadConfig } from '../../config/config';
 
 /**
@@ -32,36 +33,7 @@ export const EXTERNAL_RUN_ERROR_CODES = Object.freeze([
   'INTERRUPTED',          // 重启对账：宿主重启时残留 running 的孤儿 run
 ] as const);
 
-/** SM-2 质量分：AI 教师内判读打分——答对=5(掌握)，答错=1(遗忘)。喂给间隔重复队列学决策曲线。 */
-const SM2_QUALITY_CORRECT = 5;
-const SM2_QUALITY_WRONG = 1;
-
-/**
- * SM-2 间隔重复纯函数（与 tuition SpacedRepetitionService.calculateSM2 同式，EF 最小 1.3、interval 最大 365）。
- * 内联在 agent 模块以维持"不依赖 tuition 模块"边界，两边都读写共享的 edu.sr_queue 表，天然互通。
- */
-function sm2Calculate(
-  quality: number,
-  easeFactor = 2.5,
-  repetitions = 0,
-  interval = 0,
-): { interval: number; easeFactor: number; repetitions: number } {
-  let ef = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-  ef = Math.max(1.3, ef);
-  let reps = repetitions;
-  let iv = interval;
-  if (quality >= 3) {
-    if (reps === 0) iv = 1;
-    else if (reps === 1) iv = 6;
-    else iv = Math.round(iv * ef);
-    reps += 1;
-  } else {
-    reps = 0;
-    iv = 0;
-  }
-  iv = Math.min(iv, 365);
-  return { interval: iv, easeFactor: Number(ef.toFixed(2)), repetitions: reps };
-}
+/** SM-2 已收敛到 `edu-core/sm2`（W2.1 唯一实现）：公式 + `edu.sr_queue` 读写 + 判读二分质量分。 */
 
 interface AgentEntity {
   entity_id: string;
@@ -109,31 +81,11 @@ async function gradeAnswerRecord(ctx: any, args: any): Promise<any> {
       );
     }
     {
-      const prev = await ctx.store.query(
-        `SELECT ease_factor, repetitions, interval FROM edu.sr_queue WHERE user_id = $1 AND question_id = $2`,
-        [ctx.entityId, args.questionId],
+      const { sm2, nextReview } = await applySrReview(
+        (sql, params) => ctx.store.query(sql, params),
+        { userId: ctx.entityId, questionId: args.questionId, quality: binaryQuality(isCorrect) },
       );
-      const p = prev.rows[0] || {};
-      const sm2 = sm2Calculate(
-        isCorrect ? SM2_QUALITY_CORRECT : SM2_QUALITY_WRONG,
-        p.ease_factor ?? 2.5,
-        p.repetitions ?? 0,
-        p.interval ?? 0,
-      );
-      const nextReview = new Date(Date.now() + sm2.interval * 86_400_000);
       sm2Out = { interval: sm2.interval, easeFactor: sm2.easeFactor, repetitions: sm2.repetitions, nextReview: nextReview.toISOString() };
-      await ctx.store.query(
-        `INSERT INTO edu.sr_queue (user_id, question_id, last_reviewed, interval, ease_factor, repetitions, next_review, updated_at)
-         VALUES ($1, $2, CURRENT_TIMESTAMP, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-         ON CONFLICT (user_id, question_id) DO UPDATE SET
-           last_reviewed = EXCLUDED.last_reviewed,
-           interval = EXCLUDED.interval,
-           ease_factor = EXCLUDED.ease_factor,
-           repetitions = EXCLUDED.repetitions,
-           next_review = EXCLUDED.next_review,
-           updated_at = CURRENT_TIMESTAMP`,
-        [ctx.entityId, args.questionId, sm2.interval, sm2.easeFactor, sm2.repetitions, nextReview],
-      );
     }
   } catch { /* 作答/错题/记忆队列记录失败不阻断判题 */ }
   return { ...result, recorded, isCorrect, questionId: args.questionId, resolved: !!(args.resolveOnCorrect && isCorrect), sm2: sm2Out };
