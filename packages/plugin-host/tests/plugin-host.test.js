@@ -314,3 +314,89 @@ test('PluginHost: 默认档（requirePolicy 缺省）依旧放行 —— 测试�
   assert.deepEqual(r.activated, ['sk']);
   assert.deepEqual(await host.authorize({}, { tool: 'x' }), { allowed: true, reason: 'no-policy-assembled' });
 });
+
+// ---------- 同步装配 assembleSync（宿主启动期同步取工具定义） ----------
+
+test('assembleSync: 与 assemble 同序装配，同步钩子各触发一次，工具照样收集', () => {
+  const order = [];
+  const mk = (id, kind) => [
+    base({ id, kind }),
+    {
+      install: () => order.push(`install:${id}`),
+      activate: () => order.push(`activate:${id}`),
+      tools: [{ name: `${id}.t`, execute: () => 1 }],
+    },
+  ];
+  const host = new PluginHost();
+  host.registerAll([mk('sk', 'agent.skill'), mk('scene', 'world.scene')]);
+  const r = host.assembleSync();
+  assert.deepEqual(r.activated, ['scene', 'sk']);
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(order, ['install:scene', 'activate:scene', 'install:sk', 'activate:sk']);
+  assert.deepEqual(host.tools().map((t) => t.name), ['scene.t', 'sk.t']);
+  assert.ok(host.isActive('sk'));
+});
+
+test('assembleSync: 异步生命周期不降级 —— 该插件不入装配并记 ASYNC_LIFECYCLE_UNSUPPORTED，他者照常（P5）', () => {
+  const host = new PluginHost();
+  host.register(base({ id: 'async-p' }), { activate: async () => {}, tools: [{ name: 'a.t' }] });
+  host.register(base({ id: 'sync-p' }), { activate: () => {}, tools: [{ name: 'b.t' }] });
+  const r = host.assembleSync();
+  assert.deepEqual(r.activated, ['sync-p']);
+  assert.equal(r.errors.length, 1);
+  assert.equal(r.errors[0].id, 'async-p');
+  assert.equal(r.errors[0].code, 'ASYNC_LIFECYCLE_UNSUPPORTED');
+  assert.deepEqual(host.tools().map((t) => t.name), ['b.t']); // 无 async-p 的孤儿工具
+  assert.equal(host.isActive('async-p'), false);
+});
+
+test('assembleSync: 工具撞名 → 冲突插件报错，先到者工具完好（与 assemble 同语义）', () => {
+  const host = new PluginHost();
+  const t = (name) => ({ name, execute: () => 1 });
+  host.register(base({ id: 'p1' }), { tools: [t('a.b')] });
+  host.register(base({ id: 'p2' }), { tools: [t('a.b'), t('c.d')] });
+  const r = host.assembleSync();
+  assert.deepEqual(r.activated, ['p1']);
+  assert.match(r.errors[0].error, /撞名/);
+  assert.deepEqual(host.tools().map((x) => x.name), ['a.b']);
+});
+
+test('assembleSync: 生产档要求 policy —— 缺则前置拒绝（零激活）；空壳同样拒', () => {
+  const host = new PluginHost();
+  host.register(base({ id: 'sk', kind: 'agent.skill' }), { activate: () => assert.fail('不应跑到生命周期') });
+  assert.throws(
+    () => host.assembleSync({ requirePolicy: true }),
+    (e) => e instanceof PluginHostError && e.code === 'POLICY_REQUIRED',
+  );
+  assert.deepEqual(host.diagnostics().active, []);
+
+  const host2 = new PluginHost();
+  host2.register(base({ id: 'pol', kind: 'policy' })); // 只声明无 authorize
+  assert.throws(() => host2.assembleSync({ requirePolicy: true }), (e) => e.code === 'POLICY_NOT_IMPLEMENTED');
+});
+
+test('assembleSync: policy 激活期抛错 → POLICY_INACTIVE 且同步回滚（不留半装配/孤儿工具）', () => {
+  const host = new PluginHost();
+  host.register(base({ id: 'sk', kind: 'agent.skill' }), {
+    activate: () => {},
+    tools: [{ name: 's.t' }],
+  });
+  host.register(base({ id: 'pol', kind: 'policy' }), {
+    activate: () => { throw new Error('boom'); },
+    authorize: () => ({ allowed: true }),
+  });
+  assert.throws(() => host.assembleSync({ requirePolicy: true }), (e) => e.code === 'POLICY_INACTIVE');
+  assert.deepEqual(host.diagnostics().active, []);
+  assert.equal(host.tools().length, 0);
+  assert.equal(host.isActive('sk'), false);
+});
+
+test('assembleSync: 跳过 policy 的测试档 → authorize 放行（组件测试免搭权限）', async () => {
+  const host = new PluginHost();
+  host.register(base({ id: 'pol', kind: 'policy' }), { authorize: () => ({ allowed: false }) });
+  host.register(base({ id: 'sk' }));
+  const r = host.assembleSync({ skipKinds: ['policy'] });
+  assert.deepEqual(r.activated, ['sk']);
+  assert.deepEqual(await host.authorize({}, { tool: 'x' }), { allowed: true, reason: 'no-policy-assembled' });
+});
+

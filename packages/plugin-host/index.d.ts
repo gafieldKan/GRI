@@ -101,6 +101,7 @@ export class PluginHost {
   registerAll(entries: Array<[ManifestInput, PluginImpl?] | ManifestInput>): this;
   hostApi(): HostApi;
   assemble(opts?: { skipKinds?: string[]; requirePolicy?: boolean }): Promise<{ activated: string[]; skipped: string[]; errors: object[] }>;
+  assembleSync(opts?: { skipKinds?: string[]; requirePolicy?: boolean }): { activated: string[]; skipped: string[]; errors: object[] };
   isActive(id: string): boolean;
   resolve(capability: string): Array<{ manifest: PluginManifest; impl: PluginImpl | null }>;
   getByKind(kind: string): Array<{ manifest: PluginManifest; impl: PluginImpl | null }>;
@@ -114,3 +115,37 @@ export class PluginHost {
 export class PluginHostError extends Error {
   code: string;
 }
+
+/** 单个插件的加载/装配失败诊断（不含实现、不含密钥）。 */
+export interface PluginDiagnostic {
+  dir?: string;
+  id?: string;
+  kind?: string;
+  error?: string;
+  code?: string;
+  message?: string;
+}
+
+export interface LoadPluginsResult {
+  host: PluginHost;
+  tools: unknown[];
+  diagnostics: {
+    dir: string | null;
+    discovered: Array<{ id: string; dir: string; kind: string; entry: string }>;
+    activated: string[];
+    errors: PluginDiagnostic[];
+  };
+}
+
+/**
+ * 同步扫描并装配一个插件目录（`plugins/<id>/plugin.json`）。
+ * 任何单点失败只记入 `diagnostics.errors`，宿主照常启动（P5）。
+ */
+export function loadPlugins(opts?: {
+  dir?: string;
+  host?: PluginHost;
+  hostOptions?: ConstructorParameters<typeof PluginHost>[0];
+  assemble?: { skipKinds?: string[]; requirePolicy?: boolean };
+  manifestFile?: string;
+  entryFile?: string;
+}): LoadPluginsResult;

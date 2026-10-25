@@ -15,3 +15,4 @@ export {
 } from './manifest.js';
 export { CapabilityRegistry } from './capability-registry.js';
 export { PluginHost, PluginHostError } from './host.js';
+export { loadPlugins } from './loader.js';

@@ -1,0 +1,7 @@
+{
+  "id": "second",
+  "kind": "agent.skill",
+  "apiVersion": "1",
+  "entry": "./index.cjs",
+  "provides": ["demo.second"]
+}

@@ -20,6 +20,25 @@ host.resolve('world.scene');                  // → 提供该能力的已激活
 await host.authorize(ctx, { tool: 'x' });     // 授权闸门（见下）
 ```
 
+### 从目录装载（宿主启动期，同步）
+
+宿主不必自己 `import` 插件：`loadPlugins({ dir })` 扫 `plugins/<id>/plugin.json` → 载入口 →
+注册 → **同步**装配（`assembleSync`），返回 `{ host, tools, diagnostics }`：
+
+```js
+import { loadPlugins } from '@gri/plugin-host';
+
+const { tools, diagnostics } = loadPlugins({ dir: resolve(__dirname, '../../../plugins') });
+// tools → 交给 AgentCore；diagnostics.errors → 记日志/运维面
+```
+
+- **同步**装配（`assembleSync`）：入口须是 CJS 或无顶层 await 的 ESM。确需**异步**生命周期的插件
+  请改用 `await host.assemble()`（异步钩子返回 Promise 时，同步装配会拒绝该插件并记
+  `ASYNC_LIFECYCLE_UNSUPPORTED`，**绝不半装配**）。
+- **不升错（P5）**：目录缺失 / 清单非法 / 入口抛错 / 工具撞名——一律只记入 `diagnostics.errors`
+  并跳过该插件，**宿主照常启动**。缺的工具在诊断里可见，绝不静默。
+- **确定性**：按目录名排序发现，装配序由 `assemblyOrder` 的 kind 优先级 + 注册序决定。
+
 ## 清单（`plugin.json`）
 
 | 字段 | 必填 | 含义 |
@@ -55,6 +74,7 @@ knowledge.content(10) · knowledge.taxonomy(10) → world.scene(20) → agent.sk
   - `POLICY_INACTIVE`：policy 的 `activate` 失败 → 授权闸门不可用 → **回滚本次已激活插件**后抛出（不留半装配状态）。
   `diagnostics().policyAssembled` 可供运维断言之。「后组装」≠「可缺省上线」。
   > 默认 `requirePolicy: false`（放行）只为**测试档**便利；生产装配**必须**显式置真。
+  > 同步档同理：`assembleSync({ requirePolicy: true })`（`loadPlugins` 经 `assemble` 选项透传）。
 
 策略插件契约：实现 `authorize(ctx, action) → { allowed: boolean, reason?: string }`。
 

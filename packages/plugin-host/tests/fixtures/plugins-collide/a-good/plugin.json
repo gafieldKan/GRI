@@ -1,0 +1,9 @@
+{
+  "id": "good",
+  "name": "好插件",
+  "kind": "agent.skill",
+  "apiVersion": "1",
+  "version": "1.0.0",
+  "provides": ["demo.good"],
+  "trust": { "boundary": "in-process" }
+}
