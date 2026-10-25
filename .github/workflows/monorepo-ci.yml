@@ -106,6 +106,27 @@ jobs:
       - run: npm ci
       - run: node --test tools/nat-proxy/tests/*.test.js
 
+  # 工作区包（packages/*）此前**无 CI 守卫**：plugin-host / agent-core 的 node --test 套件只在本地跑。
+  # 它们是宿主底座（W2.3 起 api 依赖 plugin-host），漂移会静默穿透到 API 侧 —— 故补上。
+  packages-test:
+    name: Packages Tests (${{ matrix.workspace }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - '@gri/agent-core'
+          - '@gri/plugin-host'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # 必须 ≥22：脚本用 `--test-force-exit`（22 起），agent-core 的 `.ts` 用例走原生 strip-types。
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test --workspace=${{ matrix.workspace }}
+
   frontend-build:
     name: Frontend H5 Build (prod artifacts)
     runs-on: ubuntu-latest
