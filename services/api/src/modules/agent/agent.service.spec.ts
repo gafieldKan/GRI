@@ -473,7 +473,7 @@ describe('AgentService —— 外部 agent run 生命周期（B-4）', () => {
     await (svc as any)._delegateExecute({ execute: async () => ({ ok: true, summary: 's' }) }, { entityId: 'stu-1' }, { backend: 'claude-code', goal: 'SECRET-GOAL' });
     const runId = [...db.runs.keys()][0];
     // 模拟底座在 run 上下文内逐行冒泡（runId 经 ALS 带入，不改工厂签名）
-    const als = (svc as any).delegateAls;
+    const als = (svc as any).delegate.delegateAls;   // W2.2：ALS 随委派面移入 AgentDelegateRunsService
     await als.run({ runId, chain: Promise.resolve() }, async () => {
       await (svc as any)._onDelegateEvent({ kind: 'started', data: {} }, {});
       await (svc as any)._onDelegateEvent({ kind: 'assistant_delta', data: { text: 'hi' } }, {});
