@@ -31,3 +31,10 @@ export { storeFrom } from './store.js';
 export { McpClient, listMcpServers, bridgeMcpTools } from './mcp/client.js';
 export { McpPool } from './mcp/pool.js';
 export { AcpAdapter } from './acp/adapter.js';
+export {
+  createCliEnginePort,
+  claudeCodeEngine,
+  openclawEngine,
+  CLAUDE_CODE_ENGINE_ID,
+  OPENCLAW_ENGINE_ID,
+} from './engines/cli-engine.js';

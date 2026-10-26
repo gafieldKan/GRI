@@ -206,6 +206,31 @@ export declare class EngineRegistry {
   list(): Array<Pick<EnginePort, 'id' | 'apiVersion' | 'capabilities'>>;
 }
 
+/**
+ * CLI 引擎适配器（W2.6，薄壳 shell-out）。`capabilities.toolLoop='engine'`；`listTools()` 恒空
+ * （外部 CLI 自带工具，宿主工具不经本适配器传入 —— 见 src/engines/cli-engine.js 头注的诚实边界）。
+ */
+export declare const CLAUDE_CODE_ENGINE_ID: 'claude-code';
+export declare const OPENCLAW_ENGINE_ID: 'openclaw';
+
+export declare function createCliEnginePort(spec: {
+  id: string;
+  cliBackendId: string;
+  registry: CliBackendRegistry;
+  defaultResponder: (ctx: Record<string, any>, info?: Record<string, any>) => Promise<any>;
+  usable?: (ctx: Record<string, any>) => boolean | Promise<boolean>;
+  composePrompt?: (ctx: Record<string, any>) => string;
+  persona?: string;
+  cwd?: string;
+  timeoutMs?: number;
+  allowDangerous?: boolean;
+  /** `toolLoop` 不可覆写（构造期即拒非 'engine'）——其余能力位可覆盖。 */
+  capabilities?: Partial<Omit<EngineCapabilities, 'toolLoop'>>;
+}): Readonly<EnginePort>;
+
+export declare function claudeCodeEngine(opts?: Omit<Parameters<typeof createCliEnginePort>[0], 'id' | 'cliBackendId'>): Readonly<EnginePort>;
+export declare function openclawEngine(opts?: Omit<Parameters<typeof createCliEnginePort>[0], 'id' | 'cliBackendId'>): Readonly<EnginePort>;
+
 export declare class McpClient {
   constructor(store: Store, opts?: Record<string, any>);
   connect(): Promise<boolean>;
