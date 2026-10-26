@@ -2,11 +2,12 @@
  * 教学工具与技能集（W2.2「拆神服务」—— 从 agent.service.ts:1777 抽出）。
  *
  * 这里装的是 AI 教师**能做什么**：`makeTool` 工具定义（question/answer/diagnosis/plan/wrong/review/
- * lesson/curriculum/map…，共 13 个内建）+ `tutor` 技能正文 + 两个共享落库管线（gradeAnswerRecord / lessonRecord）。
+ * lesson/curriculum/map…，共 13 个内建）+ 两个共享落库管线（gradeAnswerRecord / lessonRecord）。
  *
- * W2.3 起**首个工具组已插件化**：长期记忆三件套（memory.*）搬到出厂插件 `plugins/memory`
- * （知识/技能插件化的第一例，见 docs/AGENT_SKILL_PLUGIN_CONTRACT.md §四 P-3.1）；
- * 其余内建工具按 `toolDefs(pluginTools)` 的**原位**拼回，工具表顺序与集合不变。
+ * W2.3 起**工具与技能正文都在往外搬**：长期记忆三件套（memory.*）→ 出厂插件 `plugins/memory`；
+ * `tutor` 技能正文 → 出厂插件 `plugins/tutor/SKILL.md`（本文件只把宿主解析好的技能注册进
+ * `SkillRegistry`，不再持有正文）。其余内建工具按 `toolDefs(pluginTools)` 的**原位**拼回，
+ * 工具表顺序与集合不变（见 docs/AGENT_SKILL_PLUGIN_CONTRACT.md §四 P-3.1）。
  *
  * 为什么单独成件：① `agent.service.ts` 因此回到「装配 + 面板」两件事；② 插件化需要先有独立文件。
  *
@@ -874,22 +875,22 @@ export class AgentTeachingTools {
   }
 
 
-  /** 教学技能集：指令并入 system prompt + 携带依赖工具定义（由 AgentCore 统一装载）。 */
-  skills(toolDefs: any[]): SkillRegistry {
-    return new SkillRegistry().register({
-      name: 'tutor',
-      description: '学情诊断→讲解→测验的完整教师流程',
-      instructions:
-        '当学生发起学习请求时：(0) 学生问「该学什么/有哪些章节/教学体系/先学哪部分」时，先用 curriculum.lookup 导航教学体系（按学科/年级查教材章节与知识点），再针对具体知识点讲解或出题；' +
-        '学生问「这门学科都学什么/我学到哪了/以后学什么/山顶之外有什么」这类全貌与位置感问题时，改用 map.explorer（学科知识版图）拿山体摘要（已攀/当前/前方/峰外），用登山比喻讲清该生位置与前路；' +
-        '(1) 需要摸底就用 question.lookup 抽几题诊断，或先调 diagnosis.state 取该学生的真实作答掌握度与未解决错题，紧扣真实数据给出个性化讲解；' +
-        '(2) 依据对错用 answer.grade 讲解知识点；(3) 学生要「诊断/进度/错题」时先调 diagnosis.state；要「计划/学习安排」时先 diagnosis.state 再用 plan.generate 把弱项落成计划，并告知计划已在学习计划页生成；' +
-        '(4) 学生报告「做完/完成」某条任务时，用 plan.complete 标记完成并回灌掌握度，答对会消除对应错题，全部完成会把计划置为已完成；' +
-        '(5) 记下学生偏好/掌握度用 memory.remember，之后答案要贴合记忆；记忆过时或学生明确说「忘掉/删掉」时用 memory.forget；' +
-        '(6) 学生要「复习错题/错题冲刺」时，先调 wrong.list 抽未解决错题让学生重做（工具不回显正确答案，由你判读并讲解），答对用 answer.grade(resolveOnCorrect:true) 消除错题并记作答；答错用 answer.grade 正常记录；' +
-        '(7) 学生要「复习巩固/自适应出题/掌握度复习」时，先调 review.sequence 拿按掌握度缺口+间隔排序的题目序列，按序出题并紧扣各题掌握度个性化讲解，判读仍走 answer.grade；' +
-        '(8) 学生要「上课/学某知识点/讲解/教我」时，用 lesson.current 驱动授课：它按 assess→teach→example→drill 状态机推进(状态存于该生长期记忆,跨消息续课)，每步返回真实数据（assess=该知识点真实掌握度+未解决错题、teach=该生最近实际答错的写法当错因、example/drill=该知识点真题）；你紧扣这些真实数据讲解。抢时(example/drill)作答、判读、回授一律走 lesson.submit(它判题落库并答对推进 complete/答错留 drill)，不要用裸 answer.grade以免状态机不推进；讲完一步带 stage 推进到下一步。',
-      tools: toolDefs,
-    });
+  /**
+   * 教学技能集：指令并入 system prompt + 携带依赖工具定义（由 AgentCore 统一装载）。
+   *
+   * W2.3 起技能正文**不再硬编码在本文件**：`tutor` 正文搬进出厂插件
+   * `plugins/tutor/SKILL.md`，由装载器读出、`agent-plugins.agentSkills()` 解析后传进来。
+   * 换/加一套教法只需放一个插件目录，不必改并重编译本文件。
+   * 这里**不做解析**（解析与失败诊断在 agent-plugins）—— 本文件保持「纯内建、零宿主回指」。
+   *
+   * @param toolDefs 本次装配的工具表（技能据此声明其依赖工具）
+   * @param pluginSkills 插件提供的技能正文（缺省空 → 无技能块）
+   */
+  skills(toolDefs: any[], pluginSkills: Array<{ name: string; description?: string; instructions: string }> = []): SkillRegistry {
+    const reg = new SkillRegistry();
+    for (const s of pluginSkills) {
+      reg.register({ name: s.name, description: s.description || '', instructions: s.instructions, tools: toolDefs });
+    }
+    return reg;
   }
 }

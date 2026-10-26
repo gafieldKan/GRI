@@ -146,9 +146,15 @@ export interface LoadPluginsResult {
   /** 宿主配置非法（如非函数 `nameKey`）时为 `null` —— 交出诊断而非半建宿主。 */
   host: PluginHost | null;
   tools: unknown[];
+  /**
+   * 插件声明的技能正文（`skill: "./SKILL.md"`），按发现序；宿主自行并入 prompt。
+   * 只含**被激活**插件的正文（装配期被拒的插件连正文一起丢）；已剥首字节 BOM。
+   */
+  skills: Array<{ id: string; dir: string; path: string; markdown: string }>;
   diagnostics: {
     dir: string | null;
-    discovered: Array<{ id: string; dir: string; kind: string; entry: string }>;
+    /** `entry` 为 `null` = 纯内容插件（无入口文件，如只有 `plugin.json` + `SKILL.md`）。 */
+    discovered: Array<{ id: string; dir: string; kind: string; entry: string | null }>;
     activated: string[];
     /** 目录存在但无清单 → 按非插件跳过（**非 error**：共享/依赖目录本就合法），但**不静默**。 */
     ignored: PluginDiagnostic[];

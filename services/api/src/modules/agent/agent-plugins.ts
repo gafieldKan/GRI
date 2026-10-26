@@ -14,7 +14,7 @@
 import { resolve } from 'node:path';
 
 import { loadPlugins, type LoadPluginsResult } from '@gri/plugin-host';
-import { sanitizeToolName } from '@gri/agent-core';
+import { parseSkillMarkdown, sanitizeToolName } from '@gri/agent-core';
 
 import { HOST_RESERVED_TOOL_NAMES } from './teaching-tools';
 
@@ -50,4 +50,76 @@ export function agentPlugins(): LoadPluginsResult {
 /** 测试用：清空 memo（切换 env/目录后重新装载）。 */
 export function resetAgentPlugins(): void {
   cache = null;
+  skillCache = null;
+}
+
+/** 已解析的插件技能（正文已从 SKILL.md 取出并解析 frontmatter，可直接塞进 SkillRegistry）。 */
+export interface AgentPluginSkill {
+  /** 提供该技能的插件 id（诊断用）。 */
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+}
+
+export interface AgentPluginSkillsResult {
+  skills: AgentPluginSkill[];
+  /**
+   * 正文存在但**装不成可用技能** —— 逐条报出，不静默丢。两类：
+   * 1. **解析失败**（如 frontmatter 缺 `name`）；
+   * 2. **正文为空**（只剩 frontmatter）：`parseSkillMarkdown` 会给一个占位正文（`（skill x）`），
+   *    于是「装载成功、却一个字的教学指令都没有」**不会**被 `empty` 抓到 —— 与「一个都没载成」同害，故同等报出。
+   */
+  errors: Array<{ id: string; message: string }>;
+  /** 目录里有插件、但**一个技能正文都没装载成**：朗读提示词会整块消失，属高危，须响亮。 */
+  empty: boolean;
+  dir: string | null;
+}
+
+let skillCache: AgentPluginSkillsResult | null = null;
+
+/**
+ * 插件技能正文（`plugins/<id>/SKILL.md`）—— 装载器只负责**读出文本**（并守住目录监狱），
+ * frontmatter 解析是 `@gri/agent-core` 的 `parseSkillMarkdown` 的活，在这里接上。
+ *
+ * 为什么解析结果要 memo 且带 `errors`/`empty`：技能正文是**内容资产**，装载失败不会让宿主崩，
+ * 却会让 AI 教师**静默失去教学正文**（system prompt 里的技能块整块没了）。故这里把「一条都没载成」
+ * 显式标出来，由 `agent.service` 的启动期诊断喊出来 —— 与工具侧「缺工具给诊断」同一原则。
+ */
+export function agentSkills(): AgentPluginSkillsResult {
+  if (!skillCache) {
+    const { skills, diagnostics } = agentPlugins();
+    const parsed: AgentPluginSkill[] = [];
+    const errors: Array<{ id: string; message: string }> = [];
+    for (const s of skills) {
+      try {
+        const raw = String(s?.markdown ?? '');
+        const md = parseSkillMarkdown(raw);
+        // **只有 frontmatter、正文为空**：`parseSkillMarkdown` 会补一个占位正文（`（skill x）`），
+        // 于是「技能装载成功、却一个字的教学指令都没有」**不会**被 `empty` 抓到 —— 而它和
+        // 「一个技能都没载成」是同等危害（AI 教师没有教学指令）。故按解析失败同等报出、不计入 skills。
+        const body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim();
+        if (!body) {
+          errors.push({ id: s?.id, message: `SKILL.md 正文为空（只剩 frontmatter）—— 该技能给不出任何教学指令` });
+          continue;
+        }
+        parsed.push({ id: s.id, name: md.name, description: md.description, instructions: md.instructions });
+      } catch (e) {
+        // 错误对象由**插件正文的解析器**抛出，理论上都是 `Error`；但 `catch` 到的值可以是任何东西
+        // （Proxy / 带抛错 getter 的对象）——「诊断自身不得成为崩溃点」：取值再抛就穿出 `agentSkills`。
+        // 与 `@gri/plugin-host` 的 `errorInfo()` 同一原则，此处内联（够小，不引依赖）。
+        let message: string;
+        try {
+          message = e instanceof Error ? e.message : String(e);
+        } catch {
+          message = '[不可读的错误对象]';
+        }
+        errors.push({ id: s?.id, message });
+      }
+    }
+    skillCache = { skills: parsed, errors, empty: parsed.length === 0, dir: diagnostics.dir };
+  }
+  // **交副本，不交 memo 本体**：memo 是**进程级**资产，调用方若 `push` 进 `.skills`，污染的是全进程
+  // （下一条消息、下一个 entity 都读得到）—— 与工具侧 `.slice()` 同规。数组小，克隆成本可忽略。
+  return { skills: skillCache.skills.slice(), errors: skillCache.errors.slice(), empty: skillCache.empty, dir: skillCache.dir };
 }

@@ -4,7 +4,8 @@
  * 为什么需要：`@gri/plugin-host` 是 ESM（`type: module`），jest 的 CJS 模块注册表不解析
  * node_modules 里的 `export` 语法 —— 与 `@gri/agent-core` 同因（见各 agent spec 的 `jest.mock`）。
  *
- * 替身**只覆盖 api 真正消费的那一面**：`loadPlugins`（api 只 import 这一个符号）。
+ * 替身**只覆盖 api 真正消费的那一面**：`loadPlugins`（api 只 import 这一个符号），
+ * 含它返回的 `skills`（插件 `skill: "./SKILL.md"` 的正文）—— api 侧靠它装载 tutor 技能正文。
  * PluginHost / 能力注册表 / 撞名拒绝 / policy fail-closed 等语义的正确性由
  * `packages/plugin-host` 的 `node --test` 套件覆盖，不在此重复。
  *
@@ -13,20 +14,23 @@
  *
  * 已知的**有意简化**（真件行为更严，但 api 侧不触）：
  * 1. 装配顺序按目录名而非 kind 优先级；
- * 2. 不做 realpath 层的符号链接越界判定；
- * 3. 不跑插件的 `tools` 工厂抛错路径 / `install`/`activate` 生命周期（真件装配期会跑）；
- * 4. `opts.assemble`（`requirePolicy` / `skipKinds`）与 `manifestFile` / `entryFile` 未模拟
+ * 2. 不跑插件的 `tools` 工厂抛错路径 / `install`/`activate` 生命周期（真件装配期会跑）；
+ * 3. `opts.assemble`（`requirePolicy` / `skipKinds`）与 `manifestFile` / `entryFile` 未模拟
  *    （api 侧不传；policy fail-closed 的语义由 plugin-host 的 node --test 覆盖）；
- * 5. **不支持复用宿主**（`opts.host` / 换键 / 补保留表 / 配置失败 fail-closed），也不做 `host` 可用性
- *    校验（`INVALID_HOST`）与 `reservedTools` 的类型校验（`RESERVED_TOOLS_INVALID`）—— api 恒新建宿主
- *    且只传正确的字符串数组。
+ * 4. **不支持复用宿主**（`opts.host` / 换键 / 补保留表），也不做 `host` 可用性校验（`INVALID_HOST`）
+ *    —— api 恒新建宿主。**但 `reservedTools` / `nameKey` 的类型校验已实现**（fail-closed，见下），
+ *    因为那是**安全路径**：替身若放行非法配置而照装插件，就比真件更松。
  * 真件语义以 `packages/plugin-host` 的套件为准。
  *
- * 与真件的唯一实现差异：入口用 **jest 的 `require`** 而非 `createRequire`，使插件里
+ * **替身不得比真件更松**（第一轮独立复验的教训）：目录监狱（含 **realpath 层**的符号链接判定）、
+ * 清单/skill/entry 的「必须是普通文件」、路径字段的类型校验、BOM 剥离、目录不可读的 EACCES ——
+ * 这些**安全与活性**相关的判定在替身里同样实现。否则 api 套件会在「真件已堵、替身还漏」的
+ * 情况下保持全绿：独立复验实证过替身曾**真的读入符号链接指向的目录外正文**。
+ * 唯一仍除外的实件差异：入口用 **jest 的 `require`** 而非 `createRequire`，使插件里
  * `require('@gri/agent-core')` 落到本 spec 的 mock 上（真件在生产用 createRequire，本就走真模块）。
  * 本文件与 `../plugins/` 均已列入 jest `transformIgnorePatterns`（纯 CJS，无需转译，也免去 ts-jest 警告）。
  */
-const { existsSync, readdirSync, readFileSync, statSync } = require('node:fs');
+const { existsSync, readdirSync, readFileSync, realpathSync, statSync } = require('node:fs');
 const { join, resolve, relative, isAbsolute, sep } = require('node:path');
 
 /** 与真件 `DEFAULT_KINDS` 同名同集（真件的完整校验由 plugin-host 的 node --test 覆盖）。 */
@@ -34,6 +38,11 @@ const KINDS = ['knowledge.content', 'knowledge.taxonomy', 'world.scene', 'agent.
 const HOST_API_VERSION = '1';
 // 与真件 manifest.js 同一 id 规则（防「api spec 用坏 id 也绿、真件却拒」的替身漂移）。
 const ID_RE = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
+
+/** 诊断里的 `dir`：非空字符串才报（与真件同口径 —— 配置失败时也要能对出「是哪个目录配错了」）。 */
+function dirForDiag(d) {
+  return typeof d === 'string' && d ? d : null;
+}
 
 /** 清单最小校验（id / kind / apiVersion）—— 与真件同 code，使「坏清单 → 诊断」在 api 侧同样成立。 */
 function checkManifest(raw) {
@@ -47,10 +56,42 @@ function checkManifest(raw) {
   return raw;
 }
 
-/** `target` 是否落在 `dir` 内（与真件同语义；替身只做字符串层，realpath 层由真件覆盖）。 */
+/** `target` 是否落在 `dir` 内（与真件**同两层语义**：路径层 + realpath 层）。
+ *  realpath 层不可省：符号链接能把 skill/entry 指到目录之外，字符串前缀判不出来。 */
 function isInside(dir, target) {
   const rel = relative(dir, target);
-  return !(rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel));
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return false;
+  try {
+    const realRel = relative(realpathSync(dir), realpathSync(target));
+    return !(realRel === '..' || realRel.startsWith(`..${sep}`) || isAbsolute(realRel));
+  } catch {
+    return true; // 目标暂时不存在 → 交给 require/read 去报（有诊断，不静默）
+  }
+}
+
+/** 是否**普通文件**（排除目录 / FIFO / 设备）：FIFO 会让 `readFileSync` 永久阻塞（与真件同判）。 */
+function isRegularFile(p) {
+  try {
+    return statSync(p).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/** 剥首字节 BOM（与真件同：BOM 是编码签名，会让 `^---` 锚定的 frontmatter 解析整条失配）。 */
+function stripBom(text) {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+/** 清单路径字段（entry/skill）取值：缺省 → null；**写了却类型不对** → 响亮报错（不静默当「没写」）。 */
+function declaredPath(v, field, id) {
+  if (v == null) return null;
+  if (typeof v !== 'string' || !v.trim()) {
+    throw Object.assign(new Error(`插件 ${id} 的 ${field} 必须是非空字符串，收到 ${typeof v}`), {
+      code: `PLUGIN_${field.toUpperCase()}_INVALID`,
+    });
+  }
+  return v;
 }
 
 function loadPlugins(opts = {}) {
@@ -59,11 +100,20 @@ function loadPlugins(opts = {}) {
   const errors = [];
   const tools = [];
   const activated = [];
+  const skills = [];
   const host = { tools: () => tools.slice(), diagnostics: () => ({ active: activated.slice(), errors: errors.slice() }) };
   // 与真件同：`nameKey` 传了却不是函数 → 配置错误，响亮记诊断（不静默当恒等键，也不抛）。
   if (opts.nameKey != null && typeof opts.nameKey !== 'function') {
     errors.push({ code: 'NAME_KEY_INVALID', message: `工具名等价键必须是函数，收到 ${typeof opts.nameKey}` });
-    return { host: null, tools: [], diagnostics: { dir: null, discovered, activated: [], ignored, errors } };
+    return { host: null, tools: [], skills: [], diagnostics: { dir: dirForDiag(opts.dir), discovered, activated: [], ignored, errors } };
+  }
+  // 与真件同：`reservedTools` 非字符串数组 → **配置失败即 fail-closed**（连目录都不扫、零激活）。
+  // 替身不得比真件更松：真件在宿主构造器里就拒（`new Set('abc')` 会把保留表静默变成单字符集，
+  // 想保护的名字一个都没护上）；替身若静默当 `[]` 并照装插件，就等于在**安全路径上更宽松**。
+  // （`0`/`''`/`false` 这类 falsy 非数组同样报错，不得被当成「空表」吞掉。）
+  if (opts.reservedTools != null && (!Array.isArray(opts.reservedTools) || opts.reservedTools.some((x) => typeof x !== 'string'))) {
+    errors.push({ code: 'RESERVED_TOOLS_INVALID', message: `宿主自有工具名必须是字符串数组，收到 ${typeof opts.reservedTools}` });
+    return { host: null, tools: [], skills: [], diagnostics: { dir: dirForDiag(opts.dir), discovered, activated: [], ignored, errors } };
   }
   const dir = opts.dir;
   // 与真件同：按**等价键**判撞名（`nameKey` 缺省恒等）。api 传的是 agent-core 的清洗名规则，
@@ -71,7 +121,7 @@ function loadPlugins(opts = {}) {
   const nameKey = typeof opts.nameKey === 'function' ? opts.nameKey : (n) => String(n);
   const reservedKeys = new Set((opts.reservedTools || []).map(nameKey));
 
-  const empty = (d) => ({ host, tools: [], diagnostics: { dir: d, discovered, activated: [], ignored, errors } });
+  const empty = (d) => ({ host, tools: [], skills: [], diagnostics: { dir: d, discovered, activated: [], ignored, errors } });
   // 与真件同：非字符串 → PLUGINS_DIR_INVALID（只诊断不抛），空 → UNSET，不存在/非目录 → MISSING。
   if (typeof dir !== 'string') {
     if (dir == null) {
@@ -85,14 +135,23 @@ function loadPlugins(opts = {}) {
     errors.push({ code: 'PLUGINS_DIR_UNSET', message: '未指定插件目录（dir）' });
     return empty(null);
   }
-  if (!existsSync(dir) || !statSync(dir).isDirectory()) {
-    errors.push({ code: 'PLUGINS_DIR_MISSING', dir, message: `插件目录不存在：${dir}` });
+  // 目录「存在/是目录/可读」都可能抛 IO 异常（EACCES）—— 与真件同：记 PLUGINS_DIR_UNREADABLE，
+  // 零插件、**不崩**（替身不得比真件更松：真件此处不抛）。readdirSync 也须在同一 try 内。
+  let entries;
+  try {
+    if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+      errors.push({ code: 'PLUGINS_DIR_MISSING', dir, message: `插件目录不存在：${dir}` });
+      return empty(dir);
+    }
+    entries = readdirSync(dir);
+  } catch (e) {
+    errors.push({ code: 'PLUGINS_DIR_UNREADABLE', dir, message: `插件目录不可读：${dir}（${e.message}）` });
     return empty(dir);
   }
 
   const claimed = new Set();
   const seenIds = new Set();
-  for (const name of readdirSync(dir).sort()) {
+  for (const name of entries.sort()) {
     const pluginDir = join(dir, name);
     let isDir = false;
     try {
@@ -107,21 +166,44 @@ function loadPlugins(opts = {}) {
       continue;
     }
     try {
-      const raw = checkManifest(JSON.parse(readFileSync(join(pluginDir, 'plugin.json'), 'utf8')));
-      const entry = resolve(pluginDir, raw.entry || './index.js');
-      // 与真件同：entry 越界 / 指向目录 → 拒绝（否则目录型 entry 会让 require 改读其 package.json main）。
+      const manifestPath = join(pluginDir, 'plugin.json');
+      // 与真件同：清单本身也走目录监狱，且必须**普通文件**（FIFO 会永久阻塞读）。
+      if (!isInside(pluginDir, manifestPath)) {
+        throw Object.assign(new Error(`${name}/plugin.json 越出插件目录（符号链接？）`), { code: 'PLUGIN_MANIFEST_ESCAPE' });
+      }
+      if (!isRegularFile(manifestPath)) {
+        throw Object.assign(new Error(`${name}/plugin.json 不是普通文件（目录/FIFO/设备？）`), { code: 'PLUGIN_MANIFEST_NOT_FILE' });
+      }
+      const raw = checkManifest(JSON.parse(readFileSync(manifestPath, 'utf8')));
+      const declaredEntry = declaredPath(raw.entry, 'entry', raw.id);
+      const entry = resolve(pluginDir, declaredEntry || './index.js');
+      // 与真件同：entry 越界 / 不是普通文件 → 拒绝（目录型 entry 会让 require 改读其 package.json main）。
       if (!isInside(pluginDir, entry)) {
-        throw Object.assign(new Error(`插件 ${raw.id} 的 entry 越出插件目录: ${raw.entry}`), { code: 'PLUGIN_ENTRY_ESCAPE' });
+        throw Object.assign(new Error(`插件 ${raw.id} 的 entry 越出插件目录: ${declaredEntry}`), { code: 'PLUGIN_ENTRY_ESCAPE' });
       }
-      if (existsSync(entry) && statSync(entry).isDirectory()) {
-        throw Object.assign(new Error(`插件 ${raw.id} 的 entry 指向目录: ${raw.entry}`), { code: 'PLUGIN_ENTRY_NOT_FILE' });
+      if (existsSync(entry) && !isRegularFile(entry)) {
+        throw Object.assign(new Error(`插件 ${raw.id} 的 entry 不是普通文件: ${declaredEntry}`), { code: 'PLUGIN_ENTRY_NOT_FILE' });
       }
-      const loaded = require(entry);
-      const impl = (loaded && loaded.default) || loaded || null;
+      // 技能正文（与真件同码）：越界 / 不存在 / 非普通文件 → 拒绝该插件（不让教学正文静默蒸发）。
+      const declaredSkill = declaredPath(raw.skill, 'skill', raw.id);
+      let skillPath = null;
+      let skillDoc = null;
+      if (declaredSkill) {
+        skillPath = resolve(pluginDir, declaredSkill);
+        if (!isInside(pluginDir, skillPath)) throw Object.assign(new Error(`插件 ${raw.id} 的 skill 越出插件目录: ${declaredSkill}`), { code: 'PLUGIN_SKILL_ESCAPE' });
+        if (!existsSync(skillPath)) throw Object.assign(new Error(`插件 ${raw.id} 声明的 skill 不存在: ${declaredSkill}`), { code: 'PLUGIN_SKILL_MISSING' });
+        if (!isRegularFile(skillPath)) throw Object.assign(new Error(`插件 ${raw.id} 的 skill 不是普通文件: ${declaredSkill}`), { code: 'PLUGIN_SKILL_NOT_FILE' });
+        skillDoc = stripBom(readFileSync(skillPath, 'utf8'));
+      }
+      // 与真件同：「入口文件在不在」与「入口导出什么」是两件事 —— 存在却导出 falsy 不算缺失。
+      const entryExists = existsSync(entry);
+      const loaded = entryExists ? require(entry) : null;
+      if (!entryExists && declaredEntry) throw Object.assign(new Error(`插件 ${raw.id} 声明的 entry 不存在: ${declaredEntry}`), { code: 'PLUGIN_ENTRY_MISSING' });
+      const impl = entryExists && loaded ? (loaded.default || loaded) || null : null;
       // 撞 id（真件由注册表在 register 时拒）→ 记 DUPLICATE_PLUGIN_ID，且**不入 discovered**（与真件同序）。
       if (seenIds.has(raw.id)) throw Object.assign(new Error(`插件 id 撞名: ${raw.id}`), { code: 'DUPLICATE_PLUGIN_ID' });
       seenIds.add(raw.id);
-      discovered.push({ id: raw.id, dir: name, kind: raw.kind });
+      discovered.push({ id: raw.id, dir: name, kind: raw.kind, entry: entryExists ? entry : null });
       // 工具校验模拟**装配期**（真件在 assembleSync 的 `_collectTools`）：失败时该插件**已注册**，
       // 故**仍在 discovered 里**（与真件同），只是不入 activated。
       const rawTools = typeof impl?.tools === 'function' ? impl.tools({ host: {} }) : impl?.tools;
@@ -144,11 +226,12 @@ function loadPlugins(opts = {}) {
         tools.push(t);
       }
       activated.push(raw.id);
+      if (skillDoc != null) skills.push({ id: raw.id, dir: name, path: skillPath, markdown: skillDoc });
     } catch (e) {
       errors.push({ dir: name, code: e.code || 'PLUGIN_LOAD_FAILED', message: e.message });
     }
   }
-  return { host, tools, diagnostics: { dir, discovered, activated, ignored, errors } };
+  return { host, tools, skills, diagnostics: { dir, discovered, activated, ignored, errors } };
 }
 
 module.exports = { loadPlugins };

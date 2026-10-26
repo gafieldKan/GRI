@@ -64,11 +64,39 @@ const { tools, diagnostics } = loadPlugins({ dir: resolve(__dirname, '../../../p
   里构造，读 `e.code`/`e.message` 时再抛就**穿出装载**）→ 统一经 `errorInfo()` 安全取值，读不出
   则落到缺省码 + `[不可读的错误对象]`。
 - **入口不得越狱**：清单 `entry` 解析后必须落在插件目录内，越界（`"entry": "../../x.js"`）→
-  `PLUGIN_ENTRY_ESCAPE` 并拒绝。且入口**必须是文件**：`entry: "."` 这类指向目录的值会让 `require` 去读
+  `PLUGIN_ENTRY_ESCAPE` 并拒绝。且入口**必须是普通文件**：`entry: "."` 这类指向目录的值会让 `require` 去读
   该目录的 `package.json` 的 `main`（那条路径不经本 jail）→ `PLUGIN_ENTRY_NOT_FILE` 拒绝。
-  清单是数据，不该能把代码指到目录之外。
+  清单是数据，不该能把代码指到目录之外。**清单本身**同理：`plugin.json` 若是符号链接指向目录外 →
+  `PLUGIN_MANIFEST_ESCAPE`（entry/skill 都守了，清单不守则同一漏洞从最上游开着）。
+- **目录监狱是两层的，`realpath` 那层不可省**：只按字符串前缀判，符号链接就能把 `entry`/`skill`
+  指到目录之外且看不出来 → 字符串层（`relative` 语义，且 `..weird.md` 这种**目录内**的合法名字不被误判）
+  之后**再比 `realpathSync`**。两层都有用例钉住（含符号链接指向目录外真身的负例）。
+- **非普通文件一律不读**（目录 / FIFO / 设备）：**命名管道会让 `readFileSync` 永久阻塞** ——
+  宿主在启动期**挂死且零诊断**（比抛错更糟：连一条错误都没有）。三处各给自己的码：
+  `PLUGIN_MANIFEST_NOT_FILE` / `PLUGIN_ENTRY_NOT_FILE` / `PLUGIN_SKILL_NOT_FILE`。
+- **路径字段写了却类型不对** → `PLUGIN_ENTRY_INVALID` / `PLUGIN_SKILL_INVALID`（不静默当成「没写」——
+  那是把配置错误吞掉；也不把 Node 的 `ERR_INVALID_ARG_TYPE` 当诊断码抛给调用方）。
 - **装配幂等**：已激活的插件不重复装配（否则二次 `assemble()` 会把工具**重复推入**表）。卸载后
   可再次装配。
+- **技能正文随目录载入**：清单写 `skill: "./SKILL.md"` 的插件，其正文由装载器读出并放进
+  返回值的 `skills: [{id, dir, path, markdown}]`（本包**不解析** frontmatter —— 那是
+  `@gri/agent-core` 的 `parseSkillMarkdown` 的活），宿主自行并入 prompt。`skill` 与 `entry`
+  同受**目录监狱**约束：越界 → `PLUGIN_SKILL_ESCAPE`、非普通文件 → `PLUGIN_SKILL_NOT_FILE`、
+  声明了却不存在 → `PLUGIN_SKILL_MISSING` —— 三例都**拒绝该插件**而非静默少一段正文
+  （技能正文往往就是该插件存在的全部理由，静默丢掉等于功能凭空蒸发）。
+  读出时会**剥掉首字节 UTF-8 BOM**：BOM 是编码签名不是正文，却会让下游按 `^---` 锚定的 frontmatter
+  解析整条失配 → 技能被丢弃，而「另存为 UTF-8（带 BOM）」是常见编辑器默认。
+- **正文与工具同进退**：只有**被激活**的插件的正文才会交出。插件可能登记成功、却因工具撞名
+  （`TOOL_NAME_RESERVED` / 清洗名塌陷）在装配期被拒 —— 那时连它的 `SKILL.md` 一起丢，
+  否则模型会读到「用 X 工具…」的指令，而那个工具刚被丢弃：**提示词与工具表互相打脸**。
+  同一条判据也覆盖两种「没被装配」：`assemble: { skipKinds }` 跳过的插件、以及 `assembleSync`
+  整体抛错时的**全体**正文，都不交出——判据只有一句：**没被装配的东西，不该往 prompt 里放**。
+- **纯内容插件是合法形态**：只有 `plugin.json`（+ `SKILL.md`，或什么都没有）而没有入口文件的
+  插件照常装配，`impl` 为 `null`、`discovered[].entry` 报 `null`。但**显式声明**了 `entry` 却不
+  存在 → `PLUGIN_ENTRY_MISSING`（配置错误要响亮，不静默降级成「无实现」）。
+  注意「**入口文件在不在**」与「**入口导出什么**」是两件事：入口存在且 `require` 成功、只是导出
+  falsy（`module.exports = 0 / null / '' / false / undefined`）→ 按**无实现**处理，**不报** `PLUGIN_ENTRY_MISSING`
+  （否则排查方向会被指错）。
 - **`dir` 归一**：相对路径可用（内部 `resolve` 成绝对；`createRequire` 只收绝对路径，不归一就是
   宿主启动期崩溃），非字符串只记 `PLUGINS_DIR_INVALID` —— 归一本身也不得成为新的崩溃点。
   **目录不可读**（EACCES：`statSync`/`readdirSync` 抛 IO 异常）同样只记 `PLUGINS_DIR_UNREADABLE`

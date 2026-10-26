@@ -63,6 +63,9 @@ project.private.config.json
 !docs/**/*.md
 !**/docs/**/*.md
 !**/README.md
+# 插件技能正文是**承载内容**（content payload），不是散落的文档 —— 它被装载器读入 prompt，
+# 漏提交等于插件声明了 skill 却读不出（PLUGIN_SKILL_MISSING）→ 教师静默失去全部教学指令。
+!**/SKILL.md
 
 # Backup files
 *.backup

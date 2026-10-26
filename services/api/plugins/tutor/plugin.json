@@ -1,0 +1,9 @@
+{
+  "id": "tutor",
+  "name": "教学技能",
+  "kind": "agent.skill",
+  "apiVersion": "1",
+  "version": "0.1.0",
+  "description": "学情诊断→讲解→测验的完整教师流程",
+  "skill": "./SKILL.md"
+}

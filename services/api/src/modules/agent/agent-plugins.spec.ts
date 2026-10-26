@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { AgentService } from './agent.service';
-import { agentPlugins, agentPluginsDir, resetAgentPlugins } from './agent-plugins';
+import { agentPlugins, agentPluginsDir, agentSkills, resetAgentPlugins } from './agent-plugins';
 import { BUILTIN_TOOL_NAMES, HOST_RESERVED_TOOL_NAMES, dropHostNameCollisions } from './teaching-tools';
 
 // 与 agent.service.spec / agent-diagnosis.spec 同款：@gri/agent-core 是 ESM，jest.mock 重定向。
@@ -12,8 +12,11 @@ jest.mock('@gri/agent-core', () => ({
   makeTool: (d: any) => ({ name: d.name, description: d.description || '', inputSchema: d.inputSchema, execute: d.execute }),
   // 与真件同规则（多对一：`.` → `-`）——插件装载按清洗名判撞名，替身必须同规则才有意义。
   sanitizeToolName: (n: string) => String(n).replace(/[^a-zA-Z0-9_-]/g, '-'),
+  // 技能正文解析 + 技能表：真件在 agent-core（ESM，jest 装不了）→ 走共享 CJS 替身
+  // （语义对齐，只此一份；`SkillRegistry` 替身带真方法，否则「技能真进了表」这条断言没处可落）。
+  parseSkillMarkdown: require('../../__mocks__/agent-core-skills').parseSkillMarkdown,
+  SkillRegistry: require('../../__mocks__/agent-core-skills').SkillRegistry,
   ToolRegistry: class {},
-  SkillRegistry: class {},
   MemoryStore: class {},
   ModelRouter: class {},
   LlmClient: class {},
@@ -67,9 +70,10 @@ describe('出厂插件装载（W2.3）', () => {
   it('扫到 memory 出厂插件：kind=agent.skill，三个工具按声明序装配', () => {
     const { diagnostics, tools } = agentPlugins();
     expect(diagnostics.errors).toEqual([]);
-    expect(diagnostics.activated).toEqual(['memory']);
+    expect(diagnostics.activated).toEqual(['memory', 'tutor']);
     expect(diagnostics.discovered).toEqual([
       expect.objectContaining({ id: 'memory', dir: 'memory', kind: 'agent.skill' }),
+      expect.objectContaining({ id: 'tutor', dir: 'tutor', kind: 'agent.skill' }),
     ]);
     expect(tools.map((t: any) => t.name)).toEqual(['memory.recall', 'memory.remember', 'memory.forget']);
   });
@@ -168,6 +172,85 @@ describe('出厂插件装载（W2.3）', () => {
     }
   });
 
+  // ---------- 技能正文插件化（W2.3 技能半边）----------
+
+  it('tutor 技能正文来自插件 SKILL.md（不再硬编码在 teaching-tools.ts）', () => {
+    const { skills, errors, empty } = agentSkills();
+    expect(errors).toEqual([]);
+    expect(empty).toBe(false);
+    const tutor = skills.find((s: any) => s.name === 'tutor')!;
+    expect(tutor.id).toBe('tutor');
+    expect(tutor.description).toBe('学情诊断→讲解→测验的完整教师流程');
+    // 讲话术里的每个工具名都必须还在：正文搬家不许丢行为约定
+    for (const tool of ['curriculum.lookup', 'map.explorer', 'question.lookup', 'answer.grade', 'plan.complete', 'memory.forget', 'wrong.list', 'review.sequence', 'lesson.submit']) {
+      expect(tutor.instructions).toContain(tool);
+    }
+  });
+
+  it('**零回归**：搬家后的技能正文与搬家前 teaching-tools.ts 里的字面量**逐字节一致**', () => {
+    // 这份金样本即 HEAD 之前 `skills()` 里的 instructions 字面量。它是教学 prompt 的真源，
+    // 改一个字都会改变 AI 教师的行为 —— 故在此钉死：任何「顺手润色」都必须是有意的改动 + 改这份金样本。
+    const GOLDEN = `当学生发起学习请求时：(0) 学生问「该学什么/有哪些章节/教学体系/先学哪部分」时，先用 curriculum.lookup 导航教学体系（按学科/年级查教材章节与知识点），再针对具体知识点讲解或出题；学生问「这门学科都学什么/我学到哪了/以后学什么/山顶之外有什么」这类全貌与位置感问题时，改用 map.explorer（学科知识版图）拿山体摘要（已攀/当前/前方/峰外），用登山比喻讲清该生位置与前路；(1) 需要摸底就用 question.lookup 抽几题诊断，或先调 diagnosis.state 取该学生的真实作答掌握度与未解决错题，紧扣真实数据给出个性化讲解；(2) 依据对错用 answer.grade 讲解知识点；(3) 学生要「诊断/进度/错题」时先调 diagnosis.state；要「计划/学习安排」时先 diagnosis.state 再用 plan.generate 把弱项落成计划，并告知计划已在学习计划页生成；(4) 学生报告「做完/完成」某条任务时，用 plan.complete 标记完成并回灌掌握度，答对会消除对应错题，全部完成会把计划置为已完成；(5) 记下学生偏好/掌握度用 memory.remember，之后答案要贴合记忆；记忆过时或学生明确说「忘掉/删掉」时用 memory.forget；(6) 学生要「复习错题/错题冲刺」时，先调 wrong.list 抽未解决错题让学生重做（工具不回显正确答案，由你判读并讲解），答对用 answer.grade(resolveOnCorrect:true) 消除错题并记作答；答错用 answer.grade 正常记录；(7) 学生要「复习巩固/自适应出题/掌握度复习」时，先调 review.sequence 拿按掌握度缺口+间隔排序的题目序列，按序出题并紧扣各题掌握度个性化讲解，判读仍走 answer.grade；(8) 学生要「上课/学某知识点/讲解/教我」时，用 lesson.current 驱动授课：它按 assess→teach→example→drill 状态机推进(状态存于该生长期记忆,跨消息续课)，每步返回真实数据（assess=该知识点真实掌握度+未解决错题、teach=该生最近实际答错的写法当错因、example/drill=该知识点真题）；你紧扣这些真实数据讲解。抢时(example/drill)作答、判读、回授一律走 lesson.submit(它判题落库并答对推进 complete/答错留 drill)，不要用裸 answer.grade以免状态机不推进；讲完一步带 stage 推进到下一步。`;
+    const tutor = agentSkills().skills.find((s: any) => s.name === 'tutor')!;
+    expect(tutor.instructions).toBe(GOLDEN);
+  });
+
+  it('教师装配时技能真进了 SkillRegistry（不是只躺在文件里）', () => {
+    const svc = new AgentService(fakeDb());
+    const reg = (svc as any)._teachingSkills([]);
+    expect(reg.list().map((s: any) => s.name)).toEqual(['tutor']);
+    expect(reg.instructionsBlock()).toContain('## 技能：tutor');
+  });
+
+  it('SKILL.md **只有 frontmatter、正文为空** → 按装载失败报出（占位正文不算「载成了」）', () => {
+    // 病灶：正文为空时 parseSkillMarkdown 会补一个占位正文（`（skill x）`），于是「装载成功、
+    // 却一个字教学指令都没有」**不会**触发 empty 警告 —— 与「一个都没载成」同害。
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gri-skill-empty-'));
+    try {
+      fs.mkdirSync(path.join(tmp, 'hollow'));
+      fs.writeFileSync(path.join(tmp, 'hollow', 'plugin.json'), JSON.stringify({ id: 'hollow', kind: 'agent.skill', apiVersion: '1', skill: './SKILL.md' }));
+      fs.writeFileSync(path.join(tmp, 'hollow', 'SKILL.md'), '---\nname: hollow\ndescription: 空壳\n---\n\n   \n');
+      process.env.AGENT_PLUGINS_DIR = tmp;
+      resetAgentPlugins();
+
+      const { skills, errors, empty } = agentSkills();
+      expect(skills).toEqual([]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0].id).toBe('hollow');
+      expect(errors[0].message).toContain('正文为空');
+      expect(empty).toBe(true); // 一条可用技能都没有 → 启动期会响亮告警
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      delete process.env.AGENT_PLUGINS_DIR;
+      resetAgentPlugins();
+    }
+  });
+
+  it('skill 是**指向目录外的符号链接** → 拒该插件（替身的目录监狱与真件同层：realpath）', () => {
+    // 第一轮独立复验抓到的替身漂移：只做字符串前缀判定时，符号链接指向的**目录外正文会被真读进来**，
+    // 而 api 套件照样全绿。本用例把替身钉在真件的两层判定上（路径层 + realpath 层）。
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gri-skill-symlink-'));
+    try {
+      fs.writeFileSync(path.join(tmp, 'outside.md'), '---\nname: stolen\n---\n外部正文');
+      fs.mkdirSync(path.join(tmp, 'p'));
+      fs.writeFileSync(path.join(tmp, 'p', 'plugin.json'), JSON.stringify({ id: 'p', kind: 'agent.skill', apiVersion: '1', skill: './link.md' }));
+      fs.symlinkSync(path.join(tmp, 'outside.md'), path.join(tmp, 'p', 'link.md'));
+      process.env.AGENT_PLUGINS_DIR = tmp;
+      resetAgentPlugins();
+
+      const { skills } = agentSkills();
+      const { diagnostics } = agentPlugins();
+      expect(skills).toEqual([]);
+      expect(diagnostics.errors.map((e: any) => e.code)).toEqual(['PLUGIN_SKILL_ESCAPE']);
+      // 正文一个字都没进来（诊断里也不许出现外部内容）
+      expect(JSON.stringify(diagnostics)).not.toContain('外部正文');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      delete process.env.AGENT_PLUGINS_DIR;
+      resetAgentPlugins();
+    }
+  });
+
   it('目录有子目录却无清单 → 不静默（记入 ignored），也不误报为 error', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gri-plugins-'));
     try {
@@ -216,8 +299,10 @@ describe('出厂插件装载（W2.3）', () => {
 
   it('保留表覆盖宿主**另注册**的工具（委派 agent.delegate）—— 漏登记即等于留个无声顶替口', () => {
     expect(HOST_RESERVED_TOOL_NAMES).toEqual([...BUILTIN_TOOL_NAMES, 'agent.delegate']);
-    // 名字真源在 packages/agent-core/src/cli-delegate.js（createDelegateTool 的 name）；
-    // 启动期 _reportPluginDiagnostics() 会核对宿主注册的工具名都在本表内（防漂移）。
+    // 本条只钉「本表含委派名」这一**登记事实**，`'agent.delegate'` 字面量本身是 api 侧副本 ——
+    // 名字**真源**在 packages/agent-core/src/cli-delegate.js（`createDelegateTool` 的 name），
+    // 由 packages/agent-core/tests/cli-delegate.test.js 直接对**真工厂**断言（那里不是副本）。
+    // 运时兜底：启动期 `_reportPluginDiagnostics()` 核对宿主**实际注册**的工具名都落在本表内 → 漂移即报诊断。
   });
 
   it('插件占 agent.delegate → 同样被拒（TOOL_NAME_RESERVED），不因它不是内建 13 个之一而放行', () => {

@@ -8,7 +8,7 @@ import { eduQuery, findStudentProfile, findLatestPlan } from '../edu-core/reposi
 import { AgentTeachingTools, HOST_RESERVED_TOOL_NAMES, dropHostNameCollisions } from './teaching-tools';
 import { AgentDelegateRunsService } from './agent-delegate.service';
 import { AgentPanelService } from './agent-panel.service';
-import { agentPlugins } from './agent-plugins';
+import { agentPlugins, agentSkills } from './agent-plugins';
 import { loadConfig } from '../../config/config';
 
 /**
@@ -90,6 +90,12 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
     // 目录存在却无清单 → 按非插件跳过：不是错误，但**必须可见**（否则「插件整个不见了」查无对证）。
     for (const g of ignored) agentPluginLogger.log(`插件目录跳过：${JSON.stringify(g)}`);
     for (const e of errors) agentPluginLogger.warn(`插件装载问题：${JSON.stringify(e)}`);
+    // 技能正文是**内容资产**：装载失败不会让宿主崩，却会让教师**静默失去教学正文**（prompt 里技能块整块没了）。
+    // 故与工具侧同原则 —— 一条都没载成、或某条解析失败，都要在启动期喊出来。
+    const { skills, errors: skillErrors, empty } = agentSkills();
+    agentPluginLogger.log(`出厂技能：${skills.length ? skills.map((s) => s.name).join('、') : '（无）'}`);
+    for (const e of skillErrors) agentPluginLogger.warn(`技能正文解析失败（插件 ${e.id}）：${e.message}`);
+    if (empty) agentPluginLogger.warn(`**一个插件技能正文都没装载成** —— AI 教师将失去全部教学指令（检查 plugins/ 目录与各 SKILL.md 的 frontmatter）`);
     // 防漂移：宿主**所有**自有工具名都必须登记进保留表，否则插件（或 MCP）可无声顶替它。
     // 两个来源缺一不可：① 宿主自注册进 registry 的（委派工具 `agent.delegate`）；
     // ② 内建工具表 **纯内建**（`toolDefs([])`，不含插件）——漏了它就等于给第 14 个内建工具留个无声顶替口。
@@ -246,7 +252,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
     return this.delegate.listExternalEvents(entityId, runId, afterId);
   }
   private _teachingSkills(toolDefs: any[]): SkillRegistry {
-    return this._teach.skills(toolDefs);
+    return this._teach.skills(toolDefs, agentSkills().skills);
   }
 
   /** 无 key mock 路径：确定性应答（合法号形，测试/E2E 稳定）。 */

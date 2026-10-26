@@ -18,6 +18,8 @@ jest.mock('@gri/agent-core', () => ({
   makeTool: (def: any) => def,
   // 与真件同规则：teaching-tools 在 toolDefs() 入口按清洗名建保留名表，替身缺它即 `undefined is not a function`。
   sanitizeToolName: (n: string) => String(n).replace(/[^a-zA-Z0-9_-]/g, '-'),
+  // 技能正文解析：真件在 agent-core（ESM，jest 装不了）→ 走共享 CJS 替身（语义对齐，只此一份）。
+  parseSkillMarkdown: require('../../__mocks__/agent-core-skills').parseSkillMarkdown,
   storeFrom: (query: any) => ({ query }),
   createDelegateTool: () => ({ name: 'agent.delegate' }),
 }));

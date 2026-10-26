@@ -94,7 +94,8 @@ jest.mock('@gri/agent-core', () => {
   });
   // 与真件同规则：插件装载按**清洗名**判撞名，替身缺了它 toolDefs 的保留名表就建不起来。
   const sanitizeToolName = (n: string) => String(n).replace(/[^a-zA-Z0-9_-]/g, '-');
-  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, sanitizeToolName, storeFrom, McpPool, createDelegateTool };
+  const parseSkillMarkdown = require('../../__mocks__/agent-core-skills').parseSkillMarkdown;
+  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, sanitizeToolName, parseSkillMarkdown, storeFrom, McpPool, createDelegateTool };
 });
 
 /** 内存假 DB：认有限几种 SQL，模拟 agent.entities / agent.memory / agent.llm_routes / agent.mcp_servers。

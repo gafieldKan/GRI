@@ -32,7 +32,7 @@ import { parseManifest } from './manifest.js';
  * @param {object} [opts.assemble] 传给 `assembleSync()` 的选项（`skipKinds` / `requirePolicy`）
  * @param {string} [opts.manifestFile='plugin.json'] 清单文件名
  * @param {string} [opts.entryFile='index.js'] 清单未写 `entry` 时的入口名
- * @returns {{host: PluginHost, tools: any[], diagnostics: {dir: string|null, discovered: object[], activated: string[], ignored: object[], errors: object[]}}}
+ * @returns {{host: PluginHost, tools: any[], skills: {id: string, dir: string, path: string, markdown: string}[], diagnostics: {dir: string|null, discovered: object[], activated: string[], ignored: object[], errors: object[]}}}
  */
 export function loadPlugins(opts = {}) {
   opts = opts || {}; // 显式 `null` 也不得崩（与 `dir` 非字符串同类：P5 —— 配置容错不成为崩溃点）
@@ -52,26 +52,27 @@ export function loadPlugins(opts = {}) {
   const { host, error: hostError } = safeHostFrom(opts);
   const errors = hostError ? [hostError] : [];
   if (!host) {
-    return { host: null, tools: [], diagnostics: { dir, discovered: [], activated: [], ignored: [], errors } };
+    return { host: null, tools: [], skills: [], diagnostics: { dir, discovered: [], activated: [], ignored: [], errors } };
   }
 
   // **宿主配置失败 → 不再继续装载**（安全上比「照装」正确）：调用方要求的 `reservedTools` / `nameKey`
   // 没生效，此时若照常扫目录并装配，插件就会在**防线静默缺失**的情况下进入工具表（撞名可顶替宿主工具）。
   // 故 fail-closed：零发现/零激活，只把宿主**当前**状态如实交出 + 诊断（不静默、不半配置生效）。
   if (hostError) {
-    return { host, tools: safeTools(host), diagnostics: { dir, discovered: [], activated: [], ignored: [], errors } };
+    return { host, tools: safeTools(host), skills: [], diagnostics: { dir, discovered: [], activated: [], ignored: [], errors } };
   }
 
   const discovered = [];
   const ignored = [];
+  const skills = [];
 
   if (opts.dir != null && opts.dir !== '' && !dirSet) {
     errors.push({ code: 'PLUGINS_DIR_INVALID', message: `插件目录必须是字符串路径，收到 ${typeof opts.dir}（零插件装配，宿主照常启动）` });
-    return finish(host, null, discovered, ignored, errors, opts.assemble || {});
+    return finish(host, null, discovered, ignored, errors, skills, opts.assemble || {});
   }
   if (!dir) {
     errors.push({ code: 'PLUGINS_DIR_UNSET', message: '未指定插件目录（dir）—— 零插件装配' });
-    return finish(host, null, discovered, ignored, errors, opts.assemble || {});
+    return finish(host, null, discovered, ignored, errors, skills, opts.assemble || {});
   }
   // 目录「存在/是目录/可读」三件事都可能抛 IO 异常（EACCES 等）—— 宿主启动期**不得**因权限问题崩溃，
   // 与「目录不存在」同类处理：记诊断、零插件、宿主照常（P5）。
@@ -79,7 +80,7 @@ export function loadPlugins(opts = {}) {
   try {
     if (!existsSync(dir) || !statSync(dir).isDirectory()) {
       errors.push({ code: 'PLUGINS_DIR_MISSING', dir, message: `插件目录不存在：${dir}（零插件装配，宿主照常启动）` });
-      return finish(host, dir, discovered, ignored, errors, opts.assemble || {});
+      return finish(host, dir, discovered, ignored, errors, skills, opts.assemble || {});
     }
     entries = readdirSync(dir);
   } catch (e) {
@@ -89,7 +90,7 @@ export function loadPlugins(opts = {}) {
       dir,
       message: `插件目录不可读：${dir}（${info.message}；零插件装配，宿主照常启动）`,
     });
-    return finish(host, dir, discovered, ignored, errors, opts.assemble || {});
+    return finish(host, dir, discovered, ignored, errors, skills, opts.assemble || {});
   }
 
   // 以插件根目录为基准的 require：入口文件里的裸模块（如 '@gri/agent-core'）按**入口自身位置**向上解析。
@@ -113,35 +114,87 @@ export function loadPlugins(opts = {}) {
     }
 
     try {
-      const raw = JSON.parse(readFileSync(join(pluginDir, manifestFile), 'utf8'));
+      const manifestPath = join(pluginDir, manifestFile);
+      // 清单**本身**也走目录监狱：entry/skill 都守了「不得指到目录之外」，清单不守则同一漏洞
+      // 从最上游开着 —— `plugin.json` 若是符号链接，读到的就是目录外的清单（它是**数据**，
+      // 不该能把「读哪个文件」指到插件目录之外）。越界 → 拒绝该插件并诊断。
+      if (!isInside(pluginDir, manifestPath)) {
+        throw new PluginHostError('PLUGIN_MANIFEST_ESCAPE', `${name}/${manifestFile} 越出插件目录（符号链接？）`);
+      }
+      // **非普通文件一律不读**：命名管道（FIFO）会让 `existsSync` 为真、`readFileSync` **永久阻塞** ——
+      // 宿主启动期**挂死且零诊断**（比抛错更糟：连诊断都没有，违 P5）。目录/设备文件同理。
+      if (!isRegularFile(manifestPath)) {
+        throw new PluginHostError('PLUGIN_MANIFEST_NOT_FILE', `${name}/${manifestFile} 不是普通文件（目录/FIFO/设备？）`);
+      }
+      const raw = JSON.parse(readFileSync(manifestPath, 'utf8'));
       // **先校验清单再执行入口**：不合法清单绝不触发入口代码（否则等于让坏插件先跑一遍）。
       parseManifest(raw, { kinds: host.kinds, apiVersion: host.apiVersion });
-      const entry = resolve(pluginDir, raw.entry || `./${entryFile}`);
+      // 路径字段**显式校验类型**：`parseManifest` 把非字符串归一成 `null`（=没写），
+      // 但「写了却写错类型」是配置错误，静默当成「没写」就把错误吞了；且直接读 `raw.*`
+      // 交给 `resolve` 会抛 `ERR_INVALID_ARG_TYPE`（那是 Node 内部码，不是本包的诊断码）。
+      const declaredEntry = declaredPath(raw.entry, 'entry', raw.id);
+      const entry = resolve(pluginDir, declaredEntry || `./${entryFile}`);
       // 入口必须**落在插件目录内**：清单是数据，不该能把代码指到目录之外（否则「本地目录、manifest-first」
       // 的信任模型被一句 `"entry": "../../x.js"` 绕过）。越界 → 拒绝该插件并诊断，绝不静默加载外部代码。
       if (!isInside(pluginDir, entry)) {
         throw new PluginHostError('PLUGIN_ENTRY_ESCAPE', `插件 ${raw.id} 的 entry 越出插件目录: ${raw.entry}`);
       }
-      // 入口必须是**文件**：`entry: "."`（或任何指向目录的值）会让 `require(dir)` 去读该目录的
+      // 入口必须是**普通文件**：`entry: "."`（或任何指向目录的值）会让 `require(dir)` 去读该目录的
       // `package.json` 的 `main` —— 那条路径**不经本 jail**（`main` 可写 `../../evil.js` 或绝对路径），
       // 「入口落在目录内」的判定会被整条绕过。故指向目录一律拒绝（符号链接越界另有 realpath 兜底）。
-      if (existsSync(entry) && statSync(entry).isDirectory()) {
+      // 非普通文件（FIFO：`require` 会永久阻塞在 open 上）同样拒绝 —— 同「清单不得是 FIFO」一条道理。
+      if (existsSync(entry) && !isRegularFile(entry)) {
         throw new PluginHostError(
           'PLUGIN_ENTRY_NOT_FILE',
-          `插件 ${raw.id} 的 entry 指向目录（require 会改读其 package.json 的 main，绕过目录监狱）: ${raw.entry}`,
+          `插件 ${raw.id} 的 entry 不是普通文件（指向目录时 require 会改读其 package.json 的 main，绕过目录监狱）: ${declaredEntry}`,
         );
       }
-      const loaded = req(entry);
-      const impl = (loaded && loaded.default) || loaded || null;
+      // 技能正文（`skill: "./SKILL.md"`）：与 entry 同理走**目录监狱** —— 清单是数据，
+      // 不该能把读取指到目录之外；且必须**存在**且是**普通文件**（FIFO 会阻塞读、目录读不了）。
+      // 读到的正文随 `skills` 交出（宿主自行并入 prompt）。
+      // 声明了 skill 却读不出来 → 拒该插件（不是静默少一段正文：技能正文往往就是该插件存在的理由）。
+      const declaredSkill = declaredPath(raw.skill, 'skill', raw.id);
+      let skillPath = null;
+      let skillDoc = null;
+      if (declaredSkill) {
+        skillPath = resolve(pluginDir, declaredSkill);
+        if (!isInside(pluginDir, skillPath)) {
+          throw new PluginHostError('PLUGIN_SKILL_ESCAPE', `插件 ${raw.id} 的 skill 越出插件目录: ${declaredSkill}`);
+        }
+        if (!existsSync(skillPath)) {
+          throw new PluginHostError('PLUGIN_SKILL_MISSING', `插件 ${raw.id} 声明的 skill 不存在: ${declaredSkill}`);
+        }
+        if (!isRegularFile(skillPath)) {
+          throw new PluginHostError('PLUGIN_SKILL_NOT_FILE', `插件 ${raw.id} 的 skill 不是普通文件: ${declaredSkill}`);
+        }
+        // 剥掉首字节 BOM：BOM 是**编码签名**不是正文，却会让下游按 `^---` 锚定的 frontmatter 解析
+        // 整个失配（`agent-core` 的 `parseSkillMarkdown`）—— 技能被静默丢弃，而「存为 UTF-8 带 BOM」
+        // 是极常见的编辑器默认。在读字节的**边界**上剥掉，正文与解析器都干净。
+        skillDoc = stripBom(readFileSync(skillPath, 'utf8'));
+      }
+      // **「入口文件在不在」与「入口加载出的值是什么」是两件事** —— 先取存在性，再加载：
+      // 一个*存在且加载成功*但导出 falsy（`module.exports = 0 / null / '' / false`）的入口，
+      // 不该被误报成「声明的 entry 不存在」（那是另一码事，且会误导排查方向）。
+      const entryExists = existsSync(entry);
+      const loaded = entryExists ? req(entry) : null;
+      // **纯内容插件**（只有 `plugin.json` + `SKILL.md`，无代码）是合法形态：没写 `entry` 且目录里
+      // 也没有缺省入口文件 → 视作无实现（`impl = null`），不由 `MODULE_NOT_FOUND` 把它整个拒掉。
+      // 但**显式声明**了 `entry` 却不存在是配置错误 —— 那要响亮报出，不静默降级成无实现。
+      if (!entryExists && declaredEntry) {
+        throw new PluginHostError('PLUGIN_ENTRY_MISSING', `插件 ${raw.id} 声明的 entry 不存在: ${declaredEntry}`);
+      }
+      // 入口存在但导出 falsy（空实现）→ 同样按**无实现**处理（无工具/无钩子），不算错误。
+      const impl = entryExists && loaded ? (loaded.default || loaded) || null : null;
       const manifest = host.register(raw, impl);
-      discovered.push({ id: manifest.id, dir: name, kind: manifest.kind, entry });
+      discovered.push({ id: manifest.id, dir: name, kind: manifest.kind, entry: entryExists ? entry : null });
+      if (skillDoc != null) skills.push({ id: manifest.id, dir: name, path: skillPath, markdown: skillDoc });
     } catch (e) {
       const info = errorInfo(e);
       errors.push({ dir: name, code: info.code || 'PLUGIN_LOAD_FAILED', message: info.message });
     }
   }
 
-  return finish(host, dir, discovered, ignored, errors, opts.assemble || {});
+  return finish(host, dir, discovered, ignored, errors, skills, opts.assemble || {});
 }
 
 /**
@@ -265,16 +318,74 @@ function isInside(dir, target) {
   }
 }
 
+/**
+ * 是否**普通文件**（排除目录 / FIFO / 设备 / socket）。
+ *
+ * 为什么必须判定：`existsSync` 对**命名管道**（FIFO）也为真，而 `readFileSync` 打开 FIFO 会
+ * **永久阻塞**——宿主在启动期挂死，且**零诊断**（比抛错更糟：连一条错误都没有）。判定本身不得抛（P5）。
+ */
+function isRegularFile(p) {
+  try {
+    return statSync(p).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 剥掉首字节 UTF-8 BOM。
+ * BOM 是**编码签名**不是内容，却会让「以 `^---` 锚定 frontmatter」的解析器整条失配
+ * （`agent-core` 的 `parseSkillMarkdown`）→ 技能被丢弃，而「另存为 UTF-8（带 BOM）」是常见编辑器默认。
+ * 在**读字节的边界**（本装载器）剥掉，下游拿到的正文与解析器预期一致。
+ */
+function stripBom(text) {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+/**
+ * 清单里的**路径字段**（`entry` / `skill`）取值：
+ * `null`/缺省 → `null`（=没写）；**写了但类型不对** → 抛 `PLUGIN_<FIELD>_INVALID`。
+ *
+ * 为什么不能只靠 `parseManifest` 的归一：它把非字符串归一成 `null` —— 于是「写了却写错类型」
+ * 被静默当成「没写」（配置错误被吞掉）；且直接拿原值给 `resolve` 会抛 `ERR_INVALID_ARG_TYPE`
+ * （Node 内部码，落在诊断里既不是本包的码、也说不清是谁写错了）。
+ */
+function declaredPath(v, field, id) {
+  if (v == null) return null;
+  if (typeof v !== 'string' || !v.trim()) {
+    throw new PluginHostError(
+      `PLUGIN_${field.toUpperCase()}_INVALID`,
+      `插件 ${id} 的 ${field} 必须是非空字符串，收到 ${describe(v)}`,
+    );
+  }
+  return v;
+}
+
 /** 装配 + 汇总诊断（装配抛错也**不升**：记入 errors，宿主照常返回）。 */
-function finish(host, dir, discovered, ignored, errors, assembleOpts) {
+function finish(host, dir, discovered, ignored, errors, skills, assembleOpts) {
   let activated = [];
   try {
     const res = host.assembleSync(assembleOpts);
     activated = res.activated;
-    for (const er of res.errors) errors.push(er);
+    for (const er of res.errors) {
+      // 装配期错误由**宿主**产出，只认 id、**不带 dir** —— 但诊断要能定位到「哪个目录」，
+      // 否则运维只能拿 id 去猜目录名。这里按 id 回填 dir（查不到就保持原样，不编造）。
+      const d = discovered.find((x) => x.id === er.id);
+      errors.push(d && er.dir == null ? { ...er, dir: d.dir } : er);
+    }
   } catch (e) {
     const info = errorInfo(e);
     errors.push({ code: info.code || 'ASSEMBLE_FAILED', message: info.message });
   }
-  return { host, tools: safeTools(host), diagnostics: { dir, discovered, activated, ignored, errors } };
+  // **只交出「被激活」插件的技能正文**。注册与装配是两件事：一个插件可能登记成功、却因工具撞名
+  // （`TOOL_NAME_RESERVED` / 清洗名塌陷）在装配期被拒 —— 若照旧把它声明的正文交出去，模型就会读到
+  // 「用 X 工具…」的指令，而那个工具**刚被丢弃**：提示词与工具表互相打脸，且用户无从察觉。
+  // 被拒的插件，连正文一起丢（工具与正文同进退）。
+  //
+  // **这条判据的边界（写清楚，免得被当成 bug）**：正文跟着「装配结果」走，所以
+  // ①`assembleSync` 整体抛错 → 零激活 → **所有**正文都不交出；②`assemble: { skipKinds }` 跳过的插件
+  // 也不交出正文。两者都是同一句话的推论：**没被装配的东西，不该往 prompt 里放**（否则提示词会描述
+  // 一个不存在的世界）。当前 api 侧不传 `assemble` 选项，故不外显。
+  const liveSkills = skills.filter((s) => activated.includes(s.id));
+  return { host, tools: safeTools(host), skills: liveSkills, diagnostics: { dir, discovered, activated, ignored, errors } };
 }

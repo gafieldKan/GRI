@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative } from 'node:path';
@@ -363,3 +364,328 @@ test('loadPlugins: entry 越出插件目录 → 拒绝该插件（PLUGIN_ENTRY_E
     rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test('loadPlugins: 插件声明 skill（SKILL.md）→ 正文随 skills 交出（宿主自行并入 prompt）', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-skill-'));
+  try {
+    mkdirSync(join(tmp, 'tea'));
+    writeFileSync(
+      join(tmp, 'tea', 'plugin.json'),
+      JSON.stringify({ id: 'tea', kind: 'agent.skill', apiVersion: '1', skill: './SKILL.md' }),
+    );
+    writeFileSync(join(tmp, 'tea', 'SKILL.md'), '---\nname: tea\ndescription: 沏茶\n---\n\n先温杯，再投茶。\n');
+    const r = loadPlugins({ dir: tmp });
+    assert.deepEqual(r.diagnostics.errors, []);
+    assert.deepEqual(r.diagnostics.activated, ['tea']);
+    assert.equal(r.skills.length, 1);
+    assert.equal(r.skills[0].id, 'tea');
+    assert.equal(r.skills[0].dir, 'tea');
+    assert.match(r.skills[0].markdown, /先温杯，再投茶。/);
+    assert.ok(r.skills[0].path.endsWith('SKILL.md'), '报出正文来源路径（事后可查）');
+    assert.equal(r.diagnostics.discovered[0].entry, null, '纯内容插件（无 index.js）合法：无实现，entry 报 null');
+    // 没写 skill 的插件不贡献技能（memory 插件即此形态）
+    assert.deepEqual(loadPlugins({ dir: fx('plugins-ok') }).skills, []);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: 声明的 skill 读不出来 → **拒绝该插件**（不是静默少一段正文）', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-skill-bad-'));
+  try {
+    writeFileSync(join(tmp, 'outside.md'), '---\nname: stolen\n---\n外部正文');
+    const mk = (id, skill) => {
+      mkdirSync(join(tmp, id));
+      writeFileSync(join(tmp, id, 'plugin.json'), JSON.stringify({ id, kind: 'agent.skill', apiVersion: '1', skill }));
+      writeFileSync(join(tmp, id, 'index.js'), 'module.exports = { tools: () => [] };');
+    };
+    mk('a-escape', '../outside.md'); // 目录监狱
+    mk('b-missing', './NOPE.md'); // 声明了却不存在
+    mk('c-dir', './.'); // 指向目录
+    const r = loadPlugins({ dir: tmp });
+    assert.deepEqual(r.diagnostics.activated, [], '三例都不装配');
+    assert.deepEqual(r.skills, [], '外部正文没有被读进来');
+    const byDir = Object.fromEntries(r.diagnostics.errors.map((e) => [e.dir, e.code]));
+    assert.equal(byDir['a-escape'], 'PLUGIN_SKILL_ESCAPE');
+    assert.equal(byDir['b-missing'], 'PLUGIN_SKILL_MISSING');
+    assert.equal(byDir['c-dir'], 'PLUGIN_SKILL_NOT_FILE');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: 显式声明 entry 却不存在 → PLUGIN_ENTRY_MISSING（与「没声明、也没有缺省入口」区分开）', () => {
+  const declared = mkdtempSync(join(tmpdir(), 'gri-ph-entry-miss-'));
+  const implicit = mkdtempSync(join(tmpdir(), 'gri-ph-entry-none-'));
+  try {
+    mkdirSync(join(declared, 'p'));
+    writeFileSync(join(declared, 'p', 'plugin.json'), JSON.stringify({ id: 'p', kind: 'agent.skill', apiVersion: '1', entry: './nope.js' }));
+    const r = loadPlugins({ dir: declared });
+    assert.deepEqual(r.diagnostics.activated, []);
+    assert.equal(r.diagnostics.errors[0].code, 'PLUGIN_ENTRY_MISSING', '声明了却没有 → 响亮报错，不静默降级成无实现');
+
+    // 对照：同样没有入口文件、但**没声明** entry → 纯内容插件，照常装配
+    mkdirSync(join(implicit, 'q'));
+    writeFileSync(join(implicit, 'q', 'plugin.json'), JSON.stringify({ id: 'q', kind: 'agent.skill', apiVersion: '1' }));
+    const r2 = loadPlugins({ dir: implicit });
+    assert.deepEqual(r2.diagnostics.errors, []);
+    assert.deepEqual(r2.diagnostics.activated, ['q']);
+  } finally {
+    rmSync(declared, { recursive: true, force: true });
+    rmSync(implicit, { recursive: true, force: true });
+  }
+});
+
+// ── 以下是「独立复验」第二轮补的用例：每一例都对应一个**能存活于旧测试**的变异体 ──
+
+test('loadPlugins: **符号链接越狱** —— skill/entry 指向目录外的链接一律拒（字符串前缀判不出链接）', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-symlink-'));
+  try {
+    // 目录外的真身：正文与代码都**不该**被读到
+    writeFileSync(join(tmp, 'secret.md'), '---\nname: stolen\n---\nSECRET-CONTENT');
+    writeFileSync(join(tmp, 'outside.js'), 'module.exports = { tools: () => [{ name: "stolen.t" }] };');
+    for (const id of ['a', 'b']) {
+      mkdirSync(join(tmp, id));
+      writeFileSync(join(tmp, id, 'plugin.json'), JSON.stringify({ id, kind: 'agent.skill', apiVersion: '1', skill: './link.md' }));
+      symlinkSync(join(tmp, 'secret.md'), join(tmp, id, 'link.md'), 'file');
+    }
+    mkdirSync(join(tmp, 'c'));
+    writeFileSync(join(tmp, 'c', 'plugin.json'), JSON.stringify({ id: 'c', kind: 'agent.skill', apiVersion: '1', entry: './link.js' }));
+    symlinkSync(join(tmp, 'outside.js'), join(tmp, 'c', 'link.js'), 'file');
+
+    const r = loadPlugins({ dir: tmp });
+    // **只判字符串前缀是抓不住符号链接的**：本用例存在的意义就是钉住 realpath 那一层
+    assert.deepEqual(r.skills, [], '目录外正文一个字都没被读进来');
+    assert.deepEqual(r.tools, [], '目录外代码没有被加载');
+    assert.deepEqual(r.diagnostics.activated, [], '三个插件都不装配');
+    const byDir = Object.fromEntries(r.diagnostics.errors.map((e) => [e.dir, e.code]));
+    assert.equal(byDir['a'], 'PLUGIN_SKILL_ESCAPE');
+    assert.equal(byDir['b'], 'PLUGIN_SKILL_ESCAPE');
+    assert.equal(byDir['c'], 'PLUGIN_ENTRY_ESCAPE');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: 目录内**以点开头的合法文件**（`..weird.md`）不被误判为越界', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-dotfile-'));
+  try {
+    mkdirSync(join(tmp, 'p'));
+    writeFileSync(join(tmp, 'p', 'plugin.json'), JSON.stringify({ id: 'p', kind: 'agent.skill', apiVersion: '1', skill: './..weird.md' }));
+    writeFileSync(join(tmp, 'p', '..weird.md'), '---\nname: p\n---\n正文');
+    const r = loadPlugins({ dir: tmp });
+    // `rel.startsWith('..')` 会把**目录内**的 `..weird.md` 当成越界 —— 必须按 `../` 整段比
+    assert.deepEqual(r.diagnostics.errors, []);
+    assert.deepEqual(r.diagnostics.activated, ['p']);
+    assert.equal(r.skills.length, 1);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: 清单是**符号链接**指向目录外 → 拒绝（清单也不得把读取指到目录之外）', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-mfsym-'));
+  try {
+    writeFileSync(join(tmp, 'outside.json'), JSON.stringify({ id: 'outsider', kind: 'agent.skill', apiVersion: '1' }));
+    mkdirSync(join(tmp, 'p'));
+    symlinkSync(join(tmp, 'outside.json'), join(tmp, 'p', 'plugin.json'), 'file');
+    const r = loadPlugins({ dir: tmp });
+    assert.deepEqual(r.diagnostics.activated, [], '目录外清单不得被采纳');
+    assert.equal(r.diagnostics.errors[0].code, 'PLUGIN_MANIFEST_ESCAPE');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: **命名管道（FIFO）** → 拒该插件并诊断，绝不在启动期挂死（readFileSync 会永久阻塞）', (t) => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-fifo-'));
+  const mkfifo = (p) => {
+    try {
+      execFileSync('mkfifo', [p]);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  try {
+    mkdirSync(join(tmp, 'a'));
+    if (!mkfifo(join(tmp, 'a', 'plugin.json'))) {
+      t.skip('本机无 mkfifo，跳过 FIFO 用例');
+      return;
+    }
+    mkdirSync(join(tmp, 'b'));
+    writeFileSync(join(tmp, 'b', 'plugin.json'), JSON.stringify({ id: 'b', kind: 'agent.skill', apiVersion: '1', skill: './SKILL.md' }));
+    mkfifo(join(tmp, 'b', 'SKILL.md'));
+    mkdirSync(join(tmp, 'c'));
+    writeFileSync(join(tmp, 'c', 'plugin.json'), JSON.stringify({ id: 'c', kind: 'agent.skill', apiVersion: '1', entry: './index.js' }));
+    mkfifo(join(tmp, 'c', 'index.js'));
+
+    // 本用例要证的是**活性**（不挂死），而挂死是**同步阻塞**：同进程内 node:test 的超时定时器
+    // 也一起被阻塞、根本不会触发 —— 所以只能在**子进程**里跑，用进程级窗口把它抓成一次失败。
+    // （否则回归时 CI 不是红，而是永远不返回：最差的失败模式。）
+    const script = `
+      const m = await import(process.env.PH_ENTRY);
+      const r = m.loadPlugins({ dir: process.env.PH_DIR });
+      console.log(JSON.stringify({
+        activated: r.diagnostics.activated,
+        byDir: Object.fromEntries(r.diagnostics.errors.map((e) => [e.dir, e.code])),
+        skills: r.skills.length,
+        tools: r.tools.length,
+      }));
+    `;
+    let out;
+    try {
+      out = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+        encoding: 'utf8',
+        timeout: 5000,
+        env: { ...process.env, PH_DIR: tmp, PH_ENTRY: join(here, '..', 'src', 'index.js') },
+      });
+    } catch (e) {
+      if (e.code === 'ETIMEDOUT' || e.signal) {
+        assert.fail('loadPlugins 在 FIFO 上**挂死**了（活性被破坏：readFileSync 阻塞在命名管道上）');
+      }
+      throw e;
+    }
+    const got = JSON.parse(out.trim().split('\n').pop());
+    assert.equal(got.byDir.a, 'PLUGIN_MANIFEST_NOT_FILE');
+    assert.equal(got.byDir.b, 'PLUGIN_SKILL_NOT_FILE');
+    assert.equal(got.byDir.c, 'PLUGIN_ENTRY_NOT_FILE');
+    assert.deepEqual(got.activated, []);
+    assert.equal(got.skills, 0, 'FIFO 的正文没有被读（也读不出）');
+    assert.equal(got.tools, 0);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: 入口**存在且加载成功但导出 falsy**（0/null/false/""/undefined）→ 不是 PLUGIN_ENTRY_MISSING', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-falsy-'));
+  try {
+    for (const [id, src] of [
+      ['z', 'module.exports = 0;'],
+      ['n', 'module.exports = null;'],
+      ['f', 'module.exports = false;'],
+      // `''` 与 `undefined` 与前三者同类：**文件在、require 成功**，只是导出不是对象。
+      // `module.exports = undefined` 会让 require 拿到 undefined（不是「文件缺失」的 MODULE_NOT_FOUND）。
+      ['e', "module.exports = '';"],
+      ['u', 'module.exports = undefined;'],
+    ]) {
+      mkdirSync(join(tmp, id));
+      writeFileSync(join(tmp, id, 'plugin.json'), JSON.stringify({ id, kind: 'agent.skill', apiVersion: '1', entry: './index.js' }));
+      writeFileSync(join(tmp, id, 'index.js'), src);
+    }
+    const r = loadPlugins({ dir: tmp });
+    // 「入口在不在」与「入口导出什么」是两码事：文件明明在、也 require 成功了，
+    // 报「声明的 entry 不存在」会把排查方向指错。
+    assert.deepEqual(r.diagnostics.errors, []);
+    assert.deepEqual(r.diagnostics.activated.sort(), ['e', 'f', 'n', 'u', 'z']);
+    assert.equal(r.diagnostics.discovered.find((d) => d.id === 'z').entry.endsWith('index.js'), true, 'entry 如实报出路径');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: SKILL.md 首个字节是 BOM → 装载器剥掉（否则下游 `^---` 锚定的解析整条失配）', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-bom-'));
+  try {
+    mkdirSync(join(tmp, 'p'));
+    writeFileSync(join(tmp, 'p', 'plugin.json'), JSON.stringify({ id: 'p', kind: 'agent.skill', apiVersion: '1', skill: './SKILL.md' }));
+    writeFileSync(join(tmp, 'p', 'SKILL.md'), '\uFEFF---\nname: p\ndescription: d\n---\n正文\n', 'utf8');
+    const r = loadPlugins({ dir: tmp });
+    assert.deepEqual(r.diagnostics.errors, []);
+    assert.equal(r.skills.length, 1);
+    assert.equal(r.skills[0].markdown.charCodeAt(0), 45, '首字符已是 `-`（frontmatter 锚点可匹配）');
+    assert.ok(!r.skills[0].markdown.includes('\uFEFF'), 'BOM 不在正文里');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: entry/skill 写了却**类型不对** → PLUGIN_*_INVALID（不静默当「没写」，也不抛 Node 内部码）', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-badtype-'));
+  try {
+    mkdirSync(join(tmp, 'a'));
+    writeFileSync(join(tmp, 'a', 'plugin.json'), JSON.stringify({ id: 'a', kind: 'agent.skill', apiVersion: '1', entry: 5 }));
+    mkdirSync(join(tmp, 'b'));
+    writeFileSync(join(tmp, 'b', 'plugin.json'), JSON.stringify({ id: 'b', kind: 'agent.skill', apiVersion: '1', skill: {} }));
+    const r = loadPlugins({ dir: tmp });
+    const byDir = Object.fromEntries(r.diagnostics.errors.map((e) => [e.dir, e.code]));
+    assert.equal(byDir['a'], 'PLUGIN_ENTRY_INVALID');
+    assert.equal(byDir['b'], 'PLUGIN_SKILL_INVALID');
+    assert.deepEqual(r.diagnostics.activated, []);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: 工具被拒（撞宿主保留名）的插件**连技能正文一起丢** —— 不留下「指令还在、工具没了」的错位', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-rejected-skill-'));
+  try {
+    mkdirSync(join(tmp, 'hybrid'));
+    writeFileSync(
+      join(tmp, 'hybrid', 'plugin.json'),
+      JSON.stringify({ id: 'hybrid', kind: 'agent.skill', apiVersion: '1', skill: './SKILL.md', entry: './index.js' }),
+    );
+    writeFileSync(join(tmp, 'hybrid', 'SKILL.md'), '---\nname: hybrid\n---\n请用 host.taken 工具做事。');
+    writeFileSync(join(tmp, 'hybrid', 'index.js'), 'module.exports = { tools: () => [{ name: "host.taken" }] };');
+    const r = loadPlugins({ dir: tmp, reservedTools: ['host.taken'] });
+    const reservedErr = r.diagnostics.errors.find((e) => e.code === 'TOOL_NAME_RESERVED');
+    assert.ok(reservedErr, '撞保留名 → 该插件被拒（TOOL_NAME_RESERVED）');
+    // **钉住 finish() 的 `dir` 回填**：装配期错误由**宿主**产出，只带 `id`/`kind`/`error`/`code`、
+    // **不带 dir**（host.js:304）。若回填被去掉，运维就只能拿 id 去猜目录名 —— 本断言令该回归变红。
+    assert.equal(reservedErr.dir, 'hybrid', '装配期错误须按 id 回填出目录名');
+    assert.deepEqual(r.diagnostics.activated, [], '撞名插件不装配');
+    // 正文与工具**同进退**：否则模型会读到「用 host.taken」的指令，而该工具刚被丢弃
+    assert.deepEqual(r.skills, [], '被拒插件的正文不得交出');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: assemble.skipKinds 跳过的插件**也不交出正文** —— 没被装配的东西不该进 prompt', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-skip-skill-'));
+  try {
+    mkdirSync(join(tmp, 's'));
+    writeFileSync(join(tmp, 's', 'plugin.json'), JSON.stringify({ id: 's', kind: 'agent.skill', apiVersion: '1', skill: './SKILL.md' }));
+    writeFileSync(join(tmp, 's', 'SKILL.md'), '---\nname: s\n---\n这段指令不该在未装配时进提示词。');
+    // 跳过整个 `agent.skill` 类：插件没被装配 → 它的正文一并丢（与「装配期被拒」同一判据的推论）。
+    const r = loadPlugins({ dir: tmp, assemble: { skipKinds: ['agent.skill'] } });
+    assert.deepEqual(r.diagnostics.errors, []);
+    assert.deepEqual(r.diagnostics.activated, [], '被跳过的插件不激活');
+    assert.deepEqual(r.skills, [], '未装配的正文不得交出');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('loadPlugins: assembleSync **整体抛错** → ASSEMBLE_FAILED 且零激活 ⇒ 所有正文都不交出', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'gri-ph-assemble-throw-'));
+  try {
+    mkdirSync(join(tmp, 's'));
+    writeFileSync(join(tmp, 's', 'plugin.json'), JSON.stringify({ id: 's', kind: 'agent.skill', apiVersion: '1', skill: './SKILL.md' }));
+    writeFileSync(join(tmp, 's', 'SKILL.md'), '---\nname: s\n---\n装配整体失败时，这段指令不该进 prompt。');
+    // 宿主：register 如实回清单（使 discovered/skills 记到 id `s`），assembleSync 直接抛。
+    const host = {
+      tools: () => [],
+      register: (raw) => raw,
+      assembleSync() {
+        throw new Error('boom');
+      },
+      reserveTools() {
+        return this;
+      },
+      setNameKey() {
+        return this;
+      },
+    };
+    const r = loadPlugins({ dir: tmp, host });
+    // 「正文与工具同进退」的边界推论：装配整体失败 → 零激活 → **全部**正文落空（无一被装配）。
+    // 这条判据写在 finish()/README，故须有用例钉住，免得日后被当成 bug 改回去。
+    assert.equal(r.diagnostics.errors.some((e) => e.code === 'ASSEMBLE_FAILED'), true);
+    assert.deepEqual(r.diagnostics.activated, [], '整体抛错 → 零激活');
+    assert.deepEqual(r.skills, [], '装配整体失败 → 所有正文都不交出');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
