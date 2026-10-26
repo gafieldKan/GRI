@@ -385,7 +385,8 @@ function finish(host, dir, discovered, ignored, errors, skills, assembleOpts) {
   // **这条判据的边界（写清楚，免得被当成 bug）**：正文跟着「装配结果」走，所以
   // ①`assembleSync` 整体抛错 → 零激活 → **所有**正文都不交出；②`assemble: { skipKinds }` 跳过的插件
   // 也不交出正文。两者都是同一句话的推论：**没被装配的东西，不该往 prompt 里放**（否则提示词会描述
-  // 一个不存在的世界）。当前 api 侧不传 `assemble` 选项，故不外显。
+  // 一个不存在的世界）。api 侧现按档传 `assemble`（生产 `requirePolicy`、非生产 `skipKinds:['policy']`，
+  // 见 `services/api/src/modules/agent/agent-plugins.ts`），故本判据在 api 套件中已外显（authz 技能若有，测试档不交）。
   const liveSkills = skills.filter((s) => activated.includes(s.id));
   return { host, tools: safeTools(host), skills: liveSkills, diagnostics: { dir, discovered, activated, ignored, errors } };
 }

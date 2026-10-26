@@ -1,0 +1,9 @@
+{
+  "id": "authz",
+  "name": "站点运营授权（policy）",
+  "kind": "policy",
+  "apiVersion": "1",
+  "version": "0.1.0",
+  "description": "横切授权闸门：装配清单**末位**（kind=policy 优先级 900）。工具/动作只声明所需能力，由本策略统一裁决——不在每个工具里写授权。测试档可整体跳过（skipKinds:['policy']），组件组装测试免搭权限。",
+  "entry": "./index.js"
+}

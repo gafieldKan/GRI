@@ -71,7 +71,11 @@ describe('出厂插件装载（W2.3）', () => {
     const { diagnostics, tools } = agentPlugins();
     expect(diagnostics.errors).toEqual([]);
     expect(diagnostics.activated).toEqual(['memory', 'tutor']);
+    // 磁盘上还有 authz 策略插件（W2.7）——它**登记但被跳过**（测试档 `skipKinds:['policy']`，见下条），
+    // 故 `discovered`（=扫描到的清单）比 `activated`（=真装配的）多一个。真件同此口径（`loadPlugins`
+    // 的 discovered 是磁盘扫描结果，与装配结果无关）。
     expect(diagnostics.discovered).toEqual([
+      expect.objectContaining({ id: 'authz', dir: 'authz', kind: 'policy' }),
       expect.objectContaining({ id: 'memory', dir: 'memory', kind: 'agent.skill' }),
       expect.objectContaining({ id: 'tutor', dir: 'tutor', kind: 'agent.skill' }),
     ]);
@@ -320,6 +324,70 @@ describe('出厂插件装载（W2.3）', () => {
       const { diagnostics } = agentPlugins();
       expect(diagnostics.errors.map((e: any) => e.code)).toEqual(['TOOL_NAME_RESERVED']);
       expect(diagnostics.activated).toEqual([]);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * W2.7 授权策略插件（后组装）——鉴权是**横切关注点**，故不从工具/服务里各写一遍，
+ * 而是**装配清单末位**装的 `policy` 插件；**测试档整体跳过**（组件组装测试免搭权限）。
+ * 「后组装 ≠ 生产可缺省」：生产档恒含该插件（`requirePolicy` fail-closed）—— 缺则**拒绝启动**。
+ *
+ * 本块只验**装配档位**（装没装上、装到什么程度）；`authorize` 的裁决语义（越权/放行/fail-closed）
+ * 在插件自有用例 `../authz/authz-plugin.spec.ts` 里验（与 plan 「越权用例仅在 authz 自有测试里验」一致）。
+ */
+describe('授权策略插件（W2.7 · 后组装）', () => {
+  /** 在指定 NODE_ENV 下跑 fn（前后各 reset 一次 memo —— 装配档是进程级 memo，切档须清）。 */
+  const withEnv = (env: string | undefined, fn: () => void) => {
+    const prev = process.env.NODE_ENV;
+    try {
+      if (env === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = env;
+      resetAgentPlugins();
+      fn();
+    } finally {
+      if (prev === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = prev;
+      resetAgentPlugins();
+    }
+  };
+
+  it('测试档（非生产）整体跳过 policy：authz **登记但不激活**，工具/技能里都没有它', () => {
+    withEnv('test', () => {
+      const { diagnostics, tools } = agentPlugins();
+      expect(diagnostics.discovered.map((d: any) => d.id)).toContain('authz'); // 在盘上、被扫到
+      expect(diagnostics.activated).toEqual(['memory', 'tutor']); // 但没装配
+      // 授权闸门不在岗 → 这正是「后组装」要的：组件组装测试不必先搭权限
+      expect((agentPlugins() as any).host.diagnostics().policyAssembled).toBe(false);
+      expect(tools.map((t: any) => t.name)).toEqual(['memory.recall', 'memory.remember', 'memory.forget']);
+      expect(agentSkills().skills.map((s: any) => s.id)).toEqual(['tutor']);
+    });
+  });
+
+  it('生产档装配出厂 authz：policy 真被激活（policyAssembled=true），启动不抛', () => {
+    withEnv('production', () => {
+      expect(() => agentPlugins()).not.toThrow();
+      expect((agentPlugins() as any).host.diagnostics().policyAssembled).toBe(true);
+      // 与测试档相反：生产档**不跳过** policy，它确实在激活集里
+      expect(agentPlugins().diagnostics.activated).toContain('authz');
+    });
+  });
+
+  it('生产档但目录里**没有** policy → 拒绝启动（api 级复核，堵住装载器「吞装配抛错」的 fail-open）', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gri-plugins-nopolicy-'));
+    try {
+      // 只有一个非 policy 插件（合法 agent.skill）：真件 `assembleSync({requirePolicy:true})` 会抛
+      // `POLICY_REQUIRED`，但 `loadPlugins` 的 `finish()` 把它**吞成诊断**、照常返回一个**无 policy 的宿主**
+      // （而 `PluginHost.authorize()` 无 policy 时直接放行 = fail-open）→ api 侧必须自己复核、拒绝启动。
+      fs.mkdirSync(path.join(tmp, 'plain'));
+      fs.writeFileSync(path.join(tmp, 'plain', 'plugin.json'), JSON.stringify({ id: 'plain', kind: 'agent.skill', apiVersion: '1' }));
+      fs.writeFileSync(path.join(tmp, 'plain', 'index.js'), 'module.exports = { tools: () => [] };');
+      process.env.AGENT_PLUGINS_DIR = tmp;
+      withEnv('production', () => {
+        expect(() => agentPlugins()).toThrow(/策略插件|authz|POLICY_REQUIRED/);
+      });
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

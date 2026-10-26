@@ -26,6 +26,34 @@ export function agentPluginsDir(): string {
   return process.env.AGENT_PLUGINS_DIR || resolve(__dirname, '../../../plugins');
 }
 
+/**
+ * 是否**生产档**（装配清单**恒含** authz 策略插件，fail-closed）。容器/编排置 `NODE_ENV=production`
+ * （见 `services/api/Dockerfile` `ENV NODE_ENV=production`）。测试/开发非生产 → 走 `skipKinds`。
+ */
+function isProductionTier(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+/**
+ * 宿主是否**真装上了** `kind="policy"` 插件（读宿主诊断，**不抛**——判定自身不得成为崩溃点）。
+ *
+ * 为什么生产侧要**自己**复核、不能信装载器：`loadPlugins` 的 `finish()` 把 `assembleSync` 的抛错
+ * **吞进 `diagnostics.errors`**（P5：装配失败不炸宿主）——于是 `assemble({requirePolicy:true})` 抛的
+ * `POLICY_REQUIRED` 不会传播出来，`loadPlugins` 照常返回一个**没有 policy** 的宿主，而
+ * `PluginHost.authorize()` 在无 policy 时**直接放行**（fail-open）。故生产档必须在此**显式复核**，
+ * 缺 policy 即**拒绝启动**——把「后组装 ≠ 生产可缺省」从文档升为**代码闸门**。
+ */
+function policyAssembled(result: LoadPluginsResult): boolean {
+  try {
+    const host = (result as { host?: unknown }).host;
+    if (!host || typeof (host as { diagnostics?: unknown }).diagnostics !== 'function') return false;
+    const diag = (host as { diagnostics: () => { policyAssembled?: boolean } }).diagnostics();
+    return diag?.policyAssembled === true;
+  } catch {
+    return false; // 判定失败 → 视为「未装配」→ 生产档拒绝（fail-closed）
+  }
+}
+
 let cache: LoadPluginsResult | null = null;
 
 /**
@@ -35,14 +63,29 @@ let cache: LoadPluginsResult | null = null;
  * 因为宿主工具与插件工具同进一个 ToolRegistry（后写覆盖），不设防就会被**无声顶替**。
  * `nameKey` 传**清洗名**规则（`sanitizeToolName`）——模型看到的 function 名是多对一的
  * （`answer.grade` 与 `answer-grade` 同键），只按原样比，插件就能用清洗名顶替宿主工具。
+ *
+ * **授权装配档（W2.7）**：生产档 `requirePolicy`（恒含 authz 策略插件，缺则**拒绝启动**）；
+ * 测试/开发档 `skipKinds:['policy']`（免搭权限——组件组装测试不必每次先配鉴权）。
  */
 export function agentPlugins(): LoadPluginsResult {
   if (!cache) {
-    cache = loadPlugins({
+    const requirePolicy = isProductionTier();
+    const loaded = loadPlugins({
       dir: agentPluginsDir(),
       reservedTools: HOST_RESERVED_TOOL_NAMES,
       nameKey: sanitizeToolName,
+      assemble: requirePolicy ? { requirePolicy: true } : { skipKinds: ['policy'] },
     });
+    // 装载器把装配抛错吞成诊断（见 `policyAssembled` 注释）→ 生产侧自己复核，缺 policy 即拒绝启动。
+    if (requirePolicy && !policyAssembled(loaded)) {
+      const detail =
+        loaded.diagnostics.errors.map((e) => e.code || e.message).join('; ') || '未知原因';
+      throw new Error(
+        `生产装配要求 authz 策略插件（kind="policy"，fail-closed），但未装配成功：${detail}。` +
+          `请确认 ${agentPluginsDir()}/authz 存在且 kind="policy"（或显式设置非生产档以跳过 —— 不推荐）。`,
+      );
+    }
+    cache = loaded;
   }
   return cache;
 }

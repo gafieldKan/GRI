@@ -22,6 +22,7 @@ import {
   AuditLogEntry,
   INVITATION_TTL_DAYS,
 } from './organization.types';
+import { isSiteOperator } from '../authz/site-operator';
 
 /** 审计日志默认页大小（保持改造前 limit=50 的默认语义）。 */
 const AUDIT_DEFAULT_LIMIT = 50;
@@ -876,14 +877,15 @@ export class OrganizationService {
    *   ownerOnly=false → owner|admin 通过；
    *   非成员/权限不足 → ForbiddenException。
    */
-  /** 站点运营权限门槛：必须是根组织的 owner|admin（M4 语义里 testuser=根 owner）。 */
+  /**
+   * 站点运营权限门槛：必须是根组织的 owner|admin（M4 语义里 testuser=根 owner）。
+   * 判定委托**唯一真源** `isSiteOperator`（W2.7 去重复刻版）；本处只负责**抛**（门禁语义）——
+   * 未初始化根组织 / 非成员 / 角色不足 → 一律 Forbidden（与既有等效）。
+   */
   async assertSiteOperator(actorId: string): Promise<void> {
-    const root = await this.db.query(
-      `SELECT id FROM tenant.organizations WHERE parent_id IS NULL ORDER BY created_at, id LIMIT 1`,
-    );
-    const rootId = root.rows[0]?.id as string | undefined;
-    if (!rootId) throw new ForbiddenException('平台尚未初始化组织，无法执行运营操作');
-    await this.assertRole(actorId, rootId, { ownerOnly: false }); // owner 或 admin
+    if (!(await isSiteOperator(this.db, actorId))) {
+      throw new ForbiddenException('需要站点运营权限（根组织 owner|admin）');
+    }
   }
 
   private async assertRole(

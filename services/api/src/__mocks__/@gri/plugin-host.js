@@ -15,8 +15,11 @@
  * 已知的**有意简化**（真件行为更严，但 api 侧不触）：
  * 1. 装配顺序按目录名而非 kind 优先级；
  * 2. 不跑插件的 `tools` 工厂抛错路径 / `install`/`activate` 生命周期（真件装配期会跑）；
- * 3. `opts.assemble`（`requirePolicy` / `skipKinds`）与 `manifestFile` / `entryFile` 未模拟
- *    （api 侧不传；policy fail-closed 的语义由 plugin-host 的 node --test 覆盖）；
+ * 3. `manifestFile` / `entryFile` 未模拟（api 恒用缺省 `plugin.json` / `index.js`）。
+ *    **`opts.assemble` 已模拟**（`skipKinds` / `requirePolicy`，含 `diagnostics().policyAssembled`）——
+ *    api 侧现已传它（生产档 `requirePolicy`，非生产档 `skipKinds:['policy']`，见 `agent-plugins.ts`），
+ *    故替身必须同语义，否则「测试档不装 policy」这条行为在 api 套件里根本不被覆盖
+ *    （会静默 fail-open 到「policy 也装上」——正是 W2.7 之前替身漏掉的那条）；
  * 4. **不支持复用宿主**（`opts.host` / 换键 / 补保留表），也不做 `host` 可用性校验（`INVALID_HOST`）
  *    —— api 恒新建宿主。**但 `reservedTools` / `nameKey` 的类型校验已实现**（fail-closed，见下），
  *    因为那是**安全路径**：替身若放行非法配置而照装插件，就比真件更松。
@@ -101,7 +104,18 @@ function loadPlugins(opts = {}) {
   const tools = [];
   const activated = [];
   const skills = [];
-  const host = { tools: () => tools.slice(), diagnostics: () => ({ active: activated.slice(), errors: errors.slice() }) };
+  // W2.7：模拟 `opts.assemble`（skipKinds / requirePolicy）—— 语义对齐真件 `host.js` 的 `assembleSync`：
+  //   - `skipKinds` 里的 kind：该插件**入 discovered 但不激活**（真件：注册后装配期跳过）；
+  //   - `requirePolicy` 且无**可用** policy（存在 kind=policy、未被跳过、实现 `authorize`）→ fail-closed：
+  //     零激活零工具 + 记 `POLICY_REQUIRED`（真件在装配**前**抛，被 loader 的 `finish()` 吞成诊断）。
+  const assembleOpts = opts.assemble && typeof opts.assemble === 'object' ? opts.assemble : {};
+  const skip = new Set(Array.isArray(assembleOpts.skipKinds) ? assembleOpts.skipKinds : []);
+  const requirePolicy = Boolean(assembleOpts.requirePolicy); // 真件按**真值**判（`if (opts.requirePolicy)`），故同此
+  let policyActive = false; // 至少一个**可用**（有 authorize）的 policy 插件被激活 → 授权闸门真在岗
+  const host = {
+    tools: () => tools.slice(),
+    diagnostics: () => ({ active: activated.slice(), errors: errors.slice(), policyAssembled: policyActive }),
+  };
   // 与真件同：`nameKey` 传了却不是函数 → 配置错误，响亮记诊断（不静默当恒等键，也不抛）。
   if (opts.nameKey != null && typeof opts.nameKey !== 'function') {
     errors.push({ code: 'NAME_KEY_INVALID', message: `工具名等价键必须是函数，收到 ${typeof opts.nameKey}` });
@@ -204,6 +218,9 @@ function loadPlugins(opts = {}) {
       if (seenIds.has(raw.id)) throw Object.assign(new Error(`插件 id 撞名: ${raw.id}`), { code: 'DUPLICATE_PLUGIN_ID' });
       seenIds.add(raw.id);
       discovered.push({ id: raw.id, dir: name, kind: raw.kind, entry: entryExists ? entry : null });
+      // W2.7：装配期跳过的 kind（真件 `assembleSync` 的 `skip.has(kind)`）—— 已登记（入 discovered）、
+      // 但不激活、不取工具、不交正文（正文跟着「装配结果」走，见 loader `finish()` 的 liveSkills）。
+      if (skip.has(raw.kind)) continue;
       // 工具校验模拟**装配期**（真件在 assembleSync 的 `_collectTools`）：失败时该插件**已注册**，
       // 故**仍在 discovered 里**（与真件同），只是不入 activated。
       const rawTools = typeof impl?.tools === 'function' ? impl.tools({ host: {} }) : impl?.tools;
@@ -226,10 +243,24 @@ function loadPlugins(opts = {}) {
         tools.push(t);
       }
       activated.push(raw.id);
+      // 可用 policy（kind=policy 且实现了 authorize）→ 替身据以汇报 `policyAssembled`。
+      // **替身此处比真件更严**：真件 `diagnostics().policyAssembled` 只判「有激活的 kind=policy」
+      // （`host.js`），**不查** authorize（authorize 只在 `_assertPolicyUsable` 的前置校验里查）。
+      // 更严是安全方向——只会让测试在真件本可通过处报错，绝不会掩盖 fail-open；且 api 只在
+      // `requirePolicy` 档读该标志，真件在该档已由前置+后置校验保证「要么有**可用** policy、要么零装配」。
+      if (raw.kind === 'policy' && typeof impl?.authorize === 'function') policyActive = true;
       if (skillDoc != null) skills.push({ id: raw.id, dir: name, path: skillPath, markdown: skillDoc });
     } catch (e) {
       errors.push({ dir: name, code: e.code || 'PLUGIN_LOAD_FAILED', message: e.message });
     }
+  }
+  // fail-closed 复核：生产档要 policy 却没有可用的 → 真件在装配循环**前**抛（故什么都没装上），
+  // 替身同效：零激活零工具零正文 + 记 `POLICY_REQUIRED`（api 侧据此 `policyAssembled===false` 拒绝启动）。
+  if (requirePolicy && !policyActive) {
+    errors.push({ code: 'POLICY_REQUIRED', message: '生产装配要求至少一个未被跳过的 kind="policy" 插件（fail-closed）。测试档请显式 requirePolicy:false 或 skipKinds:["policy"]。' });
+    activated.length = 0;
+    tools.length = 0;
+    skills.length = 0;
   }
   return { host, tools, skills, diagnostics: { dir, discovered, activated, ignored, errors } };
 }

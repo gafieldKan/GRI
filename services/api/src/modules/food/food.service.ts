@@ -22,6 +22,7 @@ import {
   MerchantOrderQuery,
   MerchantOrderStats,
 } from './food.types';
+import { isSiteOperator, type QueryExecutor } from '../authz/site-operator';
 
 /**
  * 订单状态机（M5 垂直一，重写自有模型，非旧 Express 枚举）：
@@ -405,30 +406,14 @@ export class FoodService {
   // ------------------------------------------------------------------
 
   /**
-   * 运营判定与 OrganizationService.assertSiteOperator 等效：
-   * 只读判定当前用户是否为根组织 owner|admin，不依赖 JWT roles。
+   * 运营判定（根组织 owner|admin）—— 委托**唯一真源** `isSiteOperator`（W2.7 去重复刻版）。
+   * 保留布尔语义（订餐域用它做「运营旁路 / 仅限本人数据」二分，不是门禁）；可传事务执行器。
    */
   private async assertSiteOperator(
     externalId: string,
-    executor: {
-      query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
-    } = this.db,
+    executor: QueryExecutor = this.db,
   ): Promise<boolean> {
-    const root = await executor.query(
-      `SELECT id FROM tenant.organizations WHERE parent_id IS NULL ORDER BY created_at, id LIMIT 1`,
-    );
-    const rootId = root.rows[0]?.id;
-    if (typeof rootId !== 'string') return false;
-
-    const member = await executor.query(
-      `SELECT role
-         FROM tenant.organization_members
-        WHERE organization_id = $1 AND user_id = $2 AND status = 'active'
-        LIMIT 1`,
-      [rootId, externalId],
-    );
-    const role = member.rows[0]?.role;
-    return role === 'owner' || role === 'admin';
+    return isSiteOperator(executor, externalId);
   }
 
   async merchantListRestaurants(
