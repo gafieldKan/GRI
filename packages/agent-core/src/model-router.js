@@ -17,7 +17,16 @@
  * `cliBackend=<model>`（其余情形恒 `null`）供 LlmClient 改走 CliBackendRegistry（不 POST）。
  * 用户可选 = 该 routeKey 是否存在 enabled 的 provider='cli' 行：无 → 走原 provider（默认态，零回归）。
  * 判定只看**路由行**，不读 env —— 不引入任何全局开关（C2）。
+ *
+ * engine 分支（W2.6b「可换引擎」接入点）：路由行 `engine` 列 = 该 routeKey 交给**哪个 EnginePort**。
+ *   - NULL / `'gri-core'` → 今日行为（宿主环），**默认态、零回归**；
+ *   - 其余值 → 宿主把该 routeKey 的 run 交给该 id 的引擎（W2.6a 的 claude-code/openclaw）。
+ * **与 provider='cli' 是两个不同边界，勿混**：engine 决定「谁拥有交错环（perceive→act）」；
+ * provider='cli' 是 **gri-core 引擎内部**的模型调用槽（GRI 仍拥环，只把一问一答外包给 CLI）。
+ * 故 `engine='gri-core'` + `provider='cli'` 可并存 = 今天已有的「换脑子」，语义不变。
  */
+export const DEFAULT_ENGINE = 'gri-core';
+
 export class ModelRouter {
   /**
    * @param {{ query: Function }} store
@@ -45,8 +54,9 @@ export class ModelRouter {
   /**
    * 解析某 routeKey 当前生效的 LLM 配置。
    * provider='cli' 时 `cliBackend = <model>`（外部 agent 后端 id），source='route:cli'；否则 cliBackend=null。
+   * `engine` = 该 routeKey 的引擎 id（缺省 `DEFAULT_ENGINE`='gri-core'，即宿主环 —— 零回归）。
    * @param {string} routeKey
-   * @returns {Promise<{provider:string,model:string,multimodalModel:string,baseUrl:string,apiKey:string,cliBackend:string|null,source:'route'|'env'|'cred'|'route+cred'|'route:cli'}>}
+   * @returns {Promise<{provider:string,model:string,multimodalModel:string,baseUrl:string,apiKey:string,cliBackend:string|null,engine:string,source:'route'|'env'|'cred'|'route+cred'|'route:cli'}>}
    */
   async resolve(routeKey) {
     const base = this._envDefaults();
@@ -61,6 +71,8 @@ export class ModelRouter {
       baseUrl: row?.base_url || base.baseUrl,
       apiKey: cred?.apiKey || base.apiKey, // 用户 key 优先（解密所得），env 兜底
       cliBackend: isCli ? row.model || null : null, // provider='cli' → model 即后端 id；其余恒 null（零回归）
+      // 引擎选路：行上无 engine（含迁移未应用 / 列不存在）→ gri-core（默认引擎，零回归）。
+      engine: (row && row.engine) || DEFAULT_ENGINE,
       source: isCli ? 'route:cli' : cred ? (row ? 'route+cred' : 'cred') : row ? 'route' : 'env',
     };
   }
@@ -118,25 +130,30 @@ export class ModelRouter {
   /** 列出全部可配路由（admin 用）。 */
   async list() {
     try {
-      const { rows } = await this.store.query('SELECT route_key, provider, model, multimodal_model, base_url, enabled, updated_at FROM agent.llm_routes ORDER BY route_key');
+      const { rows } = await this.store.query('SELECT route_key, provider, model, multimodal_model, base_url, enabled, engine, updated_at FROM agent.llm_routes ORDER BY route_key');
       return rows || [];
     } catch {
       return [];
     }
   }
 
-  /** 增改一条路由（admin 用）。enabled 缺省 true；apiKey 不入参（密文凭据走 CredentialStore）。 */
+  /**
+   * 增改一条路由（admin 用）。enabled 缺省 true；apiKey 不入参（密文凭据走 CredentialStore）。
+   * `engine` 语义与 provider 的 COALESCE 同款但**可空**：未传（null/undefined）→ **保留旧值**（不静默清空）；
+   * 要「回到默认引擎」请显式传 `'gri-core'`（而非 null）—— 避免「只改 model」的常见写法顺手把引擎打没了。
+   */
   async set(route) {
     const r = route || {};
     if (!r.route_key) throw new Error('route_key required');
     // provider 是 NOT NULL DEFAULT 'nvidia'：未传时必须落默认/保留旧值，不能显式写 NULL
     // （否则插入直接吃 23502 not-null violation —— "只改 model 不改 provider" 这种最常见写法会 500）。
     await this.store.query(
-      `INSERT INTO agent.llm_routes (route_key, provider, model, multimodal_model, base_url, enabled)
-       VALUES ($1, COALESCE($2, 'nvidia'), $3, $4, $5, $6)
+      `INSERT INTO agent.llm_routes (route_key, provider, model, multimodal_model, base_url, enabled, engine)
+       VALUES ($1, COALESCE($2, 'nvidia'), $3, $4, $5, $6, $7)
        ON CONFLICT (route_key) DO UPDATE SET
          provider = COALESCE($2, agent.llm_routes.provider),
-         model=$3, multimodal_model=$4, base_url=$5, enabled=$6, updated_at=NOW()`,
+         model=$3, multimodal_model=$4, base_url=$5, enabled=$6, updated_at=NOW(),
+         engine = COALESCE($7, agent.llm_routes.engine)`,
       [
         r.route_key,
         r.provider || null,
@@ -144,6 +161,7 @@ export class ModelRouter {
         r.multimodal_model || null,
         r.base_url || null,
         r.enabled === undefined ? true : !!r.enabled,
+        r.engine || null, // 未传 → SQL COALESCE 保留旧值（不静默清空；回到默认请显式 'gri-core'）
       ],
     );
     return true;

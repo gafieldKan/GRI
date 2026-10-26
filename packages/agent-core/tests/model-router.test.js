@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ModelRouter, storeFrom } from '../src/index.js';
+import { ModelRouter, storeFrom, DEFAULT_ENGINE } from '../src/index.js';
 
 /** 内存 fake store，模拟 agent.llm_routes 表。 */
 function fakeStore(routes = []) {
@@ -135,4 +135,71 @@ test('model-router: cli 行默认落 default → 该 routeKey 也走 CLI；disab
   assert.equal(cfg.cliBackend, 'openclaw'); // 落到 default 的 cli 行
   assert.equal(cfg.source, 'route:cli');
   assert.equal((await r.resolve('entity=abc')).cliBackend, 'openclaw');
+});
+
+// ─── W2.6b：engine 选路（可换引擎接入点）─────────────────────────────────────
+
+test('model-router: 无行 / 行上无 engine 列 → engine 缺省 gri-core（迁移未应用也零回归）', async () => {
+  assert.equal(DEFAULT_ENGINE, 'gri-core');
+  const noRow = await new ModelRouter(fakeStore([]), {}).resolve('default');
+  assert.equal(noRow.engine, 'gri-core');
+  // 行存在但没有 engine 字段（老行 / 迁移未跑）→ 同样 gri-core
+  const oldRow = await new ModelRouter(fakeStore([{ route_key: 'entity=abc', model: 'm', enabled: true }]), {}).resolve('entity=abc');
+  assert.equal(oldRow.engine, 'gri-core');
+});
+
+test('model-router: engine 与 provider=cli 是**两个正交信号**，可并存', async () => {
+  // engine 决定「谁拥有交错环」；cliBackend 决定 gri-core **内部**的模型调用槽。
+  const byEngine = new ModelRouter(fakeStore([{ route_key: 'entity=abc', model: 'm', engine: 'claude-code', enabled: true }]), {});
+  const a = await byEngine.resolve('entity=abc');
+  assert.equal(a.engine, 'claude-code');
+  assert.equal(a.cliBackend, null); // 非 cli provider → 模型槽仍走 HTTP（引擎自带自己的模型）
+
+  const both = new ModelRouter(
+    fakeStore([{ route_key: 'entity=abc', provider: 'cli', model: 'openclaw', engine: 'gri-core', enabled: true }]),
+    {},
+  );
+  const b = await both.resolve('entity=abc');
+  assert.equal(b.engine, 'gri-core'); // 环仍在宿主
+  assert.equal(b.cliBackend, 'openclaw'); // 但模型槽外包给 CLI（= 今天已有的「换脑子」，语义不变）
+  assert.equal(b.source, 'route:cli');
+});
+
+test('model-router: set 写 engine；未传 → COALESCE 保留旧值（不静默清空，回到默认请显式传 gri-core）', async () => {
+  const calls = [];
+  const store = storeFrom(async (text, params) => {
+    calls.push({ text, params });
+    return { rows: [], rowCount: 1 };
+  });
+  const r = new ModelRouter(store, {});
+  await r.set({ route_key: 'entity=abc', model: 'm', engine: 'claude-code' });
+  const up = calls.find((c) => /INSERT INTO agent\.llm_routes/.test(c.text));
+  assert.ok(/engine = COALESCE\(\$7, agent\.llm_routes\.engine\)/.test(up.text), '冲突时保留旧 engine');
+  assert.equal(up.params[6], 'claude-code');
+
+  calls.length = 0;
+  await r.set({ route_key: 'entity=abc', model: 'm2' }); // 「只改 model」的常见写法
+  assert.equal(calls.find((c) => /INSERT/.test(c.text)).params[6], null); // 应用侧传 null → SQL 兜底保留旧 engine
+});
+
+test('model-router: list 选出 engine 列（运营台看「哪条路由归哪个引擎」）', async () => {
+  const store = storeFrom(async (text) => {
+    if (/ORDER BY route_key/.test(text)) return { rows: [{ route_key: 'default', engine: 'claude-code' }] };
+    return { rows: [] };
+  });
+  const rows = await new ModelRouter(store, {}).list();
+  assert.equal(rows[0].engine, 'claude-code');
+});
+
+test('model-router: engine 的**优先级**与路由同源 —— 具体键压过 default（不另起一套选路）', async () => {
+  // entity=abc 有行（engine=claude-code），default 也有行（engine=openclaw）→ 具体键胜。
+  const store = fakeStore([
+    { route_key: 'entity=abc', model: 'm', engine: 'claude-code', enabled: true },
+    { route_key: 'default', model: 'd', engine: 'openclaw', enabled: true },
+  ]);
+  const r = new ModelRouter(store, {});
+  assert.equal((await r.resolve('entity=abc')).engine, 'claude-code');
+  assert.equal((await r.resolve('default')).engine, 'openclaw');
+  // 具体键无行 → 落到 default 行的 engine（而不是回 gri-core）
+  assert.equal((await r.resolve('entity=zzz')).engine, 'openclaw');
 });

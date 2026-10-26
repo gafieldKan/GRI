@@ -43,6 +43,8 @@ export interface LlmConfig {
   apiKey?: string;
   /** provider='cli' 时 = 外部 agent 后端 id（claude-code/codex/openclaw/hermes）；其余恒 null（B-3b）。 */
   cliBackend?: string | null;
+  /** 该 routeKey 交给哪个 EnginePort（W2.6b）；缺省 'gri-core'（宿主环 = 零回归）。 */
+  engine?: string;
   source?: 'route' | 'env' | 'cred' | 'route+cred' | 'route:cli';
   /** LLM 单次调用超时（ms）；透传 LlmClient。缺省 = LlmClient 默认 60000。 */
   timeoutMs?: number;
@@ -60,6 +62,9 @@ export declare class ModelRouter {
   list(): Promise<any[]>;
   set(route: Record<string, any>): Promise<boolean>;
 }
+
+/** 引擎选路缺省值：'gri-core'（宿主环）。行上 engine 为 NULL/缺列 → 即此值（W2.6b）。 */
+export declare const DEFAULT_ENGINE: 'gri-core';
 
 /** AES-256-GCM 封装：master key 由宿主注入（底座不读 env）。 */
 export interface Cipher {
@@ -143,6 +148,9 @@ export interface AgentCoreDeps {
   /** 记忆摘要小标题（底座保持业务中立，缺省 '## 记忆'；宿主注入业务文案）。 */
   memoryHeading?: string;
 }
+
+/** gri-core（宿主引擎）能力声明 —— 单一真源（`AgentCore` 实例与宿主侧「列可用引擎」共用）。 */
+export declare const GRI_CORE_CAPABILITIES: Readonly<EngineCapabilities>;
 
 export declare class AgentCore implements EnginePort {
   constructor(deps: AgentCoreDeps);

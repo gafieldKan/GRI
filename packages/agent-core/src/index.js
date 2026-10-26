@@ -3,10 +3,10 @@
  * 仿 OpenClaw/Hermes 架构意图的 delicit 自研版：manifest-first、泛化推理环、provider catalog、
  * 一切能力即技能/工具、跨会话记忆。传输/DB 无关（注入 Store）。
  */
-export { AgentCore } from './agent.js';
+export { AgentCore, GRI_CORE_CAPABILITIES } from './agent.js';
 export { LlmClient } from './llm-client.js';
 export { ENGINE_API_VERSION, EnginePortError, defineEnginePort, isEnginePort, EngineRegistry } from './engine-port.js';
-export { ModelRouter } from './model-router.js';
+export { ModelRouter, DEFAULT_ENGINE } from './model-router.js';
 export { ToolRegistry } from './tool-registry.js';
 export { makeTool, sanitizeToolName } from './tool.js';
 export { SkillRegistry } from './skill-registry.js';

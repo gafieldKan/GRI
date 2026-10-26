@@ -43,6 +43,9 @@ const me       = await agent.getMe();                                   // 工�
 const reply    = await agent.sendMessage('什么是光合作用', { routeKey: 'default' });
 const overview = await agent.getDiagnosis();                            // 只读学情总览
 const backends = await agent.listBackends();                            // 本机可用 CLI 后端（无则 []）
+const engines  = await agent.listEngines();                             // 可用引擎目录（builtin=gri-core；无则 []）
+const runs     = await agent.listRuns({ limit: 20 });                   // 本人外部 agent run（B-4；无则 []）
+const run      = await agent.getRun('run-123');                         // 单条 run（他人/不存在 → 抛 RUN_NOT_FOUND）
 ```
 
 方法 → 端点映射：
@@ -53,6 +56,9 @@ const backends = await agent.listBackends();                            // 本�
 | `sendMessage(content, {routeKey?})` | `POST /api/v1/agent/me/message` |
 | `getDiagnosis()` | `GET /api/v1/agent/me/diagnosis` |
 | `listBackends()` | `GET /api/v1/agent/delegate/backends` |
+| `listEngines()` | `GET /api/v1/agent/engines` |
+| `listRuns({limit?})` | `GET /api/v1/agent/delegate/runs` |
+| `getRun(runId)` | `GET /api/v1/agent/delegate/runs/:runId` |
 
 每个方法返回**已解包的 `data`**（v1 信封 `{v,success,data}` 的壳不外泄）。
 

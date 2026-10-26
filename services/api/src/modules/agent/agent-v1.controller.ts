@@ -72,6 +72,17 @@ export class AgentV1Controller {
     return this.ok(await this.agentService.sendMessage(this.externalId(req), content, { routeKey }));
   }
 
+  /**
+   * 只读：列出可用引擎（W2.6b 可换引擎）。GET /api/v1/agent/engines
+   * `builtin=true` = 宿主引擎 gri-core（缺省）；其余为可选外部引擎（claude-code/openclaw，需注入 CLI 后端注册表）。
+   * 注意：**不探活** —— 「外部引擎是否真能跑」取决于本机 CLI，真不可用会在发消息时如实报错（不静默降级）。
+   */
+  @Get('engines')
+  @Header('X-Agent-Api-Version', String(AGENT_API_VERSION))
+  async engines() {
+    return this.ok({ engines: this.agentService.listEngines() });
+  }
+
   /** 只读学情总览。GET /api/v1/agent/me/diagnosis */
   @Get('me/diagnosis')
   @Header('X-Agent-Api-Version', String(AGENT_API_VERSION))

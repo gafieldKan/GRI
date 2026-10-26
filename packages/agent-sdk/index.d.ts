@@ -83,6 +83,15 @@ export interface AgentRun {
   [k: string]: any;
 }
 
+export interface AgentEngine {
+  /** EnginePort id：`gri-core` = 宿主引擎（默认）；其余为可选外部引擎。 */
+  id: string;
+  apiVersion: string;
+  capabilities: { toolLoop: 'host' | 'engine'; streaming?: boolean; needsApiKey?: boolean; subagents?: boolean; multimodal?: boolean; [k: string]: any };
+  /** `true` = 宿主内置引擎（`gri-core`）；`false` = 可选外部引擎。 */
+  builtin: boolean;
+}
+
 export interface CreateAgentClientOptions {
   /** 服务根（如 `https://gri.example.com`，不含 `/api`）；末尾 `/` 自动去除。 */
   baseUrl: string;
@@ -101,6 +110,8 @@ export interface AgentClient {
   sendMessage(content: string, opts?: { routeKey?: string }): Promise<AgentMessageResult>;
   getDiagnosis(): Promise<AgentDiagnosis>;
   listBackends(): Promise<AgentCliBackend[]>;
+  /** 可用引擎目录（W2.6b）；无 → `[]`。 */
+  listEngines(): Promise<AgentEngine[]>;
   /** 本人外部 agent 最近 run 列表（B-4）。 */
   listRuns(opts?: { limit?: number }): Promise<AgentRun[]>;
   /** 单条 run（B-4）；他人/不存在 → AgentSdkError(code='RUN_NOT_FOUND', status=404)。 */

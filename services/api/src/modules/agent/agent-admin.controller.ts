@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { DatabaseService } from '../../database/database.service';
 import { OrganizationService } from '../organization/organization.service';
 import { AgentCredentialsService } from './agent-credentials.service';
+import { AgentService } from './agent.service';
 import { ModelRouter, storeFrom } from '@gri/agent-core';
 import {
   eduQuery, findKnowledgePointName, countStudentsWithData, countUnresolvedWrongTotal,
@@ -29,6 +30,9 @@ export class AgentAdminRoutesController {
     private readonly db: DatabaseService,
     private readonly org: OrganizationService,
     @Optional() private readonly creds?: AgentCredentialsService,
+    // 引擎目录（W2.6b）：只用于**写入口早校验** engine id。`@Optional()` —— 缺省不拦（read-time 仍会抛未知引擎），
+    // 但生产由 Nest 注入 `AgentService`，运营错字在 PUT 时即被拒。
+    @Optional() private readonly agent?: AgentService,
   ) {}
 
   private _router(): ModelRouter {
@@ -77,6 +81,18 @@ export class AgentAdminRoutesController {
       return { success: false, error: 'route_key 必填（default | kind=<kind> | entity=<id>）' };
     }
     const routeKey = String(body.route_key);
+    // 引擎早校验（W2.6b）：把错字挡在**写入口**，而不是等某次对话才 500。
+    // 未注入 AgentService（测试档）→ 跳过校验（behavior 不拦）；生产恒注入 → 未知 id 一律拒。
+    // 语义：不传 `engine` → undefined → ModelRouter.set 走 COALESCE **保留旧值**（不静默清空）；
+    //      要「回到默认引擎」须显式传 `'gri-core'`（与 provider 的约定一致）。
+    let engine: string | undefined;
+    if (body?.engine !== undefined && body.engine !== null && String(body.engine).trim() !== '') {
+      engine = String(body.engine).trim();
+      const known = this.agent?.knownEngineIds?.() ?? null;
+      if (known && !known.includes(engine)) {
+        return { success: false, error: `未知引擎: ${engine}（可用：${known.join('、')}）`, knownEngines: known };
+      }
+    }
     const apiKey = typeof body.api_key === 'string' ? body.api_key.trim() : '';
     if (apiKey) {
       // fail-fast：没有主密钥就不接收密钥（避免"看起来保存了"却无处可存）
@@ -98,6 +114,7 @@ export class AgentAdminRoutesController {
       multimodal_model: body.multimodal_model,
       base_url: body.base_url,
       enabled: body.enabled ?? true,
+      engine,
     });
     // 先落路由行再落凭据（凭据 FK → agent.llm_routes(route_key)）；不传 api_key → 完全不上凭据面（C9）
     if (apiKey) {

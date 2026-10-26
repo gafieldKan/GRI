@@ -177,6 +177,12 @@ export function createAgentClient(opts = {}) {
       return data?.backends ?? [];
     },
 
+    /** 只读：可用引擎目录（W2.6b；`builtin=true` 为宿主引擎 gri-core）。无则空数组。 */
+    async listEngines() {
+      const data = unwrap(await request('GET', '/engines'), baseUrl + AGENT_API_PREFIX + '/engines');
+      return data?.engines ?? [];
+    },
+
     /** 只读：本人外部 agent 最近 run 列表（B-4）；无 run → 空数组。@param {{limit?: number}} [o] */
     async listRuns(o = {}) {
       const limit = Number(o && o.limit);

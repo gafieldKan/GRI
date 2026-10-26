@@ -58,7 +58,47 @@ jest.mock('@gri/agent-core', () => {
     async isRealKey() { return false; }
     async list() { return []; }
     async set(r: any) { return true; }
+    // W2.6b：引擎选路 —— 与真件同语义（行上 engine 缺省 → 'gri-core'；cliBackend 仅 provider='cli' 行）。
+    // 让 api 侧「按 routeKey 行选引擎」的分发可被 fakeDb 注入的路由行驱动。
+    async resolve(routeKey: string) {
+      const keys = routeKey === 'default' ? ['default'] : [routeKey, 'default'];
+      let row: any = null;
+      for (const k of keys) {
+        const { rows } = await this.store.query('SELECT * FROM agent.llm_routes WHERE route_key = $1', [k]);
+        if (rows && rows[0] && rows[0].enabled !== false) { row = rows[0]; break; }
+      }
+      const isCli = !!row && row.provider === 'cli';
+      return {
+        provider: row?.provider || 'nvidia', model: row?.model || 'stub', baseUrl: '', apiKey: '',
+        cliBackend: isCli ? row.model || null : null,
+        engine: (row && row.engine) || 'gri-core',
+      };
+    }
   }
+  // W2.6b：可选外部引擎注册表替身（真件的一致性/执行由 packages/agent-core node --test 覆盖）。
+  class EngineRegistry {
+    m = new Map();
+    register(e: any) {
+      if (this.m.has(e.id)) { const err: any = new Error('dup'); err.code = 'DUPLICATE_ENGINE_ID'; throw err; }
+      this.m.set(e.id, e); return this;
+    }
+    has(id: string) { return this.m.has(id); }
+    get(id: string) { return this.m.get(id) || null; }
+    list() { return Array.from(this.m.values()); }
+  }
+  // W2.6b：记录宿主装配外部引擎时注入的依赖（含 defaultResponder），供「引擎回落」回归测试驱动。
+  const engineDeps: any[] = [];
+  const makeCliEngine = (id: string) => ({
+    id, apiVersion: '1',
+    capabilities: { toolLoop: 'engine', streaming: true, needsApiKey: false, subagents: false, multimodal: false },
+    listTools: () => [], listSkills: () => [],
+    run: async (p: any) => ({ success: true, message: `engine:${id}:${p.userMessage}`, engine: id }),
+  });
+  const claudeCodeEngine = (opts: any = {}) => { engineDeps.push(opts); return makeCliEngine(opts.id || 'claude-code'); };
+  const openclawEngine = (opts: any = {}) => { engineDeps.push(opts); return makeCliEngine(opts.id || 'openclaw'); };
+  const GRI_CORE_CAPABILITIES = Object.freeze({ toolLoop: 'host', streaming: false, needsApiKey: true, subagents: true, multimodal: false });
+  const ENGINE_API_VERSION = '1';
+  const DEFAULT_ENGINE = 'gri-core';
   class LlmClient {
     validateAnswer(q: any, a: any) { return q ? { valid: true, correct: String(a).trim().toUpperCase() === String(q.answer).trim().toUpperCase() } : { valid: false, correct: false }; }
     async isRealKey() { return false; }
@@ -95,12 +135,12 @@ jest.mock('@gri/agent-core', () => {
   // 与真件同规则：插件装载按**清洗名**判撞名，替身缺了它 toolDefs 的保留名表就建不起来。
   const sanitizeToolName = (n: string) => String(n).replace(/[^a-zA-Z0-9_-]/g, '-');
   const parseSkillMarkdown = require('../../__mocks__/agent-core-skills').parseSkillMarkdown;
-  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, sanitizeToolName, parseSkillMarkdown, storeFrom, McpPool, createDelegateTool };
+  return { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, makeTool, sanitizeToolName, parseSkillMarkdown, storeFrom, McpPool, createDelegateTool, EngineRegistry, claudeCodeEngine, openclawEngine, GRI_CORE_CAPABILITIES, ENGINE_API_VERSION, DEFAULT_ENGINE, __engineDeps: engineDeps };
 });
 
 /** 内存假 DB：认有限几种 SQL，模拟 agent.entities / agent.memory / agent.llm_routes / agent.mcp_servers。
  *  K12 全学科：profile（edu.students 行）与 subjectNames（ontology.subject 展示名）可注入。 */
-function fakeDb(mcpServers: any[] = [], profile: { current_subject: string; grade: number } | null = null, subjectNames: Record<string, string> = {}) {
+function fakeDb(mcpServers: any[] = [], profile: { current_subject: string; grade: number } | null = null, subjectNames: Record<string, string> = {}, routes: any[] = []) {
   const memory: any[] = [];
   // B-4：外部 agent run/事件的内存真源（fakeDb 认 external_runs/external_events SQL）。
   const runs = new Map<string, any>();
@@ -175,7 +215,11 @@ function fakeDb(mcpServers: any[] = [], profile: { current_subject: string; grad
         return { rows: mine, rowCount: mine.length };
       }
       if (/FROM agent\.mcp_servers/.test(text)) return { rows: mcpServers, rowCount: mcpServers.length }; // 桥接用
-      if (/SELECT \* FROM agent\.llm_routes/.test(text)) return { rows: [], rowCount: 0 }; // 无路由 → 无 key → mock 路径
+      if (/SELECT \* FROM agent\.llm_routes/.test(text)) {
+        // 无路由（默认）→ 无 key → mock 路径；注入 routes 时按 route_key 返回（W2.6b 引擎选路测试用）。
+        const hit = routes.filter((r) => r.route_key === params[0]);
+        return { rows: hit, rowCount: hit.length };
+      }
       if (/SELECT current_subject, grade FROM edu\.students/.test(text)) {
         return { rows: profile ? [profile] : [] };
       }
@@ -197,8 +241,8 @@ async function waitFor(pred: () => boolean, ms = 1000): Promise<void> {
   }
 }
 
-function makeService(db: any): AgentService {
-  return new AgentService(db);
+function makeService(db: any, cliBackends: any = null): AgentService {
+  return new AgentService(db, undefined, cliBackends);
 }
 
 describe('AgentService', () => {
@@ -226,6 +270,74 @@ describe('AgentService', () => {
     expect(out.routeKey).toBe('entity=a');
     const bad = await svc.sendMessage('a', '   ');
     expect(bad.success).toBe(false);
+  });
+
+  it('引擎选路：无路由行 → gri-core（默认态，行为与今日逐字节一致）', async () => {
+    const svc = makeService(fakeDb());
+    const out = await svc.sendMessage('student-a', '你好，想学数学');
+    expect(out.message).toBe('mocked-reply:student-a:你好，想学数学'); // 未换引擎 → core.run
+  });
+
+  it('引擎选路：路由行 engine=claude-code → 交给外部引擎（非 core）', async () => {
+    const db = fakeDb([], null, {}, [{ route_key: 'default', provider: 'nvidia', model: 'x', enabled: true, engine: 'claude-code' }]);
+    const svc = makeService(db, {}); // 注入 cliBackends → 可选引擎装上
+    const out = await svc.sendMessage('student-a', 'hi');
+    expect(out.message).toBe('engine:claude-code:hi');
+    expect(out.message).not.toContain('mocked-reply'); // 证明确实换了环
+  });
+
+  it('引擎选路：未知引擎 id → 抛（配置错误不静默降级）', async () => {
+    const db = fakeDb([], null, {}, [{ route_key: 'default', provider: 'nvidia', model: 'x', enabled: true, engine: 'nope' }]);
+    const svc = makeService(db, {});
+    await expect(svc.sendMessage('student-a', 'hi')).rejects.toThrow(/未知引擎/);
+  });
+
+  it('引擎与 provider=cli 正交：engine=gri-core + provider=cli 仍走宿主 core（换脑子≠换环）', async () => {
+    const db = fakeDb([], null, {}, [{ route_key: 'default', provider: 'cli', model: 'claude-code', enabled: true, engine: 'gri-core' }]);
+    const svc = makeService(db, {});
+    const out = await svc.sendMessage('student-a', 'hi');
+    expect(out.message).toBe('mocked-reply:student-a:hi'); // 环仍在宿主
+  });
+
+  it('引擎回落：宿主 responder 自给 store —— 工具型意图在外部引擎回落下**真查到库**（不静默降级）', async () => {
+    // 引擎回调进来的 ctx/info 形状与 AgentCore 不同（只带 run 参、不保证 store/memory）。
+    // 宿主 responder 必须自给，否则同一条消息在 gri-core 能查库、换个引擎就「工具执行失败」。
+    const db = fakeDb([], null, {}, [{ route_key: 'default', provider: 'nvidia', model: 'x', enabled: true, engine: 'claude-code' }]);
+    const svc = makeService(db, {}); // 注入 cliBackends → 选外部引擎 → 宿主把**真** responder 交给它
+    // 判据**不能只看文案**：生产 registry.call 吞工具错（agent-core/src/tool-registry.js），诊断分支即便
+    // 工具失败也照样回「学情诊断…」——「文本匹配」在真语义下区分不出降级。故改看**真实副作用**：
+    // 诊断工具是否真向 store 发了 edu.answer_records 查询（store 由宿主自给；去掉它此处恒空，即便文案仍匹配）。
+    // store 是 _store() 包装（call 时委派 this.db.query），故补 db.query 即可被 responder 的工具链观测到。
+    const eduSql: string[] = [];
+    const origQuery = db.query.bind(db);
+    db.query = async (text: string, params: any[] = []) => { if (/edu\./.test(text)) eduSql.push(text); return origQuery(text, params); };
+    const mock = jest.requireMock('@gri/agent-core');
+    mock.__engineDeps.length = 0;
+    await svc.sendMessage('student-a', 'hi');
+    const dep = mock.__engineDeps.find((d: any) => d && typeof d.defaultResponder === 'function');
+    expect(dep).toBeTruthy();
+    // 模拟 cli-engine 的回落：ctx 只带 run 参（无 store/router），info 只带最小字段（无 memory）
+    const degradedCtx = { entityId: 'student-a', userMessage: '诊断我的学情' };
+    const out = await dep.defaultResponder(degradedCtx, { entityId: 'student-a', userMessage: '诊断我的学情', reason: 'engine-unavailable' });
+    expect(out.success).toBe(true);
+    expect(out.message).toMatch(/学情诊断/);
+    // 真查到库：诊断聚合（masteryByKnowledgePointWithTime）真的碰了 edu.answer_records，而非吞错降级
+    expect(eduSql.some((q) => /edu\.answer_records/.test(q))).toBe(true);
+  });
+
+  it('listEngines：恒含 builtin gri-core；未注入 cliBackends → 无外部引擎', () => {
+    const svc = makeService(fakeDb());
+    const list = svc.listEngines();
+    expect(list.map((e) => e.id)).toEqual(['gri-core']);
+    expect(list[0].builtin).toBe(true);
+    expect(list[0].apiVersion).toBe('1');
+  });
+
+  it('listEngines/knownEngineIds：注入 cliBackends → 两外部引擎（builtin=false）', () => {
+    const svc = makeService(fakeDb(), {});
+    expect(svc.knownEngineIds()).toEqual(['gri-core', 'claude-code', 'openclaw']);
+    const ext = svc.listEngines().filter((e) => !e.builtin).map((e) => e.id);
+    expect(ext).toEqual(['claude-code', 'openclaw']);
   });
 
   it('openSession: 暴露每生独立工具集/技能/记忆摘要', async () => {

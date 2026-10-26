@@ -3,6 +3,19 @@ import { ENGINE_API_VERSION } from './engine-port.js';
 import { sanitizeToolName } from './tool.js';
 
 /**
+ * gri-core（本宿主引擎）的能力声明 —— **单一真源**：`AgentCore` 实例直接用它，
+ * 宿主侧「列可用引擎」（如 `/api/v1/agent/engines`）也复用它，避免两处各写一份而漂移。
+ * `'host'` = 工具环在 GRI；外部引擎（Claude SDK / OpenClaw core）声明 `'engine'`。
+ */
+export const GRI_CORE_CAPABILITIES = Object.freeze({
+  toolLoop: 'host',
+  streaming: false,
+  needsApiKey: true,
+  subagents: true, // agent.delegate
+  multimodal: false,
+});
+
+/**
  * AgentCore —— 通用推理/工具循环（OpenClaw core 的浓缩）。
  *
  * 一条 user message 的生命周期：
@@ -46,13 +59,7 @@ export class AgentCore {
     // 类名 AgentCore 不变（index.js/index.d.ts + 大量 node:test 依赖）；这里只**显式声明**它已满足的端口。
     this.id = deps.engineId || 'gri-core';
     this.apiVersion = ENGINE_API_VERSION;
-    this.capabilities = Object.freeze({
-      toolLoop: 'host', // 工具环在 GRI；外部引擎（Claude SDK / OpenClaw core）声明 'engine'
-      streaming: false,
-      needsApiKey: true,
-      subagents: true, // agent.delegate
-      multimodal: false,
-    });
+    this.capabilities = GRI_CORE_CAPABILITIES;
   }
 
   listTools() {

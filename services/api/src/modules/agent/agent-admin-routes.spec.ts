@@ -156,6 +156,44 @@ describe('AgentAdminRoutesController · 凭据缝 HTTP 面（只写不读）', (
     expect(mockRouter.setCalls).toHaveLength(0);
   });
 
+  // ── W2.6b：engine 写入口早校验（防错字把路由指到不存在的引擎）──────────────
+  const agentWith = (ids: string[]): any => ({ knownEngineIds: () => ids });
+
+  it('engine：合法 id → 透传给 router.set（写时生效）', async () => {
+    const { svc } = fakeCredsSvc();
+    const ctrl = new AgentAdminRoutesController(fakeDb(), makeOrg(true), svc, agentWith(['gri-core', 'claude-code', 'openclaw']));
+    const out = await ctrl.upsert(req('op-1'), { route_key: 'default', engine: 'claude-code' });
+    expect(out.success).toBe(true);
+    expect(mockRouter.setCalls[0].engine).toBe('claude-code');
+  });
+
+  it('engine：未知 id → 写入口即拒（不写路由/不写凭据），并回可用集', async () => {
+    const { svc, sets } = fakeCredsSvc();
+    const ctrl = new AgentAdminRoutesController(fakeDb(), makeOrg(true), svc, agentWith(['gri-core', 'claude-code', 'openclaw']));
+    const out = await ctrl.upsert(req('op-1'), { route_key: 'default', engine: 'claude-cod' });
+    expect(out.success).toBe(false);
+    expect(String(out.error)).toMatch(/未知引擎/);
+    expect(out.knownEngines).toEqual(['gri-core', 'claude-code', 'openclaw']);
+    expect(mockRouter.setCalls).toHaveLength(0);
+    expect(sets).toHaveLength(0);
+  });
+
+  it('engine：不传 → undefined 透传（set 走 COALESCE 保留旧值，不静默清空）', async () => {
+    const { svc } = fakeCredsSvc();
+    const ctrl = new AgentAdminRoutesController(fakeDb(), makeOrg(true), svc, agentWith(['gri-core']));
+    const out = await ctrl.upsert(req('op-1'), { route_key: 'default', model: 'm2' });
+    expect(out.success).toBe(true);
+    expect(mockRouter.setCalls[0].engine).toBeUndefined();
+  });
+
+  it('engine：未注入 AgentService（测试档）→ 跳过校验（不拦）', async () => {
+    const { svc } = fakeCredsSvc();
+    const ctrl = new AgentAdminRoutesController(fakeDb(), makeOrg(true), svc); // 第 4 参缺省
+    const out = await ctrl.upsert(req('op-1'), { route_key: 'default', engine: 'whatever' });
+    expect(out.success).toBe(true);
+    expect(mockRouter.setCalls[0].engine).toBe('whatever');
+  });
+
   it('非运营 → 守卫先行抛 Forbidden，任何写入（路由行+凭据）都不发生（C7 多租户隔离）', async () => {
     const db = fakeDb();
     const { svc, sets } = fakeCredsSvc();

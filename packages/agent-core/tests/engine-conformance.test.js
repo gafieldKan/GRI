@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AgentCore, ToolRegistry, makeTool, defineEnginePort, isEnginePort, EngineRegistry, ENGINE_API_VERSION } from '../src/index.js';
+import { AgentCore, ToolRegistry, makeTool, defineEnginePort, isEnginePort, EngineRegistry, ENGINE_API_VERSION, GRI_CORE_CAPABILITIES } from '../src/index.js';
 import { assertEnginePortConformance, CONFORMANCE_CHECKS } from './conformance.js';
 
 // ---------- 测试桩 ----------
@@ -150,6 +150,15 @@ test('EnginePort: AgentCore 自声明为 gri-core（host 环、可委派）', ()
   assert.equal(engine.capabilities.toolLoop, 'host');
   assert.equal(engine.capabilities.subagents, true);
   assert.ok(isEnginePort(engine));
+});
+
+test('gri-core 能力声明单一真源：GRI_CORE_CAPABILITIES 与实例**同一冻结对象**（宿主列举不会漂移）', () => {
+  // 宿主侧「列可用引擎」（/api/v1/agent/engines）不构造 AgentCore 也要报 gri-core 的能力面 —
+  // 若各处各写一份，能力位会漂移（例如一边说 streaming=true 一边 false）。故钉死「同一真源」。
+  const { engine } = makeGriCore();
+  assert.equal(engine.capabilities, GRI_CORE_CAPABILITIES); // 同一对象（非拷贝）
+  assert.deepEqual({ ...engine.capabilities }, { ...GRI_CORE_CAPABILITIES });
+  assert.equal(Object.isFrozen(GRI_CORE_CAPABILITIES), true);
 });
 
 test('EngineRegistry: 撞名拒绝；list() 只回可序列化清单', () => {

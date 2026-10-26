@@ -2,7 +2,8 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional, Inject } f
 import { DatabaseService } from '../../database/database.service';
 import { AgentCredentialsService } from './agent-credentials.service';
 import { AgentCore, LlmClient, ModelRouter, MemoryStore, ToolRegistry, SkillRegistry, storeFrom, McpPool } from '@gri/agent-core';
-import type { CliBackendRegistry } from '@gri/agent-core';
+import { EngineRegistry, claudeCodeEngine, openclawEngine, GRI_CORE_CAPABILITIES, ENGINE_API_VERSION, DEFAULT_ENGINE } from '@gri/agent-core';
+import type { CliBackendRegistry, EnginePort } from '@gri/agent-core';
 
 import { eduQuery, findStudentProfile, findLatestPlan } from '../edu-core/repository';
 import { AgentTeachingTools, HOST_RESERVED_TOOL_NAMES, dropHostNameCollisions } from './teaching-tools';
@@ -120,7 +121,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
   private async _agent(
     entityId: string,
     opts: { subject?: string } = {},
-  ): Promise<{ core: AgentCore; memory: MemoryStore; entity: AgentEntity; subject: string; gradeLevel: number | null }> {
+  ): Promise<{ core: AgentCore; memory: MemoryStore; entity: AgentEntity; subject: string; gradeLevel: number | null; router: ModelRouter; responder: (ctx: any, o: any) => Promise<any> }> {
     const entity = await this._ensureEntity(entityId);
     const store = this._store();
     // 凭据缝（B-1）：该生（entity=<id>）自持的 api key 优先，其次 default 凭据，最后 env（未配置 → null → 同今日）
@@ -149,6 +150,17 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
     const gradeLevel = profile?.grade ?? null;
     const subjectName = await this._subjectDisplayName(subject);
 
+    // 确定性回落应答（无 key / 引擎不可用）：与 core 的 defaultResponder **同一个函数** —— 外部引擎
+    // 走回落时得到与 gri-core 逐字一致的行为（含「调用 <工具>」mock 直通工具表）。
+    // **自给自足**：不同引擎回调进来的 ctx/info 形状并不一致（`AgentCore._mock` 给 store/memory/router，
+    // 外部引擎只给 run 参）。故在此把**宿主自己造的** store/router/memory 补进去 ——
+    // 工具经 `ctx.store` 取数、记忆经 `o.memory`，少一项就会「同一条消息在 gri-core 可用、换个引擎就静默降级」。
+    const responder = (ctx: any, o: any = {}) => this._mockTeach(
+      { ...ctx, store, router, memory },
+      { ...o, entityId: o.entityId ?? ctx?.entityId, memory: o.memory ?? memory },
+      tools,
+    );
+
     const core = new AgentCore({
       router,
       store,
@@ -162,7 +174,7 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
         `学生当前所学学科是「${subjectName}」${gradeLevel ? `（${gradeLevel} 年级）` : ''}，出题/讲解默认围绕该学科展开；` +
         `学生明确提到别的学科时以对话上下文为准，随时切换。` +
         `始终用中文，语气鼓励、追问引导，紧扣学生掌握度给予个性化讲解。`,
-      defaultResponder: async (ctx, o) => this._mockTeach(ctx, o, tools),
+      defaultResponder: responder,
       onRun: (a) => void this._audit(entityId, a),
       // 外部 agent 后端（B-3b）：缺省 null（未注入 → 同今日）；仅当该 routeKey 有 enabled 的 provider='cli'
       // 路由行时，LlmClient 才会改走 CliBackendRegistry（换脑子），无 cli 行则零影响。
@@ -171,7 +183,61 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
       llmTimeoutMs: loadConfig().llm.timeoutMs,
     });
 
-    return { core, memory, entity, subject, gradeLevel };
+    // router / responder 一并交出：W2.6b 选引擎要在**调用点**按 routeKey 解析（见 _engineFor）。
+    return { core, memory, entity, subject, gradeLevel, router, responder };
+  }
+
+  /**
+   * 可选外部引擎注册表（W2.6b 可换引擎）。
+   *
+   * 只装**外部**引擎；`gri-core` 是本宿主引擎、不是注册表成员 —— 它是选路缺省（直用该生 core）。
+   * 每次调用按需新建：构建零成本（**不 spawn**；spawn 只发生在被选中的引擎 `run` 时）。
+   *
+   * `usable: () => true`（乐观）：引擎无法自证本机 CLI 装没装/放没放权；真不可用时由适配器依 spawn
+   * 结果**如实返回** `success:false`（不静默降级，见 packages/agent-core/src/engines/cli-engine.js）。
+   */
+  private _optionalEngines(responder: (ctx: any, o: any) => Promise<any>): EngineRegistry {
+    const reg = new EngineRegistry();
+    if (this.cliBackends) {
+      const dep = { registry: this.cliBackends, defaultResponder: responder, usable: () => true };
+      reg.register(claudeCodeEngine(dep) as any);
+      reg.register(openclawEngine(dep) as any);
+    }
+    return reg;
+  }
+
+  /** 已知引擎 id（gri-core + 可选外部引擎）—— 供 admin 写入口做**早校验**（防错字把路由指到不存在的引擎）。 */
+  knownEngineIds(): string[] {
+    return [DEFAULT_ENGINE, ...this._optionalEngines(async () => null).list().map((e) => e.id)];
+  }
+
+  /**
+   * 可用引擎目录（运营/前端探查）。
+   * `builtin` 标出宿主引擎；外部引擎**是否真能跑**取决于本机 CLI 是否可用 —— 本方法**不探活**
+   * （探活要在列举时 spawn，代价与副作用都不该落在这里；真不可用会在 run 时如实报错）。
+   */
+  listEngines(): Array<{ id: string; apiVersion: string; capabilities: any; builtin: boolean }> {
+    const out: Array<{ id: string; apiVersion: string; capabilities: any; builtin: boolean }> = [
+      { id: DEFAULT_ENGINE, apiVersion: ENGINE_API_VERSION, capabilities: GRI_CORE_CAPABILITIES, builtin: true },
+    ];
+    for (const e of this._optionalEngines(async () => null).list()) {
+      out.push({ id: e.id, apiVersion: e.apiVersion, capabilities: e.capabilities, builtin: false });
+    }
+    return out;
+  }
+
+  /**
+   * 选引擎：`engineId` 为空 / `'gri-core'` → 本宿主 core；否则取注册表里的外部引擎。
+   * 未知 id → **抛**（配置错误不静默降级）：与「未知 CLI 后端」同一口径（`CliBackendRegistry.run` 也抛）。
+   * admin 写入口已做早校验，故此处抛出基本只可能来自**绕过 API 的直接改库** —— 那时正该响亮失败。
+   */
+  private _engineFor(core: AgentCore, responder: any, engineId?: string | null): EnginePort {
+    if (!engineId || engineId === DEFAULT_ENGINE) return core as unknown as EnginePort;
+    const engine = this._optionalEngines(responder).get(engineId);
+    if (!engine) {
+      throw new Error(`未知引擎: ${engineId}（可用：${this.knownEngineIds().join('、')}）`);
+    }
+    return engine;
   }
 
   /** 学科展示名：ontology.subject 行（MATH → 数学）；查不到原样回 code。 */
@@ -418,12 +484,18 @@ export class AgentService implements OnModuleInit, OnModuleDestroy {
       return { success: false, message: '消息不能为空' };
     }
     // 学科兜底：前端显式带 subject（如聊天页选科后）→ persona 注入该学科
-    const { core, subject } = await this._agent(entityId, { subject: opts.subject });
+    const { core, subject, router, responder, memory } = await this._agent(entityId, { subject: opts.subject });
     const routeKey = opts.routeKey || 'default';
-    const out = await core.run({
+    // W2.6b 可换引擎：按该 routeKey 路由行的 `engine` 列选引擎。
+    // 缺省（列为 NULL / 迁移未应用）→ 'gri-core' → 直用该生 core，**行为与今日逐字节一致**（零回归）。
+    const cfg = await router.resolve(routeKey);
+    const engine = this._engineFor(core, responder, cfg.engine);
+    const out = await engine.run({
       entityId,
       userMessage: String(message),
       routeKey,
+      // memory 随 run 参交出：外部引擎回落时会用它喂同一个 defaultResponder（gri-core 忽略此参，自带）。
+      memory,
     });
     return {
       success: out.success,

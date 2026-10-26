@@ -97,6 +97,11 @@ describe('AgentV1Controller —— /api/v1/agent/* 对外版本化契约（B-2�
       routeKey: opts?.routeKey ?? 'default',
     })),
     diagnosisOverview: jest.fn(async (entityId: string) => ({ success: true, phase: 'diagnosis', entityId, mastery: 0.5 })),
+    // W2.6b：引擎目录（只读列举，不探活）
+    listEngines: jest.fn(() => [
+      { id: 'gri-core', apiVersion: '1', capabilities: { toolLoop: 'host' }, builtin: true },
+      { id: 'claude-code', apiVersion: '1', capabilities: { toolLoop: 'engine' }, builtin: false },
+    ]),
     // B-4：外部 agent run 查询面（默认空/无）
     listExternalRuns: jest.fn(async (_entityId: string, _limit: number): Promise<{ runs: any[] }> => ({ runs: [] })),
     getExternalRun: jest.fn(async (_entityId: string, _runId: string): Promise<any> => null),
@@ -172,6 +177,17 @@ describe('AgentV1Controller —— /api/v1/agent/* 对外版本化契约（B-2�
     expect(Array.isArray(r.json.data.backends)).toBe(true);
     expect(r.json.data.backends).toHaveLength(1);
     expect(r.json.data.backends[0].id).toBe('claude-code');
+    // 只读：不得回传任何函数/凭据字段
+    expect(JSON.stringify(r.json)).not.toMatch(/apiKey|api_key|token|secret/i);
+  });
+
+  it('§1.5 GET /api/v1/agent/engines → 200，列出引擎目录（builtin 标记宿主环）+ 版本头', async () => {
+    const r = await request(port, 'GET', '/api/v1/agent/engines');
+    expect(r.status).toBe(200);
+    expect(r.headers['x-agent-api-version']).toBe(String(AGENT_API_VERSION));
+    expect(r.json.data.engines.map((e: any) => e.id)).toEqual(['gri-core', 'claude-code']);
+    expect(r.json.data.engines[0].builtin).toBe(true);
+    expect(r.json.data.engines[1].builtin).toBe(false);
     // 只读：不得回传任何函数/凭据字段
     expect(JSON.stringify(r.json)).not.toMatch(/apiKey|api_key|token|secret/i);
   });

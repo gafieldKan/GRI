@@ -191,6 +191,23 @@ test('responder 回 null → 兜底文案（绝不空手而归，也不抛）', 
   assert.match(out.message, /claude-code 不可用/);
 });
 
+test('回落 info 与 AgentCore._mock **同契约**：把 ctx 的 memory 交给 responder（宿主同一人格函数两路径可用）', async () => {
+  // 宿主把**同一个** defaultResponder 同时喂给 gri-core 与外部引擎（W2.6b）。该 responder 会经
+  // info.memory 读写长期记忆 —— 回落 info 少了 memory，同一条消息在 gri-core 可用、在引擎回落路径就 TypeError。
+  const seen = [];
+  const mem = { tag: 'MEM' };
+  const engine = openclawEngine({
+    registry: fakeRegistry(OK()),
+    usable: () => false,
+    defaultResponder: async (_ctx, info) => { seen.push(info); return { success: true, message: 'ok' }; },
+  });
+  await engine.run({ entityId: 'a', userMessage: '记住：我喜欢数学', memory: mem });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].memory, mem); // 同一对象（非拷贝）—— 宿主 responder 据此落库
+  assert.equal(seen[0].entityId, 'a');
+  assert.equal(seen[0].reason, 'engine-unavailable');
+});
+
 test('提示词为空（无 userMessage 且无 persona）→ 回落，不 spawn', async () => {
   const registry = fakeRegistry(OK());
   const engine = claudeCodeEngine(availableDeps({ registry }));

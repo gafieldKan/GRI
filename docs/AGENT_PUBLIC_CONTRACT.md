@@ -1,9 +1,9 @@
 # GRI Agent 对外契约 v1（`/api/v1/agent/*`）
 
-> 状态：**现行** ｜ 落卡：B-2（B 波收官）、B-4（外部 agent 反馈回路）｜ 依赖：B-1 凭据缝、B-3a/b/c 外部 agent 后端
+> 状态：**现行** ｜ 落卡：B-2（B 波收官）、B-4（外部 agent 反馈回路）、W2.6b（可换引擎）｜ 依赖：B-1 凭据缝、B-3a/b/c 外部 agent 后端、W2.6a 引擎适配器
 > 依据：`docs/AI_PRODUCTIZATION_OPTIONS.md` §七裁决（② 外部入口 + ① 发布边界）、`docs/AI_PRODUCTIZATION_REVIEW.md` §二（三缺：流式/持久/推送）
 > 实现：`services/api/src/modules/agent/agent-v1.controller.ts`（复用 `AgentService`，不复制业务逻辑）
-> 持久化：`agent.external_runs` + `agent.external_events`（迁移 `033_agent_external_runs.sql`）
+> 持久化：`agent.external_runs` + `agent.external_events`（迁移 `033_agent_external_runs.sql`）；引擎选路列 `agent.llm_routes.engine`（迁移 `034_agent_engine.sql`）
 > 客户端：[`@gri/agent-sdk`](../packages/agent-sdk/README.md)
 
 本页是**对外承诺面**的单一真源：形状、语义、版本策略。前端 3 端/portal 在用的
@@ -86,6 +86,23 @@
 ```json
 { "v": 1, "success": true, "data": { "success": true, "phase": "diagnosis", "…": "…" } }
 ```
+
+### `GET /api/v1/agent/engines`
+
+**只读目录面**（W2.6b 可换引擎）：列出可用引擎（`EnginePort`）。
+
+```json
+{ "v": 1, "success": true, "data": { "engines": [
+  { "id": "gri-core", "apiVersion": "1", "capabilities": { "toolLoop": "host", "subagents": true }, "builtin": true },
+  { "id": "claude-code", "apiVersion": "1", "capabilities": { "toolLoop": "engine", "streaming": true }, "builtin": false }
+] } }
+```
+
+- `builtin: true` = 宿主引擎 `gri-core`（**缺省**，恒存在）；`false` = 可选外部引擎（需宿主注入 CLI 后端注册表，缺省不列）。
+- **不探活**：本面只回目录，「外部引擎是否真能跑」取决于本机 CLI —— 真不可用会在 `me/message` 时如实报错（不静默降级）。
+- 仅可序列化清单（`id`/`apiVersion`/`capabilities`/`builtin`）—— 不含函数、不含任何凭据/密钥。
+- `capabilities.toolLoop`：`host` = 工具环在宿主（引擎只拥有模型调用槽）；`engine` = 引擎拥有整个 perceive→act 环。
+  与 `provider='cli'`（B-3b，模型调用槽外包给 CLI）是**两个不同边界**，可并存（`engine='gri-core'` + `provider='cli'` = 已有的「换脑子」）。
 
 ### `GET /api/v1/agent/delegate/backends`
 

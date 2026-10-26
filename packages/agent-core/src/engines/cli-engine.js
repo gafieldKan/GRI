@@ -71,13 +71,18 @@ export function createCliEnginePort(spec = {}) {
   // 乐观缺省：宿主没给探针就当作可用（真不可用会由 spawn 的 error 如实返回，不吞）。
   const canUse = typeof usable === 'function' ? usable : () => true;
 
-  /** 回落：与 `AgentCore._mock` 同形（responder 回 null/undefined → 兜底文案，绝不空手而归）。 */
+  /**
+   * 回落：与 `AgentCore._mock` **同契约**（responder 回 null/undefined → 兜底文案，绝不空手而归）。
+   * 故 info 逐项对齐：`AgentCore._mock` 会传 `memory`，这里也传 —— 宿主传入的 responder 可依赖
+   * `info.memory` 而不必自己兜底（GRI 宿主另有一层自给，见 `agent.service.ts` 的 responder 包装）。
+   */
   async function fallback(ctx) {
     const out = await defaultResponder(ctx, {
       entityId: ctx.entityId,
       sessionId: ctx.sessionId ?? null,
       history: ctx.history || [],
       userMessage: ctx.userMessage,
+      memory: ctx.memory, // 与 AgentCore._mock 对齐
       engine: id,
       // 为什么回落：供宿主观测/断言（非引擎自证）
       reason: 'engine-unavailable',

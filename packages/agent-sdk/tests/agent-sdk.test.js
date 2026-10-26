@@ -111,6 +111,25 @@ test('§2.2 listBackends 无后端 → 空数组（不抛）', async () => {
   assert.deepEqual(await agent.listBackends(), []);
 });
 
+test('§2.2b listEngines 请求 /engines 并解包 engines（W2.6b）', async () => {
+  const fetchImpl = makeStubFetch((rec) => {
+    if (String(rec.url).endsWith('/engines')) {
+      return res(200, okEnvelope({ engines: [{ id: 'gri-core', apiVersion: '1', capabilities: { toolLoop: 'host' }, builtin: true }] }));
+    }
+    return res(404, { v: 1, success: false, error: { code: 'NOPE', message: 'x' } });
+  });
+  const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
+  const engines = await agent.listEngines();
+  assert.equal(fetchImpl.calls[0].url, `${BASE}${AGENT_API_PREFIX}/engines`);
+  assert.deepEqual(engines, [{ id: 'gri-core', apiVersion: '1', capabilities: { toolLoop: 'host' }, builtin: true }]);
+});
+
+test('§2.2c listEngines 无引擎字段 → 空数组（不抛）', async () => {
+  const fetchImpl = makeStubFetch(() => res(200, okEnvelope({})));
+  const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
+  assert.deepEqual(await agent.listEngines(), []);
+});
+
 test('§2.3 2xx 但 success:false → 抛 AGENT_ERROR（不吞错）', async () => {
   const fetchImpl = makeStubFetch(() => res(200, { v: 1, success: false, error: { code: 'AGENT_DOWN', message: '模型不可用' } }));
   const agent = createAgentClient({ baseUrl: BASE, token: 'tk', fetch: fetchImpl });
