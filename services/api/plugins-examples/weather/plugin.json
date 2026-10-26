@@ -1,0 +1,9 @@
+{
+  "id": "weather",
+  "name": "天气查询（示例外部插件）",
+  "kind": "agent.skill",
+  "apiVersion": "1",
+  "version": "0.1.0",
+  "description": "非教育能力示例：证明第三方无需改宿主即可给 AI 教师加一个 weather.lookup 工具",
+  "entry": "./index.js"
+}
