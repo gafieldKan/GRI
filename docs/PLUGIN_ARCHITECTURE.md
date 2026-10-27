@@ -117,6 +117,8 @@ export class MapSceneRenderer {           // 抽象类
 |---|---|---|
 | **P-0** | 定契约与注册表（本文件的 §2/§4 落为代码骨架） | `packages/plugin-host`（契约 + registry，无具体实现） |
 | **P-1** | 把 `world-art` 显性化为 `world.scene` 插件（补 `plugin.json`，接 registry；**画法零改动**） | 世界渲染走插件装配 |
+
+> **进度（2026-10-27）**：`packages/world-art/plugin.json`（kind `world.scene`，`provides: ["world.scene"]`）已落，并经 `@gri/plugin-host` 的 schema 基线（`parseManifest`）校验、在 `CapabilityRegistry` 中解析为 `world.scene` 提供者（`packages/plugin-host/tests/world-scene-manifest.test.js`）。**`art.js` 零改动**（画法未动）。**余步**：前端消费侧由「vite 别名直引 `@gri/world-art`」改为「解析 `world.scene` 能力」——须先有**前端侧**能力注册表（属 Track F 范畴，未做）。
 | **P-2** | 把 `k12-curriculum/import.mjs` / `reference-data/import.mjs` 重构为 `knowledge.content` / `knowledge.taxonomy` provider | 新增学科 = 加插件目录 |
 | **P-3** | 把 `agent-core/skill + tool-registry` 显性化为 `agent.skill` 插件面 | AI 定制 = 加插件 |
 | **P-4** | `auth-client` 归一为 `auth.identity` 插件（三前端统一装配） | 消灭内联 auth 样板 |
