@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
 import { LlmClient } from '@gri/agent-core';
 import { llmTimeoutMs } from './llm-provider';
+import { eduQuery, avgPlanScore, avgPeerScore, insertAnalysisReport } from '../../edu-core/repository';
 
 export type TutorQuestionType = 'choice' | 'fill' | 'solution';
 
@@ -239,18 +240,10 @@ ${errorQuestions
 
   private async _getPeerComparison(userId: string, gradeLevel: string, subject: string) {
     try {
-      const studentResult = await this.db.query(
-        `SELECT AVG((plan_data->>'score')::float) as avg_score FROM edu.learning_plans WHERE user_id = $1`,
-        [userId],
-      );
-      const peerResult = await this.db.query(
-        `SELECT AVG(ar.student_score) as avg_score
-         FROM edu.analysis_reports ar JOIN edu.exams e ON ar.exam_id = e.id
-         WHERE e.grade_level = $1 AND e.subject = $2 AND ar.user_id != $3`,
-        [gradeLevel, subject, userId],
-      );
-      const peerAvg = peerResult.rows[0]?.avg_score || 0.65;
-      const studentAvg = studentResult.rows[0]?.avg_score || 0.6;
+      const studentResult = await avgPlanScore(eduQuery(this.db), userId);
+      const peerResult = await avgPeerScore(eduQuery(this.db), gradeLevel, subject, userId);
+      const peerAvg = peerResult?.avg_score || 0.65;
+      const studentAvg = studentResult?.avg_score || 0.6;
       return { percentile: this._calculatePercentile(studentAvg, peerAvg), studentAvg: parseFloat(studentAvg.toFixed(2)), peerAvg: parseFloat(peerAvg.toFixed(2)), gradeLevel };
     } catch {
       return { percentile: 50, studentAvg: 0.6, peerAvg: 0.6, gradeLevel };
@@ -319,27 +312,19 @@ ${Object.entries(errorAttribution).filter(([k]) => k !== 'total').map(([k, v]) =
     strongPoints: string[];
   }) {
     const { userId, examId, knowledgePoints, abilityDims, errorAttribution, peerComparison, aiSuggestions, weakPoints, strongPoints } = params;
-    const res = await this.db.query(
-      `INSERT INTO edu.analysis_reports
-         (exam_id, user_id, knowledge_points, ability_dims, error_attribution,
-          peer_percentile, peer_avg_score, student_score, ai_suggestions, weak_points, strong_points)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       RETURNING id`,
-      [
-        examId,
-        userId,
-        JSON.stringify(knowledgePoints),
-        JSON.stringify(abilityDims),
-        JSON.stringify(errorAttribution),
-        peerComparison.percentile,
-        peerComparison.peerAvg,
-        peerComparison.studentAvg,
-        JSON.stringify(aiSuggestions),
-        JSON.stringify(weakPoints),
-        JSON.stringify(strongPoints),
-      ],
-    );
-    return res.rows[0]?.id;
+    return (await insertAnalysisReport(eduQuery(this.db), {
+      examId,
+      userId,
+      knowledgePoints,
+      abilityDims,
+      errorAttribution,
+      peerPercentile: peerComparison.percentile,
+      peerAvgScore: peerComparison.peerAvg,
+      studentScore: peerComparison.studentAvg,
+      aiSuggestions,
+      weakPoints,
+      strongPoints,
+    })) ?? undefined;
   }
 
   private _parseJsonObject(content: string): any | null {

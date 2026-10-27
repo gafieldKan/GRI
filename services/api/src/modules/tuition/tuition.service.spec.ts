@@ -160,6 +160,37 @@ describe('TuitionService（M5 前端面门面回归）', () => {
     expect(updateSRQueue).toHaveBeenCalledWith('alice', 'e0000000-0000-0000-0000-000000000001', 0.95);
   });
 
+  it('reviewWrongQuestion：AI 去规范行（question_id 为 NULL）→ 仍成功标记已复习、跳过 SR（非 404）', async () => {
+    // migration 006 起 edu.wrong_questions.question_id 可空（AI 去规范行：无题号、只有 question_text）。
+    // 旧实现「有行即 200」——本用例守着「行存在」而非「题号非空」的判据（防回归成 404）。
+    const db = makeDb(jest.fn());
+    const updateSRQueue = jest.fn().mockResolvedValue({});
+    mockQueries(db, [
+      [/SELECT question_id FROM edu\.wrong_questions WHERE id = \$1 AND user_id = \$2/, [{ question_id: null }]],
+      [/UPDATE edu\.wrong_questions[\s\S]*SET reviewed/, [{ id: 'w1' }]],
+    ]);
+    const questionService = {
+      resolveKnowledgePointId: async () => null,
+      getDiagnosisQuestions: async () => [],
+      getQuizQuestions: async () => [],
+    };
+    const svc = new TuitionService(
+      db,
+      { pipeline: jest.fn() } as any,
+      { createSession: jest.fn(), loadSession: jest.fn(), flush: jest.fn() } as any,
+      questionService as any,
+      { generateQuestions: jest.fn() } as any,
+      { generatePlan: jest.fn(), updateProgress: jest.fn() } as any,
+      { updateSRQueue } as any,
+      { decide: async () => null } as any,
+    );
+
+    const r = await svc.reviewWrongQuestion('alice', 'w1', 0.95, 'mastered');
+
+    expect(r.success).toBe(true);
+    expect(updateSRQueue).not.toHaveBeenCalled(); // 无题号 → 不进 SR 队列
+  });
+
   it('getQuestionBank：chapterId 过滤落到 kp.chapter_id（练习中心「主题」= 教材章节）', async () => {
     const db = makeDb(jest.fn());
     mockQueries(db, [[/LEFT JOIN edu\.knowledge_points kp/, []]]);

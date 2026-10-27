@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
 import { LlmClient } from '@gri/agent-core';
+import { eduQuery, insertExamBasic, updateExamOcr, updateExamParsed, markExamAnalyzed } from '../../edu-core/repository';
 import { ExamScannerAgent } from './exam-scanner';
 import { TutorAgent } from './tutor-agent';
 import { QuestionGeneratorAgent } from './question-generator';
@@ -39,12 +40,12 @@ export class AiAgentService {
     const useReal = await this.llm.isRealKey();
 
     // Step 1: 识别 —— 建 exam 行（pending），存 OCR/图像
-    const examInsert = await this.db.query(
-      `INSERT INTO edu.exams (user_id, subject, grade_level, raw_images, status)
-       VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
-      [userId, subject, gradeLevel, input.imageDataUrl ? JSON.stringify([input.imageDataUrl]) : null],
-    );
-    const examId = examInsert.rows[0].id as string;
+    const examId = (await insertExamBasic(eduQuery(this.db), {
+      userId,
+      subject,
+      gradeLevel,
+      rawImages: input.imageDataUrl ? JSON.stringify([input.imageDataUrl]) : null,
+    })) as string;
 
     let rawText = input.text || '';
     let parsedQuestions: any[] = [];
@@ -56,9 +57,11 @@ export class AiAgentService {
         rawText = scan.ocr?.rawText || rawText;
         parsedQuestions = scan.parsedQuestions || [];
       }
-      await this.db.query(
-        `UPDATE edu.exams SET ocr_result = $2, parsed_questions = $3 WHERE id = $1`,
-        [examId, rawText ? JSON.stringify({ raw_text: rawText }) : null, parsedQuestions.length ? JSON.stringify(parsedQuestions) : null],
+      await updateExamOcr(
+        eduQuery(this.db),
+        examId,
+        rawText ? JSON.stringify({ raw_text: rawText }) : null,
+        parsedQuestions.length ? JSON.stringify(parsedQuestions) : null,
       );
     } else if (rawText) {
       // 文本链路：跳过多模态 OCR（空图请求会让多模态端点挂死），直接结构化 rawText
@@ -67,10 +70,7 @@ export class AiAgentService {
       if (!parsedQuestions.length) {
         parsedQuestions = [{ id: 'q1', type: 'solution', content: rawText, options: [], answer: '', knowledgePoint: '综合' }];
       }
-      await this.db.query(
-        `UPDATE edu.exams SET parsed_questions = $2 WHERE id = $1`,
-        [examId, JSON.stringify(parsedQuestions)],
-      );
+      await updateExamParsed(eduQuery(this.db), examId, JSON.stringify(parsedQuestions));
     }
 
     // Step 2: 学情分析 → 结构化报告（TutorAgent 内部落库 analysis_reports）
@@ -91,7 +91,7 @@ export class AiAgentService {
     const reportId = analysis.reportId;
 
     // Step 3: exam 标记 analyzed
-    await this.db.query(`UPDATE edu.exams SET status = 'analyzed' WHERE id = $1`, [examId]);
+    await markExamAnalyzed(eduQuery(this.db), examId);
 
     // Step 4: 薄弱点 → 专项练习 + 学习计划
     const report = analysis.report ?? { weakPoints: [], answerAnalysis: [] };

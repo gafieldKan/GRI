@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
 import { LlmClient } from '@gri/agent-core';
 import { llmTimeoutMs } from './llm-provider';
+import { eduQuery, findKnowledgePointName, insertSession, findSessionOwned, flushSession } from '../../edu-core/repository';
 import { TuitionQuestionService } from './question.service';
 import { TuitionQuestion } from './question.service';
 
@@ -463,8 +464,7 @@ export class SessionFsmService {
   private async _kpName(kpId: string): Promise<string | undefined> {
     const uuid = await this.questionService.resolveKnowledgePointId(kpId);
     if (!uuid) return undefined;
-    const res = await this.db.query(`SELECT name FROM edu.knowledge_points WHERE id = $1`, [uuid]);
-    return res.rows[0]?.name;
+    return (await findKnowledgePointName(eduQuery(this.db), uuid)) ?? undefined;
   }
 
   /** 建会话：写行 + 装载题库 + 返回 FSM 实例。owner=userId。 */
@@ -473,13 +473,8 @@ export class SessionFsmService {
     // 避免在一条 SQL 里混用 `id = $n::uuid OR legacy_id = $n`（$n 被定型为 uuid 会炸 varchar 支）。
     const kpUuid = await this.questionService.resolveKnowledgePointId(knowledgePointId);
     const kpName = await this._kpName(knowledgePointId);
-    const insert = await this.db.query(
-      `INSERT INTO edu.sessions (user_id, knowledge_point_id, phase, status, session_data, legacy_id)
-       VALUES ($1, $2::uuid, 'welcome', 'active', '{}'::jsonb, $3)
-       RETURNING id AS session_id, phase`,
-      [userId, kpUuid, knowledgePointId],
-    );
-    const sessionId = insert.rows[0].session_id as string;
+    const insert = await insertSession(eduQuery(this.db), userId, kpUuid, knowledgePointId);
+    const sessionId = insert?.session_id as string;
 
     let fsm: SessionFsm;
     fsm = new SessionFsm(sessionId, userId, knowledgePointId, this.llm, this.questionService, () =>
@@ -495,14 +490,10 @@ export class SessionFsmService {
 
   /** 按会话行加载（必须校验 user_id 所有权）。无行/他人会话 → NotFound。 */
   async loadSession(userId: string, sessionId: string): Promise<SessionFsm> {
-    const res = await this.db.query(
-      `SELECT id, user_id, phase, status, session_data FROM edu.sessions WHERE id = $1 AND user_id = $2`,
-      [sessionId, userId],
-    );
-    if (res.rows.length === 0) {
+    const row = await findSessionOwned(eduQuery(this.db), sessionId, userId);
+    if (!row) {
       throw new NotFoundException('会话不存在或无权访问');
     }
-    const row = res.rows[0];
     let fsm: SessionFsm;
     fsm = new SessionFsm(row.id, row.user_id, row.session_data?.knowledgePointId ?? '', this.llm, this.questionService, () =>
       this.flush(row.id, userId, fsm),
@@ -522,14 +513,6 @@ export class SessionFsmService {
       knowledgePointId: fsm.knowledgePointId,
       selectedKpName: fsm.selectedKpName ?? null,
     };
-    await this.db.query(
-      `UPDATE edu.sessions
-       SET phase = $3::varchar,
-           session_data = $4,
-           status = CASE WHEN $3::varchar = 'done' THEN 'completed' ELSE 'active' END,
-           end_time = CASE WHEN $3::varchar = 'done' THEN NOW() ELSE NULL END
-       WHERE id = $1 AND user_id = $2`,
-      [sessionId, userId, fsm.phase, JSON.stringify(data)],
-    );
+    await flushSession(eduQuery(this.db), { sessionId, userId, phase: fsm.phase, data: JSON.stringify(data) });
   }
 }

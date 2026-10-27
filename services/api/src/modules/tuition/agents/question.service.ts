@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
+import { eduQuery, listTuitionQuestions } from '../../edu-core/repository';
 
 export interface TuitionQuestion {
   id: string;
@@ -54,23 +55,8 @@ export class TuitionQuestionService {
     const kpUuid = resolveId ? await this.resolveKnowledgePointId(knowledgePointId) : knowledgePointId;
     if (!kpUuid) return [];
 
-    let sql = `SELECT id, knowledge_point_id AS kp_id, content, answer, type, difficulty, options, explanation
-               FROM edu.questions WHERE knowledge_point_id = $1`;
-    const params: unknown[] = [kpUuid];
-
-    if (type === 'diagnosis') {
-      sql += ` AND difficulty IN ('easy','medium')`;
-    } else if (type === 'quiz') {
-      sql += ` AND difficulty IN ('easy','medium','hard')`;
-    } else {
-      sql += ` AND difficulty IN ('easy','medium')`;
-    }
-
-    sql += ` ORDER BY difficulty ASC LIMIT $${params.length + 1}`;
-    params.push(count);
-
-    const res = await this.db.query(sql, params);
-    return res.rows.map((r: any) => ({
+    const rows = await listTuitionQuestions(eduQuery(this.db), kpUuid, type, count);
+    return rows.map((r: any) => ({
       id: r.id,
       knowledge_point_id: r.kp_id,
       content: r.content,

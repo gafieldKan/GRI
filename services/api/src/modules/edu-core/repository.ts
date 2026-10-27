@@ -630,3 +630,673 @@ export async function upsertStudentFields(
     [userId, ...keys.map((k) => cols[k])],
   );
 }
+
+// ---------------------------------------------------------------------------
+// W2.1c-3：tuition 门面（题库 / 错题本 / 计划 / 练习会话 / 画像 / 统计 / 主观链路）
+// 语句逐字自 tuition.service.ts 迁入（含缩进），调用方只传过滤器/参数。
+// ---------------------------------------------------------------------------
+
+/** 题库（subject 在 edu.knowledge_points → JOIN 后在 kp.subject 过滤；可空章节/KP 过滤）。 */
+export async function listQuestionBank(
+  query: EduQueryFn,
+  filters: { subject?: string; chapterId?: string; kpUuid?: string | null; limit?: number },
+): Promise<any[]> {
+  let sql = `SELECT q.*, kp.name AS knowledge_point_name FROM edu.questions q
+               LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id`;
+  const conds: string[] = [];
+  const params: unknown[] = [];
+  if (filters.subject) {
+    conds.push(`kp.subject = $${params.length + 1}`);
+    params.push(filters.subject);
+  }
+  if (filters.chapterId) {
+    conds.push(`kp.chapter_id = $${params.length + 1}`);
+    params.push(filters.chapterId);
+  }
+  if (filters.kpUuid) {
+    conds.push(`q.knowledge_point_id = $${params.length + 1}`);
+    params.push(filters.kpUuid);
+  }
+  if (conds.length) sql += ` WHERE ${conds.join(' AND ')}`;
+  sql += ` ORDER BY q.created_at DESC LIMIT $${params.length + 1}`;
+  params.push(filters.limit || 20);
+  const { rows = [] } = await query(sql, params);
+  return rows;
+}
+
+/** 错题本列表（未解决；含题干子查询回填 content）。 */
+export const LIST_ACTIVE_WRONG_QUESTIONS_SQL = `SELECT id, question_id, question_text, subject, knowledge_point, student_answer, correct_answer,
+              error_type, difficulty, reviewed, mastered, review_count, wrong_count, last_attempt_at,
+              (SELECT content FROM edu.questions q WHERE q.id = edu.wrong_questions.question_id) AS content
+       FROM edu.wrong_questions
+       WHERE user_id = $1 AND is_resolved = false
+       ORDER BY last_attempt_at DESC`;
+
+export async function listActiveWrongQuestions(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(LIST_ACTIVE_WRONG_QUESTIONS_SQL, [userId]);
+  return rows;
+}
+
+/** 标记某题错题已解决（按 question_id；不带 is_resolved 前置——与 markWrongQuestionReviewed 区分）。 */
+export const MARK_WRONG_RESOLVED_BY_QUESTION_SQL = `UPDATE edu.wrong_questions SET is_resolved = true WHERE user_id = $1 AND question_id = $2`;
+
+export async function markWrongResolvedByQuestion(query: EduQueryFn, userId: string, questionId: string): Promise<void> {
+  await query(MARK_WRONG_RESOLVED_BY_QUESTION_SQL, [userId, questionId]);
+}
+
+/** 按 wrong_question.id 取复习前置行（整行——**题号可能是 NULL 的去规范行**，故以「有无行」判存在，而非题号）。 */
+export const WRONG_QUESTION_ID_BY_ID_SQL = `SELECT question_id FROM edu.wrong_questions WHERE id = $1 AND user_id = $2`;
+
+export async function findWrongQuestionForReview(query: EduQueryFn, id: string, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(WRONG_QUESTION_ID_BY_ID_SQL, [id, userId]);
+  return rows[0] ?? null;
+}
+
+/** SM-2 复习：更新错题 mastered/掌握度（按 wrong_question.id）。 */
+export const MARK_WRONG_QUESTION_REVIEWED_SQL = `UPDATE edu.wrong_questions
+       SET reviewed = true, mastery_level = $2, is_resolved = true, last_reviewed_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND user_id = $3`;
+
+export async function markWrongQuestionReviewed(query: EduQueryFn, id: string, reviewStatus: string, userId: string): Promise<void> {
+  await query(MARK_WRONG_QUESTION_REVIEWED_SQL, [id, reviewStatus, userId]);
+}
+
+/** 到期复习卡片流：sr_queue.next_review ≤ now（借 wrong_questions 补错误元数据）。 */
+export const LIST_DUE_WRONG_QUESTIONS_SQL = `SELECT sq.question_id, sq.last_reviewed, sq.interval, sq.ease_factor, sq.repetitions, sq.next_review,
+              q.content, q.type, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              wq.id AS wrong_question_id, wq.error_type, wq.wrong_count, wq.subject,
+              wq.difficulty AS wrong_difficulty, wq.last_attempt_at,
+              COALESCE(wq.knowledge_point, kp.name) AS knowledge_point
+         FROM edu.sr_queue sq
+         JOIN edu.questions q ON q.id = sq.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+         LEFT JOIN edu.wrong_questions wq ON wq.user_id = sq.user_id AND wq.question_id = sq.question_id
+        WHERE sq.user_id = $1 AND sq.next_review IS NOT NULL AND sq.next_review <= NOW()
+        ORDER BY sq.next_review ASC
+        LIMIT $2`;
+
+export async function listDueWrongQuestions(query: EduQueryFn, userId: string, limit: number): Promise<any[]> {
+  const { rows = [] } = await query(LIST_DUE_WRONG_QUESTIONS_SQL, [userId, limit]);
+  return rows;
+}
+
+/** 单条错题详情（含 SR 参数）；按 wrong_question.id（所有权由调用方校验）。 */
+export const WRONG_QUESTION_DETAIL_SQL = `SELECT wq.id, wq.user_id, wq.question_id, wq.wrong_count, wq.last_attempt_at, wq.is_resolved,
+              wq.question_text, wq.question_type, wq.subject, wq.student_answer, wq.correct_answer,
+              wq.error_type, wq.difficulty, wq.mastery_level, wq.reviewed, wq.mastered, wq.review_count,
+              wq.last_reviewed_at, COALESCE(wq.knowledge_point, kp.name) AS knowledge_point,
+              q.content, q.type, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              sq.interval, sq.ease_factor, sq.repetitions, sq.next_review, sq.last_reviewed
+         FROM edu.wrong_questions wq
+         LEFT JOIN edu.questions q ON q.id = wq.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+         LEFT JOIN edu.sr_queue sq ON sq.user_id = wq.user_id AND sq.question_id = wq.question_id
+        WHERE wq.id = $1`;
+
+export async function findWrongQuestionDetail(query: EduQueryFn, id: string): Promise<any | null> {
+  const { rows = [] } = await query(WRONG_QUESTION_DETAIL_SQL, [id]);
+  return rows[0] ?? null;
+}
+
+/** 错题统计：掌握度桶分布聚合。 */
+export const WRONG_STATS_AGG_SQL = `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE reviewed = false)::int AS unreviewed,
+                COUNT(*) FILTER (WHERE reviewed = true AND mastered = false)::int AS reviewing,
+                COUNT(*) FILTER (WHERE mastered = true)::int AS mastered,
+                COUNT(*) FILTER (WHERE reviewed = true)::int AS reviewed,
+                COUNT(*) FILTER (WHERE is_resolved = true)::int AS resolved,
+                COUNT(*) FILTER (WHERE is_resolved = false)::int AS unresolved
+           FROM edu.wrong_questions WHERE user_id = $1`;
+
+export async function wrongQuestionStatsAgg(query: EduQueryFn, userId: string): Promise<any> {
+  const { rows = [] } = await query(WRONG_STATS_AGG_SQL, [userId]);
+  return rows[0] ?? {};
+}
+
+/** 错题统计：高频错误 KP（TOP5）。 */
+export const WRONG_STATS_BY_KP_SQL = `SELECT COALESCE(wq.knowledge_point, kp.name) AS knowledge_point,
+                SUM(wq.wrong_count)::int AS wrong_count,
+                COUNT(*)::int AS question_count
+           FROM edu.wrong_questions wq
+           LEFT JOIN edu.questions q ON q.id = wq.question_id
+           LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+          WHERE wq.user_id = $1
+          GROUP BY COALESCE(wq.knowledge_point, kp.name)
+          ORDER BY wrong_count DESC, question_count DESC
+          LIMIT 5`;
+
+export async function wrongQuestionStatsByKp(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(WRONG_STATS_BY_KP_SQL, [userId]);
+  return rows;
+}
+
+/** SR 队列统计（已排期 / 到期）。 */
+export const SR_QUEUE_STATS_SQL = `SELECT COUNT(*)::int AS scheduled,
+                COUNT(*) FILTER (WHERE next_review IS NOT NULL AND next_review <= NOW())::int AS due
+           FROM edu.sr_queue WHERE user_id = $1`;
+
+export async function srQueueStats(query: EduQueryFn, userId: string): Promise<any> {
+  const { rows = [] } = await query(SR_QUEUE_STATS_SQL, [userId]);
+  return rows[0] ?? {};
+}
+
+/** 学习计划列表（按开始日倒序）。 */
+export const LIST_LEARNING_PLANS_SQL = `SELECT * FROM edu.learning_plans WHERE user_id = $1 ORDER BY start_date DESC`;
+
+export async function listLearningPlans(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(LIST_LEARNING_PLANS_SQL, [userId]);
+  return rows;
+}
+
+/** 建学习计划（最小行）。 */
+export const INSERT_LEARNING_PLAN_BASIC_SQL = `INSERT INTO edu.learning_plans (user_id, title, start_date, end_date, progress, status)
+       VALUES ($1, $2, $3, $4, 0, 'active') RETURNING *`;
+
+export async function insertLearningPlanBasic(
+  query: EduQueryFn,
+  input: { userId: string; title: string; startDate?: string | null; endDate?: string | null },
+): Promise<any> {
+  const { rows = [] } = await query(INSERT_LEARNING_PLAN_BASIC_SQL, [input.userId, input.title, input.startDate ?? null, input.endDate ?? null]);
+  return rows[0] ?? null;
+}
+
+/** 开一次练习会话（精简：mode/subject）。 */
+export const INSERT_PRACTICE_SESSION_BASIC_SQL = `INSERT INTO edu.practice_sessions (user_id, mode, subject, start_time, status)
+       VALUES ($1, 'practice', 'math', NOW(), 'in_progress') RETURNING *`;
+
+export async function insertPracticeSessionBasic(query: EduQueryFn, userId: string): Promise<any> {
+  const { rows = [] } = await query(INSERT_PRACTICE_SESSION_BASIC_SQL, [userId]);
+  return rows[0] ?? null;
+}
+
+/** 开一次练习会话（完整：mode/subject/topic/题面快照）。 */
+export const INSERT_PRACTICE_SESSION_SQL = `INSERT INTO edu.practice_sessions (user_id, mode, subject, topic_id, questions, start_time, status)
+       VALUES ($1, $2, $3, $4, $5::jsonb, NOW(), 'in_progress') RETURNING *`;
+
+export async function insertPracticeSession(
+  query: EduQueryFn,
+  input: { userId: string; mode: string; subject: string; topicId?: string | null; questions?: unknown[] },
+): Promise<any> {
+  const { rows = [] } = await query(INSERT_PRACTICE_SESSION_SQL, [
+    input.userId,
+    input.mode,
+    input.subject,
+    input.topicId ?? null,
+    input.questions?.length ? JSON.stringify(input.questions) : null,
+  ]);
+  return rows[0] ?? null;
+}
+
+/** 薄弱攻克：未解决错题 → 完整题面（含选项/答案/解析）。 */
+export const LIST_WEAKNESS_QUESTIONS_SQL = `SELECT q.id, q.content, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              q.difficulty, q.type, kp.name AS knowledge_point_name
+         FROM edu.wrong_questions wq
+         JOIN edu.questions q ON q.id = wq.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+        WHERE wq.user_id = $1 AND wq.is_resolved = false
+        ORDER BY wq.last_attempt_at DESC NULLS LAST
+        LIMIT $2`;
+
+export async function listWeaknessQuestions(query: EduQueryFn, userId: string, limit: number): Promise<any[]> {
+  const { rows = [] } = await query(LIST_WEAKNESS_QUESTIONS_SQL, [userId, limit]);
+  return rows;
+}
+
+/** 按 id 取练习会话行（所有权由调用方校验）。 */
+export const PRACTICE_SESSION_BY_ID_SQL = `SELECT * FROM edu.practice_sessions WHERE id = $1`;
+
+export async function findPracticeSessionById(query: EduQueryFn, sessionId: string): Promise<any | null> {
+  const { rows = [] } = await query(PRACTICE_SESSION_BY_ID_SQL, [sessionId]);
+  return rows[0] ?? null;
+}
+
+/** 落一条练习作答（带 session_id）。 */
+export const INSERT_PRACTICE_ANSWER_RECORD_SQL = `INSERT INTO edu.answer_records (user_id, question_id, session_id, student_answer, is_correct, time_spent_ms)
+       VALUES ($1, $2, $3, $4, $5, $6)`;
+
+export async function insertPracticeAnswerRecord(
+  query: EduQueryFn,
+  input: { userId: string; questionId: string; sessionId?: string | null; studentAnswer: unknown; isCorrect: boolean; timeSpentMs?: number | null },
+): Promise<void> {
+  await query(INSERT_PRACTICE_ANSWER_RECORD_SQL, [
+    input.userId,
+    input.questionId,
+    input.sessionId ?? null,
+    input.studentAnswer,
+    input.isCorrect,
+    input.timeSpentMs ?? null,
+  ]);
+}
+
+/** 练习链路错题入账（error_type='计算错误'；幂等 +1）——与 UPSERT_WRONG_QUESTION_SQL（'判读错误'）区分。 */
+export const UPSERT_PRACTICE_WRONG_QUESTION_SQL = `INSERT INTO edu.wrong_questions
+         (id, user_id, question_id, student_answer, correct_answer, error_type, difficulty, reviewed, mastered, review_count, wrong_count, last_attempt_at, last_reviewed_at)
+       VALUES ($1, $2, $3, $4, $5, '计算错误', $6, false, false, 0, 1, CURRENT_TIMESTAMP, NULL)
+       ON CONFLICT (user_id, question_id) DO UPDATE SET wrong_count = edu.wrong_questions.wrong_count + 1, last_attempt_at = CURRENT_TIMESTAMP
+       RETURNING id`;
+
+export async function upsertPracticeWrongQuestion(
+  query: EduQueryFn,
+  input: { id: string; userId: string; questionId: string; studentAnswer: unknown; correctAnswer: unknown; difficulty: number },
+): Promise<any> {
+  const { rows = [] } = await query(UPSERT_PRACTICE_WRONG_QUESTION_SQL, [
+    input.id,
+    input.userId,
+    input.questionId,
+    input.studentAnswer,
+    input.correctAnswer,
+    input.difficulty,
+  ]);
+  return rows[0] ?? null;
+}
+
+/** 会话进度：已答/正确数（按 session_id + user_id）。 */
+export const SESSION_ANSWER_AGG_SQL = `SELECT COUNT(*)::int AS answered,
+              COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END), 0)::int AS correct
+         FROM edu.answer_records WHERE session_id = $1 AND user_id = $2`;
+
+export async function sessionAnswerAgg(query: EduQueryFn, sessionId: string, userId: string): Promise<any> {
+  const { rows = [] } = await query(SESSION_ANSWER_AGG_SQL, [sessionId, userId]);
+  return rows[0] ?? {};
+}
+
+/** 会话分析：逐题行（含题目/知识点）。 */
+export const SESSION_ANALYSIS_ROWS_SQL = `SELECT ar.question_id, ar.student_answer, ar.is_correct, ar.time_spent_ms,
+              q.content, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
+              q.type, q.options, q.content_latex, q.answer_latex, q.difficulty,
+              q.knowledge_point_id, kp.name AS knowledge_point_name
+         FROM edu.answer_records ar
+         LEFT JOIN edu.questions q ON q.id = ar.question_id
+         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
+        WHERE ar.session_id = $1 AND ar.user_id = $2
+        ORDER BY ar.created_at ASC`;
+
+export async function sessionAnalysisRows(query: EduQueryFn, sessionId: string, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(SESSION_ANALYSIS_ROWS_SQL, [sessionId, userId]);
+  return rows;
+}
+
+/** 学生画像（门面读：指定列投影）。 */
+export const STUDENT_PROFILE_COLS_SQL = `SELECT user_id, name, grade, avatar_url, school, textbook_version FROM edu.students WHERE user_id = $1`;
+
+export async function findStudentProfileCols(query: EduQueryFn, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(STUDENT_PROFILE_COLS_SQL, [userId]);
+  return rows[0] ?? null;
+}
+
+/** 学生画像 upsert（固定列，EXCLUDED 语义）。 */
+export const UPSERT_STUDENT_PROFILE_SQL = `INSERT INTO edu.students (user_id, name, grade, avatar_url, school, textbook_version)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (user_id) DO UPDATE SET name=EXCLUDED.name, grade=EXCLUDED.grade, avatar_url=EXCLUDED.avatar_url, school=EXCLUDED.school, textbook_version=EXCLUDED.textbook_version`;
+
+export async function upsertStudentProfile(
+  query: EduQueryFn,
+  input: { userId: string; name?: unknown; grade?: unknown; avatarUrl?: unknown; school?: unknown; textbookVersion?: unknown },
+): Promise<void> {
+  await query(UPSERT_STUDENT_PROFILE_SQL, [
+    input.userId,
+    input.name ?? null,
+    input.grade ?? null,
+    input.avatarUrl ?? null,
+    input.school ?? null,
+    input.textbookVersion ?? null,
+  ]);
+}
+
+/** 用户偏好（整行）。 */
+export const FIND_USER_PREFERENCES_SQL = `SELECT * FROM edu.user_preferences WHERE user_id = $1`;
+
+export async function findUserPreferences(query: EduQueryFn, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(FIND_USER_PREFERENCES_SQL, [userId]);
+  return rows[0] ?? null;
+}
+
+/** 用户偏好 upsert（列名由调用方白名单产生——无注入面）。 */
+export async function upsertUserPreferences(
+  query: EduQueryFn,
+  userId: string,
+  cols: { column: string; value: unknown }[],
+): Promise<void> {
+  if (cols.length === 0) return;
+  const colNames = cols.map((c) => c.column);
+  const vals = cols.map((c) => c.value);
+  const setCols = colNames.map((c, i) => `${c} = $${i + 2}`).join(', ');
+  await query(
+    `INSERT INTO edu.user_preferences (user_id, ${colNames.join(', ')})
+       VALUES ($1, ${colNames.map((_, i) => `$${i + 2}`).join(', ')})
+       ON CONFLICT (user_id) DO UPDATE SET ${setCols}, updated_at = NOW()`,
+    [userId, ...vals],
+  );
+}
+
+/** 作答总览统计（题数 + 正确数）。 */
+export const ANSWER_STATS_AGG_SQL = `SELECT COUNT(*)::int AS n, COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END),0)::int AS correct
+         FROM edu.answer_records WHERE user_id = $1`;
+
+export async function answerStatsAgg(query: EduQueryFn, userId: string): Promise<any> {
+  const { rows = [] } = await query(ANSWER_STATS_AGG_SQL, [userId]);
+  return rows[0] ?? {};
+}
+
+/** 练习会话数。 */
+export const PRACTICE_SESSION_COUNT_SQL = `SELECT COUNT(*)::int AS sessions FROM edu.practice_sessions WHERE user_id = $1`;
+
+export async function practiceSessionCount(query: EduQueryFn, userId: string): Promise<number> {
+  const { rows = [] } = await query(PRACTICE_SESSION_COUNT_SQL, [userId]);
+  return rows[0]?.sessions ?? 0;
+}
+
+/** 未解决错题数。 */
+export const UNRESOLVED_WRONG_COUNT_SQL = `SELECT COUNT(*)::int AS wrong FROM edu.wrong_questions WHERE user_id = $1 AND is_resolved = false`;
+
+export async function unresolvedWrongCount(query: EduQueryFn, userId: string): Promise<number> {
+  const { rows = [] } = await query(UNRESOLVED_WRONG_COUNT_SQL, [userId]);
+  return rows[0]?.wrong ?? 0;
+}
+
+/** SR 队列（含题面），按下次复习升序。 */
+export const SR_QUEUE_WITH_QUESTIONS_SQL = `SELECT sq.question_id, sq.interval, sq.ease_factor, sq.repetitions, sq.next_review,
+              q.content, q.answer, q.type, q.options, COALESCE(q.explanation, q.analysis) AS analysis
+       FROM edu.sr_queue sq LEFT JOIN edu.questions q ON q.id = sq.question_id
+       WHERE sq.user_id = $1 ORDER BY sq.next_review ASC`;
+
+export async function listSrQueueWithQuestions(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(SR_QUEUE_WITH_QUESTIONS_SQL, [userId]);
+  return rows;
+}
+
+/** 建试卷行（pending）。 */
+export const INSERT_EXAM_SQL = `INSERT INTO edu.exams (user_id, subject, grade_level, raw_images, ocr_result, parsed_questions, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING id`;
+
+export async function insertExam(
+  query: EduQueryFn,
+  input: { userId: string; subject: string; gradeLevel: string; rawImages?: string | null; ocrResult?: string | null; parsedQuestions?: string | null },
+): Promise<string | null> {
+  const { rows = [] } = await query(INSERT_EXAM_SQL, [
+    input.userId,
+    input.subject,
+    input.gradeLevel,
+    input.rawImages ?? null,
+    input.ocrResult ?? null,
+    input.parsedQuestions ?? null,
+  ]);
+  return rows[0]?.id ?? null;
+}
+
+/** 学情报告（按 exam）。 */
+export const REPORT_BY_EXAM_SQL = `SELECT * FROM edu.analysis_reports WHERE exam_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 1`;
+
+export async function findReportByExam(query: EduQueryFn, examId: string, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(REPORT_BY_EXAM_SQL, [examId, userId]);
+  return rows[0] ?? null;
+}
+
+/** 最近一份学情报告。 */
+export const LATEST_REPORT_SQL = `SELECT * FROM edu.analysis_reports WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`;
+
+export async function findLatestReport(query: EduQueryFn, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(LATEST_REPORT_SQL, [userId]);
+  return rows[0] ?? null;
+}
+
+/** 学习提醒列表。 */
+export const LIST_REMINDERS_SQL = `SELECT id, plan_id, type, time, message, sent, created_at FROM edu.reminders WHERE user_id = $1 ORDER BY time ASC`;
+
+export async function listReminders(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(LIST_REMINDERS_SQL, [userId]);
+  return rows;
+}
+
+/** 建提醒。 */
+export const INSERT_REMINDER_SQL = `INSERT INTO edu.reminders (user_id, plan_id, type, time, message, sent)
+       VALUES ($1, $2, $3, $4, $5, false) RETURNING *`;
+
+export async function insertReminder(
+  query: EduQueryFn,
+  input: { userId: string; type: string; time?: string | null; message?: string | null },
+): Promise<any> {
+  const { rows = [] } = await query(INSERT_REMINDER_SQL, [input.userId, null, input.type, input.time ?? null, input.message ?? null]);
+  return rows[0] ?? null;
+}
+
+/** 标记提醒已发。 */
+export const MARK_REMINDER_SENT_SQL = `UPDATE edu.reminders SET sent = true, sent_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING *`;
+
+export async function markReminderSent(query: EduQueryFn, reminderId: string, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(MARK_REMINDER_SENT_SQL, [reminderId, userId]);
+  return rows[0] ?? null;
+}
+
+/** 练习历史列表。 */
+export const LIST_PRACTICE_HISTORY_SQL = `SELECT id, user_id, mode, subject, questions, stats, duration, start_time, completed_at, status
+       FROM edu.practice_sessions WHERE user_id = $1 ORDER BY start_time DESC`;
+
+export async function listPracticeHistory(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(LIST_PRACTICE_HISTORY_SQL, [userId]);
+  return rows;
+}
+
+/** 完成练习会话（落答案明细/统计/用时，置 completed）。 */
+export const COMPLETE_PRACTICE_SESSION_SQL = `UPDATE edu.practice_sessions
+       SET status = 'completed',
+           answers = COALESCE($3::jsonb, answers),
+           stats = COALESCE($4::jsonb, stats),
+           duration = COALESCE($5, duration),
+           completed_at = NOW()
+       WHERE id = $1 AND user_id = $2 RETURNING *`;
+
+export async function completePracticeSession(
+  query: EduQueryFn,
+  input: { sessionId: string; userId: string; answers?: string | null; stats?: string | null; duration?: number | null },
+): Promise<any | null> {
+  const { rows = [] } = await query(COMPLETE_PRACTICE_SESSION_SQL, [
+    input.sessionId,
+    input.userId,
+    input.answers ?? null,
+    input.stats ?? null,
+    input.duration ?? null,
+  ]);
+  return rows[0] ?? null;
+}
+
+/** 家长报告：某类型最近一份计划概览。 */
+export const LATEST_PLAN_BY_TYPE_SQL = `SELECT id, plan_type, plan_data, progress, start_date, end_date FROM edu.learning_plans
+       WHERE user_id = $1 AND plan_type = $2 ORDER BY created_at DESC LIMIT 1`;
+
+export async function findLatestPlanByType(query: EduQueryFn, userId: string, planType: string): Promise<any | null> {
+  const { rows = [] } = await query(LATEST_PLAN_BY_TYPE_SQL, [userId, planType]);
+  return rows[0] ?? null;
+}
+
+/** 成就列表。 */
+export const LIST_ACHIEVEMENTS_SQL = `SELECT code, name, description, unlocked_at FROM edu.achievements WHERE user_id = $1 ORDER BY unlocked_at DESC`;
+
+export async function listAchievements(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(LIST_ACHIEVEMENTS_SQL, [userId]);
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// W2.1c-3（agents/）：tutor-agent / session-fsm / plan-agent / ai-agent / question.service
+// ---------------------------------------------------------------------------
+
+/** 该生计划平均分（同龄对比的自身侧）。 */
+export const AVG_PLAN_SCORE_SQL = `SELECT AVG((plan_data->>'score')::float) as avg_score FROM edu.learning_plans WHERE user_id = $1`;
+
+export async function avgPlanScore(query: EduQueryFn, userId: string): Promise<any> {
+  const { rows = [] } = await query(AVG_PLAN_SCORE_SQL, [userId]);
+  return rows[0] ?? {};
+}
+
+/** 同年级同学科他人平均分（同龄对比的同伴侧）。 */
+export const AVG_PEER_SCORE_SQL = `SELECT AVG(ar.student_score) as avg_score
+         FROM edu.analysis_reports ar JOIN edu.exams e ON ar.exam_id = e.id
+         WHERE e.grade_level = $1 AND e.subject = $2 AND ar.user_id != $3`;
+
+export async function avgPeerScore(query: EduQueryFn, gradeLevel: string, subject: string, userId: string): Promise<any> {
+  const { rows = [] } = await query(AVG_PEER_SCORE_SQL, [gradeLevel, subject, userId]);
+  return rows[0] ?? {};
+}
+
+/** 落一份学情报告（tutor-agent）。 */
+export const INSERT_ANALYSIS_REPORT_SQL = `INSERT INTO edu.analysis_reports
+         (exam_id, user_id, knowledge_points, ability_dims, error_attribution,
+          peer_percentile, peer_avg_score, student_score, ai_suggestions, weak_points, strong_points)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING id`;
+
+export async function insertAnalysisReport(
+  query: EduQueryFn,
+  input: {
+    examId: string; userId: string;
+    knowledgePoints: unknown; abilityDims: unknown; errorAttribution: unknown;
+    peerPercentile: unknown; peerAvgScore: unknown; studentScore: unknown;
+    aiSuggestions: unknown; weakPoints: unknown; strongPoints: unknown;
+  },
+): Promise<string | null> {
+  const { rows = [] } = await query(INSERT_ANALYSIS_REPORT_SQL, [
+    input.examId, input.userId,
+    JSON.stringify(input.knowledgePoints), JSON.stringify(input.abilityDims), JSON.stringify(input.errorAttribution),
+    input.peerPercentile, input.peerAvgScore, input.studentScore,
+    JSON.stringify(input.aiSuggestions), JSON.stringify(input.weakPoints), JSON.stringify(input.strongPoints),
+  ]);
+  return rows[0]?.id ?? null;
+}
+
+/** 建会话行（session-fsm）。 */
+export const INSERT_SESSION_SQL = `INSERT INTO edu.sessions (user_id, knowledge_point_id, phase, status, session_data, legacy_id)
+       VALUES ($1, $2::uuid, 'welcome', 'active', '{}'::jsonb, $3)
+       RETURNING id AS session_id, phase`;
+
+export async function insertSession(query: EduQueryFn, userId: string, kpUuid: string | null, legacyId: string): Promise<any | null> {
+  const { rows = [] } = await query(INSERT_SESSION_SQL, [userId, kpUuid, legacyId]);
+  return rows[0] ?? null;
+}
+
+/** 按 id + user_id 取会话行（session-fsm 所有权读）。 */
+export const SESSION_BY_ID_OWNED_SQL = `SELECT id, user_id, phase, status, session_data FROM edu.sessions WHERE id = $1 AND user_id = $2`;
+
+export async function findSessionOwned(query: EduQueryFn, sessionId: string, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(SESSION_BY_ID_OWNED_SQL, [sessionId, userId]);
+  return rows[0] ?? null;
+}
+
+/** 整段覆盖会话 session_data（session-fsm flush）。 */
+export const FLUSH_SESSION_SQL = `UPDATE edu.sessions
+       SET phase = $3::varchar,
+           session_data = $4,
+           status = CASE WHEN $3::varchar = 'done' THEN 'completed' ELSE 'active' END,
+           end_time = CASE WHEN $3::varchar = 'done' THEN NOW() ELSE NULL END
+       WHERE id = $1 AND user_id = $2`;
+
+export async function flushSession(query: EduQueryFn, input: { sessionId: string; userId: string; phase: string; data: string }): Promise<void> {
+  await query(FLUSH_SESSION_SQL, [input.sessionId, input.userId, input.phase, input.data]);
+}
+
+/** 取最新学情报告（plan-agent 投影）。 */
+export const LATEST_REPORT_FOR_PLAN_SQL = `SELECT knowledge_points, ability_dims, error_attribution, ai_suggestions, weak_points, strong_points
+         FROM edu.analysis_reports WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`;
+
+export async function findLatestReportForPlan(query: EduQueryFn, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(LATEST_REPORT_FOR_PLAN_SQL, [userId]);
+  return rows[0] ?? null;
+}
+
+/** 落学习计划（plan-agent 完整列）。 */
+export const INSERT_PLAN_FULL_SQL = `INSERT INTO edu.learning_plans (user_id, title, plan_type, plan_period, plan_data, progress, total_tasks, start_date, end_date, status)
+       VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, 'active')
+       RETURNING id`;
+
+export async function insertPlanFull(
+  query: EduQueryFn,
+  input: { userId: string; title: string; planType: string; planPeriod?: string | null; planData: string; totalTasks: number; startDate: string; endDate?: string | null },
+): Promise<string | null> {
+  const { rows = [] } = await query(INSERT_PLAN_FULL_SQL, [
+    input.userId, input.title, input.planType, input.planPeriod ?? null, input.planData,
+    input.totalTasks, input.startDate, input.endDate ?? null,
+  ]);
+  return rows[0]?.id ?? null;
+}
+
+/** 取计划 plan_data + total_tasks（plan-agent 进度更新前置）。 */
+export const PLAN_DATA_FOR_USER_SQL = `SELECT plan_data, total_tasks FROM edu.learning_plans WHERE id = $1 AND user_id = $2`;
+
+export async function findPlanDataForUser(query: EduQueryFn, planId: string, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(PLAN_DATA_FOR_USER_SQL, [planId, userId]);
+  return rows[0] ?? null;
+}
+
+/** 更新计划进度（plan-agent 标记式重算）。 */
+export const UPDATE_PLAN_PROGRESS_FULL_SQL = `UPDATE edu.learning_plans
+       SET plan_data = $3::jsonb,
+           completed_tasks = $4::int,
+           progress = $5::float,
+           status = $6,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND user_id = $2
+       RETURNING *`;
+
+export async function updatePlanProgressFull(
+  query: EduQueryFn,
+  input: { planId: string; userId: string; planData: string; completedTasks: number; progress: number; status: string },
+): Promise<any | null> {
+  const { rows = [] } = await query(UPDATE_PLAN_PROGRESS_FULL_SQL, [
+    input.planId, input.userId, input.planData, input.completedTasks, input.progress, input.status,
+  ]);
+  return rows[0] ?? null;
+}
+
+/** 建试卷行（ai-agent 精简列）。 */
+export const INSERT_EXAM_BASIC_SQL = `INSERT INTO edu.exams (user_id, subject, grade_level, raw_images, status)
+       VALUES ($1, $2, $3, $4, 'pending') RETURNING id`;
+
+export async function insertExamBasic(
+  query: EduQueryFn,
+  input: { userId: string; subject: string; gradeLevel: string; rawImages?: string | null },
+): Promise<string | null> {
+  const { rows = [] } = await query(INSERT_EXAM_BASIC_SQL, [input.userId, input.subject, input.gradeLevel, input.rawImages ?? null]);
+  return rows[0]?.id ?? null;
+}
+
+/** 回写试卷 OCR 结果 + 解析题（ai-agent 拍照链路）。 */
+export const UPDATE_EXAM_OCR_SQL = `UPDATE edu.exams SET ocr_result = $2, parsed_questions = $3 WHERE id = $1`;
+
+export async function updateExamOcr(query: EduQueryFn, examId: string, ocrResult: string | null, parsedQuestions: string | null): Promise<void> {
+  await query(UPDATE_EXAM_OCR_SQL, [examId, ocrResult, parsedQuestions]);
+}
+
+/** 回写试卷解析题（ai-agent 文本链路）。 */
+export const UPDATE_EXAM_PARSED_SQL = `UPDATE edu.exams SET parsed_questions = $2 WHERE id = $1`;
+
+export async function updateExamParsed(query: EduQueryFn, examId: string, parsedQuestions: string | null): Promise<void> {
+  await query(UPDATE_EXAM_PARSED_SQL, [examId, parsedQuestions]);
+}
+
+/** 标记试卷已分析。 */
+export const MARK_EXAM_ANALYZED_SQL = `UPDATE edu.exams SET status = 'analyzed' WHERE id = $1`;
+
+export async function markExamAnalyzed(query: EduQueryFn, examId: string): Promise<void> {
+  await query(MARK_EXAM_ANALYZED_SQL, [examId]);
+}
+
+/** 按知识点 + 用途取题（question.service：诊断/测验/教学；难度闭集按 type 分档）。 */
+export async function listTuitionQuestions(
+  query: EduQueryFn,
+  kpUuid: string,
+  type: 'diagnosis' | 'quiz' | 'teaching',
+  count: number,
+): Promise<any[]> {
+  let sql = `SELECT id, knowledge_point_id AS kp_id, content, answer, type, difficulty, options, explanation
+               FROM edu.questions WHERE knowledge_point_id = $1`;
+  const params: unknown[] = [kpUuid];
+  if (type === 'quiz') {
+    sql += ` AND difficulty IN ('easy','medium','hard')`;
+  } else {
+    sql += ` AND difficulty IN ('easy','medium')`;
+  }
+  sql += ` ORDER BY difficulty ASC LIMIT $${params.length + 1}`;
+  params.push(count);
+  const { rows = [] } = await query(sql, params);
+  return rows;
+}

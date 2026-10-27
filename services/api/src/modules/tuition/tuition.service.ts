@@ -22,6 +22,48 @@ import { QuestionGeneratorAgent } from './agents/question-generator';
 import { PlanAgent } from './agents/plan-agent';
 import { SpacedRepetitionService } from './agents/spaced-repetition.service';
 import { randomUUID } from 'node:crypto';
+import {
+  eduQuery,
+  listQuestionBank,
+  findQuestionById,
+  listActiveWrongQuestions,
+  markWrongResolvedByQuestion,
+  findWrongQuestionForReview,
+  markWrongQuestionReviewed,
+  listDueWrongQuestions,
+  findWrongQuestionDetail,
+  wrongQuestionStatsAgg,
+  wrongQuestionStatsByKp,
+  srQueueStats,
+  listLearningPlans,
+  insertLearningPlanBasic,
+  insertPracticeSessionBasic,
+  insertPracticeSession,
+  listWeaknessQuestions,
+  findPracticeSessionById,
+  insertPracticeAnswerRecord,
+  upsertPracticeWrongQuestion,
+  sessionAnswerAgg,
+  sessionAnalysisRows,
+  findStudentProfileCols,
+  upsertStudentProfile,
+  findUserPreferences,
+  upsertUserPreferences,
+  answerStatsAgg,
+  practiceSessionCount,
+  unresolvedWrongCount,
+  listSrQueueWithQuestions,
+  insertExam,
+  findReportByExam,
+  findLatestReport,
+  listReminders,
+  insertReminder,
+  markReminderSent,
+  listPracticeHistory,
+  completePracticeSession,
+  findLatestPlanByType,
+  listAchievements,
+} from '../edu-core/repository';
 
 /**
  * 学情域统一门面。所有权铁律：一切个人数据以 `userId`（≡ req.auth.externalId）为真源，
@@ -75,37 +117,21 @@ export class TuitionService {
   // ===================== 题目 =====================
 
   async getQuestionBank(query: { subject?: string; knowledgePoint?: string; chapterId?: string; limit?: number }): Promise<Question[]> {
-    // subject 在 edu.knowledge_points 而非 edu.questions → JOIN 后在 kp.subject 上过滤。
-    let sql = `SELECT q.*, kp.name AS knowledge_point_name FROM edu.questions q
-               LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id`;
-    const conds: string[] = [];
-    const params: unknown[] = [];
-    if (query.subject) {
-      conds.push(`kp.subject = $${params.length + 1}`);
-      params.push(query.subject);
-    }
-    // 章节过滤（练习中心「主题」= 教材章节）：kp.chapter_id 精确命中。
-    if (query.chapterId) {
-      conds.push(`kp.chapter_id = $${params.length + 1}`);
-      params.push(query.chapterId);
-    }
     // 空/缺省 knowledgePoint 不解析（避免误关联），只在有值时按 legacy→uuid 解析
     const kpUuid = query.knowledgePoint ? await this.questionService.resolveKnowledgePointId(query.knowledgePoint) : null;
-    if (kpUuid) {
-      conds.push(`q.knowledge_point_id = $${params.length + 1}`);
-      params.push(kpUuid);
-    }
-    if (conds.length) sql += ` WHERE ${conds.join(' AND ')}`;
-    sql += ` ORDER BY q.created_at DESC LIMIT $${params.length + 1}`;
-    params.push(query.limit || 20);
-    const res = await this.db.query(sql, params);
-    return res.rows as Question[];
+    const rows = await listQuestionBank(eduQuery(this.db), {
+      subject: query.subject,
+      chapterId: query.chapterId,
+      kpUuid,
+      limit: query.limit || 20,
+    });
+    return rows as Question[];
   }
 
   async getQuestionDetail(id: string): Promise<Question> {
-    const res = await this.db.query('SELECT * FROM edu.questions WHERE id = $1', [id]);
-    if (res.rows.length === 0) throw new NotFoundException('题目不存在');
-    return res.rows[0] as Question;
+    const q = await findQuestionById(eduQuery(this.db), id);
+    if (!q) throw new NotFoundException('题目不存在');
+    return q as Question;
   }
 
   async generateQuestions(userId: string, params: any) {
@@ -142,40 +168,23 @@ export class TuitionService {
   // ===================== 错题本 =====================
 
   async getWrongQuestions(userId: string): Promise<WrongQuestion[]> {
-    const res = await this.db.query(
-      `SELECT id, question_id, question_text, subject, knowledge_point, student_answer, correct_answer,
-              error_type, difficulty, reviewed, mastered, review_count, wrong_count, last_attempt_at,
-              (SELECT content FROM edu.questions q WHERE q.id = edu.wrong_questions.question_id) AS content
-       FROM edu.wrong_questions
-       WHERE user_id = $1 AND is_resolved = false
-       ORDER BY last_attempt_at DESC`,
-      [userId],
-    );
-    return res.rows as WrongQuestion[];
+    const rows = await listActiveWrongQuestions(eduQuery(this.db), userId);
+    return rows as WrongQuestion[];
   }
 
   async markQuestionResolved(userId: string, questionId: string): Promise<void> {
-    await this.db.query(
-      `UPDATE edu.wrong_questions SET is_resolved = true WHERE user_id = $1 AND question_id = $2`,
-      [userId, questionId],
-    );
+    await markWrongResolvedByQuestion(eduQuery(this.db), userId, questionId);
   }
 
   /** SM-2 复习：更新错题状态 + 间隔重复队列。id = wrong_question.id（UUID）。 */
   async reviewWrongQuestion(userId: string, id: string, mastery = 0.8, reviewStatus = 'mastered') {
-    const row = await this.db.query(
-      `SELECT question_id FROM edu.wrong_questions WHERE id = $1 AND user_id = $2`,
-      [id, userId],
-    );
-    if (row.rows.length === 0) throw new NotFoundException('错题不存在或无权访问');
-    const questionId = row.rows[0].question_id;
+    const row = await findWrongQuestionForReview(eduQuery(this.db), id, userId);
+    if (!row) throw new NotFoundException('错题不存在或无权访问');
+    // 题号可能是 NULL（AI 去规范行，migration 006 起 question_id 可空）——故判「行存在」而非「题号非空」，
+    // 与旧实现（rows.length===0 才 404）逐字节等价：去规范行照常标记已复习、跳过 SR。
+    const questionId = row.question_id;
 
-    await this.db.query(
-      `UPDATE edu.wrong_questions
-       SET reviewed = true, mastery_level = $2, is_resolved = true, last_reviewed_at = CURRENT_TIMESTAMP
-       WHERE id = $1 AND user_id = $3`,
-      [id, reviewStatus, userId],
-    );
+    await markWrongQuestionReviewed(eduQuery(this.db), id, reviewStatus, userId);
     if (questionId && mastery != null) {
       await this.sr.updateSRQueue(userId, questionId, mastery);
     }
@@ -189,23 +198,9 @@ export class TuitionService {
    */
   async getDueWrongQuestions(userId: string, limit = 20): Promise<DueWrongQuestionDto[]> {
     const n = Math.min(Math.max(Number(limit) || 20, 1), 100);
-    const res = await this.db.query(
-      `SELECT sq.question_id, sq.last_reviewed, sq.interval, sq.ease_factor, sq.repetitions, sq.next_review,
-              q.content, q.type, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
-              wq.id AS wrong_question_id, wq.error_type, wq.wrong_count, wq.subject,
-              wq.difficulty AS wrong_difficulty, wq.last_attempt_at,
-              COALESCE(wq.knowledge_point, kp.name) AS knowledge_point
-         FROM edu.sr_queue sq
-         JOIN edu.questions q ON q.id = sq.question_id
-         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-         LEFT JOIN edu.wrong_questions wq ON wq.user_id = sq.user_id AND wq.question_id = sq.question_id
-        WHERE sq.user_id = $1 AND sq.next_review IS NOT NULL AND sq.next_review <= NOW()
-        ORDER BY sq.next_review ASC
-        LIMIT $2`,
-      [userId, n],
-    );
+    const rows = await listDueWrongQuestions(eduQuery(this.db), userId, n);
     const now = Date.now();
-    return res.rows.map((r: any) => {
+    return rows.map((r: any) => {
       const nextReview = r.next_review ? new Date(r.next_review) : null;
       return {
         id: r.wrong_question_id ?? null,
@@ -238,22 +233,8 @@ export class TuitionService {
    * 所有权：先按 id 取行，不存在 → 404；属他人 → 403（与 loadOwnedSession 同语义）。
    */
   async getWrongQuestionById(userId: string, id: string): Promise<WrongQuestionDetailDto> {
-    const res = await this.db.query(
-      `SELECT wq.id, wq.user_id, wq.question_id, wq.wrong_count, wq.last_attempt_at, wq.is_resolved,
-              wq.question_text, wq.question_type, wq.subject, wq.student_answer, wq.correct_answer,
-              wq.error_type, wq.difficulty, wq.mastery_level, wq.reviewed, wq.mastered, wq.review_count,
-              wq.last_reviewed_at, COALESCE(wq.knowledge_point, kp.name) AS knowledge_point,
-              q.content, q.type, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
-              sq.interval, sq.ease_factor, sq.repetitions, sq.next_review, sq.last_reviewed
-         FROM edu.wrong_questions wq
-         LEFT JOIN edu.questions q ON q.id = wq.question_id
-         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-         LEFT JOIN edu.sr_queue sq ON sq.user_id = wq.user_id AND sq.question_id = wq.question_id
-        WHERE wq.id = $1`,
-      [id],
-    );
-    if (res.rows.length === 0) throw new NotFoundException('错题不存在或无权访问');
-    const r: any = res.rows[0];
+    const r = await findWrongQuestionDetail(eduQuery(this.db), id);
+    if (!r) throw new NotFoundException('错题不存在或无权访问');
     if (r.user_id !== userId) throw new ForbiddenException('无权访问他人错题');
     return {
       id: r.id,
@@ -295,40 +276,11 @@ export class TuitionService {
    * 错误类型沿用库内中文值（N6），不做英文枚举映射。
    */
   async getWrongQuestionStats(userId: string): Promise<WrongQuestionStatsDto> {
-    const [agg, kps, sr] = await Promise.all([
-      this.db.query(
-        `SELECT COUNT(*)::int AS total,
-                COUNT(*) FILTER (WHERE reviewed = false)::int AS unreviewed,
-                COUNT(*) FILTER (WHERE reviewed = true AND mastered = false)::int AS reviewing,
-                COUNT(*) FILTER (WHERE mastered = true)::int AS mastered,
-                COUNT(*) FILTER (WHERE reviewed = true)::int AS reviewed,
-                COUNT(*) FILTER (WHERE is_resolved = true)::int AS resolved,
-                COUNT(*) FILTER (WHERE is_resolved = false)::int AS unresolved
-           FROM edu.wrong_questions WHERE user_id = $1`,
-        [userId],
-      ),
-      this.db.query(
-        `SELECT COALESCE(wq.knowledge_point, kp.name) AS knowledge_point,
-                SUM(wq.wrong_count)::int AS wrong_count,
-                COUNT(*)::int AS question_count
-           FROM edu.wrong_questions wq
-           LEFT JOIN edu.questions q ON q.id = wq.question_id
-           LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-          WHERE wq.user_id = $1
-          GROUP BY COALESCE(wq.knowledge_point, kp.name)
-          ORDER BY wrong_count DESC, question_count DESC
-          LIMIT 5`,
-        [userId],
-      ),
-      this.db.query(
-        `SELECT COUNT(*)::int AS scheduled,
-                COUNT(*) FILTER (WHERE next_review IS NOT NULL AND next_review <= NOW())::int AS due
-           FROM edu.sr_queue WHERE user_id = $1`,
-        [userId],
-      ),
+    const [a, kps, s] = await Promise.all([
+      wrongQuestionStatsAgg(eduQuery(this.db), userId),
+      wrongQuestionStatsByKp(eduQuery(this.db), userId),
+      srQueueStats(eduQuery(this.db), userId),
     ]);
-    const a = agg.rows[0] ?? {};
-    const s = sr.rows[0] ?? {};
     const total = a.total ?? 0;
     const reviewed = a.reviewed ?? 0;
     return {
@@ -339,7 +291,7 @@ export class TuitionService {
         { key: 'reviewing', label: '复习中', count: a.reviewing ?? 0 },
         { key: 'mastered', label: '已掌握', count: a.mastered ?? 0 },
       ],
-      topErrorKnowledgePoints: kps.rows.map((r: any) => ({
+      topErrorKnowledgePoints: kps.map((r: any) => ({
         knowledgePoint: r.knowledge_point ?? null,
         wrongCount: r.wrong_count ?? 0,
         questionCount: r.question_count ?? 0,
@@ -361,23 +313,19 @@ export class TuitionService {
   // ===================== 学习计划 =====================
 
   async getLearningPlans(userId: string): Promise<LearningPlan[]> {
-    const res = await this.db.query(
-      `SELECT * FROM edu.learning_plans WHERE user_id = $1 ORDER BY start_date DESC`,
-      [userId],
-    );
-    return res.rows as LearningPlan[];
+    return (await listLearningPlans(eduQuery(this.db), userId)) as LearningPlan[];
   }
 
   async createLearningPlan(
     userId: string,
     plan: { title: string; start_date?: string; end_date?: string },
   ): Promise<LearningPlan> {
-    const res = await this.db.query(
-      `INSERT INTO edu.learning_plans (user_id, title, start_date, end_date, progress, status)
-       VALUES ($1, $2, $3, $4, 0, 'active') RETURNING *`,
-      [userId, plan.title, plan.start_date ?? null, plan.end_date ?? null],
-    );
-    return res.rows[0] as LearningPlan;
+    return (await insertLearningPlanBasic(eduQuery(this.db), {
+      userId,
+      title: plan.title,
+      startDate: plan.start_date ?? null,
+      endDate: plan.end_date ?? null,
+    })) as LearningPlan;
   }
 
   async generatePlan(userId: string, params: { planType?: string; analysisReportId?: string; startDate?: string; endDate?: string; subjects?: string[] }) {
@@ -398,12 +346,7 @@ export class TuitionService {
   // ===================== 练习会话 =====================
 
   async startSession(userId: string): Promise<PracticeSession> {
-    const res = await this.db.query(
-      `INSERT INTO edu.practice_sessions (user_id, mode, subject, start_time, status)
-       VALUES ($1, 'practice', 'math', NOW(), 'in_progress') RETURNING *`,
-      [userId],
-    );
-    return res.rows[0] as PracticeSession;
+    return (await insertPracticeSessionBasic(eduQuery(this.db), userId)) as PracticeSession;
   }
 
   /**
@@ -414,35 +357,19 @@ export class TuitionService {
     userId: string,
     opts: { mode?: string; subject?: string; topicId?: string; questions?: unknown[] } = {},
   ): Promise<PracticeSession> {
-    const res = await this.db.query(
-      `INSERT INTO edu.practice_sessions (user_id, mode, subject, topic_id, questions, start_time, status)
-       VALUES ($1, $2, $3, $4, $5::jsonb, NOW(), 'in_progress') RETURNING *`,
-      [
-        userId,
-        opts.mode || 'quick',
-        opts.subject || 'math',
-        opts.topicId || null,
-        opts.questions?.length ? JSON.stringify(opts.questions) : null,
-      ],
-    );
-    return res.rows[0] as PracticeSession;
+    return (await insertPracticeSession(eduQuery(this.db), {
+      userId,
+      mode: opts.mode || 'quick',
+      subject: opts.subject || 'math',
+      topicId: opts.topicId || null,
+      questions: opts.questions,
+    })) as PracticeSession;
   }
 
   /** 薄弱攻克：学生未解决错题 → 完整题面（含选项/答案/解析），供练习中心「薄弱攻克」模式。 */
   async getWeaknessQuestions(userId: string, limit = 15) {
     const n = Math.min(Math.max(Number(limit) || 15, 1), 50);
-    const res = await this.db.query(
-      `SELECT q.id, q.content, q.options, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
-              q.difficulty, q.type, kp.name AS knowledge_point_name
-         FROM edu.wrong_questions wq
-         JOIN edu.questions q ON q.id = wq.question_id
-         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-        WHERE wq.user_id = $1 AND wq.is_resolved = false
-        ORDER BY wq.last_attempt_at DESC NULLS LAST
-        LIMIT $2`,
-      [userId, n],
-    );
-    return res.rows;
+    return listWeaknessQuestions(eduQuery(this.db), userId, n);
   }
 
   /**
@@ -451,10 +378,10 @@ export class TuitionService {
    */
   private async loadOwnedSession(userId: string, sessionId: string): Promise<any> {
     if (!TuitionService.UUID_RE.test(sessionId)) throw new NotFoundException('练习会话不存在');
-    const res = await this.db.query(`SELECT * FROM edu.practice_sessions WHERE id = $1`, [sessionId]);
-    if (res.rows.length === 0) throw new NotFoundException('练习会话不存在');
-    if (res.rows[0].user_id !== userId) throw new ForbiddenException('无权访问他人练习会话');
-    return res.rows[0];
+    const row = await findPracticeSessionById(eduQuery(this.db), sessionId);
+    if (!row) throw new NotFoundException('练习会话不存在');
+    if (row.user_id !== userId) throw new ForbiddenException('无权访问他人练习会话');
+    return row;
   }
 
   /** 提交练习答案：落 answer_records（含真实 session_id）+ SM-2 更新 + 错题入账。 */
@@ -467,11 +394,14 @@ export class TuitionService {
     const verdict = await this.llmValidatePlaceholder(q, body.answer);
     const isCorrect = body.isCorrect != null ? body.isCorrect : verdict.correct;
 
-    await this.db.query(
-      `INSERT INTO edu.answer_records (user_id, question_id, session_id, student_answer, is_correct, time_spent_ms)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, body.questionId, body.sessionId ?? null, body.answer, isCorrect, body.timeSpentMs ?? null],
-    );
+    await insertPracticeAnswerRecord(eduQuery(this.db), {
+      userId,
+      questionId: body.questionId,
+      sessionId: body.sessionId ?? null,
+      studentAnswer: body.answer,
+      isCorrect,
+      timeSpentMs: body.timeSpentMs ?? null,
+    });
 
     // SM-2 间隔重复
     await this.sr.updateSRQueue(userId, body.questionId, isCorrect ? 0.9 : 0.2);
@@ -481,28 +411,23 @@ export class TuitionService {
     }
     // 错题入账（幂等：已有则 wrong_count+1）。difficulty 列是 FLOAT，级别字符串要映射为数值。
     const diffNum = ({ easy: 0.3, medium: 0.5, hard: 0.8 } as Record<string, number>)[q.difficulty ?? ''] ?? 0.5;
-    await this.db.query(
-      `INSERT INTO edu.wrong_questions
-         (id, user_id, question_id, student_answer, correct_answer, error_type, difficulty, reviewed, mastered, review_count, wrong_count, last_attempt_at, last_reviewed_at)
-       VALUES ($1, $2, $3, $4, $5, '计算错误', $6, false, false, 0, 1, CURRENT_TIMESTAMP, NULL)
-       ON CONFLICT (user_id, question_id) DO UPDATE SET wrong_count = edu.wrong_questions.wrong_count + 1, last_attempt_at = CURRENT_TIMESTAMP
-       RETURNING id`,
-      [randomUUID(), userId, body.questionId, body.answer, q.answer, diffNum],
-    );
+    await upsertPracticeWrongQuestion(eduQuery(this.db), {
+      id: randomUUID(),
+      userId,
+      questionId: body.questionId,
+      studentAnswer: body.answer,
+      correctAnswer: q.answer,
+      difficulty: diffNum,
+    });
     return { success: true, correct: false };
   }
 
   /** 会话进度：已答/总数/正确率/当前题索引。 */
   async getSessionProgress(userId: string, sessionId: string): Promise<SessionProgressDto> {
     const session = await this.loadOwnedSession(userId, sessionId);
-    const agg = await this.db.query(
-      `SELECT COUNT(*)::int AS answered,
-              COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END), 0)::int AS correct
-         FROM edu.answer_records WHERE session_id = $1 AND user_id = $2`,
-      [sessionId, userId],
-    );
-    const answered = Number(agg.rows[0]?.answered ?? 0);
-    const correctCount = Number(agg.rows[0]?.correct ?? 0);
+    const agg = await sessionAnswerAgg(eduQuery(this.db), sessionId, userId);
+    const answered = Number(agg?.answered ?? 0);
+    const correctCount = Number(agg?.correct ?? 0);
     // total 优先取会话题面快照长度；无快照时回退为已答数（不臆造分母）。
     const planned = Array.isArray(session.questions) ? session.questions.length : 0;
     const total = planned > 0 ? planned : answered;
@@ -520,19 +445,8 @@ export class TuitionService {
   /** 会话分析：逐题解析数组 + 按 knowledge_point_id 聚合的正确率。 */
   async getSessionAnalysis(userId: string, sessionId: string): Promise<SessionAnalysisDto> {
     await this.loadOwnedSession(userId, sessionId);
-    const res = await this.db.query(
-      `SELECT ar.question_id, ar.student_answer, ar.is_correct, ar.time_spent_ms,
-              q.content, q.answer, COALESCE(q.explanation, q.analysis) AS analysis,
-              q.type, q.options, q.content_latex, q.answer_latex, q.difficulty,
-              q.knowledge_point_id, kp.name AS knowledge_point_name
-         FROM edu.answer_records ar
-         LEFT JOIN edu.questions q ON q.id = ar.question_id
-         LEFT JOIN edu.knowledge_points kp ON kp.id = q.knowledge_point_id
-        WHERE ar.session_id = $1 AND ar.user_id = $2
-        ORDER BY ar.created_at ASC`,
-      [sessionId, userId],
-    );
-    const items: SessionAnalysisItem[] = (res.rows as any[]).map((r) => ({
+    const rows = await sessionAnalysisRows(eduQuery(this.db), sessionId, userId);
+    const items: SessionAnalysisItem[] = (rows as any[]).map((r) => ({
       questionId: r.question_id,
       content: r.content ?? null,
       type: r.type ?? null,
@@ -591,47 +505,35 @@ export class TuitionService {
   // ===================== 用户画像 =====================
 
   async getUserProfile(userId: string) {
-    const res = await this.db.query(
-      `SELECT user_id, name, grade, avatar_url, school, textbook_version FROM edu.students WHERE user_id = $1`,
-      [userId],
-    );
-    return res.rows[0] ?? { user_id: userId };
+    return (await findStudentProfileCols(eduQuery(this.db), userId)) ?? { user_id: userId };
   }
 
   async updateUserProfile(userId: string, data: any) {
-    await this.db.query(
-      `INSERT INTO edu.students (user_id, name, grade, avatar_url, school, textbook_version)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (user_id) DO UPDATE SET name=EXCLUDED.name, grade=EXCLUDED.grade, avatar_url=EXCLUDED.avatar_url, school=EXCLUDED.school, textbook_version=EXCLUDED.textbook_version`,
-      [userId, data.name ?? null, data.grade ?? null, data.avatarUrl ?? data.avatar_url ?? null, data.school ?? null, data.textbookVersion ?? null],
-    );
+    await upsertStudentProfile(eduQuery(this.db), {
+      userId,
+      name: data.name ?? null,
+      grade: data.grade ?? null,
+      avatarUrl: data.avatarUrl ?? data.avatar_url ?? null,
+      school: data.school ?? null,
+      textbookVersion: data.textbookVersion ?? null,
+    });
     return { success: true };
   }
 
   async getUserPreferences(userId: string) {
-    const res = await this.db.query(`SELECT * FROM edu.user_preferences WHERE user_id = $1`, [userId]);
-    return res.rows[0] ?? {};
+    return (await findUserPreferences(eduQuery(this.db), userId)) ?? {};
   }
 
   async updateUserPreferences(userId: string, data: any) {
-    const cols: string[] = [];
-    const vals: unknown[] = [];
+    const cols: { column: string; value: unknown }[] = [];
     for (const [key, col] of Object.entries(PREF_COLUMNS)) {
       const v = data[key];
       if (v === undefined) continue;
       if (v === null || Array.isArray(v) || ['boolean', 'number', 'string'].includes(typeof v)) {
-        cols.push(col);
-        vals.push(v === undefined ? null : v);
+        cols.push({ column: col, value: v === undefined ? null : v });
       }
     }
-    if (cols.length === 0) return { success: true };
-    const setCols = cols.map((c, i) => `${c} = $${i + 2}`).join(', ');
-    await this.db.query(
-      `INSERT INTO edu.user_preferences (user_id, ${cols.join(', ')})
-       VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(', ')})
-       ON CONFLICT (user_id) DO UPDATE SET ${setCols}, updated_at = NOW()`,
-      [userId, ...vals],
-    );
+    await upsertUserPreferences(eduQuery(this.db), userId, cols);
     return { success: true };
   }
 
@@ -640,40 +542,22 @@ export class TuitionService {
   }
 
   async computeStats(userId: string) {
-    const [days, practice, wrongs] = await Promise.all([
-      this.db.query(
-        `SELECT COUNT(*)::int AS n, COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END),0)::int AS correct
-         FROM edu.answer_records WHERE user_id = $1`,
-        [userId],
-      ),
-      this.db.query(
-        `SELECT COUNT(*)::int AS sessions FROM edu.practice_sessions WHERE user_id = $1`,
-        [userId],
-      ),
-      this.db.query(
-        `SELECT COUNT(*)::int AS wrong FROM edu.wrong_questions WHERE user_id = $1 AND is_resolved = false`,
-        [userId],
-      ),
+    const [a, practiceSessions, unresolvedWrong] = await Promise.all([
+      answerStatsAgg(eduQuery(this.db), userId),
+      practiceSessionCount(eduQuery(this.db), userId),
+      unresolvedWrongCount(eduQuery(this.db), userId),
     ]);
-    const a = days.rows[0];
     return {
       totalAnswered: a?.n ?? 0,
       correctCount: a?.correct ?? 0,
       accuracy: a?.n ? Math.round((a.correct / a.n) * 100) : 0,
-      practiceSessions: practice.rows[0]?.sessions ?? 0,
-      unresolvedWrong: wrongs.rows[0]?.wrong ?? 0,
+      practiceSessions,
+      unresolvedWrong,
     };
   }
 
   async getSpacedRepetitionQueue(userId: string) {
-    const res = await this.db.query(
-      `SELECT sq.question_id, sq.interval, sq.ease_factor, sq.repetitions, sq.next_review,
-              q.content, q.answer, q.type, q.options, COALESCE(q.explanation, q.analysis) AS analysis
-       FROM edu.sr_queue sq LEFT JOIN edu.questions q ON q.id = sq.question_id
-       WHERE sq.user_id = $1 ORDER BY sq.next_review ASC`,
-      [userId],
-    );
-    return res.rows;
+    return listSrQueueWithQuestions(eduQuery(this.db), userId);
   }
 
   // ===================== 主观链路（试卷 → 分析 → 出题 → 计划） =====================
@@ -683,67 +567,52 @@ export class TuitionService {
   }
 
   async saveExam(userId: string, data: any) {
-    const insert = await this.db.query(
-      `INSERT INTO edu.exams (user_id, subject, grade_level, raw_images, ocr_result, parsed_questions, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING id`,
-      [userId, data.subject || 'math', data.gradeLevel || data.grade || '8', data.rawImages ? JSON.stringify(data.rawImages) : null, data.ocrResult ? (typeof data.ocrResult === 'string' ? data.ocrResult : JSON.stringify(data.ocrResult)) : null, data.parsedQuestions ? JSON.stringify(data.parsedQuestions) : null],
-    );
-    return { success: true, examId: insert.rows[0].id };
+    const examId = await insertExam(eduQuery(this.db), {
+      userId,
+      subject: data.subject || 'math',
+      gradeLevel: data.gradeLevel || data.grade || '8',
+      rawImages: data.rawImages ? JSON.stringify(data.rawImages) : null,
+      ocrResult: data.ocrResult ? (typeof data.ocrResult === 'string' ? data.ocrResult : JSON.stringify(data.ocrResult)) : null,
+      parsedQuestions: data.parsedQuestions ? JSON.stringify(data.parsedQuestions) : null,
+    });
+    return { success: true, examId };
   }
 
   async getAnalysisReport(userId: string, examId: string) {
-    const res = await this.db.query(
-      `SELECT * FROM edu.analysis_reports WHERE exam_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 1`,
-      [examId, userId],
-    );
-    if (res.rows.length === 0) throw new NotFoundException('报告不存在');
-    return res.rows[0];
+    const r = await findReportByExam(eduQuery(this.db), examId, userId);
+    if (!r) throw new NotFoundException('报告不存在');
+    return r;
   }
 
   async getLatestReport(userId: string) {
-    const res = await this.db.query(
-      `SELECT * FROM edu.analysis_reports WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
-      [userId],
-    );
-    if (res.rows.length === 0) throw new NotFoundException('暂无学情报告');
-    return res.rows[0];
+    const r = await findLatestReport(eduQuery(this.db), userId);
+    if (!r) throw new NotFoundException('暂无学情报告');
+    return r;
   }
 
   /** 学习提醒（user_id 定位）。 */
   async getReminders(userId: string) {
-    const res = await this.db.query(
-      `SELECT id, plan_id, type, time, message, sent, created_at FROM edu.reminders WHERE user_id = $1 ORDER BY time ASC`,
-      [userId],
-    );
-    return res.rows;
+    return listReminders(eduQuery(this.db), userId);
   }
 
   async createReminder(userId: string, data: { type?: string; time?: string; message?: string }) {
-    const res = await this.db.query(
-      `INSERT INTO edu.reminders (user_id, plan_id, type, time, message, sent)
-       VALUES ($1, $2, $3, $4, $5, false) RETURNING *`,
-      [userId, null, data.type || 'general', data.time ?? null, data.message ?? null],
-    );
-    return res.rows[0];
+    return insertReminder(eduQuery(this.db), {
+      userId,
+      type: data.type || 'general',
+      time: data.time ?? null,
+      message: data.message ?? null,
+    });
   }
 
   async markReminderSent(userId: string, reminderId: string) {
-    const res = await this.db.query(
-      `UPDATE edu.reminders SET sent = true, sent_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING *`,
-      [reminderId, userId],
-    );
-    if (res.rows.length === 0) throw new NotFoundException('提醒不存在或无权访问');
-    return res.rows[0];
+    const r = await markReminderSent(eduQuery(this.db), reminderId, userId);
+    if (!r) throw new NotFoundException('提醒不存在或无权访问');
+    return r;
   }
 
   /** 练习历史。 */
   async getPracticeHistory(userId: string) {
-    const res = await this.db.query(
-      `SELECT id, user_id, mode, subject, questions, stats, duration, start_time, completed_at, status
-       FROM edu.practice_sessions WHERE user_id = $1 ORDER BY start_time DESC`,
-      [userId],
-    );
-    return res.rows;
+    return listPracticeHistory(eduQuery(this.db), userId);
   }
 
   /** 完成练习会话：落答案明细 + 统计 + 用时，标记 completed。 */
@@ -753,43 +622,25 @@ export class TuitionService {
     data: { answers?: unknown[]; stats?: unknown; duration?: number; score?: number },
   ) {
     const stats = data.stats ?? (data.score != null ? { score: data.score } : null);
-    const res = await this.db.query(
-      `UPDATE edu.practice_sessions
-       SET status = 'completed',
-           answers = COALESCE($3::jsonb, answers),
-           stats = COALESCE($4::jsonb, stats),
-           duration = COALESCE($5, duration),
-           completed_at = NOW()
-       WHERE id = $1 AND user_id = $2 RETURNING *`,
-      [
-        sessionId,
-        userId,
-        data.answers?.length ? JSON.stringify(data.answers) : null,
-        stats ? JSON.stringify(stats) : null,
-        data.duration ?? null,
-      ],
-    );
-    if (res.rows.length === 0) throw new NotFoundException('练习会话不存在或无权访问');
-    return res.rows[0];
+    const row = await completePracticeSession(eduQuery(this.db), {
+      sessionId,
+      userId,
+      answers: data.answers?.length ? JSON.stringify(data.answers) : null,
+      stats: stats ? JSON.stringify(stats) : null,
+      duration: data.duration ?? null,
+    });
+    if (!row) throw new NotFoundException('练习会话不存在或无权访问');
+    return row;
   }
 
   /** 家长报告：取最近一份学习计划概览。 */
   async getParentReport(userId: string, planType = 'weekly') {
-    const res = await this.db.query(
-      `SELECT id, plan_type, plan_data, progress, start_date, end_date FROM edu.learning_plans
-       WHERE user_id = $1 AND plan_type = $2 ORDER BY created_at DESC LIMIT 1`,
-      [userId, planType],
-    );
-    if (res.rows.length === 0) return { success: false, error: '暂无计划' };
-    const p = res.rows[0];
+    const p = await findLatestPlanByType(eduQuery(this.db), userId, planType);
+    if (!p) return { success: false, error: '暂无计划' };
     return { success: true, report: { planId: p.id, planType: p.plan_type, progress: p.progress, planData: p.plan_data, period: { start: p.start_date, end: p.end_date } } };
   }
 
   async getAchievements(userId: string) {
-    const res = await this.db.query(
-      `SELECT code, name, description, unlocked_at FROM edu.achievements WHERE user_id = $1 ORDER BY unlocked_at DESC`,
-      [userId],
-    );
-    return res.rows;
+    return listAchievements(eduQuery(this.db), userId);
   }
 }

@@ -17,20 +17,29 @@ import {
  */
 const INLINE_EDU_SQL = /(FROM|JOIN|INTO|UPDATE)\s+edu\./;
 
-/** 某模块目录下的生产源码（排除 `*.spec.ts` —— 测试假库自带 SQL 属测试装置，非生产直取）。 */
+/** 某模块目录下的生产源码（**递归**子目录，排除 `*.spec.ts` —— 测试假库自带 SQL 属测试装置，非生产直取）。 */
 function moduleSources(dir: string): Array<{ file: string; text: string }> {
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.ts') && !e.name.endsWith('.spec.ts'))
-    .map((e) => ({ file: e.name, text: readFileSync(join(dir, e.name), 'utf8') }));
+  const out: Array<{ file: string; text: string }> = [];
+  const walk = (d: string, prefix: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        walk(join(d, e.name), `${prefix}${e.name}/`);
+      } else if (e.isFile() && e.name.endsWith('.ts') && !e.name.endsWith('.spec.ts')) {
+        out.push({ file: `${prefix}${e.name}`, text: readFileSync(join(d, e.name), 'utf8') });
+      }
+    }
+  };
+  walk(dir, '');
+  return out;
 }
 
 /**
  * W2.1 出口判据的可执行版：「`edu.*` 单一领域组件」不是靠约定，而是靠这条断言守着。
  * 任何人往**受守卫模块**里再写一句内联 `edu.*` SQL，本用例即红。
- * 扫描面 = 模块顶层 `.ts`（排除 spec）。**注**：`tuition` 的直取在 `agents/` 子目录（须递归，待 W2.1c-3 收口后纳入）；
- * `curriculum` 待 W2.1c-2。
+ * 扫描面 = 模块目录**递归**下所有非 spec `.ts`（tuition 的直取在 `agents/` 子目录，故须递归）。
+ * **注**：`curriculum` 多为 ontology 查询里 JOIN `edu.knowledge_points`（联表富化）——按裁决暂缓（W2.1c-2），未纳入。
  */
-const GUARDED_MODULES = ['agent', 'identity', 'twin'];
+const GUARDED_MODULES = ['agent', 'identity', 'twin', 'tuition'];
 
 describe('edu-core 单一领域所有者（W2.1 / W2.1c）', () => {
   it.each(GUARDED_MODULES)('%s 模块生产源码零直取 edu.*（一律经 edu-core）', (mod) => {

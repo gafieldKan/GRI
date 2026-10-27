@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
+import { eduQuery, findLatestReportForPlan, insertPlanFull, findPlanDataForUser, updatePlanProgressFull } from '../../edu-core/repository';
 import { QuestionGeneratorAgent } from './question-generator';
 
 /**
@@ -108,13 +109,8 @@ export class PlanAgent {
   /** 取最新学情报告（user_id 定位）。 */
   async _getLatestReport(userId: string): Promise<any | null> {
     try {
-      const result = await this.db.query(
-        `SELECT knowledge_points, ability_dims, error_attribution, ai_suggestions, weak_points, strong_points
-         FROM edu.analysis_reports WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
-        [userId],
-      );
-      if (result.rows.length > 0) {
-        const r = result.rows[0];
+      const r = await findLatestReportForPlan(eduQuery(this.db), userId);
+      if (r) {
         return { knowledgePoints: r.knowledge_points, abilityDims: r.ability_dims, errorAttribution: r.error_attribution, aiSuggestions: r.ai_suggestions, weakPoints: r.weak_points, strongPoints: r.strong_points };
       }
       return null;
@@ -134,13 +130,16 @@ export class PlanAgent {
     const typeLabel = ({ daily: '日', weekly: '周', monthly: '月' } as Record<string, string>)[planType] ?? '';
     const subjLabel = subjects?.length ? `${subjects.join('、')} ` : '';
     const title = `${subjLabel}${typeLabel}学习计划`;
-    const res = await this.db.query(
-      `INSERT INTO edu.learning_plans (user_id, title, plan_type, plan_period, plan_data, progress, total_tasks, start_date, end_date, status)
-       VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, 'active')
-       RETURNING id`,
-      [userId, title, planType, planPeriod, JSON.stringify(planData), totalTasks, startDate ?? new Date().toISOString(), endDate ?? null],
-    );
-    return res.rows[0]?.id;
+    return (await insertPlanFull(eduQuery(this.db), {
+      userId,
+      title,
+      planType,
+      planPeriod: planPeriod ?? null,
+      planData: JSON.stringify(planData),
+      totalTasks,
+      startDate: startDate ?? new Date().toISOString(),
+      endDate: endDate ?? null,
+    })) as string;
   }
 
   /**
@@ -149,13 +148,10 @@ export class PlanAgent {
    */
   async updateProgress(userId: string, planId: string, completedTaskIds: string[]) {
     const ids = new Set((Array.isArray(completedTaskIds) ? completedTaskIds : []).map((x) => String(x)));
-    const cur = await this.db.query(
-      `SELECT plan_data, total_tasks FROM edu.learning_plans WHERE id = $1 AND user_id = $2`,
-      [planId, userId],
-    );
-    if (cur.rows.length === 0) return { success: false, error: '计划不存在或无权访问' };
+    const cur = await findPlanDataForUser(eduQuery(this.db), planId, userId);
+    if (!cur) return { success: false, error: '计划不存在或无权访问' };
 
-    const planData: any = cur.rows[0].plan_data || {};
+    const planData: any = cur.plan_data || {};
     const allTasks: any[] = [];
     if (Array.isArray(planData.tasks)) allTasks.push(...planData.tasks);
     if (Array.isArray(planData.weeklyTasks)) {
@@ -164,23 +160,20 @@ export class PlanAgent {
     for (const t of allTasks) if (t && t.id != null) t.completed = ids.has(String(t.id));
 
     const completedCount = allTasks.filter((t) => t && t.completed).length;
-    const total = allTasks.length || Number(cur.rows[0].total_tasks) || 0;
+    const total = allTasks.length || Number(cur.total_tasks) || 0;
     const progress = total ? Math.round((completedCount / total) * 10000) / 100 : 0;
     const status = total && completedCount >= total ? 'completed' : 'active';
 
     // 同参数双处引用须各显式同型 cast（先例见 session-fsm.ts flush 的 $3::varchar）。
-    const result = await this.db.query(
-      `UPDATE edu.learning_plans
-       SET plan_data = $3::jsonb,
-           completed_tasks = $4::int,
-           progress = $5::float,
-           status = $6,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1 AND user_id = $2
-       RETURNING *`,
-      [planId, userId, JSON.stringify(planData), completedCount, progress, status],
-    );
-    if (result.rows.length === 0) return { success: false, error: '计划不存在或无权访问' };
-    return { success: true, plan: result.rows[0] };
+    const row = await updatePlanProgressFull(eduQuery(this.db), {
+      planId,
+      userId,
+      planData: JSON.stringify(planData),
+      completedTasks: completedCount,
+      progress,
+      status,
+    });
+    if (!row) return { success: false, error: '计划不存在或无权访问' };
+    return { success: true, plan: row };
   }
 }
