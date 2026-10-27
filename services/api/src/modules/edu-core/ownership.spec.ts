@@ -37,7 +37,16 @@ function moduleSources(dir: string): Array<{ file: string; text: string }> {
  * W2.1 出口判据的可执行版：「`edu.*` 单一领域组件」不是靠约定，而是靠这条断言守着。
  * 任何人往**受守卫模块**里再写一句内联 `edu.*` SQL，本用例即红。
  * 扫描面 = 模块目录**递归**下所有非 spec `.ts`（tuition 的直取在 `agents/` 子目录，故须递归）。
- * **注**：`curriculum` 多为 ontology 查询里 JOIN `edu.knowledge_points`（联表富化）——按裁决暂缓（W2.1c-2），未纳入。
+ *
+ * **curriculum（W2.1c-2）—— 判定的跨域例外，不纳入本守卫**：`curriculum.service.ts` 的查询**跨域**
+ * （ontology 六表 × edu.knowledge_points/mastery_snapshots）。经逐一核对：既有 ontology 主表查询里
+ * JOIN/子查询读 edu（登峰 summitBranches/summitGrades、学习链 canonical），也有 edu 主表但带 ontology
+ * LEFT JOIN（知识点列表/knowledgeGraph/loadLearningChainSource），还有纯 edu 数据访问（洞窟 kpCave 的
+ * 题/错题/复习/成就、随堂题、审核态）。**全迁入 edu-core 会使其承载 ontology 主表 SQL**，与 edu-core
+ * 「`edu.*` 表唯一读写口」的自述范围直接冲突；机械正则亦无法可靠区分「edu 主表」与「edu 富化」
+ * （如 summitGrades 主表是 ontology、子查询里 `FROM edu.knowledge_points`），故部分迁也不能让守卫覆盖它。
+ * 且 curriculum 是**只读跨域 facade**、非 SQL 持有模块（非插件），不触及 W2.1 的插件化动因。
+ * → 裁定：curriculum 的 edu 读属跨域 facade 的合法富化，留待将来拆 `ontology-core` 时再议归属。
  */
 const GUARDED_MODULES = ['agent', 'identity', 'twin', 'tuition'];
 
