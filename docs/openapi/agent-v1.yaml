@@ -1,0 +1,332 @@
+openapi: 3.1.0
+info:
+  title: GRI Agent 对外契约（v1）
+  version: "1.0.0"
+  summary: 每个学生的独立 AI 教师 —— 版本化对外面 `/api/v1/agent/*`（B-2）。
+  description: |
+    对外**承诺面**：与既有 `/api/agent/*`（前端在用）并存、互不影响。成功/失败信封与版本语义稳定；
+    任何不兼容变更开 `/api/v2/**`，不得原地改 v1。
+
+    **所有权铁律**：主体一律取自身份（`req.auth.externalId` ≡ `public.users.id`）——
+    本面对外**不接受**任何 `studentId` 入参，跨用户访问在契约上被结构性消灭。
+
+    详见 `docs/AGENT_PUBLIC_CONTRACT.md`（形状与语义真源）、`docs/openapi/README.md`。
+servers:
+  - url: /api
+    description: 经统一网关（nginx `/api/` → services/api 3002）
+security:
+  - bearerAuth: []
+tags:
+  - name: me
+    description: 我的 AI 教师（个人面）
+  - name: engines
+    description: 可换引擎目录（只读）
+  - name: delegate
+    description: 外部 agent 委派（B-3/B-4）
+
+paths:
+  /v1/agent/me:
+    get:
+      tags: [me]
+      summary: 打开我的 agent（工具/技能/记忆摘要）
+      operationId: openMe
+      responses:
+        "200":
+          description: 会话摘要
+          headers: { X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OpenSessionSuccess" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/agent/me/message:
+    post:
+      tags: [me]
+      summary: 发消息给我的 AI 教师
+      operationId: sendMeMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string, minLength: 1, description: 学生消息（非空） }
+                routeKey: { type: string, description: 可选路由键（大模型路由选择） }
+      responses:
+        "201":
+          description: 教学应答（Nest POST 缺省 201；**勿硬编码 200**）
+          headers: { X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SendMessageSuccess" }
+        "400": { $ref: "#/components/responses/InvalidContent" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/agent/engines:
+    get:
+      tags: [engines]
+      summary: 列出可用引擎（只读，不探活）
+      operationId: listEngines
+      description: |
+        `builtin=true` = 宿主引擎 `gri-core`（缺省）；其余为可选外部引擎（`claude-code`/`openclaw`，需注入 CLI 后端注册表）。
+        **不探活** —— 外部引擎是否真能跑取决于本机 CLI，真不可用会在发消息时**如实报错**（不静默降级）。
+      responses:
+        "200":
+          description: 引擎目录
+          headers: { X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [v, success, data]
+                properties:
+                  v: { type: integer, const: 1 }
+                  success: { type: boolean, const: true }
+                  data:
+                    type: object
+                    required: [engines]
+                    properties:
+                      engines: { type: array, items: { $ref: "#/components/schemas/Engine" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/agent/me/diagnosis:
+    get:
+      tags: [me]
+      summary: 只读学情总览
+      operationId: myDiagnosis
+      responses:
+        "200":
+          description: 学情总览（形状见 AGENT_PUBLIC_CONTRACT.md）
+          headers: { X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OpaqueSuccess" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/agent/delegate/backends:
+    get:
+      tags: [delegate]
+      summary: 列出本机可用 CLI 后端（外部项目探测本机能力）
+      operationId: listBackends
+      description: "无注册表 / 无后端 → `{ backends: [] }`，**不报错**（探测面永不 5xx）。清单可序列化，不含函数、不含任何凭据。"
+      responses:
+        "200":
+          description: 后端清单
+          headers: { X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [v, success, data]
+                properties:
+                  v: { type: integer, const: 1 }
+                  success: { type: boolean, const: true }
+                  data:
+                    type: object
+                    required: [backends]
+                    properties:
+                      backends: { type: array, items: { $ref: "#/components/schemas/Backend" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/agent/delegate/runs:
+    get:
+      tags: [delegate]
+      summary: 本人最近外部 agent run 列表
+      operationId: listRuns
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 20 }
+      description: "只读；所有权按身份隔离。无 run / 落库失败 → `{ runs: [] }`（探测面永不 5xx）。"
+      responses:
+        "200":
+          description: run 列表
+          headers: { X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [v, success, data]
+                properties:
+                  v: { type: integer, const: 1 }
+                  success: { type: boolean, const: true }
+                  data:
+                    type: object
+                    required: [runs]
+                    properties:
+                      runs: { type: array, items: { $ref: "#/components/schemas/Run" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/agent/delegate/runs/{runId}:
+    get:
+      tags: [delegate]
+      summary: 单条 run
+      operationId: getRun
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: run
+          headers: { X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [v, success, data]
+                properties:
+                  v: { type: integer, const: 1 }
+                  success: { type: boolean, const: true }
+                  data:
+                    type: object
+                    required: [run]
+                    properties:
+                      run: { $ref: "#/components/schemas/Run" }
+        "404": { $ref: "#/components/responses/RunNotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/agent/delegate/runs/{runId}/events:
+    get:
+      tags: [delegate]
+      summary: run 事件流（SSE）
+      operationId: runEvents
+      description: |
+        `text/event-stream`：循 `agent.external_events` 增量下发（`id`=事件行 id，`event`=kind，`data`=JSON）。
+        run 终态后再发一条 `event: status`，保留 5 秒尾巴即关流。服务端轮询（间隔 ≤1s），**零新依赖、无 WS**。
+        他人 run → 404（不进入流）。事件 `data` 只含 child 派生内容（**不含** argv/prompt/密钥）。
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: SSE 流（`event:` ∈ 事件 kind ∪ `status`）
+          headers:
+            X-Agent-Api-Version: { $ref: "#/components/headers/XAgentApiVersion" }
+          content:
+            text/event-stream:
+              schema: { type: string, description: "SSE 帧：id/event/data 行" }
+        "404": { $ref: "#/components/responses/RunNotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 身份令牌；服务端据此解析 `externalId`（≡ users.id）。v1 面全局强制鉴权。
+  headers:
+    XAgentApiVersion:
+      description: v1 契约版本（恒 "1"）
+      schema: { type: string, const: "1" }
+  schemas:
+    Error:
+      type: object
+      required: [v, success, error]
+      properties:
+        v: { type: integer, const: 1 }
+        success: { type: boolean, const: false }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+    AuthError:
+      description: 全局鉴权（JWT 中间件）的 401 缺省体 —— 非 v1 信封（无 v/success/error）
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: integer, const: 401 }
+        message: { type: string }
+    OpaqueSuccess:
+      type: object
+      required: [v, success, data]
+      properties:
+        v: { type: integer, const: 1 }
+        success: { type: boolean, const: true }
+        data: { description: "载荷形状见 docs/AGENT_PUBLIC_CONTRACT.md" }
+    OpenSessionSuccess:
+      allOf:
+        - $ref: "#/components/schemas/OpaqueSuccess"
+        - description: data = { tools, skills, memory 摘要 }（每生独立）
+    SendMessageSuccess:
+      type: object
+      required: [v, success, data]
+      properties:
+        v: { type: integer, const: 1 }
+        success: { type: boolean, const: true }
+        data:
+          type: object
+          required: [success, message, entityId]
+          properties:
+            success: { type: boolean }
+            message: { type: string }
+            phase: { type: string }
+            entityId: { type: string }
+            routeKey: { type: string }
+            subject: { type: string }
+    Engine:
+      type: object
+      required: [id, apiVersion, capabilities, builtin]
+      properties:
+        id: { type: string }
+        apiVersion: { type: string }
+        capabilities:
+          type: object
+          properties:
+            toolLoop: { type: string, enum: [host, engine] }
+            streaming: { type: boolean }
+            needsApiKey: { type: boolean }
+            subagents: { type: boolean }
+            multimodal: { type: boolean }
+        builtin: { type: boolean }
+    Backend:
+      type: object
+      required: [id, label, bin]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        bin: { type: string }
+        timeoutMs: { type: integer }
+        resumeKey: { type: string, nullable: true }
+    Run:
+      type: object
+      required: [run_id, backend, status]
+      properties:
+        run_id: { type: string, format: uuid }
+        backend: { type: string }
+        goal: { type: string }
+        mode: { type: string, enum: [sync, async] }
+        status: { type: string, enum: [running, done, failed] }
+        error_code: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        exit_code: { type: integer, nullable: true }
+        timed_out: { type: boolean }
+        resume_key: { type: string, nullable: true }
+        latency_ms: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time, nullable: true }
+  responses:
+    Unauthorized:
+      description: "未鉴权 / 令牌无效 —— **全局 JWT 中间件的 Nest 缺省体** `{ code: 401, message }`（非 v1 信封）"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AuthError" }
+    InvalidContent:
+      description: content 必填且非空（fail-fast，`error.code=INVALID_CONTENT`）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RunNotFound:
+      description: run 不存在或无权访问（`error.code=RUN_NOT_FOUND`，不泄露是否存在）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
