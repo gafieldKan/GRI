@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-// LlmService / QuestionParser 必须值导入（emitDecoratorMetadata 依赖运行期引用）；`import type` 会使 Nest 无法注入。
-import { LlmService } from './llm.service';
+// LlmClient / QuestionParser 必须值导入（emitDecoratorMetadata 依赖运行期引用）；`import type` 会使 Nest 无法注入。
+import { LlmClient } from '@gri/agent-core';
 import { QuestionParser } from './question-parser';
+import { llmTimeoutMs } from './llm-provider';
 import type { ParsedQuestion, QuestionSeed, VariantGenerationOptions } from '../tuition.types';
 
 /**
@@ -27,7 +28,7 @@ export const NUMERIC_FACTORS = [1.2, 0.8, 1.1, 0.9, 1.15, 0.85, 1.05, 0.95];
 export class VariantGenerator {
   constructor(
     private readonly parser: QuestionParser,
-    private readonly llm: LlmService,
+    private readonly llm: LlmClient,
   ) {}
 
   /**
@@ -46,7 +47,7 @@ export class VariantGenerator {
     for (let attempt = 0; attempt < maxAttempts && out.length < count; attempt++) {
       let candidate = this._makeCandidate(seed, attempt, strategy);
       // 可选 LLM 改写（仅在有真实 key 时；失败即回退纯逻辑候选）
-      if (this.llm.isRealKey()) candidate = await this._maybeLlmRewrite(candidate);
+      if (await this.llm.isRealKey()) candidate = await this._maybeLlmRewrite(candidate);
       if (seen.has(this._norm(candidate.content))) continue;
       const valid = await this._selfCheck(candidate, seed, options);
       if (valid) {
@@ -158,7 +159,7 @@ export class VariantGenerator {
     try {
       const prompt = `请在不改变数值与题型的前提下，改写下面这道题的表述（只返回 JSON {"content":"改写后的题干"}）：
 ${q.content}`;
-      const res = await this.llm.chatCompletion([{ role: 'user', content: prompt }]);
+      const res = await this.llm.chat([{ role: 'user', content: prompt }], 'default', { timeoutMs: llmTimeoutMs() });
       const parsed = this._parseJsonObject(res?.content ?? '');
       const content = parsed && typeof parsed.content === 'string' ? parsed.content.trim() : '';
       return content ? { ...q, content } : q;

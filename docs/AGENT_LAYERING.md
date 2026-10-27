@@ -74,10 +74,10 @@
 
 ### B. `modules/tuition/agents`（**第二范式** = 确定性流水线零件）
 
-16 文件：`tutor-agent` `tutor-session-agent` `ai-agent.service` `plan-agent` `session-fsm` `teaching-card-fsm` `spaced-repetition.service` `variant-generator` `question-generator` `question-parser` `question.service` `intent-classifier` `socratic-templates` `exam-scanner` `ocr-processor` `llm.service`。
+15 文件：`tutor-agent` `tutor-session-agent` `ai-agent.service` `plan-agent` `session-fsm` `teaching-card-fsm` `spaced-repetition.service` `variant-generator` `question-generator` `question-parser` `question.service` `intent-classifier` `socratic-templates` `exam-scanner` `ocr-processor`。
 
 - 形态：**会话状态机 + 单次 LLM 调用**，非 `AgentCore` 自主工具环。
-- 自带 `LlmService`（注释：「移植旧 `services/ai-tutor-backend` 的 AIService.js」）。
+- LLM 客户端：已归位底座 `@gri/agent-core` 的 `LlmClient`（W2.4 删原自持 `LlmService` 重复实现；装配见 `tuition/agents/llm-provider.ts`）。
 
 ---
 
@@ -85,7 +85,7 @@
 
 | # | 违规 | 证据 | 归位方向 |
 |---|---|---|---|
-| V1 | **双 LLM 路径** | 底座 `LlmClient`（agent.service、taxonomy/command.service）**vs** 业务 `tuition/agents/LlmService` | 全走底座 `ModelRouter`，删 `LlmService` 重复实现 |
+| V1 | **双 LLM 路径** | ~~底座 `LlmClient` **vs** 业务 `tuition/agents/LlmService`~~ —— **已归位（W2.4）**：tuition 全走底座 `LlmClient`，重复实现已删（`grep LlmService services/api/src`=0） | ✅ 已完成 |
 | V2 | **双 agent 范式** | `AgentCore` 自主环 vs `tuition` 确定性 FSM，无统一契约 | 两者都收敛为"可挂到底座的能力"：FSM = 一个会话策略插件 |
 | V3 | **业务硬编码进宿主** | 17 工具全在 `agent.service.ts` | 拆 `agent.skill` 插件（一学科/一类能力一插件） |
 | V4 | **跨模块能力归属不清** | `map.explorer`（世界/地图能力）注册在 agent 模块 | 由 `world` 模块以插件身份提供该工具 |

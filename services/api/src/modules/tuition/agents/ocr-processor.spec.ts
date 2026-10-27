@@ -1,7 +1,7 @@
 import { MockOcrEngine, OcrProcessor, MOCK_OCR_TEXT, extractLatex, buildBlocks } from './ocr-processor';
-import type { LlmService } from './llm.service';
-// 值引入 llm.service 会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同 llm.service.spec）
-jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
+import type { LlmClient } from '@gri/agent-core';
+// 值引入被测类会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同其它 tuition spec）
+jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q, LlmClient: class {} }));
 
 /**
  * OCR 适配层单测（P2-T7）。
@@ -10,12 +10,12 @@ jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unkn
  */
 
 function makeLlm(opts: { real?: boolean; multimodal?: jest.Mock } = {}) {
-  const chatCompletionMultimodal = opts.multimodal ?? jest.fn();
+  const chatMultimodal = opts.multimodal ?? jest.fn();
   const isRealKey = jest.fn().mockReturnValue(!!opts.real);
   return {
-    llm: { isRealKey, chatCompletionMultimodal } as unknown as LlmService,
+    llm: { isRealKey, chatMultimodal } as unknown as LlmClient,
     isRealKey,
-    chatCompletionMultimodal,
+    chatMultimodal,
   };
 }
 
@@ -41,17 +41,17 @@ describe('MockOcrEngine —— 确定性', () => {
 
 describe('OcrProcessor —— 引擎选型', () => {
   it('无真实 key → Mock 引擎，且不发多模态请求', async () => {
-    const { llm, chatCompletionMultimodal } = makeLlm({ real: false });
+    const { llm, chatMultimodal } = makeLlm({ real: false });
     const r = await new OcrProcessor(llm).process('data:image/png;base64,AAA');
     expect(r.engine).toBe('mock');
-    expect(chatCompletionMultimodal).not.toHaveBeenCalled();
+    expect(chatMultimodal).not.toHaveBeenCalled();
   });
 
   it('空图（有 key）→ 仍走 Mock，避免空图请求挂死端点', async () => {
-    const { llm, chatCompletionMultimodal } = makeLlm({ real: true });
+    const { llm, chatMultimodal } = makeLlm({ real: true });
     const r = await new OcrProcessor(llm).process('');
     expect(r.engine).toBe('mock');
-    expect(chatCompletionMultimodal).not.toHaveBeenCalled();
+    expect(chatMultimodal).not.toHaveBeenCalled();
   });
 
   it('有真实 key → 默认多模态 LLM 引擎（解析 JSON 出参）', async () => {

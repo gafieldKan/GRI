@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { LlmService } from './llm.service';
+import { LlmClient } from '@gri/agent-core';
+import { llmTimeoutMs } from './llm-provider';
 
 /**
  * QuestionGeneratorAgent（移植旧 QuestionGeneratorAgent.js）。
@@ -7,7 +8,7 @@ import { LlmService } from './llm.service';
  */
 @Injectable()
 export class QuestionGeneratorAgent {
-  constructor(private readonly llm: LlmService) {}
+  constructor(private readonly llm: LlmClient) {}
 
   async generateQuestions(params: {
     subject?: string;
@@ -53,16 +54,20 @@ export class QuestionGeneratorAgent {
     difficulty: number;
     questionType: string;
   }): Promise<any> {
-    if (!this.llm.isRealKey()) return this._getMockQuestion(params.subject, params.knowledgePoint ?? '');
+    if (!(await this.llm.isRealKey())) return this._getMockQuestion(params.subject, params.knowledgePoint ?? '');
 
     const { subject, gradeLevel, textbookVersion, knowledgePoint, difficulty, questionType } = params;
     const prompt = this._buildPrompt({ subject, gradeLevel, textbookVersion, knowledgePoint, difficulty, questionType });
 
     try {
-      const result = await this.llm.chatCompletion([
-        { role: 'system', content: '你是资深 K12 教育专家，负责生成高质量的学科题目。' },
-        { role: 'user', content: prompt },
-      ]);
+      const result = await this.llm.chat(
+        [
+          { role: 'system', content: '你是资深 K12 教育专家，负责生成高质量的学科题目。' },
+          { role: 'user', content: prompt },
+        ],
+        'default',
+        { timeoutMs: llmTimeoutMs() },
+      );
       const parsed = this._parseQuestionJSON(result.content);
       if (parsed) {
         parsed.subject = subject;

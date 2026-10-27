@@ -1,18 +1,26 @@
 import { IntentClassifier } from './intent-classifier';
 import type { Intent } from './intent-classifier';
-import type { LlmService } from './llm.service';
-// 值引入 llm.service 会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同 llm.service.spec）
-jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
+import type { LlmClient } from '@gri/agent-core';
+// 值引入被测类会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同其它 tuition spec）
+jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q, LlmClient: class {} }));
 
 /**
  * 意图识别单测（P2-T6）。
  * 覆盖：7 意图各 ≥2 例、规则命中不调 LLM、LLM 兜底映射、无 key（null）降级、
  * LLM 异常降级、空/非字符串输入、多命中置信度更高。
+ *
+ * 自 W2.4：LLM 兜底经本类 `_analyzeUserMessage`（内置提示词）→ 底座 `LlmClient.chat` → 3 层解析。
+ * 故替身只需 `isRealKey` + `chat`（回 JSON 文本）+ `parseJSON`；`analyzeResult=null` 表示无 key。
  */
 
 function makeLlm(analyzeResult: unknown = null) {
-  const analyzeUserMessage = jest.fn().mockResolvedValue(analyzeResult);
-  return { llm: { analyzeUserMessage } as unknown as LlmService, analyzeUserMessage };
+  const isRealKey = jest.fn().mockResolvedValue(analyzeResult !== null);
+  const chat = jest.fn().mockResolvedValue({ content: analyzeResult === null ? '' : JSON.stringify(analyzeResult) });
+  const parseJSON = (raw: unknown) => {
+    if (!raw) return null;
+    try { return JSON.parse(String(raw).trim()); } catch { const m = String(raw).match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; }
+  };
+  return { llm: { isRealKey, chat, parseJSON } as unknown as LlmClient, isRealKey, chat };
 }
 
 describe('IntentClassifier —— 规则优先（7 意图各 ≥2 例）', () => {
@@ -66,10 +74,10 @@ describe('IntentClassifier —— 规则优先（7 意图各 ≥2 例）', () =>
   });
 
   it('规则命中即返回，绝不调用 LLM', async () => {
-    const { llm, analyzeUserMessage } = makeLlm();
+    const { llm, chat } = makeLlm();
     const c = new IntentClassifier(llm);
     await c.classify('给我一点提示');
-    expect(analyzeUserMessage).not.toHaveBeenCalled();
+    expect(chat).not.toHaveBeenCalled();
   });
 
   it('命中越多置信度越高', async () => {
@@ -86,10 +94,10 @@ describe('IntentClassifier —— 规则优先（7 意图各 ≥2 例）', () =>
 
 describe('IntentClassifier —— LLM 兜底 / 降级', () => {
   it('规则无命中 → 调 LLM，映射 confused → ASK_CLARIFICATION', async () => {
-    const { llm, analyzeUserMessage } = makeLlm({ intent: 'confused', confidence: 0.8 });
+    const { llm, chat } = makeLlm({ intent: 'confused', confidence: 0.8 });
     const c = new IntentClassifier(llm);
     const res = await c.classify('嗯嗯嗯嗯');
-    expect(analyzeUserMessage).toHaveBeenCalledTimes(1);
+    expect(chat).toHaveBeenCalledTimes(1);
     expect(res).toEqual({ intent: 'ASK_CLARIFICATION', confidence: 0.8 });
   });
 
@@ -106,19 +114,19 @@ describe('IntentClassifier —— LLM 兜底 / 降级', () => {
   });
 
   it('LLM 抛异常 → 静默降级，不向外炸', async () => {
-    const analyzeUserMessage = jest.fn().mockRejectedValue(new Error('boom'));
-    const c = new IntentClassifier({ analyzeUserMessage } as unknown as LlmService);
+    const chat = jest.fn().mockRejectedValue(new Error('boom'));
+    const c = new IntentClassifier({ isRealKey: () => true, chat, parseJSON: () => null } as unknown as LlmClient);
     await expect(c.classify('嗯嗯嗯嗯')).resolves.toEqual({ intent: 'OFF_TOPIC', confidence: 0 });
   });
 });
 
 describe('IntentClassifier —— 边界输入', () => {
   it('空串 / 纯空白 → OFF_TOPIC，且不调 LLM', async () => {
-    const { llm, analyzeUserMessage } = makeLlm();
+    const { llm, chat } = makeLlm();
     const c = new IntentClassifier(llm);
     expect(await c.classify('')).toEqual({ intent: 'OFF_TOPIC', confidence: 0 });
     expect(await c.classify('   ')).toEqual({ intent: 'OFF_TOPIC', confidence: 0 });
-    expect(analyzeUserMessage).not.toHaveBeenCalled();
+    expect(chat).not.toHaveBeenCalled();
   });
 
   it('非字符串（null/undefined/数字）不抛错', async () => {

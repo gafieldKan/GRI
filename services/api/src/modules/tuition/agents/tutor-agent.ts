@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
-import { LlmService } from './llm.service';
+import { LlmClient } from '@gri/agent-core';
+import { llmTimeoutMs } from './llm-provider';
 
 export type TutorQuestionType = 'choice' | 'fill' | 'solution';
 
@@ -41,7 +42,7 @@ export function normalizeTutorQuestionType(type: unknown): TutorQuestionType | n
 export class TutorAgent {
   constructor(
     private readonly db: DatabaseService,
-    private readonly llm: LlmService,
+    private readonly llm: LlmClient,
   ) {}
 
   async analyzeExam(params: {
@@ -180,12 +181,16 @@ ${questions
 请以 JSON 格式返回各维度得分（0-1）：
 {"memory": 0.8, "understanding": 0.7, "application": 0.6, "analysis": 0.5, "synthesis": 0.4}`;
     const fallback = { memory: 0.5, understanding: 0.5, application: 0.5, analysis: 0.5, synthesis: 0.5 };
-    if (!this.llm.isRealKey()) return fallback;
+    if (!(await this.llm.isRealKey())) return fallback;
     try {
-      const result = await this.llm.chatCompletion([
-        { role: 'system', content: '你是教育测量专家，负责分析学生的能力维度。' },
-        { role: 'user', content: prompt },
-      ]);
+      const result = await this.llm.chat(
+        [
+          { role: 'system', content: '你是教育测量专家，负责分析学生的能力维度。' },
+          { role: 'user', content: prompt },
+        ],
+        'default',
+        { timeoutMs: llmTimeoutMs() },
+      );
       const parsed = this._parseJsonObject(result.content);
       return parsed || fallback;
     } catch {
@@ -193,12 +198,12 @@ ${questions
     }
   }
 
-  private _analyzeErrorAttribution(questions: any[], studentAnswers: string[]) {
+  private async _analyzeErrorAttribution(questions: any[], studentAnswers: string[]) {
     const errorTypes: Record<string, number> = { '概念不清': 0, '计算错误': 0, '审题失误': 0, '粗心大意': 0 };
     const errorQuestions = questions.filter((q, i) => !this._checkAnswer(q, studentAnswers[i]));
     if (errorQuestions.length === 0) return { ...errorTypes, total: 0 };
 
-    if (!this.llm.isRealKey()) return { ...errorTypes, total: errorQuestions.length };
+    if (!(await this.llm.isRealKey())) return { ...errorTypes, total: errorQuestions.length };
 
     const prompt = `请分析以下错误答案的原因类型：
 ${errorQuestions
@@ -216,10 +221,14 @@ ${errorQuestions
 
   private async _attributionFromLlm(prompt: string, errorTypes: Record<string, number>, total: number) {
     try {
-      const result = await this.llm.chatCompletion([
-        { role: 'system', content: '你是教育心理学家，擅长分析学生的错误原因。' },
-        { role: 'user', content: prompt },
-      ]);
+      const result = await this.llm.chat(
+        [
+          { role: 'system', content: '你是教育心理学家，擅长分析学生的错误原因。' },
+          { role: 'user', content: prompt },
+        ],
+        'default',
+        { timeoutMs: llmTimeoutMs() },
+      );
       const parsed = this._parseJsonObject(result.content);
       if (parsed) return { ...errorTypes, ...parsed, total };
     } catch {
@@ -260,7 +269,7 @@ ${errorQuestions
     peerComparison: any;
   }): Promise<string[]> {
     const fallback = ['加强基础知识点复习', '多做题提高熟练度', '整理错题本定期复习'];
-    if (!this.llm.isRealKey()) return fallback;
+    if (!(await this.llm.isRealKey())) return fallback;
 
     const { knowledgePoints, abilityDims, errorAttribution, peerComparison } = context;
     const prompt = `请根据以下学情分析结果，给出学习建议：
@@ -282,10 +291,14 @@ ${Object.entries(errorAttribution).filter(([k]) => k !== 'total').map(([k, v]) =
 
 请给出 3 条具体建议，每条不超过 50 字。返回 JSON 数组：["建议 1", "建议 2", "建议 3"]`;
     try {
-      const result = await this.llm.chatCompletion([
-        { role: 'system', content: '你是资深教育专家，擅长根据学情给出针对性建议。' },
-        { role: 'user', content: prompt },
-      ]);
+      const result = await this.llm.chat(
+        [
+          { role: 'system', content: '你是资深教育专家，擅长根据学情给出针对性建议。' },
+          { role: 'user', content: prompt },
+        ],
+        'default',
+        { timeoutMs: llmTimeoutMs() },
+      );
       const m = result.content?.match(/\[[\s\S]*\]/);
       if (m) return JSON.parse(m[0]);
       return fallback;

@@ -1,9 +1,9 @@
 import { QuestionParser, DEFAULT_KNOWLEDGE_POINT } from './question-parser';
 import { MOCK_OCR_TEXT } from './ocr-processor';
-import type { LlmService } from './llm.service';
+import type { LlmClient } from '@gri/agent-core';
 import type { OcrBlock } from '../tuition.types';
-// 值引入 llm.service 会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同 llm.service.spec）
-jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
+// 值引入被测类会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同其它 tuition spec）
+jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q, LlmClient: class {} }));
 
 /**
  * 结构化解析单测（P2-T7）。
@@ -12,12 +12,12 @@ jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unkn
  */
 
 function makeLlm(opts: { real?: boolean; chat?: jest.Mock } = {}) {
-  const chatCompletion = opts.chat ?? jest.fn();
+  const chat = opts.chat ?? jest.fn();
   const isRealKey = jest.fn().mockReturnValue(!!opts.real);
   return {
-    llm: { isRealKey, chatCompletion } as unknown as LlmService,
+    llm: { isRealKey, chat } as unknown as LlmClient,
     isRealKey,
-    chatCompletion,
+    chat,
   };
 }
 
@@ -141,9 +141,9 @@ describe('QuestionParser —— 边界与 LLM 兜底', () => {
   });
 
   it('无 key 时不调用 LLM', async () => {
-    const { llm, chatCompletion } = makeLlm({ real: false });
+    const { llm, chat } = makeLlm({ real: false });
     await new QuestionParser(llm).parse(MOCK_OCR_TEXT);
-    expect(chatCompletion).not.toHaveBeenCalled();
+    expect(chat).not.toHaveBeenCalled();
   });
 
   it('有 key 时用 LLM 微调知识/难度（题型不变）', async () => {

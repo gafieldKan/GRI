@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
-import { LlmService } from './llm.service';
+import { LlmClient } from '@gri/agent-core';
 import { ExamScannerAgent } from './exam-scanner';
 import { TutorAgent } from './tutor-agent';
 import { QuestionGeneratorAgent } from './question-generator';
@@ -18,7 +18,7 @@ import { PlanAgent } from './plan-agent';
 export class AiAgentService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly llm: LlmService,
+    private readonly llm: LlmClient,
     private readonly scanner: ExamScannerAgent,
     private readonly tutor: TutorAgent,
     private readonly generator: QuestionGeneratorAgent,
@@ -36,7 +36,7 @@ export class AiAgentService {
   ): Promise<any> {
     const subject = input.subject || 'math';
     const gradeLevel = input.gradeLevel || '8';
-    const useReal = this.llm.isRealKey();
+    const useReal = await this.llm.isRealKey();
 
     // Step 1: 识别 —— 建 exam 行（pending），存 OCR/图像
     const examInsert = await this.db.query(

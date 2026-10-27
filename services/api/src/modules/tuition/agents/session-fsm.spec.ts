@@ -1,18 +1,18 @@
 import { NotFoundException } from '@nestjs/common';
 import { SessionFsm, SessionFsmService } from './session-fsm';
-import { LlmService } from './llm.service';
+import type { LlmClient } from '@gri/agent-core';
 import { TuitionQuestionService } from './question.service';
 import { DatabaseService } from '../../../database/database.service';
 
-// @gri/agent-core 是 ESM，jest 不解析；测试不注入 db → router 为 null，给最小桩即可。
-jest.mock('@gri/agent-core', () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
+// @gri/agent-core 是 ESM，jest 不解析；测试注入最小 LlmClient 替身即可。
+jest.mock('@gri/agent-core', () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q, LlmClient: class {} }));
 
-/** 构造无真实 LLM 的 FSM（generateTeachingResponse 返回 null → 本地降级路径） */
+/** 构造无真实 LLM 的 FSM（isRealKey=false → `_generateTeachingResponse` 返回 null → 本地降级路径） */
 function makeFsm(questionService: Partial<TuitionQuestionService>) {
   const llm = {
-    generateTeachingResponse: jest.fn().mockResolvedValue(null),
+    isRealKey: jest.fn().mockResolvedValue(false),
     validateAnswer: jest.fn(),
-  } as unknown as LlmService;
+  } as unknown as LlmClient;
   const flush = jest.fn().mockResolvedValue(undefined);
   const fsm = new SessionFsm('s1', 'u1', 'math_pythagorean', llm, questionService as TuitionQuestionService, flush, '勾股定理');
   // 直接构造不经过 createSession → 手动装题库（与持久化门面行为一致）
@@ -103,6 +103,26 @@ describe('SessionFsm 状态迁移（本地降级 _fallback）', () => {
     expect(res.phase).toBe('diagnosis'); // welcome → 诊断
   });
 
+  it('旧路径（未注入 overrideDecision）：内部 `_generateTeachingResponse` 走底座 LLM 并应用判定', async () => {
+    const flush = jest.fn().mockResolvedValue(undefined);
+    const llm = {
+      isRealKey: jest.fn().mockResolvedValue(true),
+      chat: jest.fn().mockResolvedValue({
+        content: JSON.stringify({ phase: 'diagnosis', action: 'ask_question', suggestedResponse: '先来道诊断题。', analysis: '进入诊断' }),
+      }),
+      parseJSON: (s: string) => JSON.parse(s),
+      validateAnswer: jest.fn(),
+    } as unknown as LlmClient;
+    const fsm = new SessionFsm('s1', 'u1', 'math_pythagorean', llm, qSvc as TuitionQuestionService, flush, '勾股定理');
+    fsm.diagnosisQuestions = [...DIAG_QS];
+    fsm.quizQuestions = [...QUIZ_QS];
+    const res = await fsm.handleUserMessage('我们开始吧'); // 不传 overrideDecision → 旧路径
+    expect(res.phase).toBe('diagnosis');
+    expect(res.message).toBe('先来道诊断题。'); // 判定来自底座 LLM（非本地降级）
+    expect(llm.chat as jest.Mock).toHaveBeenCalledTimes(1);
+    expect(res.questions?.length).toBeGreaterThan(0);
+  });
+
   it('flush 在每次 handleUserMessage 后调用（持久化）', async () => {
     const { fsm, flush } = makeFsm(qSvc);
     await fsm.handleUserMessage('我们开始吧');
@@ -117,7 +137,7 @@ describe('SessionFsmService（持久化 / 所有权）', () => {
       .mockResolvedValueOnce({ rows: [{ name: '勾股定理' }] }) // _kpName
       .mockResolvedValueOnce({ rows: [{ session_id: 'sess1' }] }) // INSERT sessions
       .mockResolvedValueOnce({ rows: [] }); // flush
-    const svc = new SessionFsmService(db, {} as LlmService, qSvc);
+    const svc = new SessionFsmService(db, {} as LlmClient, qSvc);
     const fsm = await svc.createSession('u1', 'math_pythagorean');
     expect(fsm.sessionId).toBe('sess1');
     expect(fsm.userId).toBe('u1');
@@ -126,7 +146,7 @@ describe('SessionFsmService（持久化 / 所有权）', () => {
 
   it('loadSession 他人/不存在会话 → NotFound', async () => {
     const db = { query: jest.fn().mockResolvedValue({ rows: [] }) } as unknown as DatabaseService;
-    const svc = new SessionFsmService(db, {} as LlmService, qSvc);
+    const svc = new SessionFsmService(db, {} as LlmClient, qSvc);
     await expect(svc.loadSession('u2', 'sess1')).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -137,7 +157,7 @@ describe('SessionFsmService（持久化 / 所有权）', () => {
         rows: [{ id: 'sess1', user_id: 'u1', phase: 'teaching', status: 'active', session_data: { phase: 'teaching', knowledgePointId: 'math_pythagorean', selectedKpName: '勾股定理' } }],
       })
       .mockResolvedValueOnce({ rows: [] }); // flush
-    const svc = new SessionFsmService(db, {} as LlmService, qSvc);
+    const svc = new SessionFsmService(db, {} as LlmClient, qSvc);
     const fsm = await svc.loadSession('u1', 'sess1');
     expect(fsm.phase).toBe('teaching');
   });

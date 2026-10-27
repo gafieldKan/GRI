@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { DatabaseService } from '../../database/database.service';
+import { LlmClient } from '@gri/agent-core';
 import { TuitionService } from './tuition.service';
 import { TuitionController } from './tuition.controller';
 import { AiAgentService } from './agents/ai-agent.service';
-import { LlmService } from './agents/llm.service';
+import { buildTuitionLlm } from './agents/llm-provider';
 import { TuitionQuestionService } from './agents/question.service';
 import { SessionFsmService } from './agents/session-fsm';
 import { TutorSessionAgent } from './agents/tutor-session-agent';
@@ -24,8 +26,9 @@ import { VariantGenerator } from './agents/variant-generator';
     // 学情门面
     TuitionService,
     AiAgentService,
-    // AI 客户端
-    LlmService,
+    // AI 客户端：底座 @gri/agent-core 的 LlmClient（W2.4 归一，tuition 不再自持 LLM 客户端）。
+    // 配置经 ModelRouter 逐轮实时解析（路由表优先、loadConfig 兜底）；以 LlmClient 本体为 DI token。
+    { provide: LlmClient, useFactory: buildTuitionLlm, inject: [DatabaseService] },
     // 会话 / 题库 / 间隔复习
     SessionFsmService,
     TutorSessionAgent,
@@ -45,6 +48,6 @@ import { VariantGenerator } from './agents/variant-generator';
     QuestionParser,
     VariantGenerator,
   ],
-  exports: [TuitionService, AiAgentService, LlmService],
+  exports: [TuitionService, AiAgentService],
 })
 export class TuitionModule {}

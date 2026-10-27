@@ -9,7 +9,7 @@ import {
 /**
  * 教学会话的「决策脑」—— 教学行为重组为 agent-core 消费方。
  *
- * 旧实现：session-fsm 里一段硬编码中文 prompt + 一次 LlmService.generateTeachingResponse 调用。
+ * 旧实现：session-fsm 里一段硬编码中文 prompt + 一次 tuition 自持 LLM 客户端调用。
  * 现重组为 @gri/agent-core 驱动：每个会话消息装配一个 AgentCore，
  *   - 教师行为 = 一个 `tutor` 技能（指令即旧 prompt 的阶段/行为判定规则，交给底座装载）；
  *   - 会话能力 = 工具：session.context（读会话态）/ session.answer（提交教学判定，决定性调用）/

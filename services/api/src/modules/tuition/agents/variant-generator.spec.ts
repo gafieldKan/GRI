@@ -1,9 +1,9 @@
 import { VariantGenerator, NUMERIC_FACTORS } from './variant-generator';
 import { QuestionParser } from './question-parser';
-import type { LlmService } from './llm.service';
+import type { LlmClient } from '@gri/agent-core';
 import type { QuestionSeed } from '../tuition.types';
-// 值引入 llm.service 会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同 llm.service.spec）
-jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
+// 值引入被测类会传递加载 ESM 包 @gri/agent-core —— 按既有范式 mock（同其它 tuition spec）
+jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q, LlmClient: class {} }));
 
 /**
  * 变式生成单测（P2-T7）。
@@ -12,12 +12,12 @@ jest.mock("@gri/agent-core", () => ({ ModelRouter: class {}, storeFrom: (q: unkn
  */
 
 function makeLlm(opts: { real?: boolean; chat?: jest.Mock } = {}) {
-  const chatCompletion = opts.chat ?? jest.fn();
+  const chat = opts.chat ?? jest.fn();
   const isRealKey = jest.fn().mockReturnValue(!!opts.real);
   return {
-    llm: { isRealKey, chatCompletion } as unknown as LlmService,
+    llm: { isRealKey, chat } as unknown as LlmClient,
     isRealKey,
-    chatCompletion,
+    chat,
   };
 }
 

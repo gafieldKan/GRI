@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
-// 注意：LlmService 必须**值导入**——emitDecoratorMetadata 需其运行期引用以生成 design:paramtypes；
+// 注意：LlmClient 必须**值导入**——emitDecoratorMetadata 需其运行期引用以生成 design:paramtypes；
 // `import type` 会被擦除，导致 Nest 无法解析构造函数依赖。
-import { LlmService } from './llm.service';
+import { LlmClient } from '@gri/agent-core';
 import type { OcrBlock, OcrResult } from '../tuition.types';
 
 /**
  * OCR 适配层（P2-T7）—— 统一 `{ text, latex, blocks[] }`，多引擎可切换。
  *
- * 引擎选型（N3 定论）：**默认多模态 LLM**（复用既有 `LlmService.chatCompletionMultimodal`）；
+ * 引擎选型（N3 定论）：**默认多模态 LLM**（复用底座 `LlmClient.chatMultimodal`）；
  * `MockOcrEngine` 为**确定性**引擎，用于无 key / 离线 / 测试。**不引入** PaddleOCR/Tesseract/
  * Mistral 等原生依赖——生产若要换引擎，仅需实现 `OcrEngine` 同接口。
  */
@@ -76,11 +76,11 @@ export class MockOcrEngine implements OcrEngine {
   }
 }
 
-/** 多模态 LLM 引擎：包既有 `chatCompletionMultimodal`（无 key → 抛 `NO_LLM_KEY`）。 */
+/** 多模态 LLM 引擎：包底座 `chatMultimodal`（无 key → 抛 `NO_LLM_KEY`）。 */
 export class MultimodalLlmEngine implements OcrEngine {
   readonly name = 'multimodal-llm';
 
-  constructor(private readonly llm: LlmService) {}
+  constructor(private readonly llm: LlmClient) {}
 
   async process(imageDataUrl: string, opts: OcrProcessOptions = {}): Promise<OcrResult> {
     const prompt = `请识别这张试卷图片中的所有内容，按以下 JSON 格式返回（只返回 JSON）：
@@ -90,7 +90,9 @@ export class MultimodalLlmEngine implements OcrEngine {
   "blocks": [{ "type": "text|formula|image|table", "text": "块文本", "latex": "公式 LaTeX（可选）" }]
 }
 学科：${opts.subject ?? 'unknown'}；年级：${opts.gradeLevel ?? 'unknown'}。`;
-    const res = await this.llm.chatCompletionMultimodal(imageDataUrl, prompt);
+    // maxRetries/baseDelayMs 显式对齐原 tuition 多模态实现的缺省（2 次 / 2s），保持逐字节等价
+    // （底座 `_post` 缺省为 3 次 / 1s）；timeoutMs 不传 → 底座缺省 60s == 原多模态缺省。
+    const res = await this.llm.chatMultimodal(imageDataUrl, prompt, 'default', { maxRetries: 2, baseDelayMs: 2000 });
     const parsed = parseJsonObject(res.content);
     if (!parsed) {
       // 端点返回非 JSON → 退化为纯文本
@@ -125,7 +127,7 @@ export class OcrProcessor {
   private readonly mock = new MockOcrEngine();
   private readonly multimodal: MultimodalLlmEngine;
 
-  constructor(private readonly llm: LlmService) {
+  constructor(private readonly llm: LlmClient) {
     this.multimodal = new MultimodalLlmEngine(llm);
   }
 
@@ -143,7 +145,7 @@ export class OcrProcessor {
     // 空图：不调外部（避免多模态端点挂死），直接走 Mock
     if (!imageDataUrl) return this.mock.process(imageDataUrl, opts);
     // 无真实 key → Mock（N3）
-    if (!this.llm.isRealKey()) return this.mock.process(imageDataUrl, opts);
+    if (!(await this.llm.isRealKey())) return this.mock.process(imageDataUrl, opts);
     // 默认多模态 LLM；失败（含 NO_LLM_KEY）→ Mock 兜底
     try {
       return await this.multimodal.process(imageDataUrl, opts);

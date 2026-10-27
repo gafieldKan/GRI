@@ -1,13 +1,13 @@
 import { TutorAgent } from './tutor-agent';
 import type { DatabaseService } from '../../../database/database.service';
-import type { LlmService } from './llm.service';
+import type { LlmClient } from '@gri/agent-core';
 
-// TutorAgent 值导入 LlmService，间接加载 ESM 包 @gri/agent-core。
-jest.mock('@gri/agent-core', () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
+// TutorAgent 值导入 LlmClient，间接加载 ESM 包 @gri/agent-core。
+jest.mock('@gri/agent-core', () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q, LlmClient: class {} }));
 
 function makeAgent() {
   const db = { query: jest.fn() } as unknown as DatabaseService;
-  const llm = { isRealKey: jest.fn().mockReturnValue(false) } as unknown as LlmService;
+  const llm = { isRealKey: jest.fn().mockReturnValue(false) } as unknown as LlmClient;
   return new TutorAgent(db, llm);
 }
 

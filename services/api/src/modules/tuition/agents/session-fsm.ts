@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
-import { LlmService } from './llm.service';
+import { LlmClient } from '@gri/agent-core';
+import { llmTimeoutMs } from './llm-provider';
 import { TuitionQuestionService } from './question.service';
 import { TuitionQuestion } from './question.service';
 
@@ -64,7 +65,7 @@ export class SessionFsm {
     sessionId: string,
     userId: string,
     knowledgePointId: string,
-    private readonly llm: LlmService,
+    private readonly llm: LlmClient,
     private readonly questionService: TuitionQuestionService,
     private readonly flush: () => Promise<void>,
     kpName?: string,
@@ -98,8 +99,8 @@ export class SessionFsm {
    *
    * @param content 学生消息
    * @param overrideDecision 可选：调用方（TuitionService）已用 TutorSessionAgent(agent-core) 求出教学判定。
-   *   - 传了（含 null）：直接应用，不再走本 FSM 内部的 LlmService 调用；null → 本地关键词降级。
-   *   - 没传：保持旧行为（内部调用 `llm.generateTeachingResponse`，测试/E2E 兼容）。
+   *   - 传了（含 null）：直接应用，不再走本 FSM 内部的底座 LLM 调用；null → 本地关键词降级。
+   *   - 没传：保持旧行为（内部调用 `_generateTeachingResponse`，测试/E2E 兼容）。
    */
   async handleUserMessage(content: string, overrideDecision?: any): Promise<FsmResponse> {
     this.interactionHistory.push({ role: 'user', content, timestamp: Date.now() });
@@ -122,7 +123,7 @@ export class SessionFsm {
         : this._fallback(content);
     } else {
       // 旧路径：内部一次 LLM 调用（无 key 走本地降级）
-      const llm = await this.llm.generateTeachingResponse({
+      const llm = await this._generateTeachingResponse({
         phase: this.phase,
         knowledgePoint: this.selectedKpName || this.knowledgePointId,
         conversationHistory: this.interactionHistory,
@@ -143,6 +144,112 @@ export class SessionFsm {
     }
 
     return result;
+  }
+
+  /**
+   * 一体式教学响应生成（W2.4 由原 tuition 自持 LLM 客户端的同名方法迁入本 FSM）。
+   * 一次底座 LLM 调用返回 {phase, action, answerCorrect, studentAnswer, suggestedResponse, analysis}。
+   * 无 key → 返回 null，调用方（handleUserMessage）降级到本地关键词判定。
+   */
+  private async _generateTeachingResponse(context: any): Promise<any | null> {
+    const {
+      phase = 'welcome',
+      knowledgePoint = '当前知识点',
+      conversationHistory = [],
+      userMessage,
+      currentQuestion = null,
+      diagnosisProgress = null,
+      quizProgress = null,
+      diagnosisResult = null,
+    } = context;
+
+    if (!(await this.llm.isRealKey())) return null;
+
+    const questionInfo = currentQuestion
+      ? `\n当前题目：${currentQuestion.content || ''}\n题目类型：${currentQuestion.type || 'text'}\n正确答案：${currentQuestion.answer || ''}`
+      : '';
+
+    const progressInfo: string[] = [];
+    if (phase === 'diagnosis' && diagnosisProgress) {
+      progressInfo.push(`诊断进度：已答${diagnosisProgress.answered}/${diagnosisProgress.total}题`);
+    }
+    if (phase === 'quizzing' && quizProgress) {
+      progressInfo.push(`测验进度：已答${quizProgress.answered}/${quizProgress.total}题`);
+    }
+    if (diagnosisResult) {
+      progressInfo.push(`诊断结果：正确${diagnosisResult.correctCount}/${diagnosisResult.total} (${Math.round(diagnosisResult.correctRate * 100)}%)`);
+    }
+
+    const prompt = `你是一位专业的K12数学老师，采用启发式教学。你需要分析学生消息并同时给出回复。
+
+当前阶段：${phase}
+知识点：${knowledgePoint}${questionInfo}
+${progressInfo.join('\n')}
+
+对话历史：
+${conversationHistory.slice(-6).map((m: any) => `${m.role}: ${m.content}`).join('\n')}
+
+学生最新消息：${userMessage}
+
+请以JSON格式返回（只返回JSON，不要其他文字）：
+{
+  "phase": "welcome|diagnosis|teaching|quizzing|done",
+  "action": "greet|ask_question|evaluate_answer|teach|respond|give_quiz|complete",
+  "answerCorrect": true|false|null,
+  "studentAnswer": "从消息中提取的答案部分",
+  "suggestedResponse": "回复内容",
+  "analysis": "简短分析(10字内)"
+}
+
+phase 判定规则：
+- welcome: 学生首次打招呼，尚未开始学习
+- diagnosis: 在诊断测试阶段，或应该进入诊断阶段
+- teaching: 在讲解/互动阶段。当学生明确要求直接教学/跳过题目、说"不能/不知道"时，phase=teaching
+- quizzing: 学生确认理解后进入，或已在测验阶段
+- done: 所有测验已完成
+
+action 判定规则：
+- greet: 首次打招呼
+- ask_question: 需要出一道题给学生（仅在 diagnosis/quizzing 阶段）
+- evaluate_answer: 学生在答题，需要评判并反馈
+- teach: 直接讲解概念/知识点，不抛出问题
+- respond: 回应学生的闲聊/提问/困惑
+- give_quiz: 开始给出测验题
+- complete: 学习已完成
+
+重要行为准则：
+- 当学生说"不能"、"不知道"、"直接教学"、"跳过"、"讲给我听"、"先回答我的问题"时，phase=teaching, action=teach，直接讲解知识点的核心概念
+- teaching 阶段的 suggestedResponse 应直接讲解（如概念解释、公式），不再出题或反问。用简短讲解后以提问确认理解结尾
+- 仅当 action=ask_question 或 action=give_quiz 时，服务器才会从题库推送题目
+- 当 diagnosis 阶段的题目全部做完后，服务器会自动推送 diagnosisResult，你应在看到诊断结果后将 phase 改为 teaching`;
+
+    try {
+      const messages = [
+        { role: 'system', content: prompt },
+        ...conversationHistory.slice(-8).map((m: any) => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content,
+        })),
+        { role: 'user', content: `[待响应] ${userMessage}` },
+      ];
+      const responseObj = await this.llm.chat(messages, 'default', {
+        temperature: 0.3,
+        max_tokens: 4096,
+        timeoutMs: llmTimeoutMs(),
+        maxRetries: 2,
+        baseDelayMs: 2000,
+      });
+      const parsed = this.llm.parseJSON(responseObj.content);
+      if (parsed) {
+        if (!parsed.phase) parsed.phase = phase;
+        if (!parsed.action) parsed.action = 'respond';
+        if (!parsed.suggestedResponse) parsed.suggestedResponse = '请继续学习，有什么问题可以问我。';
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   applyLlmDecision(llm: any, content: string, currentQuestion: TuitionQuestion | null): FsmResponse {
@@ -348,7 +455,7 @@ export class SessionFsm {
 export class SessionFsmService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly llm: LlmService,
+    private readonly llm: LlmClient,
     private readonly questionService: TuitionQuestionService,
   ) {}
 

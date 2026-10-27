@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
-// LlmService 必须值导入（emitDecoratorMetadata 依赖运行期引用）；`import type` 会使 Nest 无法注入。
-import { LlmService } from './llm.service';
+// LlmClient 必须值导入（emitDecoratorMetadata 依赖运行期引用）；`import type` 会使 Nest 无法注入。
+import { LlmClient } from '@gri/agent-core';
+import { llmTimeoutMs } from './llm-provider';
 import type { BlankSpec, OcrBlock, ParsedQuestion, QuestionType } from '../tuition.types';
 
 /**
  * 结构化题目解析（P2-T7）—— OCR 文本 → `ParsedQuestion[]`（题型/选项/空位/KP/难度）。
  *
  * 判别策略：**规则优先**（题型特征、选项标记、下划线空位、知识点名称/关键词匹配），
- * 有真实 key 时再用既有 `LlmService` 对**已定结构**做兜底微调（不改题型）。**不引入**向量检索/
+ * 有真实 key 时再用底座 `LlmClient`（@gri/agent-core）对**已定结构**做兜底微调（不改题型）。**不引入**向量检索/
  * embedding 依赖 —— 知识点映射靠 `edu.knowledge_points` 名录 + 内置关键词表做名称匹配（N2）。
  */
 
@@ -37,7 +38,7 @@ export const DEFAULT_KNOWLEDGE_POINT = '综合';
 
 @Injectable()
 export class QuestionParser {
-  constructor(private readonly llm: LlmService) {}
+  constructor(private readonly llm: LlmClient) {}
 
   /**
    * 解析入口：`text` 或 OCR 版面块 → 结构化题目。
@@ -54,7 +55,7 @@ export class QuestionParser {
     }
 
     // 有真实 key 时，逐题做类型/KP 兜底（规则已定的结构不变）
-    if (out.length && this.llm.isRealKey()) {
+    if (out.length && (await this.llm.isRealKey())) {
       for (const q of out) await this._enrichWithLlm(q, ctx);
     }
     return out;
@@ -202,7 +203,7 @@ export class QuestionParser {
 {"knowledgePoint": "知识点名称", "difficulty": "easy|medium|hard"}
 学科：${ctx.subject ?? 'math'}；年级：${ctx.gradeLevel ?? 'unknown'}。
 题目：${q.content}`;
-      const res = await this.llm.chatCompletion([{ role: 'user', content: prompt }]);
+      const res = await this.llm.chat([{ role: 'user', content: prompt }], 'default', { timeoutMs: llmTimeoutMs() });
       const parsed = this._parseJsonObject(res?.content ?? '');
       if (parsed) {
         if (typeof parsed.knowledgePoint === 'string' && parsed.knowledgePoint.trim()) {
