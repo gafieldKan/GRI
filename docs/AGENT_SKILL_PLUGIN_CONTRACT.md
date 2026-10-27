@@ -69,7 +69,7 @@ export default {
 | `@gri/agent-core.LlmClient` | `agent.service`（判题）、`taxonomy/command.service` | **保留为唯一路径** |
 | `tuition/agents/LlmService` | tutor-agent、variant-generator、question-parser 等 | **删除**，调用点改注入底座 `ModelRouter` |
 
-**验证**：归一后 `grep -rn "LlmService" services/api/src` 仅剩 0 处（除已迁文件的历史注释）。
+**验证**：归一后 `grep -rn "LlmService" services/api/src` 仅剩 0 处（除已迁文件的历史注释）。**✅ 已达成（W2.4a，commit 417fef5）—— `grep = 0`。**
 
 ---
 
@@ -87,8 +87,8 @@ export default {
 
 ---
 
-## 五、待用户裁决
+## 五、裁决（已定 —— 承用户「按你的推荐执行」，作者代为裁决）
 
-1. **P-3 顺序**：先契约（P-3.0）还是先迁一个可见样例（P-3.1）？
-2. **旧编排（`tutor-agent`/`ai-agent.service`）**是**直接删**还是**先标记 deprecated 留一版**？
-3. **这份契约是否作为 `plugin.json` 的正式 schema 基线**？（决定后续 P-1/P-2 是否共用）
+1. **P-3 顺序**：**先契约、后样例 —— 二者俱已落地，此问不再开放**。P-3.0（最小契约）落于 W2.3a/b（`packages/plugin-host`）；P-3.1（首个可见样例）落于 W2.3c（`plugins/memory` 出厂 `memory.*` 插件）。后续按 P-3.2（`tuition` 零件迁移）推进。
+2. **旧编排（`tutor-agent` / `ai-agent.service`）**：**保留**（不删、不标 deprecated）。核对：`tuition.service.analyzeExam → ai-agent.service.pipeline → tutor-agent.analyzeExam → question-generator/plan-agent` 是**在役**链路（试卷→学情→练习→计划），非死代码——上表「废弃」为**过时设想**。
+3. **`plugin.json` 正式 schema 基线**：**是** —— `@gri/plugin-host` 的 `parseManifest`（`packages/plugin-host/src/manifest.js`）即**权威基线**。字段/必填/默认/校验码由 `parseManifest` + `packages/plugin-host/tests/plugin-host.test.js` 锁定（缺 id/kind、未知 kind、`apiVersion` 不兼容、id 非法、数组字段规范化、trust/config 缺省…）；kind 闭集与装配序见 `DEFAULT_KINDS`。**P-1 / P-2 / P-4 一律共用本基线**，不再各立一份 manifest 方言。

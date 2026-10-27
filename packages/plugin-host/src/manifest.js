@@ -1,6 +1,9 @@
 /**
  * Plugin manifest —— `plugin.json` 的解析与校验（manifest-first：宿主只认清单，不认实现）。
  *
+ * **本 `parseManifest` 即 `plugin.json` 的正式 schema 基线**（裁决见 `docs/AGENT_SKILL_PLUGIN_CONTRACT.md` §五 #3）；
+ * P-1/P-2/P-4 一律共用，不再各立 manifest 方言。字段/默认/校验码由本函数与 `tests/plugin-host.test.js` 锁定。
+ *
  * 形状（`docs/PLUGIN_ARCHITECTURE.md` §2.1 + `docs/AGENT_SKILL_PLUGIN_CONTRACT.md` 的必需子集）：
  * {
  *   "id": "tutor-math",              // 必填，唯一，kebab/dotted（小写字母数字 + . -）
