@@ -37,18 +37,18 @@ cat <<'TABLE'
    1 推理环            GRI:AgentCore.run            OC:agent-runtime
    2 工具契约          GRI:makeTool                 OC:defineToolPlugin(+outputSchema/optional)
    3 技能 Skills       GRI:parseSkillMarkdown       OC:SKILL.md(+预览)
-   4 插件清单          GRI:—                        OC:openclaw.plugin.json
-   5 能力注册          GRI:—                        OC:api.register*(16类)
-   6 契约与强制        GRI:—                        OC:OpenClawPluginApi+契约测试
-   7 钩子 Hooks        GRI:—                        OC:5类hook
+   4 插件清单          GRI:plugin-host+plugin.json  OC:openclaw.plugin.json
+   5 能力注册          GRI:CapabilityRegistry       OC:api.register*(16类)
+   6 契约与强制        GRI:撞名拒绝+conformance     OC:OpenClawPluginApi+契约测试
+   7 钩子 Hooks        GRI:host机制在(无内置用例)   OC:5类hook
    8 记忆 Memory       GRI:MemoryStore              OC:memory-lancedb/wiki
    9 MCP               GRI:McpClient/Pool           OC:MCP桥
   10 ACP               GRI:AcpAdapter               OC:SDK harness
   11 模型路由          GRI:ModelRouter              OC:provider catalog
-  12 沙箱/信任边界     GRI:未定义                   OC:in-process非沙箱(明示)
+  12 沙箱/信任边界     GRI:trust(未强制)            OC:in-process非沙箱(明示)
   13 多模态            GRI:multimodalModel          OC:16类能力含
-  14 观测/审计         GRI:agent.tool_runs          OC:doctor/plugins inspect
-  15 外部agent后端     GRI:—                        OC:registerCliBackend / Hermes:delegate_tool
+  14 观测/审计         GRI:三审计表+保留prune       OC:doctor/plugins inspect
+  15 外部agent后端     GRI:CliBackendRegistry       OC:registerCliBackend / Hermes:delegate_tool
 TABLE
 
 echo

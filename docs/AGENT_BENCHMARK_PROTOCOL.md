@@ -27,21 +27,23 @@
 |---|---|---|---|
 | 1 | **推理环** | Agent runtime（`docs/agent-runtime-architecture.md`） | `AgentCore.run()` ✅ |
 | 2 | **工具契约** | `defineToolPlugin`（typebox `parameters`/`outputSchema`/`optional`） | `makeTool`（JSON Schema）⚠️ 无 outputSchema/optional |
-| 3 | **技能（Skills）** | `SKILL.md` frontmatter + 预览 | `parseSkillMarkdown` ✅ 无预览 |
-| 4 | **插件清单** | `openclaw.plugin.json` manifest（15+ 字段、catalog 分类、schema 校验） | ❌ 无 |
-| 5 | **能力注册** | `api.registerProvider/Channel/…`（16 类能力） | ❌ 无注册表（硬编码） |
-| 6 | **契约与强制** | `OpenClawPluginApi` + 重名拒绝 + 契约测试 | ❌ 无 |
-| 7 | **钩子（Hooks）** | tool-call policy / prompt / session / delivery / lifecycle 五类 | ❌ 无 |
+| 3 | **技能（Skills）** | `SKILL.md` frontmatter + 预览 | `parseSkillMarkdown` ✅（W2.3d：SKILL.md 经插件装载）无预览 |
+| 4 | **插件清单** | `openclaw.plugin.json` manifest（15+ 字段、catalog 分类、schema 校验） | ✅ `plugin.json` + `parseManifest`（W2.3a，`packages/plugin-host`；schema 基线见 `AGENT_SKILL_PLUGIN_CONTRACT.md` §五#3） |
+| 5 | **能力注册** | `api.registerProvider/Channel/…`（16 类能力） | ✅ `CapabilityRegistry` + `PluginHost`（W2.3a） |
+| 6 | **契约与强制** | `OpenClawPluginApi` + 重名拒绝 + 契约测试 | ✅ 撞名拒绝（`parseManifest`/host）+ `assertEnginePortConformance` |
+| 7 | **钩子（Hooks）** | tool-call policy / prompt / session / delivery / lifecycle 五类 | ⚠️ host **机制在**（`manifest.hooks` + `impl[name]`，`plugin-host/src/host.js`），**尚无内置 hook 用例** |
 | 8 | **记忆** | `memory-lancedb` / `memory-wiki` 插件 | `MemoryStore`（内存+DB）⚠️ 无向量/检索 |
 | 9 | **MCP** | MCP 服务桥 | `McpClient/McpPool/bridgeMcpTools` ✅ |
 | 10 | **ACP** | SDK entrypoints / harness | `AcpAdapter` ✅ |
 | 11 | **模型路由** | provider catalog + 前台切模型 | `ModelRouter` ✅ |
-| 12 | **沙箱/信任边界** | 原生插件 **in-process、非沙箱**（明示） | 未定义 ⚠️ |
+| 12 | **沙箱/信任边界** | 原生插件 **in-process、非沙箱**（明示） | `trust` 描述符（W3：boundary/network/filesystem；**仅解析未强制沙箱**，见 `docs/AGENT_SECURITY.md` §三）⚠️ |
 | 13 | **多模态** | 语音/图像/视频生成、媒体理解（16 类能力含） | `multimodalModel`（neva-22b）⚠️ 仅调用 |
-| 14 | **观测/审计** | `openclaw doctor` / `plugins inspect` / 兼容信号 | `agent.tool_runs` 审计 ⚠️ 无体检命令 |
+| 14 | **观测/审计** | `openclaw doctor` / `plugins inspect` / 兼容信号 | `agent.tool_runs`/`external_runs`/`external_events` 审计 + 保留清理端点（W3）⚠️ 无体检命令 |
 | 15 | **外部 agent 后端** | CLI backend（`api.registerCliBackend`）+ Hermes `delegate_tool`/`agent/transports/*`（7 终端后端：local/Docker/SSH/Modal…） | ✅ `CliBackendRegistry` + 四后端（B-3a/b `40ea83c`/`b426070`）+ `agent.delegate` 委派（B-3c `194a72a`）；默认只读 + cwd 白名单 + 父只拿摘要；**隔离弱于对方**（我们 OS 用户级，Hermes 有容器级终端） |
 
 > 每条对标都须落到 **"有/无/弱"** 三级判定，禁止模糊描述。
+
+> **GRI 现状复核 2026-10-28**（P-0/W2.3/W3 后，逐维对回源码）：维度 **4/5/6 由 ❌ → ✅**（`packages/plugin-host`：`parseManifest`/`CapabilityRegistry`/撞名拒绝）；**3** 补 SKILL.md 插件装载；**7** 机制在但无内置 hook 用例（仍 ⚠️）；**12** 有 `trust` 描述符（仅解析未强制，仍 ⚠️）；**14** 补审计保留端点。**2**（`makeTool` 无 `outputSchema`/`optional`）维持 ⚠️ —— 真差距未消。
 
 ---
 
