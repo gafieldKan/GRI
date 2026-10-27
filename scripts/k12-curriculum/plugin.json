@@ -1,0 +1,11 @@
+{
+  "id": "k12-curriculum",
+  "name": "K12 课程内容（knowledge.content）",
+  "kind": "knowledge.content",
+  "apiVersion": "1",
+  "version": "0.1.0",
+  "description": "K12 课程数据管线（幂等灌库）：catalog/*.yaml → ontology 六表；staging/*.json → edu.knowledge_points/kp_prerequisite/questions；maps/*.map.json → knowledge_area。P-2：显性化为 knowledge.content provider（领域逻辑逐字迁入 provider.mjs，CLI 只剩宿主面）。幂等锚点=code。",
+  "entry": "./provider.mjs",
+  "provides": ["knowledge.content"],
+  "trust": { "boundary": "in-process", "network": false, "filesystem": "read" }
+}
