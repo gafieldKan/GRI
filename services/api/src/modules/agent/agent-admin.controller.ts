@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Req, Query, Optional } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Req, Query, Optional } from '@nestjs/common';
 import { Request } from 'express';
 import { DatabaseService } from '../../database/database.service';
 import { OrganizationService } from '../organization/organization.service';
@@ -359,6 +359,52 @@ export class AgentAdminClassDiagnosisController {
       wrongCount: wrongCount ?? 0,
       topWrong: (topWrong || []).map((r: any) => ({ answer: r.student_answer, count: r.n })),
       wrongStudents: (wrongStudents || []).map((r: any) => ({ studentId: r.user_id, answer: r.student_answer })),
+    };
+  }
+}
+
+/**
+ * 审计保留（W3）—— `POST /api/agent/admin/audit/prune`。**仅运营**（`assertSiteOperator`）。
+ *
+ * 审计表（`agent.tool_runs` / `agent.external_events` / `agent.external_runs`）设计为**只增**，
+ * 会无界增长；由运营**主动**清理 + 可配保留窗口（`keepDays`，默认 180，钳制 [1, 3650]）。
+ * 本栈无 cron —— **trigger = 运营调用本端点**（诚实口径：非自动保留）。
+ * 逐表按各自 `created_at` 删过期行；删 `external_runs` 行会 **CASCADE** 其 `external_events`。
+ * 返回各表删除行数（运营据此观测）。
+ */
+@Controller('agent/admin/audit')
+export class AgentAdminAuditController {
+  private static readonly DEFAULT_KEEP_DAYS = 180;
+  private static readonly MAX_KEEP_DAYS = 3650;
+
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly org: OrganizationService,
+  ) {}
+
+  @Post('prune')
+  async prune(@Req() req: Request, @Body() body?: { keepDays?: number }): Promise<any> {
+    await this.org.assertSiteOperator((req as any).auth?.externalId as string);
+    // 安全默认：仅**显式 ≥1 的有限数**才被采纳（钳制上限 3650）；缺省/非法/≤0（含 ""/false/[] 这类
+    // Number→0 的假值）一律回缺省 180 —— 防「空串误传 → 钳到 1 天 → 几乎全清审计」这种脚滑。
+    const raw = Number(body?.keepDays);
+    const keepDays =
+      Number.isFinite(raw) && raw >= 1
+        ? Math.min(Math.floor(raw), AgentAdminAuditController.MAX_KEEP_DAYS)
+        : AgentAdminAuditController.DEFAULT_KEEP_DAYS;
+    // 逐表按自建 created_at 删过期；窗口 = NOW() - keepDays 天（$1::int，同型 cast 防 PG 推断歧义）
+    const WINDOW = `NOW() - ($1::int * INTERVAL '1 day')`;
+    const toolRuns = await this.db.query(`DELETE FROM agent.tool_runs WHERE created_at < ${WINDOW}`, [keepDays]);
+    const externalEvents = await this.db.query(`DELETE FROM agent.external_events WHERE created_at < ${WINDOW}`, [keepDays]);
+    const externalRuns = await this.db.query(`DELETE FROM agent.external_runs WHERE created_at < ${WINDOW}`, [keepDays]);
+    return {
+      success: true,
+      keepDays,
+      deleted: {
+        toolRuns: toolRuns.rowCount ?? 0,
+        externalEvents: externalEvents.rowCount ?? 0,
+        externalRuns: externalRuns.rowCount ?? 0,
+      },
     };
   }
 }

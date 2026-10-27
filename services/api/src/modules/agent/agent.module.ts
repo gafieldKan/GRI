@@ -3,7 +3,7 @@ import { AgentService, AGENT_CLI_BACKENDS } from './agent.service';
 import { AgentController } from './agent.controller';
 import { AgentV1Controller } from './agent-v1.controller';
 import { AgentCredentialsService } from './agent-credentials.service';
-import { AgentAdminRoutesController, AgentAdminToolRunsController, AgentAdminCapabilityController, AgentAdminOverviewController, AgentAdminClassDiagnosisController } from './agent-admin.controller';
+import { AgentAdminRoutesController, AgentAdminToolRunsController, AgentAdminCapabilityController, AgentAdminOverviewController, AgentAdminClassDiagnosisController, AgentAdminAuditController } from './agent-admin.controller';
 import { AgentAdminMcpServersController } from './agent-admin-mcp.controller';
 import { OrganizationModule } from '../organization/organization.module';
 import { cliBackends } from '@gri/agent-core';
@@ -31,6 +31,7 @@ import { cliBackends } from '@gri/agent-core';
     AgentAdminCapabilityController,
     AgentAdminOverviewController,
     AgentAdminClassDiagnosisController,
+    AgentAdminAuditController,
     AgentAdminMcpServersController,
   ],
   providers: [

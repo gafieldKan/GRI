@@ -39,12 +39,13 @@
 | 15 | **插件清单 schema**：kind 闭集、apiVersion 兼容、id 规范、撞名拒绝 | `plugin-host.test.js`：`parseManifest: id/kind/apiVersion 非法一律拒绝且带 code`、`CapabilityRegistry: 撞名 id 拒绝加载` |
 | 16 | **不静默降级**：CLI/引擎失败**如实报错**（非空成功）；零输出 → error | `cli-backend.test.js`：`run: 正常退出但零输出 → 明确 error，不静默`、`…非零退出且无文本 → 明确 error`；`cli-delegate.test.js`：`…未注入 CliBackendRegistry → ok:false（拒绝静默降级）`、`…桩 run 空文本 → ok:false` |
 | 17 | **引擎一致性**：任一 EnginePort 适配器过黑盒套件（含无 key 回落 + entity 隔离） | `engine-conformance.test.js` + `engine-adapters.test.js`（`assertEnginePortConformance`） |
+| 18 | **审计保留**：运维可配保留窗口（缺省/非法/≤0 → **180**；有效值钳上限 3650）+ **仅运营**（`assertSiteOperator`）触发清理；**门禁在删之前** | `agent-admin-audit.spec.ts`：`prune：先过运营门禁，再按窗口删三表，返回各表删除行数`、`保留窗口：仅显式 ≥1 有限数被采纳；缺省/非法/≤0 → 180（安全默认，防 ≤0 误清全量）`、`**未过**运营 → 抛错，且**不删任何行**（门禁在删之前）` |
 
 ---
 
 ## 三、未做 / 未测（诚实清单 —— 勿过度宣称）
 
-- **审计保留（retention）**：`agent.tool_runs` / `agent.external_runs` / `agent.external_events` 目前**只增不删，无保留策略**（无过期清理/归档）。「审计保留」尚未落地——**无对应测试**。
+- **审计保留非自动**：清理由运营**主动**调用 `POST /api/agent/admin/audit/prune`（可配窗口，见 §二 #18）；本栈**无 cron**，故非定期/自动保留（运营须自行择时）。
 - **信任边界描述符的执行语义**：清单的 `trust`（`boundary`/`network`/`filesystem`）目前只被**解析与校验**，**未对插件运行时施加实际沙箱**（声明即文档，非强制）。
 - **网络出口**：外部 CLI 后端按设计可联网（其自带鉴权），GRI 不做网络出口强制。
 - **多租户**：业务表零 tenant 作用域（方案未选多租户）——不在本边界内。
