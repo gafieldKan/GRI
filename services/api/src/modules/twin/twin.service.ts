@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
+import { eduQuery, dailyAnswerAggregate, upsertStudentFields } from '../edu-core/repository';
 import { IdentityService } from '../identity/identity.service';
 import { TuitionService } from '../tuition/tuition.service';
 import { CurriculumService } from '../curriculum/curriculum.service';
@@ -206,20 +207,11 @@ export class TwinService {
       diffs: [],
     });
 
-    const daily = await this.db.query(
-      `SELECT date_trunc('day', created_at) AS d,
-              COUNT(*)::int AS n,
-              COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END), 0)::int AS correct
-         FROM edu.answer_records
-        WHERE user_id = $1
-        GROUP BY d
-        ORDER BY d ASC`,
-      [entityId],
-    );
+    const dailyRows = await dailyAnswerAggregate(eduQuery(this.db), entityId);
 
     let cum = 0;
     let created = 0;
-    for (const row of daily.rows as any[]) {
+    for (const row of dailyRows as any[]) {
       const n = Number(row.n ?? 0);
       const beforeCum = cum;
       cum += n;
@@ -258,16 +250,8 @@ export class TwinService {
 
     const keys = Object.keys(cols);
     if (keys.length > 0) {
-      // 列名全部来自白名单集合，无注入风险；$1 恒为 entityId（≡ users.id）
-      const colsSql = keys.join(', ');
-      const placeholders = keys.map((_, i) => `$${i + 2}`).join(', ');
-      const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-      await this.db.query(
-        `INSERT INTO edu.students (user_id, ${colsSql})
-         VALUES ($1, ${placeholders})
-         ON CONFLICT (user_id) DO UPDATE SET ${setClause}, updated_at = NOW()`,
-        [entityId, ...keys.map((k) => cols[k])],
-      );
+      // 列名全部来自白名单集合，无注入风险；$1 恒为 entityId（≡ users.id）——经 edu-core 单一所有者（W2.1c）
+      await upsertStudentFields(eduQuery(this.db), entityId, cols);
     }
 
     const after = this.projectProfile(await this.identity.getProfileByExternalId(entityId));

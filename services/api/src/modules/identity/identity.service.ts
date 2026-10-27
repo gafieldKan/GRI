@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { loadConfig } from '../../config/config';
+import { eduQuery, findStudentRow } from '../edu-core/repository';
 import {
   ListUsersQuery,
   Role,
@@ -50,15 +51,12 @@ export class IdentityService {
 
     const user = userRes.rows[0] as User;
 
-    // 若角色是 student，则尝试拉取 edu.students 扩展档案
+    // 若角色是 student，则尝试拉取 edu.students 扩展档案（经 edu-core 单一所有者，W2.1c）
     let student: Student | undefined;
     if (user.role === 'student') {
-      const studentRes = await this.db.query(
-        'SELECT * FROM edu.students WHERE user_id = $1',
-        [externalId],
-      );
-      if (studentRes.rows.length > 0) {
-        student = studentRes.rows[0] as Student;
+      const row = await findStudentRow(eduQuery(this.db), externalId);
+      if (row) {
+        student = row as Student;
       }
     }
 

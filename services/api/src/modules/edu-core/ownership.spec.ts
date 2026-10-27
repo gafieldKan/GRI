@@ -7,6 +7,8 @@ import {
   UPSERT_WRONG_QUESTION_SQL,
   DAILY_MASTERY_SERIES_SQL,
   QUESTIONS_BY_SUBJECT_SQL,
+  STUDENT_ROW_BY_USER_SQL,
+  DAILY_ANSWER_AGGREGATE_SQL,
 } from './repository';
 
 /**
@@ -24,11 +26,15 @@ function moduleSources(dir: string): Array<{ file: string; text: string }> {
 
 /**
  * W2.1 出口判据的可执行版：「`edu.*` 单一领域组件」不是靠约定，而是靠这条断言守着。
- * 任何人往 agent 模块里再写一句内联 `edu.*` SQL，本用例即红。
+ * 任何人往**受守卫模块**里再写一句内联 `edu.*` SQL，本用例即红。
+ * 扫描面 = 模块顶层 `.ts`（排除 spec）。**注**：`tuition` 的直取在 `agents/` 子目录（须递归，待 W2.1c-3 收口后纳入）；
+ * `curriculum` 待 W2.1c-2。
  */
-describe('edu-core 单一领域所有者（W2.1）', () => {
-  it('agent 模块生产源码零直取 edu.*（一律经 edu-core）', () => {
-    const dir = join(__dirname, '..', 'agent');
+const GUARDED_MODULES = ['agent', 'identity', 'twin'];
+
+describe('edu-core 单一领域所有者（W2.1 / W2.1c）', () => {
+  it.each(GUARDED_MODULES)('%s 模块生产源码零直取 edu.*（一律经 edu-core）', (mod) => {
+    const dir = join(__dirname, '..', mod);
     const sources = moduleSources(dir);
     // 防路径错致假绿：扫描面必须非空
     expect(sources.length).toBeGreaterThan(0);
@@ -43,5 +49,8 @@ describe('edu-core 单一领域所有者（W2.1）', () => {
     expect(UPSERT_WRONG_QUESTION_SQL).toContain('ON CONFLICT (user_id, question_id)');
     expect(DAILY_MASTERY_SERIES_SQL).toContain('ar.user_id = $1');
     expect(QUESTIONS_BY_SUBJECT_SQL).toContain('FROM edu.questions q');
+    // W2.1c-1：identity/twin 收敛进来的语句同样带 entity 谓词
+    expect(STUDENT_ROW_BY_USER_SQL).toContain('user_id = $1');
+    expect(DAILY_ANSWER_AGGREGATE_SQL).toContain('user_id = $1');
   });
 });

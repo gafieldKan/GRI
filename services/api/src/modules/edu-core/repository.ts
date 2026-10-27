@@ -581,3 +581,52 @@ export async function wrongStudentsByQuestion(query: EduQueryFn, questionId: str
   const { rows = [] } = await query(QUESTION_WRONG_STUDENTS_SQL, [questionId]);
   return rows;
 }
+
+// ---------------------------------------------------------------------------
+// W2.1c：identity / twin 装配所需（整行档案读、按日聚合读、白名单 upsert）
+// ---------------------------------------------------------------------------
+
+/** 学生扩展档案**整行**（identity 装配 user+student 用；与窄投影 STUDENT_PROFILE_SQL 区分）。 */
+export const STUDENT_ROW_BY_USER_SQL = 'SELECT * FROM edu.students WHERE user_id = $1';
+
+export async function findStudentRow(query: EduQueryFn, userId: string): Promise<any | null> {
+  const { rows = [] } = await query(STUDENT_ROW_BY_USER_SQL, [userId]);
+  return rows[0] ?? null;
+}
+
+/** 按日聚合作答（孪生历史回填）：date_trunc('day')，当日题数 + 答对数。 */
+export const DAILY_ANSWER_AGGREGATE_SQL = `SELECT date_trunc('day', created_at) AS d,
+              COUNT(*)::int AS n,
+              COALESCE(SUM(CASE WHEN is_correct THEN 1 ELSE 0 END), 0)::int AS correct
+         FROM edu.answer_records
+        WHERE user_id = $1
+        GROUP BY d
+        ORDER BY d ASC`;
+
+export async function dailyAnswerAggregate(query: EduQueryFn, userId: string): Promise<any[]> {
+  const { rows = [] } = await query(DAILY_ANSWER_AGGREGATE_SQL, [userId]);
+  return rows;
+}
+
+/**
+ * 白名单字段 upsert edu.students（人物画像自助更新）。
+ * `cols` 的键=列名、值=$2.. 参数——**列名由调用方白名单产生**（无注入面，同原 twin 内联口径）；
+ * 空对象 → no-op（调用方自行判空，本函数不再造分支）。
+ */
+export async function upsertStudentFields(
+  query: EduQueryFn,
+  userId: string,
+  cols: Record<string, unknown>,
+): Promise<void> {
+  const keys = Object.keys(cols);
+  if (keys.length === 0) return;
+  const colsSql = keys.join(', ');
+  const placeholders = keys.map((_, i) => `$${i + 2}`).join(', ');
+  const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
+  await query(
+    `INSERT INTO edu.students (user_id, ${colsSql})
+         VALUES ($1, ${placeholders})
+         ON CONFLICT (user_id) DO UPDATE SET ${setClause}, updated_at = NOW()`,
+    [userId, ...keys.map((k) => cols[k])],
+  );
+}
