@@ -418,7 +418,25 @@ export const provider = Object.freeze({
   kind: 'knowledge.content',
   apiVersion: '1',
   provides: ['knowledge.content'],
+  run,
   importAll,
 })
+
+/**
+ * 统一宿主入口（P-2 host 约定）：`run(client, { dryRun })` —— 自管**单事务**（BEGIN → importAll → COMMIT|ROLLBACK）。
+ * 宿主（`scripts/content-host.mjs`）只调 `impl.run(client, ...)`，**不 pin 具体 provider**（同 kind 多 provider 由 kind 装配）。
+ */
+export async function run(client, { dryRun = false } = {}) {
+  const query = (text, params) => client.query(text, params)
+  await client.query('BEGIN')
+  try {
+    const r = await importAll(query, { dryRun })
+    await client.query(dryRun ? 'ROLLBACK' : 'COMMIT')
+    return r
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw e
+  }
+}
 
 export default provider

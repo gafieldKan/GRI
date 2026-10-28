@@ -164,7 +164,15 @@ export const provider = Object.freeze({
   kind: 'knowledge.taxonomy',
   apiVersion: '1',
   provides: ['knowledge.taxonomy'],
+  run,
   importAll,
 })
+
+/**
+ * 统一宿主入口（P-2 host 约定）：`run(client, { dryRun })` —— 本 provider 各自数据集自开事务（见 importAll）。
+ */
+export async function run(client, { dryRun = false } = {}) {
+  return importAll(client, { dryRun })
+}
 
 export default provider
