@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { HTTP_CODE_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { TuitionController } from './tuition.controller';
 import { TuitionService } from './tuition.service';
@@ -15,6 +15,7 @@ function makeController(overrides: {
   classify?: jest.Mock;
   advance?: jest.Mock;
   render?: jest.Mock;
+  noSocratic?: boolean;
   scanExam?: jest.Mock;
   generate?: jest.Mock;
 } = {}) {
@@ -27,9 +28,9 @@ function makeController(overrides: {
       update: { stage: 'Hint', intent: 'ASK_HINT', hintCount: 1, attemptCount: 0 },
     }),
   } as unknown as TeachingCardFsm;
-  const templates = {
-    render: overrides.render ?? jest.fn().mockReturnValue('先回忆勾股定理。'),
-  } as unknown as SocraticRender;
+  const templates = overrides.noSocratic
+    ? null // W2.4b：模拟「宿主未解析到 socratic.render 能力」→ 注入 null
+    : ({ render: overrides.render ?? jest.fn().mockReturnValue('先回忆勾股定理。') } as unknown as SocraticRender);
   const scanner = {
     scanExam: overrides.scanExam ?? jest.fn().mockResolvedValue({
       success: true,
@@ -113,6 +114,27 @@ describe('TuitionController —— T6/T7 最小接线', () => {
       { subject: 'math', type: 'single-choice', difficulty: 'easy', stage: 'hint' },
       { knowledgePoint: '勾股定理' },
     );
+  });
+
+  it('socratic/render：模板缺件错（name=MissingTemplateError）→ 400（跨插件边界按 name 判，非 instanceof）', () => {
+    const render = jest.fn().mockImplementation(() => {
+      const e = new Error('无匹配模板：math/fill/easy/nope');
+      (e as { name: string }).name = 'MissingTemplateError';
+      throw e;
+    });
+    const controller = makeController({ render });
+    expect(() => controller.renderSocratic({
+      key: { subject: 'math', type: 'fill', difficulty: 'easy', stage: 'hint' },
+      context: { knowledgePoint: '勾股定理' },
+    })).toThrow(BadRequestException);
+  });
+
+  it('socratic/render：能力未装配（宿主解析为 null）→ 503（P5：不崩，可诊断）', () => {
+    const controller = makeController({ noSocratic: true });
+    expect(() => controller.renderSocratic({
+      key: { subject: 'math', type: 'fill', difficulty: 'easy', stage: 'hint' },
+      context: { knowledgePoint: '勾股定理' },
+    })).toThrow(ServiceUnavailableException);
   });
 
   it('exam/scan：缺 rawText 与 imageDataUrl → 400；rawText 请求委托 ExamScannerAgent', async () => {

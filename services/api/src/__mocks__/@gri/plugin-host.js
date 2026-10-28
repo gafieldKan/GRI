@@ -112,9 +112,17 @@ function loadPlugins(opts = {}) {
   const skip = new Set(Array.isArray(assembleOpts.skipKinds) ? assembleOpts.skipKinds : []);
   const requirePolicy = Boolean(assembleOpts.requirePolicy); // 真件按**真值**判（`if (opts.requirePolicy)`），故同此
   let policyActive = false; // 至少一个**可用**（有 authorize）的 policy 插件被激活 → 授权闸门真在岗
+  // 能力解析（W2.4b）：真件 host 有 `resolve(capability)` → 返回提供该能力的**已激活**插件条目。
+  // 替身同形，使 api 侧「从宿主解析能力」（如 socratic.render）的路径在套件里**真能解析**——
+  // 否则 host 无 resolve → 能力恒 null → 未来加模块级测试会莫名 503（复验标注的 footgun）。
+  const providesMap = new Map(); // plugin id -> { manifest, impl }（仅已激活时记录）
   const host = {
     tools: () => tools.slice(),
     diagnostics: () => ({ active: activated.slice(), errors: errors.slice(), policyAssembled: policyActive }),
+    resolve: (capability) =>
+      [...providesMap.values()].filter((e) =>
+        (Array.isArray(e.manifest.provides) ? e.manifest.provides : []).includes(capability),
+      ),
   };
   // 与真件同：`nameKey` 传了却不是函数 → 配置错误，响亮记诊断（不静默当恒等键，也不抛）。
   if (opts.nameKey != null && typeof opts.nameKey !== 'function') {
@@ -243,6 +251,7 @@ function loadPlugins(opts = {}) {
         tools.push(t);
       }
       activated.push(raw.id);
+      providesMap.set(raw.id, { manifest: raw, impl });
       // 可用 policy（kind=policy 且实现了 authorize）→ 替身据以汇报 `policyAssembled`。
       // **替身此处比真件更严**：真件 `diagnostics().policyAssembled` 只判「有激活的 kind=policy」
       // （`host.js`），**不查** authorize（authorize 只在 `_assertPolicyUsable` 的前置校验里查）。
@@ -261,6 +270,7 @@ function loadPlugins(opts = {}) {
     activated.length = 0;
     tools.length = 0;
     skills.length = 0;
+    providesMap.clear(); // fail-closed：零激活 → 能力也解析不到（与真件同）
   }
   return { host, tools, skills, diagnostics: { dir, discovered, activated, ignored, errors } };
 }
