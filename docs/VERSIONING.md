@@ -38,11 +38,12 @@
 4. `npm publish -w <pkg>`（`publishConfig.registry` 指向 `https://registry.npmmirror.com`；`access` 按包可见性定）。
 5. **全链验证**：干净环境 `npm i <pkg>@<version>` 可用（W4 出口判据）。
 
-> 当前状态（2026-10-28）：**安装面已验证** —— `npm pack`（`packages/agent-core`）产 **21 文件**（合 `files` 白名单）；
-> `npm i <tgz>` 于**干净目录**（dep 走 npmmirror）成功，`import('@gri/agent-core')` → **44 导出**（含 `AgentCore`/`ModelRouter`）
-> —— W4 gate「干净环境 `npm i` 可用」**✅（agent-core）**。**`npm publish --dry-run` 载荷通过**（21 文件 / 48.6 kB）。
-> **发布仍阻塞（两点，须补齐）**：① 本机**无 `registry.npmmirror.com` 登录/token**（dry-run 报 `requires you to be logged in`）；
-> ② **无 git remote** → `repository`/`homepage` 仍是 `example.invalid` **占位**，须填真实仓址。二者齐备即可 `npm publish`。
+> 当前状态（2026-10-28，更新）：**私有 registry 发布链路已跑通（`@gri` scope 不变）** —— 本地 Verdaccio
+> （`http://localhost:4873`）实测：`npm publish` → `+ @gri/agent-core@0.1.0`；**干净环境** `npm i @gri/agent-core`
+> （走该私服、dep 经 uplink npmjs）→ `import` **44 导出** 可用 —— **W4 gate 在私服上全过（发布全链 + 干净环境安装）**。
+> 另：`npm pack` 产 21 文件（合 `files`）；git 已接 `origin=https://github.com/gafieldKan/GRI.git`（默认分支 `main`）。
+> **落地到真实私服时**：把各包 `publishConfig.registry` 指向它（提交里当前仍是 `npmmirror` + `access:restricted` 占位），
+> 并在私服开 `@gri` scope 的 publish 权限。**公网发不了 `@gri`**（npmjs 上该 scope 已被他人占用，见 §三 命名空间与 §五）。
 
 ---
 
