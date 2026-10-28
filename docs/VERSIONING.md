@@ -38,7 +38,11 @@
 4. `npm publish -w <pkg>`（`publishConfig.registry` 指向 `https://registry.npmmirror.com`；`access` 按包可见性定）。
 5. **全链验证**：干净环境 `npm i <pkg>@<version>` 可用（W4 出口判据）。
 
-> 当前状态：**未发布**。`@gri/agent-core` 已备 `files`/`publishConfig`/`exports`，只差真实 URL + 授权。
+> 当前状态（2026-10-28）：**安装面已验证** —— `npm pack`（`packages/agent-core`）产 **21 文件**（合 `files` 白名单）；
+> `npm i <tgz>` 于**干净目录**（dep 走 npmmirror）成功，`import('@gri/agent-core')` → **44 导出**（含 `AgentCore`/`ModelRouter`）
+> —— W4 gate「干净环境 `npm i` 可用」**✅（agent-core）**。**`npm publish --dry-run` 载荷通过**（21 文件 / 48.6 kB）。
+> **发布仍阻塞（两点，须补齐）**：① 本机**无 `registry.npmmirror.com` 登录/token**（dry-run 报 `requires you to be logged in`）；
+> ② **无 git remote** → `repository`/`homepage` 仍是 `example.invalid` **占位**，须填真实仓址。二者齐备即可 `npm publish`。
 
 ---
 
