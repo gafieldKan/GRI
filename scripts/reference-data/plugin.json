@@ -1,0 +1,11 @@
+{
+  "id": "reference-data",
+  "name": "参考数据（knowledge.taxonomy）",
+  "kind": "knowledge.taxonomy",
+  "apiVersion": "1",
+  "version": "0.1.0",
+  "description": "联合国区域划分 / ISIC Rev.5 行业 / UN CPC 资源分类 → ontology.region/industry/resource（幂等灌库；锚点=node_id/code；父链两遍回填）。P-2：显性化为 knowledge.taxonomy provider（领域逻辑逐字迁入 provider.mjs，CLI 只剩宿主面）。",
+  "entry": "./provider.mjs",
+  "provides": ["knowledge.taxonomy"],
+  "trust": { "boundary": "in-process", "network": false, "filesystem": "read" }
+}
