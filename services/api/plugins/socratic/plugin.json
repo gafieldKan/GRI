@@ -1,0 +1,17 @@
+{
+  "id": "socratic",
+  "name": "苏格拉底话术（socratic.render）",
+  "kind": "agent.skill",
+  "apiVersion": "1",
+  "version": "0.1.0",
+  "description": "苏格拉底话术模板库（按 {subject,type,difficulty,stage} 取模板 + 回退链 + 变量插值）。W2.4b：自 tuition/agents/socratic-templates.ts 显性化为 agent.skill 插件（提供 socratic.render 能力）——逻辑逐字迁入，跨边界判错改按 error.name。",
+  "entry": "./index.js",
+  "provides": [
+    "socratic.render"
+  ],
+  "trust": {
+    "boundary": "in-process",
+    "network": false,
+    "filesystem": "none"
+  }
+}
