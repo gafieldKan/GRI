@@ -21,7 +21,7 @@
     "README.md"
   ],
   "publishConfig": {
-    "registry": "https://registry.npmmirror.com",
+    "registry": "http://localhost:4873",
     "access": "restricted"
   },
   "repository": {

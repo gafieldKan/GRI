@@ -20,6 +20,19 @@
     "index.d.ts",
     "README.md"
   ],
+  "publishConfig": {
+    "registry": "http://localhost:4873",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gafieldKan/GRI.git",
+    "directory": "packages/plugin-host"
+  },
+  "homepage": "https://github.com/gafieldKan/GRI/tree/main/packages/plugin-host#readme",
+  "bugs": {
+    "url": "https://github.com/gafieldKan/GRI/issues"
+  },
   "keywords": [
     "gri",
     "plugin",

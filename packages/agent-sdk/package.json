@@ -34,13 +34,16 @@
   },
   "dependencies": {},
   "publishConfig": {
-    "registry": "https://registry.npmmirror.com",
+    "registry": "http://localhost:4873",
     "access": "restricted"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://example.invalid/gri.git",
+    "url": "git+https://github.com/gafieldKan/GRI.git",
     "directory": "packages/agent-sdk"
   },
-  "homepage": "https://example.invalid/gri/packages/agent-sdk"
+  "homepage": "https://github.com/gafieldKan/GRI/tree/main/packages/agent-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/gafieldKan/GRI/issues"
+  }
 }
