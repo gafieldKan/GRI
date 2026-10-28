@@ -13,6 +13,8 @@ import {
   UseInterceptors,
   ParseUUIDPipe,
   ForbiddenException,
+  Inject,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TuitionService } from './tuition.service';
@@ -34,11 +36,12 @@ import {
   IntentContext,
 } from './agents/intent-classifier';
 import {
-  MissingTemplateError,
-  MissingTemplateVariableError,
-  SocraticTemplates,
-  TemplateKey,
+  MISSING_TEMPLATE_ERROR,
+  MISSING_TEMPLATE_VARIABLE_ERROR,
+  type SocraticRender,
+  type TemplateKey,
 } from './agents/socratic-templates';
+import { SOCRATIC_RENDER } from './agents/socratic-provider';
 import { ExamScannerAgent } from './agents/exam-scanner';
 import { VariantGenerator } from './agents/variant-generator';
 import { Request } from 'express';
@@ -60,7 +63,7 @@ export class TuitionController {
     private readonly tuitionService: TuitionService,
     private readonly intentClassifier: IntentClassifier,
     private readonly teachingCardFsm: TeachingCardFsm,
-    private readonly socraticTemplates: SocraticTemplates,
+    @Inject(SOCRATIC_RENDER) private readonly socratic: SocraticRender | null,
     private readonly examScanner: ExamScannerAgent,
     private readonly variantGenerator: VariantGenerator,
   ) {}
@@ -302,11 +305,15 @@ export class TuitionController {
     if (!body.context || typeof body.context.knowledgePoint !== 'string' || !body.context.knowledgePoint.trim()) {
       throw new BadRequestException('缺少 knowledgePoint');
     }
+    // W2.4b：能力由宿主解析（插件 `plugins/socratic` provides socratic.render）；未装配 → 503（P5：不崩，可诊断）。
+    if (!this.socratic) throw new ServiceUnavailableException('socratic.render 能力未装配（插件缺失）');
     try {
-      return { message: this.socraticTemplates.render(body.key, body.context as SocraticContext) };
+      return { message: this.socratic.render(body.key, body.context as SocraticContext) };
     } catch (error) {
-      if (error instanceof MissingTemplateError || error instanceof MissingTemplateVariableError) {
-        throw new BadRequestException(error.message);
+      // 跨插件边界：按 `name` 判错（**勿用 instanceof** —— 插件错误类与宿主 import 的类身份不同）
+      const name = (error as { name?: string })?.name;
+      if (name === MISSING_TEMPLATE_ERROR || name === MISSING_TEMPLATE_VARIABLE_ERROR) {
+        throw new BadRequestException((error as Error).message);
       }
       throw error;
     }

@@ -15,7 +15,7 @@ import { PlanAgent } from './agents/plan-agent';
 import { SpacedRepetitionService } from './agents/spaced-repetition.service';
 import { TeachingCardFsm } from './agents/teaching-card-fsm';
 import { IntentClassifier } from './agents/intent-classifier';
-import { SocraticTemplates } from './agents/socratic-templates';
+import { SOCRATIC_RENDER, resolveSocraticRender } from './agents/socratic-provider';
 import { OcrProcessor } from './agents/ocr-processor';
 import { QuestionParser } from './agents/question-parser';
 import { VariantGenerator } from './agents/variant-generator';
@@ -42,7 +42,9 @@ import { VariantGenerator } from './agents/variant-generator';
     // 教学卡片域（P2-T6）：卡片态状态机 / 意图识别 / 苏格拉底模板
     TeachingCardFsm,
     IntentClassifier,
-    SocraticTemplates,
+    // 苏格拉底话术（W2.4b）：实现已迁为插件 `plugins/socratic`（provides socratic.render）；
+    // 宿主从此解析能力实现（未装配 → null，端点报 503，P5 不崩）。
+    { provide: SOCRATIC_RENDER, useFactory: resolveSocraticRender },
     // 拍照解题域（P2-T7）：OCR 适配 / 结构化解析 / 变式生成
     OcrProcessor,
     QuestionParser,

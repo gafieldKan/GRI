@@ -4,7 +4,7 @@ import { TuitionController } from './tuition.controller';
 import { TuitionService } from './tuition.service';
 import { IllegalCardTransitionError, TeachingCardFsm, initialCardState } from './agents/teaching-card-fsm';
 import { IntentClassifier } from './agents/intent-classifier';
-import { SocraticTemplates } from './agents/socratic-templates';
+import type { SocraticRender } from './agents/socratic-templates';
 import { ExamScannerAgent } from './agents/exam-scanner';
 import { VariantGenerator } from './agents/variant-generator';
 
@@ -29,7 +29,7 @@ function makeController(overrides: {
   } as unknown as TeachingCardFsm;
   const templates = {
     render: overrides.render ?? jest.fn().mockReturnValue('先回忆勾股定理。'),
-  } as unknown as SocraticTemplates;
+  } as unknown as SocraticRender;
   const scanner = {
     scanExam: overrides.scanExam ?? jest.fn().mockResolvedValue({
       success: true,

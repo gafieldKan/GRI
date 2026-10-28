@@ -1,9 +1,18 @@
-import {
-  SocraticTemplates,
-  MissingTemplateError,
-  MissingTemplateVariableError,
-  TemplateKey,
-} from './socratic-templates';
+import type { TemplateKey } from './socratic-templates';
+
+// W2.4b：实现已迁为插件 `plugins/socratic` —— 本 spec 即「插件面**等价证明**」：同一批断言（全不变）
+// 驱动**插件 impl**。用插件导出的**类**（非单例）→ 每例新实例，避免 register 污染后续用例。
+const plugin = require('../../../../plugins/socratic') as {
+  SocraticTemplates: new () => {
+    render: (k: TemplateKey, c: unknown) => string;
+    has: (k: TemplateKey) => boolean;
+    size: number;
+    register: (k: TemplateKey, fn: (c: any) => string) => unknown;
+  };
+  MissingTemplateError: new (...a: any[]) => Error;
+  MissingTemplateVariableError: new (...a: any[]) => Error;
+};
+const { SocraticTemplates, MissingTemplateError, MissingTemplateVariableError } = plugin;
 
 /**
  * 苏格拉底模板库单测（P2-T6）。
@@ -38,7 +47,7 @@ describe('SocraticTemplates —— 插值与报错', () => {
     try {
       t.render(scaffoldKey, { knowledgePoint: '勾股定理', attemptCount: 1 });
     } catch (e) {
-      expect((e as MissingTemplateVariableError).variable).toBe('studentLevel');
+      expect((e as { variable: string }).variable).toBe('studentLevel');
     }
   });
 
@@ -49,7 +58,7 @@ describe('SocraticTemplates —— 插值与报错', () => {
       throw new Error('should have thrown');
     } catch (e) {
       expect(e).toBeInstanceOf(MissingTemplateVariableError);
-      expect((e as MissingTemplateVariableError).variable).toBe('knowledgePoint');
+      expect((e as { variable: string }).variable).toBe('knowledgePoint');
     }
   });
 
