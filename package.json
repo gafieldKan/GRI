@@ -30,7 +30,8 @@
     "test": "npm run test --workspace=services/api",
     "test:e2e": "node scripts/full-test.js",
     "lint": "npm run lint --workspaces --if-present",
-    "clean": "rm -rf apps/*/dist services/*/dist packages/*/dist apps/*/node_modules services/*/node_modules packages/*/node_modules node_modules"
+    "clean": "rm -rf apps/*/dist services/*/dist packages/*/dist apps/*/node_modules services/*/node_modules packages/*/node_modules node_modules",
+    "verify": "node verify/run.mjs"
   },
   "dependencies": {
     "@dcloudio/uni-cli-shared": "^3.0.0-alpha-5010320260611001"

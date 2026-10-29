@@ -108,3 +108,6 @@ apps/explorer/region.html
 apps/explorer/industry.html
 # 区域细分几何（52MB，派生自源文件）
 scripts/reference-data/data/un-regions-maps.geo.json
+
+# 规则登记器产物（每次 `npm run verify` 重跑再生，勿入库）
+verify/verify-report.json
