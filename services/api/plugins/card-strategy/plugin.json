@@ -1,0 +1,17 @@
+{
+  "id": "card-strategy",
+  "name": "教学卡片策略（card.strategy）",
+  "kind": "agent.skill",
+  "apiVersion": "1",
+  "version": "0.1.0",
+  "description": "教学卡片态状态机（Question/Hint/Scaffold/Solution/Reflection 五态流转 + 三条 Guard + 转移表真值表）。W2.4b：自 tuition/agents/teaching-card-fsm.ts 显性化为 agent.skill 插件（提供 card.strategy 能力）——逻辑逐字迁入，跨边界判错改按 error.name。",
+  "entry": "./index.js",
+  "provides": [
+    "card.strategy"
+  ],
+  "trust": {
+    "boundary": "in-process",
+    "network": false,
+    "filesystem": "none"
+  }
+}

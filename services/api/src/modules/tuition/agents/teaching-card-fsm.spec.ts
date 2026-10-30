@@ -1,9 +1,14 @@
-import {
-  TeachingCardFsm,
-  TeachingCardState,
-  IllegalCardTransitionError,
-  initialCardState,
-} from './teaching-card-fsm';
+import type { Intent, TeachingCardStage } from '../tuition.types';
+import type { CardStrategyClass, TeachingCardState } from './teaching-card-fsm';
+
+// W2.4b：实现已迁为插件 `plugins/card-strategy` —— 本 spec 即「插件面**等价证明**」：同一批断言（全不变）
+// 驱动**插件 impl**。用插件导出的**类**（非单例）→ 每例新实例；断言一字未改 = 逐字保真。
+const plugin = require('../../../../plugins/card-strategy') as {
+  TeachingCardFsm: CardStrategyClass;
+  IllegalCardTransitionError: new (...a: any[]) => Error;
+  initialCardState: () => TeachingCardState;
+};
+const { TeachingCardFsm, IllegalCardTransitionError, initialCardState } = plugin;
 
 /**
  * 教学卡片状态机单测（P2-T6）。

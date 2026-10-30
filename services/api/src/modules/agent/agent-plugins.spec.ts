@@ -70,12 +70,14 @@ describe('出厂插件装载（W2.3）', () => {
   it('扫到 memory 出厂插件：kind=agent.skill，三个工具按声明序装配', () => {
     const { diagnostics, tools } = agentPlugins();
     expect(diagnostics.errors).toEqual([]);
-    expect(diagnostics.activated).toEqual(['memory', 'socratic', 'tutor']);
+    expect(diagnostics.activated).toEqual(['card-strategy', 'memory', 'socratic', 'tutor']);
     // 磁盘上还有 authz 策略插件（W2.7）——它**登记但被跳过**（测试档 `skipKinds:['policy']`，见下条），
     // 故 `discovered`（=扫描到的清单）比 `activated`（=真装配的）多一个。真件同此口径（`loadPlugins`
     // 的 discovered 是磁盘扫描结果，与装配结果无关）。
+    // `card-strategy`（W2.4b）只声明 `provides`（能力）、不提供任何工具 → 装配但工具表无增。
     expect(diagnostics.discovered).toEqual([
       expect.objectContaining({ id: 'authz', dir: 'authz', kind: 'policy' }),
+      expect.objectContaining({ id: 'card-strategy', dir: 'card-strategy', kind: 'agent.skill' }),
       expect.objectContaining({ id: 'memory', dir: 'memory', kind: 'agent.skill' }),
       expect.objectContaining({ id: 'socratic', dir: 'socratic', kind: 'agent.skill' }),
       expect.objectContaining({ id: 'tutor', dir: 'tutor', kind: 'agent.skill' }),
@@ -359,7 +361,7 @@ describe('授权策略插件（W2.7 · 后组装）', () => {
     withEnv('test', () => {
       const { diagnostics, tools } = agentPlugins();
       expect(diagnostics.discovered.map((d: any) => d.id)).toContain('authz'); // 在盘上、被扫到
-      expect(diagnostics.activated).toEqual(['memory', 'socratic', 'tutor']); // 但没装配 authz
+      expect(diagnostics.activated).toEqual(['card-strategy', 'memory', 'socratic', 'tutor']); // 但没装配 authz
       // 授权闸门不在岗 → 这正是「后组装」要的：组件组装测试不必先搭权限
       expect((agentPlugins() as any).host.diagnostics().policyAssembled).toBe(false);
       expect(tools.map((t: any) => t.name)).toEqual(['memory.recall', 'memory.remember', 'memory.forget']);

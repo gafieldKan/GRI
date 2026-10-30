@@ -2,7 +2,7 @@ import { BadRequestException, ServiceUnavailableException } from '@nestjs/common
 import { HTTP_CODE_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { TuitionController } from './tuition.controller';
 import { TuitionService } from './tuition.service';
-import { IllegalCardTransitionError, TeachingCardFsm, initialCardState } from './agents/teaching-card-fsm';
+import { initialCardState, ILLEGAL_CARD_TRANSITION_ERROR, type CardStrategy } from './agents/teaching-card-fsm';
 import { IntentClassifier } from './agents/intent-classifier';
 import type { SocraticRender } from './agents/socratic-templates';
 import { ExamScannerAgent } from './agents/exam-scanner';
@@ -11,23 +11,31 @@ import { VariantGenerator } from './agents/variant-generator';
 // 值导入 teaching-card-fsm / intent-classifier 会传递加载 ESM 包 @gri/agent-core。
 jest.mock('@gri/agent-core', () => ({ ModelRouter: class {}, storeFrom: (q: unknown) => q }));
 
+/** 插件侧真实错误类（W2.4b：卡片态实现已迁 `plugins/card-strategy`）—— 只在本 spec 造「真抛错」用。 */
+const { IllegalCardTransitionError } = require('../../../plugins/card-strategy') as {
+  IllegalCardTransitionError: new (from: string, to: string, reason?: string) => Error;
+};
+
 function makeController(overrides: {
   classify?: jest.Mock;
   advance?: jest.Mock;
   render?: jest.Mock;
   noSocratic?: boolean;
+  noCard?: boolean;
   scanExam?: jest.Mock;
   generate?: jest.Mock;
 } = {}) {
   const classifier = {
     classify: overrides.classify ?? jest.fn().mockResolvedValue({ intent: 'ASK_HINT', confidence: 0.7 }),
   } as unknown as IntentClassifier;
-  const fsm = {
-    advance: overrides.advance ?? jest.fn().mockReturnValue({
-      state: { stage: 'Hint', hintCount: 1, attemptCount: 0 },
-      update: { stage: 'Hint', intent: 'ASK_HINT', hintCount: 1, attemptCount: 0 },
-    }),
-  } as unknown as TeachingCardFsm;
+  const card = overrides.noCard
+    ? null // W2.4b：模拟「宿主未解析到 card.strategy 能力」→ 注入 null
+    : ({
+        advance: overrides.advance ?? jest.fn().mockReturnValue({
+          state: { stage: 'Hint', hintCount: 1, attemptCount: 0 },
+          update: { stage: 'Hint', intent: 'ASK_HINT', hintCount: 1, attemptCount: 0 },
+        }),
+      } as unknown as CardStrategy);
   const templates = overrides.noSocratic
     ? null // W2.4b：模拟「宿主未解析到 socratic.render 能力」→ 注入 null
     : ({ render: overrides.render ?? jest.fn().mockReturnValue('先回忆勾股定理。') } as unknown as SocraticRender);
@@ -45,7 +53,7 @@ function makeController(overrides: {
   return new TuitionController(
     {} as TuitionService,
     classifier,
-    fsm,
+    card,
     templates,
     scanner,
     variants,
@@ -95,6 +103,27 @@ describe('TuitionController —— T6/T7 最小接线', () => {
     expect(advance).toHaveBeenCalledWith(initialCardState(), 'ASK_HINT', {
       correct: undefined,
     });
+  });
+
+  it('card/advance：非法转移错按 name 判（name=IllegalCardTransitionError）→ 400（跨插件边界非 instanceof）', () => {
+    const advance = jest.fn().mockImplementation(() => {
+      const e = new Error('非法卡片态转移：Reflection → Solution（转移不在转移表中）');
+      (e as { name: string }).name = ILLEGAL_CARD_TRANSITION_ERROR;
+      throw e;
+    });
+    const controller = makeController({ advance });
+    expect(() => controller.advanceCard({
+      state: { stage: 'Reflection', hintCount: 0, attemptCount: 1 },
+      intent: 'ASK_SOLUTION',
+    })).toThrow(BadRequestException);
+  });
+
+  it('card/advance：能力未装配（宿主解析为 null）→ 503（P5：不崩，可诊断）', () => {
+    const controller = makeController({ noCard: true });
+    expect(() => controller.advanceCard({
+      state: initialCardState(),
+      intent: 'ASK_HINT',
+    })).toThrow(ServiceUnavailableException);
   });
 
   it('socratic/render：缺知识上下文字段 → 400；有效请求返回模板消息', async () => {

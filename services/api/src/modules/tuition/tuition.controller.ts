@@ -26,9 +26,9 @@ import {
   VariantGenerationOptions,
 } from './tuition.types';
 import {
-  IllegalCardTransitionError,
-  TeachingCardFsm,
-  TeachingCardState,
+  ILLEGAL_CARD_TRANSITION_ERROR,
+  type CardStrategy,
+  type TeachingCardState,
   initialCardState,
 } from './agents/teaching-card-fsm';
 import {
@@ -42,6 +42,7 @@ import {
   type TemplateKey,
 } from './agents/socratic-templates';
 import { SOCRATIC_RENDER } from './agents/socratic-provider';
+import { CARD_STRATEGY } from './agents/card-strategy-provider';
 import { ExamScannerAgent } from './agents/exam-scanner';
 import { VariantGenerator } from './agents/variant-generator';
 import { Request } from 'express';
@@ -62,7 +63,7 @@ export class TuitionController {
   constructor(
     private readonly tuitionService: TuitionService,
     private readonly intentClassifier: IntentClassifier,
-    private readonly teachingCardFsm: TeachingCardFsm,
+    @Inject(CARD_STRATEGY) private readonly cardStrategy: CardStrategy | null,
     @Inject(SOCRATIC_RENDER) private readonly socratic: SocraticRender | null,
     private readonly examScanner: ExamScannerAgent,
     private readonly variantGenerator: VariantGenerator,
@@ -288,11 +289,14 @@ export class TuitionController {
     if (!isCardIntent(body?.intent)) throw new BadRequestException('缺少或非法 intent');
     const state = body.state ?? initialCardState();
     if (!isCardState(state)) throw new BadRequestException('非法卡片状态');
+    // W2.4b：能力由宿主解析（插件 `plugins/card-strategy` provides card.strategy）；未装配 → 503（P5：不崩，可诊断）。
+    if (!this.cardStrategy) throw new ServiceUnavailableException('card.strategy 能力未装配（插件缺失）');
     try {
-      return this.teachingCardFsm.advance(state, body.intent, { correct: body.correct });
+      return this.cardStrategy.advance(state, body.intent, { correct: body.correct });
     } catch (error) {
-      if (error instanceof IllegalCardTransitionError) {
-        throw new BadRequestException(error.message);
+      // 跨插件边界：按 `name` 判错（**勿用 instanceof** —— 插件错误类与宿主 import 的类身份不同）
+      if ((error as { name?: string })?.name === ILLEGAL_CARD_TRANSITION_ERROR) {
+        throw new BadRequestException((error as Error).message);
       }
       throw error;
     }

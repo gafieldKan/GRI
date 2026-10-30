@@ -13,9 +13,9 @@ import { TutorAgent } from './agents/tutor-agent';
 import { QuestionGeneratorAgent } from './agents/question-generator';
 import { PlanAgent } from './agents/plan-agent';
 import { SpacedRepetitionService } from './agents/spaced-repetition.service';
-import { TeachingCardFsm } from './agents/teaching-card-fsm';
 import { IntentClassifier } from './agents/intent-classifier';
 import { SOCRATIC_RENDER, resolveSocraticRender } from './agents/socratic-provider';
+import { CARD_STRATEGY, resolveCardStrategy } from './agents/card-strategy-provider';
 import { OcrProcessor } from './agents/ocr-processor';
 import { QuestionParser } from './agents/question-parser';
 import { VariantGenerator } from './agents/variant-generator';
@@ -40,7 +40,9 @@ import { VariantGenerator } from './agents/variant-generator';
     QuestionGeneratorAgent,
     PlanAgent,
     // 教学卡片域（P2-T6）：卡片态状态机 / 意图识别 / 苏格拉底模板
-    TeachingCardFsm,
+    // 卡片态策略（W2.4b）：实现已迁为插件 `plugins/card-strategy`（provides card.strategy）；
+    // 宿主从此解析能力实现（未装配 → null，端点报 503，P5 不崩）。
+    { provide: CARD_STRATEGY, useFactory: resolveCardStrategy },
     IntentClassifier,
     // 苏格拉底话术（W2.4b）：实现已迁为插件 `plugins/socratic`（provides socratic.render）；
     // 宿主从此解析能力实现（未装配 → null，端点报 503，P5 不崩）。
