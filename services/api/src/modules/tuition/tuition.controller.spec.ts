@@ -90,16 +90,22 @@ describe('TuitionController —— T6/T7 最小接线', () => {
 
   it('card/advance：缺 intent → 400；非法转移 → 400', async () => {
     const advance = jest.fn()
-      .mockImplementationOnce(() => {
+      .mockImplementation(() => {
         throw new IllegalCardTransitionError('Question', 'Scaffold', 'attemptCount=0');
       });
     const controller = makeController({ advance });
 
     expect(() => controller.advanceCard({})).toThrow(BadRequestException);
-    expect(() => controller.advanceCard({
-      state: initialCardState(),
-      intent: 'ASK_HINT',
-    })).toThrow(BadRequestException);
+    // 同一处断言**同时**锁「抛的是 400 类」与「message 从插件错误逐字透传」——
+    // 只断一类会让「400 改 503」的变异逃逸，只断文案会让「文案改成固定串」逃逸。
+    let thrown: unknown;
+    try {
+      controller.advanceCard({ state: initialCardState(), intent: 'ASK_HINT' });
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(BadRequestException);
+    expect((thrown as Error).message).toBe('非法卡片态转移：Question → Scaffold（attemptCount=0）');
     expect(advance).toHaveBeenCalledWith(initialCardState(), 'ASK_HINT', {
       correct: undefined,
     });
